@@ -23,11 +23,11 @@ The backend uses **Express.js** with **TypeScript** for type safety. **PostgreSQ
 
 ### Feature Specifications
 - **User Authentication**: Secure accounts with unique usernames, hashed passwords, and avatar selection.
-- **Difficulty Levels**: Three built-in difficulty levels (Easy, Medium, Hard) and support for custom word lists with assigned difficulties.
-- **Game Modes**: Standard, Timed Challenge (60 seconds), and Quiz Mode (all 10 words before results).
-- **Custom Word Lists**: Users can create, import (from .txt or .csv), edit, and delete their own lists (5-100 words), organize by grade level (K-12), and share them publicly. Users can also play with public lists created by others.
+- **Custom Word Lists Only**: The app exclusively uses custom word lists (built-in lists removed). Users create lists with required difficulty levels (Easy, Medium, Hard), organize by grade level (K-12), and can share them publicly. Lists require 5-100 words.
+- **Difficulty Levels**: Each custom word list must have an assigned difficulty (Easy, Medium, or Hard) selected via dropdown during creation. This determines point values.
+- **Game Modes**: Three modes available - Standard (classic with immediate feedback), Timed Challenge (60 seconds), and Quiz Mode (answer all 10 words before seeing results).
 - **Text-to-Speech**: Words are pronounced using the Web Speech API with customizable voice options.
-- **Scoring System**: Points awarded based on difficulty (10/20/30 for built-in, 20 for custom lists) with streak bonuses (+5 points per consecutive correct answer).
+- **Scoring System**: Points awarded based on the custom list's difficulty (Easy: 10, Medium: 20, Hard: 30 points per word) with streak bonuses (+5 points per consecutive correct answer).
 - **Leaderboard**: Displays all players' scores, filterable by difficulty, showing usernames, avatars, and game statistics.
 - **Progress Tracking**: Shows words completed, accuracy, and streak information per game session.
 
