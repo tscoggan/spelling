@@ -21,7 +21,7 @@ import { eq, desc, and, sql } from "drizzle-orm";
 
 export interface IStorage {
   getAllWords(): Promise<Word[]>;
-  getWordsByDifficulty(difficulty: DifficultyLevel): Promise<Word[]>;
+  getWordsByDifficulty(difficulty: DifficultyLevel, limit?: number): Promise<Word[]>;
   getWord(id: number): Promise<Word | undefined>;
   createWord(word: InsertWord): Promise<Word>;
   seedWords(): Promise<void>;
@@ -48,9 +48,9 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(words);
   }
 
-  async getWordsByDifficulty(difficulty: DifficultyLevel): Promise<Word[]> {
+  async getWordsByDifficulty(difficulty: DifficultyLevel, limit: number = 10): Promise<Word[]> {
     const allWords = await db.select().from(words).where(eq(words.difficulty, difficulty));
-    return allWords.sort(() => Math.random() - 0.5).slice(0, 10);
+    return allWords.sort(() => Math.random() - 0.5).slice(0, limit);
   }
 
   async getWord(id: number): Promise<Word | undefined> {

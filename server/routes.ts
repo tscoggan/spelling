@@ -22,7 +22,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid difficulty level" });
       }
 
-      const words = await storage.getWordsByDifficulty(difficulty);
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const words = await storage.getWordsByDifficulty(difficulty, limit);
       res.json(words);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch words by difficulty" });

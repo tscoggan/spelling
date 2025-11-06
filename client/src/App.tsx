@@ -11,7 +11,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
-      <Route path="/game/:difficulty" component={Game} />
+      <Route path="/game" component={Game} />
       <Route component={NotFound} />
     </Switch>
   );
