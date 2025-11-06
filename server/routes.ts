@@ -44,7 +44,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/sessions/:id", async (req, res) => {
     try {
-      const session = await storage.getGameSession(req.params.id);
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid session ID" });
+      }
+      
+      const session = await storage.getGameSession(id);
       if (!session) {
         return res.status(404).json({ error: "Session not found" });
       }
@@ -56,8 +61,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/sessions/:id", async (req, res) => {
     try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid session ID" });
+      }
+      
       const updates = req.body;
-      const session = await storage.updateGameSession(req.params.id, updates);
+      const session = await storage.updateGameSession(id, updates);
       
       if (!session) {
         return res.status(404).json({ error: "Session not found" });

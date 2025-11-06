@@ -1,115 +1,279 @@
-import { type Word, type InsertWord, type GameSession, type InsertGameSession, type DifficultyLevel } from "@shared/schema";
-import { randomUUID } from "crypto";
+import { 
+  type Word, 
+  type InsertWord, 
+  type GameSession, 
+  type InsertGameSession, 
+  type DifficultyLevel,
+  type User,
+  type InsertUser,
+  type WordAttempt,
+  type InsertWordAttempt,
+  type LeaderboardScore,
+  type InsertLeaderboardScore,
+  words,
+  gameSessions,
+  users,
+  wordAttempts,
+  leaderboardScores,
+} from "@shared/schema";
+import { db } from "./db";
+import { eq, desc, and, sql } from "drizzle-orm";
 
 export interface IStorage {
   getAllWords(): Promise<Word[]>;
   getWordsByDifficulty(difficulty: DifficultyLevel): Promise<Word[]>;
-  getWord(id: string): Promise<Word | undefined>;
+  getWord(id: number): Promise<Word | undefined>;
   createWord(word: InsertWord): Promise<Word>;
+  seedWords(): Promise<void>;
   
-  getGameSession(id: string): Promise<GameSession | undefined>;
+  getGameSession(id: number): Promise<GameSession | undefined>;
   createGameSession(session: InsertGameSession): Promise<GameSession>;
-  updateGameSession(id: string, updates: Partial<GameSession>): Promise<GameSession | undefined>;
+  updateGameSession(id: number, updates: Partial<GameSession>): Promise<GameSession | undefined>;
+  
+  getUser(id: number): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  
+  createWordAttempt(attempt: InsertWordAttempt): Promise<WordAttempt>;
+  getMissedWordsByUser(userId: number): Promise<Word[]>;
+  getUserAttemptHistory(userId: number, limit?: number): Promise<WordAttempt[]>;
+  
+  createLeaderboardScore(score: InsertLeaderboardScore): Promise<LeaderboardScore>;
+  getTopScores(difficulty?: DifficultyLevel, gameMode?: string, limit?: number): Promise<LeaderboardScore[]>;
+  getUserBestScores(userId: number): Promise<LeaderboardScore[]>;
 }
 
-export class MemStorage implements IStorage {
-  private words: Map<string, Word>;
-  private gameSessions: Map<string, GameSession>;
-
-  constructor() {
-    this.words = new Map();
-    this.gameSessions = new Map();
-    this.initializeWords();
-  }
-
-  private initializeWords() {
-    const easyWords = [
-      "apple", "banana", "cat", "dog", "elephant", "friend", "garden", "happy",
-      "island", "jungle", "kitten", "lemon", "monkey", "nature", "orange",
-      "pencil", "queen", "rabbit", "sunny", "turtle", "umbrella", "violin",
-      "water", "yellow", "zebra", "beach", "castle", "dragon", "forest", "giant"
-    ];
-
-    const mediumWords = [
-      "achieve", "beautiful", "calendar", "delicious", "education", "fantastic",
-      "happiness", "important", "knowledge", "necessary", "official", "peaceful",
-      "question", "recognize", "separate", "tomorrow", "universe", "valuable",
-      "wonderful", "yesterday", "adventure", "brilliant", "creature", "dinosaur",
-      "enormous", "fragile", "gorgeous", "innocent", "mysterious", "treasure"
-    ];
-
-    const hardWords = [
-      "accommodate", "bureaucracy", "conscientious", "deteriorate", "embarrass",
-      "fluorescent", "guarantee", "harassment", "independent", "maintenance",
-      "necessary", "occurrence", "perseverance", "questionnaire", "restaurant",
-      "sacrilegious", "rhythm", "millennium", "pharaoh", "chaos", "pneumonia",
-      "pseudonym", "silhouette", "surveillance", "yacht", "psychiatrist",
-      "rendezvous", "entrepreneur", "mischievous", "maneuver"
-    ];
-
-    const addWords = (wordList: string[], difficulty: DifficultyLevel) => {
-      wordList.forEach(word => {
-        const id = randomUUID();
-        this.words.set(id, { id, word, difficulty });
-      });
-    };
-
-    addWords(easyWords, "easy");
-    addWords(mediumWords, "medium");
-    addWords(hardWords, "hard");
-  }
-
+export class DatabaseStorage implements IStorage {
   async getAllWords(): Promise<Word[]> {
-    return Array.from(this.words.values());
+    return await db.select().from(words);
   }
 
   async getWordsByDifficulty(difficulty: DifficultyLevel): Promise<Word[]> {
-    const words = Array.from(this.words.values()).filter(
-      word => word.difficulty === difficulty
-    );
-    return words.sort(() => Math.random() - 0.5).slice(0, 10);
+    const allWords = await db.select().from(words).where(eq(words.difficulty, difficulty));
+    return allWords.sort(() => Math.random() - 0.5).slice(0, 10);
   }
 
-  async getWord(id: string): Promise<Word | undefined> {
-    return this.words.get(id);
+  async getWord(id: number): Promise<Word | undefined> {
+    const [word] = await db.select().from(words).where(eq(words.id, id));
+    return word || undefined;
   }
 
   async createWord(insertWord: InsertWord): Promise<Word> {
-    const id = randomUUID();
-    const word: Word = { ...insertWord, id };
-    this.words.set(id, word);
+    const [word] = await db.insert(words).values(insertWord).returning();
     return word;
   }
 
-  async getGameSession(id: string): Promise<GameSession | undefined> {
-    return this.gameSessions.get(id);
+  async seedWords(): Promise<void> {
+    const existingWords = await db.select().from(words);
+    if (existingWords.length > 0) return;
+
+    const easyWords = [
+      { word: "apple", difficulty: "easy", sentenceExample: "I ate a red apple for lunch.", wordOrigin: "Old English æppel" },
+      { word: "banana", difficulty: "easy", sentenceExample: "The banana is yellow and sweet.", wordOrigin: "West African" },
+      { word: "cat", difficulty: "easy", sentenceExample: "The cat sleeps on the couch.", wordOrigin: "Latin cattus" },
+      { word: "dog", difficulty: "easy", sentenceExample: "My dog loves to play fetch.", wordOrigin: "Old English docga" },
+      { word: "elephant", difficulty: "easy", sentenceExample: "The elephant has a long trunk.", wordOrigin: "Greek elephas" },
+      { word: "friend", difficulty: "easy", sentenceExample: "She is my best friend.", wordOrigin: "Old English freond" },
+      { word: "garden", difficulty: "easy", sentenceExample: "We planted flowers in the garden.", wordOrigin: "Old French gardin" },
+      { word: "happy", difficulty: "easy", sentenceExample: "I feel happy today.", wordOrigin: "Middle English hap (luck)" },
+      { word: "island", difficulty: "easy", sentenceExample: "We sailed to a tropical island.", wordOrigin: "Old English igland" },
+      { word: "jungle", difficulty: "easy", sentenceExample: "Lions live in the jungle.", wordOrigin: "Hindi jangal" },
+      { word: "kitten", difficulty: "easy", sentenceExample: "The kitten is very playful.", wordOrigin: "Middle English kitoun" },
+      { word: "lemon", difficulty: "easy", sentenceExample: "The lemon tastes sour.", wordOrigin: "Arabic laimun" },
+      { word: "monkey", difficulty: "easy", sentenceExample: "The monkey swings from trees.", wordOrigin: "Low German" },
+      { word: "nature", difficulty: "easy", sentenceExample: "I love spending time in nature.", wordOrigin: "Latin natura" },
+      { word: "orange", difficulty: "easy", sentenceExample: "The orange is juicy and sweet.", wordOrigin: "Sanskrit naranga" },
+      { word: "pencil", difficulty: "easy", sentenceExample: "I write with a pencil.", wordOrigin: "Latin penicillus" },
+      { word: "queen", difficulty: "easy", sentenceExample: "The queen wore a crown.", wordOrigin: "Old English cwen" },
+      { word: "rabbit", difficulty: "easy", sentenceExample: "The rabbit hops quickly.", wordOrigin: "Middle Dutch robbe" },
+      { word: "sunny", difficulty: "easy", sentenceExample: "It's a sunny day today.", wordOrigin: "Old English sunne" },
+      { word: "turtle", difficulty: "easy", sentenceExample: "The turtle moves slowly.", wordOrigin: "Latin tortuca" },
+      { word: "umbrella", difficulty: "easy", sentenceExample: "I use an umbrella in the rain.", wordOrigin: "Italian ombrella" },
+      { word: "violin", difficulty: "easy", sentenceExample: "She plays the violin beautifully.", wordOrigin: "Italian violino" },
+      { word: "water", difficulty: "easy", sentenceExample: "I drink water every day.", wordOrigin: "Old English wæter" },
+      { word: "yellow", difficulty: "easy", sentenceExample: "The sun is bright yellow.", wordOrigin: "Old English geolu" },
+      { word: "zebra", difficulty: "easy", sentenceExample: "The zebra has black and white stripes.", wordOrigin: "Italian zebra" },
+      { word: "beach", difficulty: "easy", sentenceExample: "We built sandcastles at the beach.", wordOrigin: "Old English bæce" },
+      { word: "castle", difficulty: "easy", sentenceExample: "The castle has tall towers.", wordOrigin: "Latin castellum" },
+      { word: "dragon", difficulty: "easy", sentenceExample: "The dragon breathes fire.", wordOrigin: "Greek drakon" },
+      { word: "forest", difficulty: "easy", sentenceExample: "Many trees grow in the forest.", wordOrigin: "Latin forestis" },
+      { word: "giant", difficulty: "easy", sentenceExample: "The giant was very tall.", wordOrigin: "Greek gigas" },
+    ];
+
+    const mediumWords = [
+      { word: "achieve", difficulty: "medium", sentenceExample: "You can achieve your goals with hard work.", wordOrigin: "Old French achever" },
+      { word: "beautiful", difficulty: "medium", sentenceExample: "The sunset was beautiful.", wordOrigin: "Latin bellus" },
+      { word: "calendar", difficulty: "medium", sentenceExample: "I marked the date on my calendar.", wordOrigin: "Latin calendarium" },
+      { word: "delicious", difficulty: "medium", sentenceExample: "The cake tastes delicious.", wordOrigin: "Latin deliciosus" },
+      { word: "education", difficulty: "medium", sentenceExample: "Education is important for everyone.", wordOrigin: "Latin educatio" },
+      { word: "fantastic", difficulty: "medium", sentenceExample: "The movie was fantastic!", wordOrigin: "Greek phantastikos" },
+      { word: "happiness", difficulty: "medium", sentenceExample: "Happiness comes from within.", wordOrigin: "Old Norse happ" },
+      { word: "important", difficulty: "medium", sentenceExample: "It's important to be kind.", wordOrigin: "Latin importare" },
+      { word: "knowledge", difficulty: "medium", sentenceExample: "Knowledge is power.", wordOrigin: "Old English cnawan" },
+      { word: "necessary", difficulty: "medium", sentenceExample: "Sleep is necessary for health.", wordOrigin: "Latin necessarius" },
+      { word: "official", difficulty: "medium", sentenceExample: "This is an official document.", wordOrigin: "Latin officialis" },
+      { word: "peaceful", difficulty: "medium", sentenceExample: "The lake was peaceful and calm.", wordOrigin: "Latin pax" },
+      { word: "question", difficulty: "medium", sentenceExample: "I have a question about homework.", wordOrigin: "Latin quaestio" },
+      { word: "recognize", difficulty: "medium", sentenceExample: "I recognize that face from somewhere.", wordOrigin: "Latin recognoscere" },
+      { word: "separate", difficulty: "medium", sentenceExample: "Please separate the colors from the whites.", wordOrigin: "Latin separatus" },
+      { word: "tomorrow", difficulty: "medium", sentenceExample: "I will see you tomorrow.", wordOrigin: "Old English to morgenne" },
+      { word: "universe", difficulty: "medium", sentenceExample: "The universe is vast and mysterious.", wordOrigin: "Latin universus" },
+      { word: "valuable", difficulty: "medium", sentenceExample: "This ring is very valuable.", wordOrigin: "Latin valere" },
+      { word: "wonderful", difficulty: "medium", sentenceExample: "We had a wonderful time at the party.", wordOrigin: "Old English wundor" },
+      { word: "yesterday", difficulty: "medium", sentenceExample: "I finished my homework yesterday.", wordOrigin: "Old English geostran dæg" },
+      { word: "adventure", difficulty: "medium", sentenceExample: "Our camping trip was a great adventure.", wordOrigin: "Latin adventurus" },
+      { word: "brilliant", difficulty: "medium", sentenceExample: "She has a brilliant mind.", wordOrigin: "French brillant" },
+      { word: "creature", difficulty: "medium", sentenceExample: "The ocean is full of strange creatures.", wordOrigin: "Latin creatura" },
+      { word: "dinosaur", difficulty: "medium", sentenceExample: "Dinosaurs lived millions of years ago.", wordOrigin: "Greek deinos sauros" },
+      { word: "enormous", difficulty: "medium", sentenceExample: "The elephant is an enormous animal.", wordOrigin: "Latin enormis" },
+      { word: "fragile", difficulty: "medium", sentenceExample: "Handle the glass carefully, it's fragile.", wordOrigin: "Latin fragilis" },
+      { word: "gorgeous", difficulty: "medium", sentenceExample: "The flowers are gorgeous.", wordOrigin: "Old French gorgias" },
+      { word: "innocent", difficulty: "medium", sentenceExample: "The child has an innocent smile.", wordOrigin: "Latin innocens" },
+      { word: "mysterious", difficulty: "medium", sentenceExample: "The abandoned house looks mysterious.", wordOrigin: "Latin mysterium" },
+      { word: "treasure", difficulty: "medium", sentenceExample: "Pirates search for buried treasure.", wordOrigin: "Greek thesauros" },
+    ];
+
+    const hardWords = [
+      { word: "accommodate", difficulty: "hard", sentenceExample: "The hotel can accommodate 200 guests.", wordOrigin: "Latin accommodare" },
+      { word: "bureaucracy", difficulty: "hard", sentenceExample: "Government bureaucracy can be slow.", wordOrigin: "French bureaucratie" },
+      { word: "conscientious", difficulty: "hard", sentenceExample: "She is a conscientious student.", wordOrigin: "Latin conscient" },
+      { word: "deteriorate", difficulty: "hard", sentenceExample: "The old building began to deteriorate.", wordOrigin: "Latin deteriorare" },
+      { word: "embarrass", difficulty: "hard", sentenceExample: "Don't embarrass me in front of my friends.", wordOrigin: "French embarrasser" },
+      { word: "fluorescent", difficulty: "hard", sentenceExample: "The fluorescent lights are very bright.", wordOrigin: "Latin fluere" },
+      { word: "guarantee", difficulty: "hard", sentenceExample: "I guarantee you will love this movie.", wordOrigin: "Spanish garante" },
+      { word: "harassment", difficulty: "hard", sentenceExample: "Workplace harassment is unacceptable.", wordOrigin: "French harasser" },
+      { word: "independent", difficulty: "hard", sentenceExample: "She is an independent woman.", wordOrigin: "Latin independens" },
+      { word: "maintenance", difficulty: "hard", sentenceExample: "Regular maintenance keeps cars running well.", wordOrigin: "French maintenir" },
+      { word: "occurrence", difficulty: "hard", sentenceExample: "This is a rare occurrence.", wordOrigin: "Latin occurrere" },
+      { word: "perseverance", difficulty: "hard", sentenceExample: "Success requires perseverance.", wordOrigin: "Latin perseverare" },
+      { word: "questionnaire", difficulty: "hard", sentenceExample: "Please fill out this questionnaire.", wordOrigin: "French questionnaire" },
+      { word: "restaurant", difficulty: "hard", sentenceExample: "We ate dinner at a nice restaurant.", wordOrigin: "French restaurer" },
+      { word: "sacrilegious", difficulty: "hard", sentenceExample: "The act was considered sacrilegious.", wordOrigin: "Latin sacrilegium" },
+      { word: "rhythm", difficulty: "hard", sentenceExample: "The song has a catchy rhythm.", wordOrigin: "Greek rhythmos" },
+      { word: "millennium", difficulty: "hard", sentenceExample: "We celebrated the new millennium in 2000.", wordOrigin: "Latin mille" },
+      { word: "pharaoh", difficulty: "hard", sentenceExample: "The pharaoh ruled ancient Egypt.", wordOrigin: "Egyptian pr-aa" },
+      { word: "chaos", difficulty: "hard", sentenceExample: "The room was in complete chaos.", wordOrigin: "Greek khaos" },
+      { word: "pneumonia", difficulty: "hard", sentenceExample: "He was hospitalized with pneumonia.", wordOrigin: "Greek pneumon" },
+      { word: "pseudonym", difficulty: "hard", sentenceExample: "The author writes under a pseudonym.", wordOrigin: "Greek pseudonymos" },
+      { word: "silhouette", difficulty: "hard", sentenceExample: "I could see her silhouette in the window.", wordOrigin: "French silhouette" },
+      { word: "surveillance", difficulty: "hard", sentenceExample: "The building is under surveillance.", wordOrigin: "French surveiller" },
+      { word: "yacht", difficulty: "hard", sentenceExample: "They sailed on a luxury yacht.", wordOrigin: "Dutch jacht" },
+      { word: "psychiatrist", difficulty: "hard", sentenceExample: "She sees a psychiatrist weekly.", wordOrigin: "Greek psyche iatros" },
+      { word: "rendezvous", difficulty: "hard", sentenceExample: "We have a rendezvous at noon.", wordOrigin: "French rendez-vous" },
+      { word: "entrepreneur", difficulty: "hard", sentenceExample: "The entrepreneur started three companies.", wordOrigin: "French entreprendre" },
+      { word: "mischievous", difficulty: "hard", sentenceExample: "The mischievous child played pranks.", wordOrigin: "Old French meschever" },
+      { word: "maneuver", difficulty: "hard", sentenceExample: "The pilot executed a difficult maneuver.", wordOrigin: "French manoeuvre" },
+      { word: "hierarchy", difficulty: "hard", sentenceExample: "The company has a strict hierarchy.", wordOrigin: "Greek hierarchia" },
+    ];
+
+    await db.insert(words).values([...easyWords, ...mediumWords, ...hardWords]);
+  }
+
+  async getGameSession(id: number): Promise<GameSession | undefined> {
+    const [session] = await db.select().from(gameSessions).where(eq(gameSessions.id, id));
+    return session || undefined;
   }
 
   async createGameSession(insertSession: InsertGameSession): Promise<GameSession> {
-    const id = randomUUID();
-    const session: GameSession = {
-      id,
-      difficulty: insertSession.difficulty,
-      score: insertSession.score ?? 0,
-      totalWords: insertSession.totalWords ?? 0,
-      correctWords: insertSession.correctWords ?? 0,
-      isComplete: insertSession.isComplete ?? false,
-    };
-    this.gameSessions.set(id, session);
+    const [session] = await db.insert(gameSessions).values(insertSession).returning();
     return session;
   }
 
-  async updateGameSession(
-    id: string,
-    updates: Partial<GameSession>
-  ): Promise<GameSession | undefined> {
-    const session = this.gameSessions.get(id);
-    if (!session) return undefined;
+  async updateGameSession(id: number, updates: Partial<GameSession>): Promise<GameSession | undefined> {
+    const [session] = await db
+      .update(gameSessions)
+      .set(updates)
+      .where(eq(gameSessions.id, id))
+      .returning();
+    return session || undefined;
+  }
 
-    const updatedSession = { ...session, ...updates };
-    this.gameSessions.set(id, updatedSession);
-    return updatedSession;
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
+  }
+
+  async createWordAttempt(insertAttempt: InsertWordAttempt): Promise<WordAttempt> {
+    const [attempt] = await db.insert(wordAttempts).values(insertAttempt).returning();
+    return attempt;
+  }
+
+  async getMissedWordsByUser(userId: number): Promise<Word[]> {
+    const missedAttempts = await db
+      .select({ wordId: wordAttempts.wordId })
+      .from(wordAttempts)
+      .where(and(eq(wordAttempts.userId, userId), eq(wordAttempts.isCorrect, false)))
+      .groupBy(wordAttempts.wordId);
+
+    if (missedAttempts.length === 0) return [];
+
+    const wordIds = missedAttempts.map(a => a.wordId);
+    return await db.select().from(words).where(sql`${words.id} = ANY(${wordIds})`);
+  }
+
+  async getUserAttemptHistory(userId: number, limit: number = 50): Promise<WordAttempt[]> {
+    return await db
+      .select()
+      .from(wordAttempts)
+      .where(eq(wordAttempts.userId, userId))
+      .orderBy(desc(wordAttempts.attemptedAt))
+      .limit(limit);
+  }
+
+  async createLeaderboardScore(insertScore: InsertLeaderboardScore): Promise<LeaderboardScore> {
+    const [score] = await db.insert(leaderboardScores).values(insertScore).returning();
+    return score;
+  }
+
+  async getTopScores(difficulty?: DifficultyLevel, gameMode?: string, limit: number = 10): Promise<LeaderboardScore[]> {
+    if (difficulty && gameMode) {
+      return await db
+        .select()
+        .from(leaderboardScores)
+        .where(and(eq(leaderboardScores.difficulty, difficulty), eq(leaderboardScores.gameMode, gameMode)))
+        .orderBy(desc(leaderboardScores.score))
+        .limit(limit);
+    } else if (difficulty) {
+      return await db
+        .select()
+        .from(leaderboardScores)
+        .where(eq(leaderboardScores.difficulty, difficulty))
+        .orderBy(desc(leaderboardScores.score))
+        .limit(limit);
+    } else if (gameMode) {
+      return await db
+        .select()
+        .from(leaderboardScores)
+        .where(eq(leaderboardScores.gameMode, gameMode))
+        .orderBy(desc(leaderboardScores.score))
+        .limit(limit);
+    }
+
+    return await db
+      .select()
+      .from(leaderboardScores)
+      .orderBy(desc(leaderboardScores.score))
+      .limit(limit);
+  }
+
+  async getUserBestScores(userId: number): Promise<LeaderboardScore[]> {
+    return await db
+      .select()
+      .from(leaderboardScores)
+      .where(eq(leaderboardScores.userId, userId))
+      .orderBy(desc(leaderboardScores.score))
+      .limit(10);
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
