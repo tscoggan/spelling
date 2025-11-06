@@ -80,6 +80,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/leaderboard", async (req, res) => {
+    try {
+      const difficulty = req.query.difficulty as DifficultyLevel | undefined;
+      const gameMode = req.query.gameMode as string | undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      
+      const scores = await storage.getTopScores(difficulty, gameMode, limit);
+      res.json(scores);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
+  app.post("/api/leaderboard", async (req, res) => {
+    try {
+      const { insertLeaderboardScoreSchema } = await import("@shared/schema");
+      const scoreData = insertLeaderboardScoreSchema.parse(req.body);
+      const score = await storage.createLeaderboardScore(scoreData);
+      res.json(score);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid score data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to save score" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

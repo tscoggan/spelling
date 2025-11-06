@@ -3,8 +3,9 @@ import { useLocation, useSearch } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Volume2, Home, ArrowRight, CheckCircle2, XCircle, Sparkles, Flame, Clock, SkipForward } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Volume2, Home, ArrowRight, CheckCircle2, XCircle, Sparkles, Flame, Clock, SkipForward, Trophy } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import type { Word, DifficultyLevel, GameMode } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
@@ -39,7 +40,26 @@ export default function Game() {
   const [timeLeft, setTimeLeft] = useState(60);
   const [timerActive, setTimerActive] = useState(false);
   const [quizAnswers, setQuizAnswers] = useState<QuizAnswer[]>([]);
+  const [scoreSaved, setScoreSaved] = useState(false);
+  const [sessionId, setSessionId] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const createSessionMutation = useMutation({
+    mutationFn: async (sessionData: { difficulty: string; gameMode: string }) => {
+      const response = await apiRequest("POST", "/api/sessions", sessionData);
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      setSessionId(data.id);
+    },
+  });
+
+  const saveScoreMutation = useMutation({
+    mutationFn: async (scoreData: { score: number; accuracy: number; difficulty: DifficultyLevel; gameMode: GameMode; userId: number | null; sessionId: number }) => {
+      const response = await apiRequest("POST", "/api/leaderboard", scoreData);
+      return await response.json();
+    },
+  });
 
   const { data: words, isLoading } = useQuery<Word[]>({
     queryKey: [`/api/words/${difficulty}`, { limit: 10 }],
@@ -49,6 +69,12 @@ export default function Game() {
       return response.json();
     },
   });
+
+  useEffect(() => {
+    if (difficulty && gameMode && !sessionId) {
+      createSessionMutation.mutate({ difficulty, gameMode });
+    }
+  }, [difficulty, gameMode, sessionId]);
 
   const currentWord = words?.[currentWordIndex];
 
@@ -86,6 +112,25 @@ export default function Game() {
       inputRef.current.focus();
     }
   }, [currentWordIndex, gameMode, gameComplete]);
+
+  useEffect(() => {
+    if (gameComplete && !scoreSaved && sessionId) {
+      const totalWords = gameMode === "quiz" ? 10 : (words?.length || 10);
+      const accuracy = Math.round((correctCount / totalWords) * 100);
+      
+      console.log("Saving score to leaderboard:", { score, accuracy, difficulty, gameMode, sessionId });
+      
+      saveScoreMutation.mutate({
+        score,
+        accuracy,
+        difficulty,
+        gameMode,
+        userId: null,
+        sessionId,
+      });
+      setScoreSaved(true);
+    }
+  }, [gameComplete, scoreSaved, score, gameMode, correctCount, words, difficulty, sessionId]);
 
   useEffect(() => {
     if (gameMode === "timed" && timerActive && timeLeft > 0) {
@@ -294,7 +339,7 @@ export default function Game() {
               </div>
             )}
 
-            <div className="flex gap-4 flex-col sm:flex-row">
+            <div className="flex gap-3 flex-col sm:flex-row">
               <Button
                 variant="outline"
                 size="lg"
@@ -304,6 +349,16 @@ export default function Game() {
               >
                 <Home className="w-5 h-5 mr-2" />
                 Home
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                className="flex-1 text-lg h-12"
+                onClick={() => setLocation("/leaderboard")}
+                data-testid="button-leaderboard"
+              >
+                <Trophy className="w-5 h-5 mr-2" />
+                Leaderboard
               </Button>
               <Button
                 variant="default"

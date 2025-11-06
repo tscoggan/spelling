@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Sparkles, Trophy, Clock, Target } from "lucide-react";
+import { BookOpen, Sparkles, Trophy, Clock, Target, Award } from "lucide-react";
 import type { DifficultyLevel, GameMode } from "@shared/schema";
 import { useState } from "react";
 
@@ -87,9 +87,19 @@ export default function Home() {
           >
             Spelling Champions
           </motion.h1>
-          <p className="text-lg md:text-xl text-gray-700">
+          <p className="text-lg md:text-xl text-gray-700 mb-4">
             Master your spelling skills with fun, interactive challenges!
           </p>
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => setLocation("/leaderboard")}
+            data-testid="button-leaderboard"
+            className="mt-2"
+          >
+            <Award className="w-5 h-5 mr-2" />
+            View Leaderboard
+          </Button>
         </div>
 
         {!selectedDifficulty ? (
