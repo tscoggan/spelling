@@ -3,12 +3,19 @@ import { useLocation, useSearch } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Volume2, Home, ArrowRight, CheckCircle2, XCircle, Sparkles, Flame, Clock, SkipForward, Trophy } from "lucide-react";
+import { Volume2, Home, ArrowRight, CheckCircle2, XCircle, Sparkles, Flame, Clock, SkipForward, Trophy, Mic2 } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { Word, DifficultyLevel, GameMode } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface QuizAnswer {
   word: Word;
@@ -42,6 +49,8 @@ export default function Game() {
   const [quizAnswers, setQuizAnswers] = useState<QuizAnswer[]>([]);
   const [scoreSaved, setScoreSaved] = useState(false);
   const [sessionId, setSessionId] = useState<number | null>(null);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedVoice, setSelectedVoice] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const createSessionMutation = useMutation({
@@ -76,6 +85,62 @@ export default function Game() {
     }
   }, [difficulty, gameMode, sessionId]);
 
+  // Load available voices
+  useEffect(() => {
+    // Feature detection - check if speechSynthesis is available
+    if (!('speechSynthesis' in window)) {
+      setAvailableVoices([]);
+      return;
+    }
+
+    const loadVoices = () => {
+      try {
+        const voices = window.speechSynthesis.getVoices();
+        
+        // Filter to English female voices only
+        const femaleVoices = voices.filter(voice => 
+          voice.lang.startsWith('en') &&
+          (voice.name.toLowerCase().includes('female') ||
+           voice.name.toLowerCase().includes('samantha') ||
+           voice.name.toLowerCase().includes('karen') ||
+           voice.name.toLowerCase().includes('serena') ||
+           voice.name.toLowerCase().includes('fiona') ||
+           voice.name.toLowerCase().includes('tessa') ||
+           voice.name.toLowerCase().includes('victoria') ||
+           voice.name.toLowerCase().includes('susan') ||
+           voice.name.toLowerCase().includes('zira') ||
+           voice.name.toLowerCase().includes('libby') ||
+           voice.name.toLowerCase().includes('woman'))
+        );
+        
+        setAvailableVoices(femaleVoices);
+        
+        // Load saved preference or use first available
+        const savedVoice = localStorage.getItem('preferredVoice');
+        if (savedVoice && femaleVoices.find(v => v.name === savedVoice)) {
+          setSelectedVoice(savedVoice);
+        } else if (femaleVoices.length > 0) {
+          setSelectedVoice(femaleVoices[0].name);
+        }
+      } catch (error) {
+        console.error('Error loading voices:', error);
+        setAvailableVoices([]);
+      }
+    };
+
+    loadVoices();
+    
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+  }, []);
+
+  // Save voice preference
+  const handleVoiceChange = (voiceName: string) => {
+    setSelectedVoice(voiceName);
+    localStorage.setItem('preferredVoice', voiceName);
+  };
+
   const currentWord = words?.[currentWordIndex];
 
   const speakWord = (word: string) => {
@@ -89,43 +154,39 @@ export default function Game() {
       const setVoiceAndSpeak = () => {
         const voices = window.speechSynthesis.getVoices();
         
-        // Priority list of female voice names (from highest to lowest quality)
-        const femaleVoiceNames = [
-          'google uk english female',
-          'microsoft libby',
-          'samantha',
-          'karen',
-          'serena',
-          'fiona',
-          'tessa',
-          'victoria',
-          'susan',
-          'zira',
-          'denise',
-          'xiaoxiao',
-          'female'
-        ];
-        
-        // Try to find the best available female voice
-        let femaleVoice = null;
-        for (const voiceName of femaleVoiceNames) {
-          femaleVoice = voices.find(voice => 
-            voice.name.toLowerCase().includes(voiceName) &&
-            voice.lang.startsWith('en')
-          );
-          if (femaleVoice) break;
+        // Use selected voice if available
+        let voiceToUse = null;
+        if (selectedVoice) {
+          voiceToUse = voices.find(v => v.name === selectedVoice);
         }
         
-        // Fallback: any English female voice
-        if (!femaleVoice) {
-          femaleVoice = voices.find(voice => 
-            voice.lang.startsWith('en') &&
-            (voice.name.toLowerCase().includes('female') || voice.name.toLowerCase().includes('woman'))
-          );
+        // Fallback to priority list if no selected voice
+        if (!voiceToUse) {
+          const femaleVoiceNames = [
+            'google uk english female',
+            'microsoft libby',
+            'samantha',
+            'karen',
+            'serena',
+            'fiona',
+            'tessa',
+            'victoria',
+            'susan',
+            'zira',
+            'female'
+          ];
+          
+          for (const voiceName of femaleVoiceNames) {
+            voiceToUse = voices.find(voice => 
+              voice.name.toLowerCase().includes(voiceName) &&
+              voice.lang.startsWith('en')
+            );
+            if (voiceToUse) break;
+          }
         }
         
-        if (femaleVoice) {
-          utterance.voice = femaleVoice;
+        if (voiceToUse) {
+          utterance.voice = voiceToUse;
         }
         
         window.speechSynthesis.speak(utterance);
@@ -450,16 +511,40 @@ export default function Game() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 flex flex-col">
       <header className="p-4 md:p-6 bg-white/80 backdrop-blur-sm border-b border-gray-200">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={() => setLocation("/")}
-            data-testid="button-exit"
-          >
-            <Home className="w-5 h-5 mr-2" />
-            Exit
-          </Button>
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => setLocation("/")}
+              data-testid="button-exit"
+            >
+              <Home className="w-5 h-5 mr-2" />
+              Exit
+            </Button>
+            
+            <Select value={selectedVoice || undefined} onValueChange={handleVoiceChange}>
+              <SelectTrigger className="w-[200px]" data-testid="select-voice">
+                <div className="flex items-center gap-2">
+                  <Mic2 className="w-4 h-4" />
+                  <SelectValue placeholder={availableVoices.length === 0 ? "No voices" : "Select voice"} />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                {availableVoices.length === 0 ? (
+                  <SelectItem value="none" disabled data-testid="voice-option-none">
+                    No voices available
+                  </SelectItem>
+                ) : (
+                  availableVoices.map((voice) => (
+                    <SelectItem key={voice.name} value={voice.name} data-testid={`voice-option-${voice.name}`}>
+                      {voice.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
           
           <div className="flex items-center gap-4 md:gap-6">
             {gameMode === "timed" && !showFeedback && (
