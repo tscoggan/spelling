@@ -13,9 +13,15 @@ Spelling Champions is a fun and engaging educational app that helps children pra
 - **User Profiles**: Display logged-in user with avatar in header, personalized leaderboard entries
 - **Three Difficulty Levels**: Easy, Medium, and Hard modes tailored to different skill levels
 - **Four Game Modes**: Standard, Practice, Timed Challenge, and Quiz Mode
+- **Custom Word Lists**: Create and share your own spelling word lists (NEW!)
+  - Create lists with 5-100 custom words
+  - Make lists public to share with the community
+  - Play games with your custom lists or lists shared by others
+  - Edit and delete your own lists
+  - Browse all public lists from other users
 - **Text-to-Speech**: Words are pronounced using the Web Speech API with customizable voice selection
 - **Interactive Gameplay**: Type the word, submit, and get instant feedback
-- **Scoring System**: Earn points for correct answers (10/20/30 based on difficulty) plus streak bonuses
+- **Scoring System**: Earn points for correct answers (10/20/30 based on difficulty, 20 for custom lists) plus streak bonuses
 - **Visual Feedback**: Animated success and error states with encouraging messages
 - **Progress Tracking**: See how many words completed and current accuracy
 - **Celebration Results**: Final score display with accuracy percentage and streak information
@@ -38,6 +44,7 @@ Spelling Champions is a fun and engaging educational app that helps children pra
 │   │   │   ├── game.tsx          # Main spelling game interface
 │   │   │   ├── auth-page.tsx     # Login and registration
 │   │   │   ├── leaderboard.tsx   # Competitive leaderboard
+│   │   │   ├── word-lists.tsx    # Custom word lists management
 │   │   │   └── not-found.tsx     # 404 page
 │   │   ├── hooks/
 │   │   │   └── use-auth.tsx      # Auth context and hooks
@@ -94,6 +101,14 @@ Spelling Champions is a fun and engaging educational app that helps children pra
 ### Leaderboard
 - `GET /api/leaderboard` - Get all leaderboard entries with usernames/avatars
 - `POST /api/leaderboard` - Save score (linked to user and session)
+
+### Custom Word Lists
+- `POST /api/word-lists` - Create a new custom word list (requires authentication)
+- `GET /api/word-lists` - Get user's custom word lists (requires authentication)
+- `GET /api/word-lists/public` - Get all public custom word lists
+- `GET /api/word-lists/:id` - Get specific word list (public or owned)
+- `PUT /api/word-lists/:id` - Update a custom word list (requires ownership)
+- `DELETE /api/word-lists/:id` - Delete a custom word list (requires ownership)
 
 ## Word Lists
 
@@ -194,6 +209,7 @@ Server runs on port 5000, Vite handles hot module replacement for instant update
 - **Sessions**: Managed by connect-pg-simple with PostgreSQL
 - **Game Sessions**: userId links to users table
 - **Leaderboard**: userId links to users table for display
+- **Custom Word Lists**: id, userId (foreign key), name, description, words (array), isPublic (boolean), createdAt
 
 ## Future Enhancements
 
@@ -208,6 +224,16 @@ Server runs on port 5000, Vite handles hot module replacement for instant update
 
 ## Recent Updates
 
+- **November 6, 2025**: Implemented custom word lists feature
+  - Users can create custom spelling word lists with 5-100 words
+  - Lists can be made public to share with other users
+  - Full CRUD functionality (create, read, update, delete)
+  - Proper authentication and authorization (users can only edit/delete their own lists)
+  - Private lists are only accessible to the owner
+  - Public lists appear in a dedicated "Public Lists" tab for all users to browse
+  - Custom lists integrate seamlessly with the game - play any game mode with custom words
+  - Custom lists award 20 points per word (same as medium difficulty)
+  - Word lists management page with tabs for "My Lists" and "Public Lists"
 - **November 6, 2025**: Implemented complete user authentication system
   - Added username/password authentication with passport.js
   - Password hashing with scrypt and random salts
