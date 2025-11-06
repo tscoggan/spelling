@@ -87,7 +87,14 @@ export class MemStorage implements IStorage {
 
   async createGameSession(insertSession: InsertGameSession): Promise<GameSession> {
     const id = randomUUID();
-    const session: GameSession = { ...insertSession, id };
+    const session: GameSession = {
+      id,
+      difficulty: insertSession.difficulty,
+      score: insertSession.score ?? 0,
+      totalWords: insertSession.totalWords ?? 0,
+      correctWords: insertSession.correctWords ?? 0,
+      isComplete: insertSession.isComplete ?? false,
+    };
     this.gameSessions.set(id, session);
     return session;
   }
