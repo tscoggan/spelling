@@ -10,11 +10,14 @@ import {
   type InsertWordAttempt,
   type LeaderboardScore,
   type InsertLeaderboardScore,
+  type CustomWordList,
+  type InsertCustomWordList,
   words,
   gameSessions,
   users,
   wordAttempts,
   leaderboardScores,
+  customWordLists,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -44,6 +47,13 @@ export interface IStorage {
   createLeaderboardScore(score: InsertLeaderboardScore): Promise<LeaderboardScore>;
   getTopScores(difficulty?: DifficultyLevel, gameMode?: string, limit?: number): Promise<LeaderboardScore[]>;
   getUserBestScores(userId: number): Promise<LeaderboardScore[]>;
+  
+  createCustomWordList(list: InsertCustomWordList): Promise<CustomWordList>;
+  getCustomWordList(id: number): Promise<CustomWordList | undefined>;
+  getUserCustomWordLists(userId: number): Promise<CustomWordList[]>;
+  getPublicCustomWordLists(): Promise<CustomWordList[]>;
+  updateCustomWordList(id: number, updates: Partial<InsertCustomWordList>): Promise<CustomWordList | undefined>;
+  deleteCustomWordList(id: number): Promise<boolean>;
   
   sessionStore: session.Store;
 }
@@ -297,6 +307,43 @@ export class DatabaseStorage implements IStorage {
       .where(eq(leaderboardScores.userId, userId))
       .orderBy(desc(leaderboardScores.score))
       .limit(10);
+  }
+
+  async createCustomWordList(list: InsertCustomWordList): Promise<CustomWordList> {
+    const [wordList] = await db.insert(customWordLists).values(list).returning();
+    return wordList;
+  }
+
+  async getCustomWordList(id: number): Promise<CustomWordList | undefined> {
+    const [wordList] = await db.select().from(customWordLists).where(eq(customWordLists.id, id));
+    return wordList || undefined;
+  }
+
+  async getUserCustomWordLists(userId: number): Promise<CustomWordList[]> {
+    return await db.select()
+      .from(customWordLists)
+      .where(eq(customWordLists.userId, userId))
+      .orderBy(desc(customWordLists.createdAt));
+  }
+
+  async getPublicCustomWordLists(): Promise<CustomWordList[]> {
+    return await db.select()
+      .from(customWordLists)
+      .where(eq(customWordLists.isPublic, true))
+      .orderBy(desc(customWordLists.createdAt));
+  }
+
+  async updateCustomWordList(id: number, updates: Partial<InsertCustomWordList>): Promise<CustomWordList | undefined> {
+    const [wordList] = await db.update(customWordLists)
+      .set(updates)
+      .where(eq(customWordLists.id, id))
+      .returning();
+    return wordList || undefined;
+  }
+
+  async deleteCustomWordList(id: number): Promise<boolean> {
+    const result = await db.delete(customWordLists).where(eq(customWordLists.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 }
 

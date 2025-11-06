@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertGameSessionSchema, insertWordSchema, type DifficultyLevel } from "@shared/schema";
+import { insertGameSessionSchema, insertWordSchema, insertCustomWordListSchema, type DifficultyLevel } from "@shared/schema";
 import { z } from "zod";
 import { setupAuth } from "./auth";
 
@@ -106,6 +106,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid score data", details: error.errors });
       }
       res.status(500).json({ error: "Failed to save score" });
+    }
+  });
+
+  app.post("/api/word-lists", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const listData = insertCustomWordListSchema.parse({
+        ...req.body,
+        userId: req.user!.id,
+      });
+      
+      const wordList = await storage.createCustomWordList(listData);
+      res.json(wordList);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid word list data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create word list" });
+    }
+  });
+
+  app.get("/api/word-lists", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const wordLists = await storage.getUserCustomWordLists(req.user!.id);
+      res.json(wordLists);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch word lists" });
+    }
+  });
+
+  app.get("/api/word-lists/public", async (req, res) => {
+    try {
+      const wordLists = await storage.getPublicCustomWordLists();
+      res.json(wordLists);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch public word lists" });
+    }
+  });
+
+  app.get("/api/word-lists/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid word list ID" });
+      }
+
+      const wordList = await storage.getCustomWordList(id);
+      if (!wordList) {
+        return res.status(404).json({ error: "Word list not found" });
+      }
+
+      if (!wordList.isPublic && (!req.isAuthenticated() || req.user!.id !== wordList.userId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      res.json(wordList);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch word list" });
+    }
+  });
+
+  app.put("/api/word-lists/:id", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid word list ID" });
+      }
+
+      const existingList = await storage.getCustomWordList(id);
+      if (!existingList) {
+        return res.status(404).json({ error: "Word list not found" });
+      }
+
+      if (existingList.userId !== req.user!.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const updates = insertCustomWordListSchema.partial().parse(req.body);
+      const updatedList = await storage.updateCustomWordList(id, updates);
+      
+      res.json(updatedList);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid word list data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update word list" });
+    }
+  });
+
+  app.delete("/api/word-lists/:id", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid word list ID" });
+      }
+
+      const existingList = await storage.getCustomWordList(id);
+      if (!existingList) {
+        return res.status(404).json({ error: "Word list not found" });
+      }
+
+      if (existingList.userId !== req.user!.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      await storage.deleteCustomWordList(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete word list" });
     }
   });
 

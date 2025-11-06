@@ -56,10 +56,21 @@ export const leaderboardScores = pgTable("leaderboard_scores", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const customWordLists = pgTable("custom_word_lists", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  words: text("words").array().notNull(),
+  isPublic: boolean("is_public").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const usersRelations = relations(users, ({ many }) => ({
   gameSessions: many(gameSessions),
   wordAttempts: many(wordAttempts),
   leaderboardScores: many(leaderboardScores),
+  customWordLists: many(customWordLists),
 }));
 
 export const gameSessionsRelations = relations(gameSessions, ({ one, many }) => ({
@@ -101,6 +112,13 @@ export const wordsRelations = relations(words, ({ many }) => ({
   wordAttempts: many(wordAttempts),
 }));
 
+export const customWordListsRelations = relations(customWordLists, ({ one }) => ({
+  user: one(users, {
+    fields: [customWordLists.userId],
+    references: [users.id],
+  }),
+}));
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -126,6 +144,15 @@ export const insertLeaderboardScoreSchema = createInsertSchema(leaderboardScores
   createdAt: true,
 });
 
+export const insertCustomWordListSchema = createInsertSchema(customWordLists).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  words: z.array(z.string().min(1).max(100)).min(5).max(100),
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertWord = z.infer<typeof insertWordSchema>;
@@ -136,8 +163,10 @@ export type InsertWordAttempt = z.infer<typeof insertWordAttemptSchema>;
 export type WordAttempt = typeof wordAttempts.$inferSelect;
 export type InsertLeaderboardScore = z.infer<typeof insertLeaderboardScoreSchema>;
 export type LeaderboardScore = typeof leaderboardScores.$inferSelect;
+export type InsertCustomWordList = z.infer<typeof insertCustomWordListSchema>;
+export type CustomWordList = typeof customWordLists.$inferSelect;
 
-export type DifficultyLevel = "easy" | "medium" | "hard";
+export type DifficultyLevel = "easy" | "medium" | "hard" | "custom";
 export type GameMode = "standard" | "practice" | "timed" | "quiz";
 
 export interface GameState {
