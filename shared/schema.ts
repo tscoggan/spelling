@@ -149,7 +149,7 @@ export const insertCustomWordListSchema = createInsertSchema(customWordLists).om
   id: true,
   createdAt: true,
 }).extend({
-  words: z.array(z.string().min(1).max(100)).min(5).max(100),
+  words: z.array(z.string().min(1).max(100)).min(5).max(500),
   name: z.string().min(1).max(100),
   difficulty: z.enum(["easy", "medium", "hard"]),
   gradeLevel: z.string().max(50).optional(),

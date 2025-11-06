@@ -23,7 +23,7 @@ The backend uses **Express.js** with **TypeScript** for type safety. **PostgreSQ
 
 ### Feature Specifications
 - **User Authentication**: Secure accounts with unique usernames, hashed passwords, and avatar selection.
-- **Custom Word Lists Only**: The app exclusively uses custom word lists (built-in lists removed). Users create lists with required difficulty levels (Easy, Medium, Hard), organize by grade level (K-12), and can share them publicly. Lists require 5-100 words.
+- **Custom Word Lists Only**: The app exclusively uses custom word lists (built-in lists removed). Users create lists with required difficulty levels (Easy, Medium, Hard), organize by grade level (K-12), and can share them publicly. Lists require 5-500 words.
 - **Difficulty Levels**: Each custom word list must have an assigned difficulty (Easy, Medium, or Hard) selected via dropdown during creation. This determines point values.
 - **Game Modes**: Three modes available - Standard (classic with immediate feedback), Timed Challenge (60 seconds), and Quiz Mode (answer all 10 words before seeing results).
 - **Text-to-Speech**: Words are pronounced using the Web Speech API with customizable voice options.
