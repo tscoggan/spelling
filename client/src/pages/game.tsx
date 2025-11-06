@@ -85,7 +85,37 @@ export default function Game() {
       utterance.rate = 0.8;
       utterance.pitch = 1;
       utterance.volume = 1;
-      window.speechSynthesis.speak(utterance);
+      
+      const setVoiceAndSpeak = () => {
+        const voices = window.speechSynthesis.getVoices();
+        
+        // Try to find a female voice
+        const femaleVoice = voices.find(voice => 
+          voice.name.toLowerCase().includes('female') || 
+          voice.name.toLowerCase().includes('samantha') ||
+          voice.name.toLowerCase().includes('victoria') ||
+          voice.name.toLowerCase().includes('karen') ||
+          voice.name.toLowerCase().includes('zira') ||
+          voice.name.toLowerCase().includes('susan')
+        );
+        
+        if (femaleVoice) {
+          utterance.voice = femaleVoice;
+        }
+        
+        window.speechSynthesis.speak(utterance);
+      };
+      
+      // Voices may load asynchronously
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        setVoiceAndSpeak();
+      } else {
+        // Wait for voices to load
+        window.speechSynthesis.addEventListener('voiceschanged', setVoiceAndSpeak, { once: true });
+        // Fallback timeout in case voiceschanged doesn't fire
+        setTimeout(setVoiceAndSpeak, 100);
+      }
     }
   };
 

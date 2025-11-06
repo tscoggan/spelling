@@ -10,7 +10,7 @@ Spelling Champions is a fun and engaging educational app that helps children pra
 
 ### Core Features
 - **Three Difficulty Levels**: Easy, Medium, and Hard modes tailored to different skill levels
-- **Text-to-Speech**: Words are pronounced using the Web Speech API so kids can hear proper pronunciation
+- **Text-to-Speech**: Words are pronounced using the Web Speech API with a female voice for clear, friendly pronunciation
 - **Interactive Gameplay**: Type the word, submit, and get instant feedback
 - **Scoring System**: Earn points for correct answers (10/20/30 based on difficulty) plus streak bonuses
 - **Visual Feedback**: Animated success and error states with encouraging messages
@@ -146,13 +146,16 @@ Server runs on port 5000, Vite handles hot module replacement for instant update
 ## Recent Updates
 
 - Implemented complete MVP with three difficulty levels
-- Added Web Speech API integration for word pronunciation
+- Added Web Speech API integration with female voice selection for word pronunciation
 - Created vibrant, kid-friendly design with Nunito typography
 - Built responsive layouts for all screen sizes
 - Implemented scoring system with streak bonuses
 - Added smooth animations and transitions
 - Replaced emojis with Lucide icons for consistency
 - Fixed duplicate words in hard mode word list
+- Added PostgreSQL database with game sessions and leaderboard tracking
+- Implemented four game modes: Standard, Practice, Timed Challenge, and Quiz Mode
+- Created competitive leaderboard system with difficulty filtering and rankings
 
 ---
 
