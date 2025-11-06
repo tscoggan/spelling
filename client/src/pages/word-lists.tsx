@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { Plus, Trash2, Edit, Globe, Lock, Play, Home } from "lucide-react";
+import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload } from "lucide-react";
 import { motion } from "framer-motion";
 import type { CustomWordList } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -140,6 +140,67 @@ export default function WordListsPage() {
       isPublic: list.isPublic,
     });
     setDialogOpen(true);
+  };
+
+  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validExtensions = ['.txt', '.csv'];
+    const fileExtension = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+    
+    if (!validExtensions.includes(fileExtension)) {
+      toast({
+        title: "Invalid file format",
+        description: "Please upload a .txt or .csv file",
+        variant: "destructive",
+      });
+      e.target.value = '';
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      let words: string[];
+
+      if (fileExtension === '.csv') {
+        words = text.split(/[,\n]/).map(w => w.trim()).filter(w => w.length > 0);
+      } else {
+        words = text.split('\n').map(w => w.trim()).filter(w => w.length > 0);
+      }
+
+      if (words.length < 5) {
+        toast({
+          title: "Too few words",
+          description: `File contains ${words.length} words. Minimum is 5.`,
+          variant: "destructive",
+        });
+        e.target.value = '';
+        return;
+      }
+
+      if (words.length > 100) {
+        toast({
+          title: "Too many words",
+          description: `File contains ${words.length} words. Using first 100.`,
+        });
+        words = words.slice(0, 100);
+      }
+
+      setFormData({ ...formData, words: words.join('\n') });
+      toast({
+        title: "Success!",
+        description: `Imported ${words.length} words from file`,
+      });
+      e.target.value = '';
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to read file",
+        variant: "destructive",
+      });
+      e.target.value = '';
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -285,6 +346,33 @@ export default function WordListsPage() {
                       placeholder="Brief description of this word list"
                       data-testid="input-list-description"
                     />
+                  </div>
+                  <div>
+                    <Label htmlFor="file-import">
+                      Import from File (optional)
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="file-import"
+                        type="file"
+                        accept=".txt,.csv"
+                        onChange={handleFileImport}
+                        className="cursor-pointer"
+                        data-testid="input-file-import"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => document.getElementById('file-import')?.click()}
+                        data-testid="button-file-import"
+                      >
+                        <Upload className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Upload a .txt (one word per line) or .csv (comma-separated) file
+                    </p>
                   </div>
                   <div>
                     <Label htmlFor="words">
