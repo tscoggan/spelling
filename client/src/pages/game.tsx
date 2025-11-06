@@ -9,6 +9,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { Word, DifficultyLevel, GameMode } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Select,
   SelectContent,
@@ -34,6 +35,7 @@ interface QuizAnswer {
 
 export default function Game() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const searchParams = useSearch();
   const params = new URLSearchParams(searchParams);
   const difficulty = params.get("difficulty") as DifficultyLevel;
@@ -59,7 +61,7 @@ export default function Game() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const createSessionMutation = useMutation({
-    mutationFn: async (sessionData: { difficulty: string; gameMode: string }) => {
+    mutationFn: async (sessionData: { difficulty: string; gameMode: string; userId: number | null }) => {
       const response = await apiRequest("POST", "/api/sessions", sessionData);
       return await response.json();
     },
@@ -85,10 +87,10 @@ export default function Game() {
   });
 
   useEffect(() => {
-    if (difficulty && gameMode && !sessionId) {
-      createSessionMutation.mutate({ difficulty, gameMode });
+    if (difficulty && gameMode && !sessionId && user) {
+      createSessionMutation.mutate({ difficulty, gameMode, userId: user.id });
     }
-  }, [difficulty, gameMode, sessionId]);
+  }, [difficulty, gameMode, sessionId, user]);
 
   // Load available voices
   useEffect(() => {
@@ -222,7 +224,7 @@ export default function Game() {
   }, [currentWordIndex, gameMode, gameComplete]);
 
   useEffect(() => {
-    if (gameComplete && !scoreSaved && sessionId) {
+    if (gameComplete && !scoreSaved && sessionId && user) {
       const totalWords = gameMode === "quiz" ? 10 : (words?.length || 10);
       const accuracy = Math.round((correctCount / totalWords) * 100);
       
@@ -233,12 +235,12 @@ export default function Game() {
         accuracy,
         difficulty,
         gameMode,
-        userId: null,
+        userId: user.id,
         sessionId,
       });
       setScoreSaved(true);
     }
-  }, [gameComplete, scoreSaved, score, gameMode, correctCount, words, difficulty, sessionId]);
+  }, [gameComplete, scoreSaved, score, gameMode, correctCount, words, difficulty, sessionId, user]);
 
   // Timed mode: Single 60-second timer for entire game
   useEffect(() => {

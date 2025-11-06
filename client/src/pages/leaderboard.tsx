@@ -101,10 +101,15 @@ export default function Leaderboard() {
                           </div>
 
                           <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                            <div>
-                              <div className="text-sm text-gray-600">Player</div>
-                              <div className="text-lg font-bold text-gray-800" data-testid={`text-player-${index}`}>
-                                {entry.userId ? `Player ${entry.userId}` : "Anonymous"}
+                            <div className="flex items-center gap-3">
+                              {(entry as any).selectedAvatar && (
+                                <div className="text-3xl">{(entry as any).selectedAvatar}</div>
+                              )}
+                              <div>
+                                <div className="text-sm text-gray-600">Player</div>
+                                <div className="text-lg font-bold text-gray-800" data-testid={`text-player-${index}`}>
+                                  {(entry as any).username || "Anonymous"}
+                                </div>
                               </div>
                             </div>
 

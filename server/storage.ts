@@ -251,33 +251,41 @@ export class DatabaseStorage implements IStorage {
     return score;
   }
 
-  async getTopScores(difficulty?: DifficultyLevel, gameMode?: string, limit: number = 10): Promise<LeaderboardScore[]> {
+  async getTopScores(difficulty?: DifficultyLevel, gameMode?: string, limit: number = 10): Promise<any[]> {
+    const baseQuery = db
+      .select({
+        id: leaderboardScores.id,
+        userId: leaderboardScores.userId,
+        sessionId: leaderboardScores.sessionId,
+        score: leaderboardScores.score,
+        accuracy: leaderboardScores.accuracy,
+        difficulty: leaderboardScores.difficulty,
+        gameMode: leaderboardScores.gameMode,
+        createdAt: leaderboardScores.createdAt,
+        username: users.username,
+        selectedAvatar: users.selectedAvatar,
+      })
+      .from(leaderboardScores)
+      .leftJoin(users, eq(leaderboardScores.userId, users.id));
+
     if (difficulty && gameMode) {
-      return await db
-        .select()
-        .from(leaderboardScores)
+      return await baseQuery
         .where(and(eq(leaderboardScores.difficulty, difficulty), eq(leaderboardScores.gameMode, gameMode)))
         .orderBy(desc(leaderboardScores.score))
         .limit(limit);
     } else if (difficulty) {
-      return await db
-        .select()
-        .from(leaderboardScores)
+      return await baseQuery
         .where(eq(leaderboardScores.difficulty, difficulty))
         .orderBy(desc(leaderboardScores.score))
         .limit(limit);
     } else if (gameMode) {
-      return await db
-        .select()
-        .from(leaderboardScores)
+      return await baseQuery
         .where(eq(leaderboardScores.gameMode, gameMode))
         .orderBy(desc(leaderboardScores.score))
         .limit(limit);
     }
 
-    return await db
-      .select()
-      .from(leaderboardScores)
+    return await baseQuery
       .orderBy(desc(leaderboardScores.score))
       .limit(limit);
   }

@@ -2,13 +2,19 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Sparkles, Trophy, Clock, Target, Award } from "lucide-react";
+import { BookOpen, Sparkles, Trophy, Clock, Target, Award, LogOut, User } from "lucide-react";
 import type { DifficultyLevel, GameMode } from "@shared/schema";
 import { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Home() {
   const [, setLocation] = useLocation();
+  const { user, logoutMutation } = useAuth();
   const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel | null>(null);
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
 
   const startGame = (mode: GameMode) => {
     if (!selectedDifficulty) return;
@@ -78,6 +84,34 @@ export default function Home() {
         transition={{ duration: 0.5 }}
         className="max-w-6xl mx-auto"
       >
+        <div className="flex justify-end mb-6">
+          <Card className="px-6 py-3">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
+                {user?.selectedAvatar && (
+                  <div className="text-3xl" data-testid="text-user-avatar">{user.selectedAvatar}</div>
+                )}
+                <div>
+                  <div className="text-sm text-gray-600">Logged in as</div>
+                  <div className="text-lg font-bold text-gray-800" data-testid="text-username">
+                    {user?.username}
+                  </div>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLogout}
+                disabled={logoutMutation.isPending}
+                data-testid="button-logout"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                {logoutMutation.isPending ? "Logging out..." : "Logout"}
+              </Button>
+            </div>
+          </Card>
+        </div>
+
         <div className="text-center mb-8 md:mb-12">
           <motion.h1
             className="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 mb-4"
