@@ -38,11 +38,6 @@ export default function Game() {
   const params = new URLSearchParams(searchParams);
   const difficulty = params.get("difficulty") as DifficultyLevel;
   const gameMode = (params.get("mode") || "standard") as GameMode;
-
-  if (!difficulty || !["easy", "medium", "hard"].includes(difficulty)) {
-    setLocation("/");
-    return null;
-  }
   
   const [userInput, setUserInput] = useState("");
   const [showFeedback, setShowFeedback] = useState(false);
@@ -380,6 +375,12 @@ export default function Game() {
       setGameComplete(true);
     }
   };
+
+  // Validate difficulty AFTER all hooks
+  if (!difficulty || !["easy", "medium", "hard"].includes(difficulty)) {
+    setLocation("/");
+    return null;
+  }
 
   if (isLoading) {
     return (
