@@ -3,7 +3,7 @@ import { useLocation, useSearch } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Volume2, Home, ArrowRight, CheckCircle2, XCircle, Sparkles, Flame, Clock, SkipForward, Trophy, Mic2 } from "lucide-react";
+import { Volume2, Home, ArrowRight, CheckCircle2, XCircle, Sparkles, Flame, Clock, SkipForward, Trophy, Settings } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { Word, DifficultyLevel, GameMode } from "@shared/schema";
@@ -16,6 +16,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Label } from "@/components/ui/label";
 
 interface QuizAnswer {
   word: Word;
@@ -51,6 +60,7 @@ export default function Game() {
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const createSessionMutation = useMutation({
@@ -97,30 +107,17 @@ export default function Game() {
       try {
         const voices = window.speechSynthesis.getVoices();
         
-        // Filter to English female voices only
-        const femaleVoices = voices.filter(voice => 
-          voice.lang.startsWith('en') &&
-          (voice.name.toLowerCase().includes('female') ||
-           voice.name.toLowerCase().includes('samantha') ||
-           voice.name.toLowerCase().includes('karen') ||
-           voice.name.toLowerCase().includes('serena') ||
-           voice.name.toLowerCase().includes('fiona') ||
-           voice.name.toLowerCase().includes('tessa') ||
-           voice.name.toLowerCase().includes('victoria') ||
-           voice.name.toLowerCase().includes('susan') ||
-           voice.name.toLowerCase().includes('zira') ||
-           voice.name.toLowerCase().includes('libby') ||
-           voice.name.toLowerCase().includes('woman'))
-        );
+        // Filter to English voices only (both male and female)
+        const englishVoices = voices.filter(voice => voice.lang.startsWith('en'));
         
-        setAvailableVoices(femaleVoices);
+        setAvailableVoices(englishVoices);
         
         // Load saved preference or use first available
         const savedVoice = localStorage.getItem('preferredVoice');
-        if (savedVoice && femaleVoices.find(v => v.name === savedVoice)) {
+        if (savedVoice && englishVoices.find(v => v.name === savedVoice)) {
           setSelectedVoice(savedVoice);
-        } else if (femaleVoices.length > 0) {
-          setSelectedVoice(femaleVoices[0].name);
+        } else if (englishVoices.length > 0) {
+          setSelectedVoice(englishVoices[0].name);
         }
       } catch (error) {
         console.error('Error loading voices:', error);
@@ -248,29 +245,31 @@ export default function Game() {
     }
   }, [gameComplete, scoreSaved, score, gameMode, correctCount, words, difficulty, sessionId]);
 
+  // Timed mode: Single 60-second timer for entire game
   useEffect(() => {
-    if (gameMode === "timed" && timerActive && timeLeft > 0) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
-      return () => clearTimeout(timer);
+    if (gameMode === "timed" && !gameComplete) {
+      // Start timer on first mount
+      if (!timerActive) {
+        setTimerActive(true);
+        setTimeLeft(60);
+      }
+      
+      // Countdown
+      if (timerActive && timeLeft > 0) {
+        const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+        return () => clearTimeout(timer);
+      }
+      
+      // Time's up - end game
+      if (timeLeft === 0) {
+        setGameComplete(true);
+      }
     }
-    if (gameMode === "timed" && timeLeft === 0 && !showFeedback) {
-      handleTimerExpired();
-    }
-  }, [timeLeft, timerActive, gameMode, showFeedback]);
-
-  useEffect(() => {
-    if (gameMode === "timed" && !showFeedback) {
-      setTimerActive(true);
-      setTimeLeft(60);
-    } else {
-      setTimerActive(false);
-    }
-  }, [currentWordIndex, showFeedback, gameMode]);
+  }, [timeLeft, timerActive, gameMode, gameComplete]);
 
   const handleTimerExpired = () => {
-    setIsCorrect(false);
-    setShowFeedback(true);
-    setStreak(0);
+    // Not used in new timed mode
+    setGameComplete(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -310,7 +309,32 @@ export default function Game() {
         setScore(totalCorrect * points);
         setGameComplete(true);
       }
+    } else if (gameMode === "timed") {
+      // Timed mode: No feedback, immediate next word
+      if (correct) {
+        const points = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : 30;
+        setScore(score + points + (streak * 5));
+        setCorrectCount(correctCount + 1);
+        const newStreak = streak + 1;
+        setStreak(newStreak);
+        if (newStreak > bestStreak) {
+          setBestStreak(newStreak);
+        }
+      } else {
+        setStreak(0);
+      }
+      
+      setUserInput("");
+      
+      // Move to next word if available
+      if (words && currentWordIndex < words.length - 1) {
+        setCurrentWordIndex(currentWordIndex + 1);
+      } else {
+        // If we run out of words before timer, end game
+        setGameComplete(true);
+      }
     } else {
+      // Standard and Practice modes: Show feedback
       setIsCorrect(correct);
       setShowFeedback(true);
 
@@ -371,8 +395,11 @@ export default function Game() {
   }
 
   if (gameComplete) {
-    const totalWords = gameMode === "quiz" ? 10 : (words?.length || 10);
-    const accuracy = Math.round((correctCount / totalWords) * 100);
+    // For timed mode, count words attempted (current index + 1)
+    const totalWords = gameMode === "timed" 
+      ? (currentWordIndex + 1) 
+      : (gameMode === "quiz" ? 10 : (words?.length || 10));
+    const accuracy = totalWords > 0 ? Math.round((correctCount / totalWords) * 100) : 0;
     
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 flex items-center justify-center p-6">
@@ -415,8 +442,13 @@ export default function Game() {
 
             <div className="space-y-3 text-center">
               <p className="text-lg text-gray-700">
-                You spelled <span className="font-bold text-gray-900" data-testid="text-correct-count">{correctCount}</span> out of{" "}
-                <span className="font-bold text-gray-900">{gameMode === "quiz" ? 10 : words?.length}</span> words correctly!
+                {gameMode === "timed" ? (
+                  <>You spelled <span className="font-bold text-gray-900" data-testid="text-correct-count">{correctCount}</span> out of{" "}
+                  <span className="font-bold text-gray-900">{totalWords}</span> words correctly in 60 seconds!</>
+                ) : (
+                  <>You spelled <span className="font-bold text-gray-900" data-testid="text-correct-count">{correctCount}</span> out of{" "}
+                  <span className="font-bold text-gray-900">{gameMode === "quiz" ? 10 : words?.length}</span> words correctly!</>
+                )}
               </p>
               {bestStreak > 2 && (
                 <p className="text-orange-600 font-semibold flex items-center justify-center gap-2 text-lg">
@@ -512,39 +544,15 @@ export default function Game() {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 flex flex-col">
       <header className="p-4 md:p-6 bg-white/80 backdrop-blur-sm border-b border-gray-200">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => setLocation("/")}
-              data-testid="button-exit"
-            >
-              <Home className="w-5 h-5 mr-2" />
-              Exit
-            </Button>
-            
-            <Select value={selectedVoice || undefined} onValueChange={handleVoiceChange}>
-              <SelectTrigger className="w-[200px]" data-testid="select-voice">
-                <div className="flex items-center gap-2">
-                  <Mic2 className="w-4 h-4" />
-                  <SelectValue placeholder={availableVoices.length === 0 ? "No voices" : "Select voice"} />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                {availableVoices.length === 0 ? (
-                  <SelectItem value="none" disabled data-testid="voice-option-none">
-                    No voices available
-                  </SelectItem>
-                ) : (
-                  availableVoices.map((voice) => (
-                    <SelectItem key={voice.name} value={voice.name} data-testid={`voice-option-${voice.name}`}>
-                      {voice.name}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => setLocation("/")}
+            data-testid="button-exit"
+          >
+            <Home className="w-5 h-5 mr-2" />
+            Exit
+          </Button>
           
           <div className="flex items-center gap-4 md:gap-6">
             {gameMode === "timed" && !showFeedback && (
@@ -567,6 +575,61 @@ export default function Game() {
                 <div className="text-xs md:text-sm text-gray-600">Points</div>
               </div>
             )}
+            
+            <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  data-testid="button-settings"
+                >
+                  <Settings className="w-5 h-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent>
+                <SheetHeader>
+                  <SheetTitle>Settings</SheetTitle>
+                  <SheetDescription>
+                    Customize your game experience
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="space-y-6 mt-6">
+                  <div className="space-y-3">
+                    <Label htmlFor="voice-select">Voice</Label>
+                    <Select value={selectedVoice || undefined} onValueChange={handleVoiceChange}>
+                      <SelectTrigger id="voice-select" data-testid="select-voice">
+                        <SelectValue placeholder={availableVoices.length === 0 ? "No voices available" : "Select a voice"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableVoices.length === 0 ? (
+                          <SelectItem value="none" disabled data-testid="voice-option-none">
+                            No voices available
+                          </SelectItem>
+                        ) : (
+                          availableVoices.map((voice) => (
+                            <SelectItem key={voice.name} value={voice.name} data-testid={`voice-option-${voice.name}`}>
+                              {voice.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {selectedVoice && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => speakWord("Test")}
+                        data-testid="button-test-voice"
+                      >
+                        <Volume2 className="w-4 h-4 mr-2" />
+                        Test Voice
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </header>
