@@ -15,6 +15,7 @@ Spelling Champions is a fun and engaging educational app that helps children pra
 - **Four Game Modes**: Standard, Practice, Timed Challenge, and Quiz Mode
 - **Custom Word Lists**: Create and share your own spelling word lists (NEW!)
   - Create lists with 5-100 custom words
+  - Import words from .txt or .csv files (NEW!)
   - Make lists public to share with the community
   - Play games with your custom lists or lists shared by others
   - Edit and delete your own lists
@@ -224,6 +225,12 @@ Server runs on port 5000, Vite handles hot module replacement for instant update
 
 ## Recent Updates
 
+- **November 6, 2025**: Enhanced custom word lists with file import
+  - Added file import functionality for .txt and .csv files
+  - Supports one-word-per-line .txt files and comma-separated .csv files
+  - Automatic validation: minimum 5 words, maximum 100 words
+  - Auto-truncates files with > 100 words to first 100 with notification
+  - Clear toast notifications for success and error states
 - **November 6, 2025**: Implemented custom word lists feature
   - Users can create custom spelling word lists with 5-100 words
   - Lists can be made public to share with other users
