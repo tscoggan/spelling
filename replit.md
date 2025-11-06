@@ -13,9 +13,11 @@ Spelling Champions is a fun and engaging educational app that helps children pra
 - **User Profiles**: Display logged-in user with avatar in header, personalized leaderboard entries
 - **Three Difficulty Levels**: Easy, Medium, and Hard modes tailored to different skill levels
 - **Four Game Modes**: Standard, Practice, Timed Challenge, and Quiz Mode
-- **Custom Word Lists**: Create and share your own spelling word lists (NEW!)
+- **Custom Word Lists**: Create and share your own spelling word lists
   - Create lists with 5-100 custom words
-  - Import words from .txt or .csv files (NEW!)
+  - Import words from .txt or .csv files
+  - Organize lists by grade level (K-12) for easy curriculum alignment
+  - Filter lists by grade level to find age-appropriate content
   - Make lists public to share with the community
   - Play games with your custom lists or lists shared by others
   - Edit and delete your own lists
@@ -210,7 +212,7 @@ Server runs on port 5000, Vite handles hot module replacement for instant update
 - **Sessions**: Managed by connect-pg-simple with PostgreSQL
 - **Game Sessions**: userId links to users table
 - **Leaderboard**: userId links to users table for display
-- **Custom Word Lists**: id, userId (foreign key), name, description, words (array), isPublic (boolean), createdAt
+- **Custom Word Lists**: id, userId (foreign key), name, description, words (array), isPublic (boolean), gradeLevel (optional), createdAt
 
 ## Future Enhancements
 
@@ -225,6 +227,13 @@ Server runs on port 5000, Vite handles hot module replacement for instant update
 
 ## Recent Updates
 
+- **November 6, 2025**: Added grade level organization for custom word lists
+  - Grade level field added to custom word lists (K, 1-12, 9-12)
+  - Filter lists by grade level in both "My Lists" and "Public Lists" tabs
+  - Grade level badges display on word list cards (e.g., "Grade 3", "Grade K")
+  - Dynamic filter showing only grades present in current lists
+  - Option to leave grade level empty for mixed-difficulty lists
+  - Helps educators align spelling practice with curriculum standards
 - **November 6, 2025**: Enhanced custom word lists with file import
   - Added file import functionality for .txt and .csv files
   - Supports one-word-per-line .txt files and comma-separated .csv files
