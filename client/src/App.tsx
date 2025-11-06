@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/lib/protected-route";
 import Home from "@/pages/home";
 import Game from "@/pages/game";
 import Leaderboard from "@/pages/leaderboard";
+import WordListsPage from "@/pages/word-lists";
 import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
 
@@ -17,6 +18,7 @@ function Router() {
       <ProtectedRoute path="/" component={Home} />
       <ProtectedRoute path="/game" component={Game} />
       <ProtectedRoute path="/leaderboard" component={Leaderboard} />
+      <ProtectedRoute path="/word-lists" component={WordListsPage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>

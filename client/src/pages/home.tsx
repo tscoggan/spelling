@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Sparkles, Trophy, Clock, Target, Award, LogOut, User } from "lucide-react";
+import { BookOpen, Sparkles, Trophy, Clock, Target, Award, LogOut, User, List } from "lucide-react";
 import type { DifficultyLevel, GameMode } from "@shared/schema";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -110,6 +110,27 @@ export default function Home() {
               </Button>
             </div>
           </Card>
+        </div>
+
+        <div className="flex justify-center gap-4 mb-6">
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => setLocation("/word-lists")}
+            data-testid="button-word-lists"
+          >
+            <List className="w-4 h-4 mr-2" />
+            Custom Word Lists
+          </Button>
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => setLocation("/leaderboard")}
+            data-testid="button-view-leaderboard"
+          >
+            <Trophy className="w-4 h-4 mr-2" />
+            View Leaderboard
+          </Button>
         </div>
 
         <div className="text-center mb-8 md:mb-12">

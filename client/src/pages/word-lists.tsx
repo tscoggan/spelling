@@ -1,0 +1,391 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
+import { Plus, Trash2, Edit, Globe, Lock, Play, Home } from "lucide-react";
+import { motion } from "framer-motion";
+import type { CustomWordList } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
+
+export default function WordListsPage() {
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingList, setEditingList] = useState<CustomWordList | null>(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    words: "",
+    isPublic: false,
+  });
+
+  const { data: userLists = [], isLoading: loadingUserLists } = useQuery<CustomWordList[]>({
+    queryKey: ["/api/word-lists"],
+    enabled: !!user,
+  });
+
+  const { data: publicLists = [], isLoading: loadingPublicLists } = useQuery<CustomWordList[]>({
+    queryKey: ["/api/word-lists/public"],
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      const words = data.words.split('\n').map(w => w.trim()).filter(w => w.length > 0);
+      const response = await apiRequest("POST", "/api/word-lists", {
+        name: data.name,
+        description: data.description || undefined,
+        words,
+        isPublic: data.isPublic,
+      });
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/public"] });
+      setDialogOpen(false);
+      resetForm();
+      toast({
+        title: "Success!",
+        description: "Word list created successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create word list",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<typeof formData> }) => {
+      const updates: any = {
+        name: data.name,
+        description: data.description || undefined,
+        isPublic: data.isPublic,
+      };
+      if (data.words) {
+        updates.words = data.words.split('\n').map(w => w.trim()).filter(w => w.length > 0);
+      }
+      const response = await apiRequest("PUT", `/api/word-lists/${id}`, updates);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/public"] });
+      setDialogOpen(false);
+      setEditingList(null);
+      resetForm();
+      toast({
+        title: "Success!",
+        description: "Word list updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update word list",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/word-lists/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/public"] });
+      toast({
+        title: "Success!",
+        description: "Word list deleted successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete word list",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      description: "",
+      words: "",
+      isPublic: false,
+    });
+  };
+
+  const handleEdit = (list: CustomWordList) => {
+    setEditingList(list);
+    setFormData({
+      name: list.name,
+      description: list.description || "",
+      words: list.words.join('\n'),
+      isPublic: list.isPublic,
+    });
+    setDialogOpen(true);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingList) {
+      updateMutation.mutate({ id: editingList.id, data: formData });
+    } else {
+      createMutation.mutate(formData);
+    }
+  };
+
+  const playWithList = (list: CustomWordList) => {
+    setLocation(`/game?listId=${list.id}&difficulty=custom&mode=standard`);
+  };
+
+  const renderWordList = (list: CustomWordList, canEdit: boolean) => (
+    <Card key={list.id} className="hover-elevate" data-testid={`card-word-list-${list.id}`}>
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <CardTitle className="flex items-center gap-2">
+              {list.name}
+              {list.isPublic ? (
+                <Globe className="w-4 h-4 text-green-600" data-testid="icon-public" />
+              ) : (
+                <Lock className="w-4 h-4 text-gray-600" data-testid="icon-private" />
+              )}
+            </CardTitle>
+            {list.description && (
+              <CardDescription className="mt-2">{list.description}</CardDescription>
+            )}
+            <div className="mt-2 text-sm text-gray-600">
+              {list.words.length} words
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={() => playWithList(list)}
+              data-testid={`button-play-${list.id}`}
+            >
+              <Play className="w-4 h-4 mr-2" />
+              Play
+            </Button>
+            {canEdit && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleEdit(list)}
+                  data-testid={`button-edit-${list.id}`}
+                >
+                  <Edit className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => deleteMutation.mutate(list.id)}
+                  disabled={deleteMutation.isPending}
+                  data-testid={`button-delete-${list.id}`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-wrap gap-1">
+          {list.words.slice(0, 10).map((word, i) => (
+            <span
+              key={i}
+              className="px-2 py-1 bg-purple-100 text-purple-800 rounded-md text-sm"
+              data-testid={`word-${list.id}-${i}`}
+            >
+              {word}
+            </span>
+          ))}
+          {list.words.length > 10 && (
+            <span className="px-2 py-1 text-gray-600 text-sm">
+              +{list.words.length - 10} more
+            </span>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 p-4 md:p-8">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-6xl mx-auto"
+      >
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
+              Custom Word Lists
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Create your own spelling word lists and share them with others
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={() => { resetForm(); setEditingList(null); }} data-testid="button-create-list">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create List
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingList ? "Edit Word List" : "Create New Word List"}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {editingList
+                      ? "Update your word list details"
+                      : "Create a custom list of spelling words (minimum 5 words, maximum 100)"}
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <Label htmlFor="name">List Name</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="e.g., Science Vocabulary Week 1"
+                      required
+                      data-testid="input-list-name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="description">Description (optional)</Label>
+                    <Input
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      placeholder="Brief description of this word list"
+                      data-testid="input-list-description"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="words">
+                      Words (one per line, min 5, max 100)
+                    </Label>
+                    <Textarea
+                      id="words"
+                      value={formData.words}
+                      onChange={(e) => setFormData({ ...formData, words: e.target.value })}
+                      placeholder="photosynthesis&#10;mitochondria&#10;chloroplast&#10;ecosystem&#10;biodiversity"
+                      className="min-h-[200px] font-mono"
+                      required
+                      data-testid="textarea-words"
+                    />
+                    <p className="text-sm text-gray-600 mt-1">
+                      {formData.words.split('\n').filter(w => w.trim()).length} words entered
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="isPublic"
+                      checked={formData.isPublic}
+                      onCheckedChange={(checked) => setFormData({ ...formData, isPublic: checked })}
+                      data-testid="switch-public"
+                    />
+                    <Label htmlFor="isPublic" className="cursor-pointer">
+                      Make this list public (others can use it)
+                    </Label>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => { setDialogOpen(false); setEditingList(null); resetForm(); }}
+                      data-testid="button-cancel"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={createMutation.isPending || updateMutation.isPending}
+                      data-testid="button-save-list"
+                    >
+                      {editingList ? "Update" : "Create"} List
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+            <Button variant="outline" onClick={() => setLocation("/")} data-testid="button-home">
+              <Home className="w-4 h-4 mr-2" />
+              Home
+            </Button>
+          </div>
+        </div>
+
+        <Tabs defaultValue="my-lists" className="space-y-6">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="my-lists" data-testid="tab-my-lists">My Lists</TabsTrigger>
+            <TabsTrigger value="public" data-testid="tab-public">Public Lists</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="my-lists" className="space-y-4">
+            {loadingUserLists ? (
+              <div className="text-center py-12">
+                <div className="text-gray-600">Loading your word lists...</div>
+              </div>
+            ) : userLists.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-gray-600 mb-4">
+                    You haven't created any word lists yet
+                  </p>
+                  <Button onClick={() => setDialogOpen(true)} data-testid="button-create-first">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Your First List
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              userLists.map((list) => renderWordList(list, true))
+            )}
+          </TabsContent>
+
+          <TabsContent value="public" className="space-y-4">
+            {loadingPublicLists ? (
+              <div className="text-center py-12">
+                <div className="text-gray-600">Loading public word lists...</div>
+              </div>
+            ) : publicLists.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-gray-600">No public word lists available yet</p>
+                </CardContent>
+              </Card>
+            ) : (
+              publicLists.map((list) => renderWordList(list, user?.id === list.userId))
+            )}
+          </TabsContent>
+        </Tabs>
+      </motion.div>
+    </div>
+  );
+}
