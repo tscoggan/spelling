@@ -1,284 +1,54 @@
 # Spelling Champions
 
-A colorful, interactive spelling practice app for kids using words from the Scripps "Words of the Champions" list.
-
 ## Overview
 
-Spelling Champions is a fun and engaging educational app that helps children practice their spelling skills through interactive games. The app features three difficulty levels (Easy, Medium, Hard), text-to-speech pronunciation, immediate feedback, and a rewarding scoring system.
+Spelling Champions is an interactive and engaging educational app designed to help children practice and improve their spelling skills. It features interactive games, multiple difficulty levels, text-to-speech pronunciation, immediate feedback, and a rewarding scoring system. The app aims to make learning fun and effective by utilizing words inspired by the Scripps "Words of the Champions" list, promoting competitive learning through leaderboards, and allowing users to create and share custom word lists. The business vision is to provide a comprehensive and enjoyable platform for children's spelling development.
 
-## Features
+## User Preferences
 
-### Core Features
-- **User Authentication**: Create accounts with unique usernames, passwords, and avatar selection from 12 emoji options
-- **User Profiles**: Display logged-in user with avatar in header, personalized leaderboard entries
-- **Three Difficulty Levels**: Easy, Medium, and Hard word lists for different skill levels
-- **Three Game Modes**: Standard, Timed Challenge, and Quiz Mode
-- **Custom Word Lists**: Create and share your own spelling word lists
-  - Create lists with 5-100 custom words
-  - Import words from .txt or .csv files
-  - Organize lists by grade level (K-12) for easy curriculum alignment
-  - Filter lists by grade level to find age-appropriate content
-  - Make lists public to share with the community
-  - Play games with your custom lists or lists shared by others
-  - Edit and delete your own lists
-  - Browse all public lists from other users
-- **Text-to-Speech**: Words are pronounced using the Web Speech API with customizable voice selection
-- **Interactive Gameplay**: Type the word, submit, and get instant feedback
-- **Scoring System**: Earn points for correct answers (10/20/30 based on difficulty, 20 for custom lists) plus streak bonuses
-- **Visual Feedback**: Animated success and error states with encouraging messages
-- **Progress Tracking**: See how many words completed and current accuracy
-- **Celebration Results**: Final score display with accuracy percentage and streak information
-- **Competitive Leaderboard**: View all players' scores with usernames, avatars, and filterable by difficulty
+- I prefer simple language.
+- I want iterative development.
+- Ask before making major changes.
+- I prefer detailed explanations.
 
-### Design Highlights
-- **Kid-Friendly Interface**: Large buttons, generous spacing, vibrant colors
-- **Nunito Typography**: Rounded, playful font perfect for young learners
-- **Responsive Design**: Works beautifully on mobile, tablet, and desktop
-- **Smooth Animations**: Framer Motion for delightful transitions and celebrations
-- **Accessible**: High contrast, keyboard navigation, screen reader friendly
+## System Architecture
 
-## Project Structure
+### UI/UX Decisions
+The application features a kid-friendly interface with large buttons, generous spacing, and a vibrant color palette (Primary: Purple, Secondary: Yellow, Accent: Green, Background: Light Blue-tinted White, Foreground: Dark Blue). It uses Nunito typography for a playful yet readable font. The design is responsive, ensuring functionality across mobile, tablet, and desktop devices. Smooth animations, powered by Framer Motion, enhance user experience. Accessibility is a priority, with high contrast, keyboard navigation, and screen reader support (WCAG AA compliant).
 
-```
-├── client/
-│   ├── src/
-│   │   ├── pages/
-│   │   │   ├── home.tsx          # Landing page with mode selection
-│   │   │   ├── game.tsx          # Main spelling game interface
-│   │   │   ├── auth-page.tsx     # Login and registration
-│   │   │   ├── leaderboard.tsx   # Competitive leaderboard
-│   │   │   ├── word-lists.tsx    # Custom word lists management
-│   │   │   └── not-found.tsx     # 404 page
-│   │   ├── hooks/
-│   │   │   └── use-auth.tsx      # Auth context and hooks
-│   │   ├── lib/
-│   │   │   └── protected-route.tsx # Route protection
-│   │   ├── components/ui/        # Shadcn UI components
-│   │   ├── App.tsx               # Main app with routing
-│   │   └── index.css             # Design tokens and styles
-│   └── index.html                # HTML entry point
-├── server/
-│   ├── routes.ts                 # API endpoints
-│   ├── auth.ts                   # Authentication logic
-│   ├── storage.ts                # Database with PostgreSQL
-│   └── index.ts                  # Express server setup
-├── shared/
-│   └── schema.ts                 # Shared TypeScript types
-└── design_guidelines.md          # UI/UX design specifications
-```
+### Technical Implementations
+The frontend is built with **React**, utilizing **Wouter** for routing, **TanStack Query** for data fetching, **Framer Motion** for animations, **Shadcn UI** for components, and **Tailwind CSS** for styling. The **Web Speech API** provides text-to-speech functionality.
 
-## Technology Stack
+The backend uses **Express.js** with **TypeScript** for type safety. **PostgreSQL** serves as the database, managed with **Drizzle ORM**. User authentication is handled by **Passport.js** with **Scrypt** for secure password hashing.
 
-### Frontend
-- **React** - UI framework
-- **Wouter** - Lightweight routing
-- **TanStack Query** - Data fetching and caching
-- **Framer Motion** - Animations
-- **Shadcn UI** - Component library
-- **Tailwind CSS** - Styling
-- **Web Speech API** - Text-to-speech
+### Feature Specifications
+- **User Authentication**: Secure accounts with unique usernames, hashed passwords, and avatar selection.
+- **Difficulty Levels**: Three built-in difficulty levels (Easy, Medium, Hard) and support for custom word lists with assigned difficulties.
+- **Game Modes**: Standard, Timed Challenge (60 seconds), and Quiz Mode (all 10 words before results).
+- **Custom Word Lists**: Users can create, import (from .txt or .csv), edit, and delete their own lists (5-100 words), organize by grade level (K-12), and share them publicly. Users can also play with public lists created by others.
+- **Text-to-Speech**: Words are pronounced using the Web Speech API with customizable voice options.
+- **Scoring System**: Points awarded based on difficulty (10/20/30 for built-in, 20 for custom lists) with streak bonuses (+5 points per consecutive correct answer).
+- **Leaderboard**: Displays all players' scores, filterable by difficulty, showing usernames, avatars, and game statistics.
+- **Progress Tracking**: Shows words completed, accuracy, and streak information per game session.
 
-### Backend
-- **Express.js** - Web server
-- **TypeScript** - Type safety
-- **PostgreSQL** - Database for users, sessions, and scores
-- **Passport.js** - Authentication middleware
-- **Scrypt** - Password hashing with random salts
-- **Drizzle ORM** - Type-safe database queries
+### System Design Choices
+- **Client-Server Architecture**: A React frontend communicates with an Express.js backend.
+- **Database Schema**: PostgreSQL stores user data (id, username, password, avatar), game sessions, leaderboard entries, and custom word lists (id, userId, name, difficulty, words, isPublic, gradeLevel, createdAt).
+- **Authentication Flow**: User registration and login managed by Passport.js, with session persistence. Protected routes ensure authenticated access to game features.
+- **API Endpoints**: A comprehensive set of RESTful APIs for authentication, game management, leaderboard interactions, and CRUD operations for custom word lists.
 
-## API Endpoints
+## External Dependencies
 
-### Authentication
-- `POST /api/register` - Create new user account with username, password, avatar
-- `POST /api/login` - Authenticate user with passport LocalStrategy
-- `POST /api/logout` - Destroy user session
-- `GET /api/user` - Get currently authenticated user
-
-### Game & Words
-- `GET /api/words/:difficulty` - Fetch 10 random words for specified difficulty
-- `GET /api/words` - Fetch all words
-- `POST /api/sessions` - Create a new game session (linked to user)
-- `GET /api/sessions/:id` - Get game session details
-- `PATCH /api/sessions/:id` - Update game session
-
-### Leaderboard
-- `GET /api/leaderboard` - Get all leaderboard entries with usernames/avatars
-- `POST /api/leaderboard` - Save score (linked to user and session)
-
-### Custom Word Lists
-- `POST /api/word-lists` - Create a new custom word list (requires authentication)
-- `GET /api/word-lists` - Get user's custom word lists (requires authentication)
-- `GET /api/word-lists/public` - Get all public custom word lists
-- `GET /api/word-lists/:id` - Get specific word list (public or owned)
-- `PUT /api/word-lists/:id` - Update a custom word list (requires ownership)
-- `DELETE /api/word-lists/:id` - Delete a custom word list (requires ownership)
-
-## Word Lists
-
-The app includes curated word lists inspired by the Scripps "Words of the Champions":
-
-- **Easy Mode**: 30 simple words perfect for beginners
-- **Medium Mode**: 30 intermediate words for growing vocabularies
-- **Hard Mode**: 30 challenging words for spelling champions
-
-Words are randomly selected (10 per game) to provide variety across sessions.
-
-## User Journey
-
-1. **Authentication Page**: 
-   - New users: Sign up with unique username, password, and choose avatar from 12 options
-   - Returning users: Log in with username and password
-   - Protected routes redirect unauthenticated users here
-2. **Home Page**: 
-   - Logged-in user displayed in header with avatar and logout button
-   - User selects game mode (Standard, Timed Challenge, or Quiz Mode)
-   - Word list selection dialog opens showing:
-     - Built-in word lists (Easy Words, Medium Words, Hard Words)
-     - User's custom word lists (if any)
-     - Public custom word lists shared by other users
-   - User selects a word list to start the game
-3. **Game Page**: 
-   - Word is automatically spoken using customizable text-to-speech voice
-   - User can replay audio by clicking the speaker button
-   - User can customize voice in settings panel
-   - User types their answer in the large input field
-   - Submit button checks the answer
-   - Immediate feedback shows if correct or incorrect
-   - For correct answers: celebration animation and points awarded
-   - For incorrect answers: shows correct spelling with option to try again (except Quiz mode)
-   - Progress bar shows completion status
-   - Timed Challenge: 60-second countdown for entire game
-   - Quiz Mode: All 10 words before showing results
-4. **Results Page**: 
-   - Final score displayed
-   - Accuracy percentage calculated
-   - Best streak highlighted
-   - Score automatically saved to leaderboard with user's name
-   - Options to play again, view leaderboard, or return home
-5. **Leaderboard**: 
-   - View all players' scores
-   - Filter by difficulty level
-   - See rankings with username, avatar, score, accuracy, mode
-   - Navigate home or start new game
-
-## Scoring System
-
-- **Easy Mode**: 10 points per correct word
-- **Medium Mode**: 20 points per correct word
-- **Hard Mode**: 30 points per correct word
-- **Streak Bonus**: +5 points for each consecutive correct answer
-
-## Design Philosophy
-
-The app follows these key design principles from `design_guidelines.md`:
-
-- **Playful yet Functional**: Clear, intuitive interface with fun visual elements
-- **Generous Spacing**: Large touch targets and ample whitespace for young users
-- **Immediate Feedback**: Visual and textual confirmation for every action
-- **Progressive Disclosure**: Information revealed as needed to avoid overwhelming
-- **Accessibility First**: WCAG AA compliant with keyboard navigation support
-
-## Color Palette
-
-- **Primary (Purple)**: Main brand color for buttons and highlights
-- **Secondary (Yellow)**: Accent color for special elements
-- **Accent (Green)**: Success states and positive feedback
-- **Background**: Light, airy blue-tinted white
-- **Foreground**: Dark blue for excellent readability
-
-## Development
-
-The app uses the standard fullstack JavaScript template:
-
-```bash
-npm run dev  # Starts both frontend and backend
-```
-
-Server runs on port 5000, Vite handles hot module replacement for instant updates during development.
-
-## Authentication & Security
-
-### User Accounts
-- **Registration**: Users create accounts with globally unique usernames
-- **Login**: Passport.js LocalStrategy handles authentication
-- **Avatars**: 12 emoji options for personalization (🐶🐱🐻🦊🐼🦁🐯🐸🐵🦉🦄🐲)
-- **Sessions**: PostgreSQL session store for persistence across server restarts
-
-### Security Measures
-- **Password Hashing**: Scrypt with random salts (never plaintext storage)
-- **Timing-Safe Comparison**: Prevents timing attacks during login
-- **Session Secret**: Environment variable `SESSION_SECRET` required
-- **Unique Usernames**: Database constraint enforces globally unique usernames
-- **Protected Routes**: All pages except /auth require authentication
-
-### Database Schema
-- **Users**: id, username (unique), password (hashed), selectedAvatar
-- **Sessions**: Managed by connect-pg-simple with PostgreSQL
-- **Game Sessions**: userId links to users table
-- **Leaderboard**: userId links to users table for display
-- **Custom Word Lists**: id, userId (foreign key), name, description, words (array), isPublic (boolean), gradeLevel (optional), createdAt
-
-## Future Enhancements
-
-- Progress tracking dashboard per user
-- More difficulty levels or custom word lists
-- Multiplayer competitive mode
-- Word usage examples and definitions
-- Achievement badges and rewards
-- Parental dashboard with progress reports
-- Password reset functionality
-- Email verification
-
-## Recent Updates
-
-- **November 6, 2025**: Redesigned home page with streamlined user experience
-  - Removed difficulty selection screen - users now see game modes directly
-  - Removed Practice mode (now 3 modes: Standard, Timed Challenge, Quiz Mode)
-  - Added word list selection dialog that opens when selecting a game mode
-  - Dialog shows built-in difficulties (Easy, Medium, Hard) plus custom and public lists
-  - Updated Timed Challenge description to "Spell as many words correctly in 60 seconds as you can!"
-  - Removed duplicate "View Leaderboard" button for cleaner interface
-  - New flow: Choose mode → Select word list → Start game
-- **November 6, 2025**: Added grade level organization for custom word lists
-  - Grade level field added to custom word lists (K, 1-12, 9-12)
-  - Filter lists by grade level in both "My Lists" and "Public Lists" tabs
-  - Grade level badges display on word list cards (e.g., "Grade 3", "Grade K")
-  - Dynamic filter showing only grades present in current lists
-  - Option to leave grade level empty for mixed-difficulty lists
-  - Helps educators align spelling practice with curriculum standards
-- **November 6, 2025**: Enhanced custom word lists with file import
-  - Added file import functionality for .txt and .csv files
-  - Supports one-word-per-line .txt files and comma-separated .csv files
-  - Automatic validation: minimum 5 words, maximum 100 words
-  - Auto-truncates files with > 100 words to first 100 with notification
-  - Clear toast notifications for success and error states
-- **November 6, 2025**: Implemented custom word lists feature
-  - Users can create custom spelling word lists with 5-100 words
-  - Lists can be made public to share with other users
-  - Full CRUD functionality (create, read, update, delete)
-  - Proper authentication and authorization (users can only edit/delete their own lists)
-  - Private lists are only accessible to the owner
-  - Public lists appear in a dedicated "Public Lists" tab for all users to browse
-  - Custom lists integrate seamlessly with the game - play any game mode with custom words
-  - Custom lists award 20 points per word (same as medium difficulty)
-  - Word lists management page with tabs for "My Lists" and "Public Lists"
-- **November 6, 2025**: Implemented complete user authentication system
-  - Added username/password authentication with passport.js
-  - Password hashing with scrypt and random salts
-  - User profiles with avatar selection (12 emoji options)
-  - Protected routes redirecting unauthenticated users
-  - Leaderboard now shows usernames and avatars instead of "Anonymous"
-  - Game sessions and scores linked to user accounts
-  - Login/logout functionality with session persistence
-- Implemented three game modes: Standard, Timed Challenge, and Quiz Mode
-- Created competitive leaderboard system with difficulty filtering and rankings
-- Added PostgreSQL database with game sessions and leaderboard tracking
-- Added Web Speech API integration with customizable voice selection
-- Created vibrant, kid-friendly design with Nunito typography
-- Built responsive layouts for all screen sizes
-- Implemented scoring system with streak bonuses
-- Added smooth animations and transitions
-
----
-
-Built with ❤️ for young spelling champions!
+- **React**: Frontend UI library.
+- **Wouter**: Client-side routing.
+- **TanStack Query**: Data fetching and caching.
+- **Framer Motion**: Animations.
+- **Shadcn UI**: UI component library.
+- **Tailwind CSS**: Utility-first CSS framework.
+- **Web Speech API**: Browser-native text-to-speech functionality.
+- **Express.js**: Backend web framework.
+- **TypeScript**: Superset of JavaScript for type safety.
+- **PostgreSQL**: Relational database for persistent storage.
+- **Passport.js**: Authentication middleware.
+- **Scrypt**: Password hashing library.
+- **Drizzle ORM**: Type-safe ORM for database interactions.

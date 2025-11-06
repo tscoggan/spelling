@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 interface CustomWordList {
   id: number;
   name: string;
-  description: string;
+  difficulty: string;
   words: string[];
   isPublic: boolean;
   gradeLevel?: string;
@@ -50,41 +50,11 @@ export default function Home() {
     setWordListDialogOpen(true);
   };
 
-  const startGameWithDifficulty = (difficulty: DifficultyLevel) => {
+  const startGameWithCustomList = (list: CustomWordList) => {
     if (!selectedMode) return;
     setWordListDialogOpen(false);
-    setLocation(`/game?difficulty=${difficulty}&mode=${selectedMode}`);
+    setLocation(`/game?listId=${list.id}&difficulty=${list.difficulty}&mode=${selectedMode}`);
   };
-
-  const startGameWithCustomList = (listId: number) => {
-    if (!selectedMode) return;
-    setWordListDialogOpen(false);
-    setLocation(`/game?listId=${listId}&difficulty=custom&mode=${selectedMode}`);
-  };
-
-  const builtInDifficulties = [
-    {
-      id: "easy" as DifficultyLevel,
-      name: "Easy Words",
-      description: "Perfect for beginners! Simple words to build confidence.",
-      icon: Sparkles,
-      color: "text-green-600",
-    },
-    {
-      id: "medium" as DifficultyLevel,
-      name: "Medium Words",
-      description: "Ready for a challenge? Test your growing vocabulary!",
-      icon: BookOpen,
-      color: "text-yellow-600",
-    },
-    {
-      id: "hard" as DifficultyLevel,
-      name: "Hard Words",
-      description: "For spelling champions! Tackle the toughest words.",
-      icon: Trophy,
-      color: "text-purple-600",
-    },
-  ];
 
   const gameModes = [
     {
@@ -229,43 +199,11 @@ export default function Home() {
           <DialogHeader>
             <DialogTitle className="text-2xl">Choose Your Word List</DialogTitle>
             <DialogDescription>
-              Select a built-in difficulty or one of your custom word lists
+              Select one of your custom word lists to start playing
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold mb-3">Built-in Word Lists</h3>
-              <div className="grid grid-cols-1 gap-3">
-                {builtInDifficulties.map((difficulty) => {
-                  const Icon = difficulty.icon;
-                  return (
-                    <Card
-                      key={difficulty.id}
-                      className="hover-elevate active-elevate-2 cursor-pointer"
-                      onClick={() => startGameWithDifficulty(difficulty.id)}
-                      data-testid={`card-difficulty-${difficulty.id}`}
-                    >
-                      <CardHeader className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <Icon className={`w-6 h-6 ${difficulty.color}`} />
-                            <div>
-                              <CardTitle className="text-lg">{difficulty.name}</CardTitle>
-                              <CardDescription className="text-sm">
-                                {difficulty.description}
-                              </CardDescription>
-                            </div>
-                          </div>
-                          <ChevronRight className="w-5 h-5 text-gray-400" />
-                        </div>
-                      </CardHeader>
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
-
             {customLists && customLists.length > 0 && (
               <div>
                 <h3 className="text-lg font-semibold mb-3">My Custom Lists</h3>
@@ -274,7 +212,7 @@ export default function Home() {
                     <Card
                       key={list.id}
                       className="hover-elevate active-elevate-2 cursor-pointer"
-                      onClick={() => startGameWithCustomList(list.id)}
+                      onClick={() => startGameWithCustomList(list)}
                       data-testid={`card-custom-list-${list.id}`}
                     >
                       <CardHeader className="p-4">
@@ -282,6 +220,16 @@ export default function Home() {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <CardTitle className="text-lg">{list.name}</CardTitle>
+                              <Badge 
+                                variant="secondary" 
+                                className={`text-xs ${
+                                  list.difficulty === "easy" ? "bg-green-100 text-green-800" :
+                                  list.difficulty === "medium" ? "bg-yellow-100 text-yellow-800" :
+                                  "bg-red-100 text-red-800"
+                                }`}
+                              >
+                                {list.difficulty.charAt(0).toUpperCase() + list.difficulty.slice(1)}
+                              </Badge>
                               {list.gradeLevel && (
                                 <Badge variant="secondary" className="text-xs">
                                   Grade {list.gradeLevel}
@@ -289,7 +237,7 @@ export default function Home() {
                               )}
                             </div>
                             <CardDescription className="text-sm">
-                              {list.description} • {list.words.length} words
+                              {list.words.length} words
                             </CardDescription>
                           </div>
                           <ChevronRight className="w-5 h-5 text-gray-400" />
@@ -309,7 +257,7 @@ export default function Home() {
                     <Card
                       key={list.id}
                       className="hover-elevate active-elevate-2 cursor-pointer"
-                      onClick={() => startGameWithCustomList(list.id)}
+                      onClick={() => startGameWithCustomList(list)}
                       data-testid={`card-public-list-${list.id}`}
                     >
                       <CardHeader className="p-4">
@@ -317,6 +265,16 @@ export default function Home() {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <CardTitle className="text-lg">{list.name}</CardTitle>
+                              <Badge 
+                                variant="secondary" 
+                                className={`text-xs ${
+                                  list.difficulty === "easy" ? "bg-green-100 text-green-800" :
+                                  list.difficulty === "medium" ? "bg-yellow-100 text-yellow-800" :
+                                  "bg-red-100 text-red-800"
+                                }`}
+                              >
+                                {list.difficulty.charAt(0).toUpperCase() + list.difficulty.slice(1)}
+                              </Badge>
                               {list.gradeLevel && (
                                 <Badge variant="secondary" className="text-xs">
                                   Grade {list.gradeLevel}
@@ -324,7 +282,7 @@ export default function Home() {
                               )}
                             </div>
                             <CardDescription className="text-sm">
-                              {list.description} • {list.words.length} words
+                              {list.words.length} words
                             </CardDescription>
                           </div>
                           <ChevronRight className="w-5 h-5 text-gray-400" />

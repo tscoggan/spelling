@@ -124,9 +124,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(wordList);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.error("Validation error creating word list:", error.errors);
         return res.status(400).json({ error: "Invalid word list data", details: error.errors });
       }
-      res.status(500).json({ error: "Failed to create word list" });
+      console.error("Error creating word list:", error);
+      res.status(500).json({ error: "Failed to create word list", message: error instanceof Error ? error.message : String(error) });
     }
   });
 

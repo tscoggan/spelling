@@ -438,7 +438,7 @@ export default function Game() {
                 {gameMode === "quiz" ? "Quiz Complete!" : "Amazing Work!"}
               </h1>
               <p className="text-lg text-gray-600 capitalize">
-                {difficulty} Mode - {gameMode === "standard" ? "Standard" : gameMode === "practice" ? "Practice" : gameMode === "timed" ? "Timed Challenge" : "Quiz Mode"}
+                {difficulty} Mode - {gameMode === "standard" ? "Standard" : gameMode === "timed" ? "Timed Challenge" : "Quiz Mode"}
               </p>
             </motion.div>
 
@@ -659,7 +659,7 @@ export default function Game() {
                 Word {currentWordIndex + 1} of {words.length}
               </span>
               <span className="text-gray-800 capitalize" data-testid="text-difficulty">
-                {difficulty} - {gameMode === "standard" ? "Standard" : gameMode === "practice" ? "Practice" : gameMode === "timed" ? "Timed" : "Quiz"}
+                {difficulty} - {gameMode === "standard" ? "Standard" : gameMode === "timed" ? "Timed" : "Quiz"}
               </span>
             </div>
             <Progress value={progress} className="h-3" data-testid="progress-game" />
@@ -703,19 +703,6 @@ export default function Game() {
                     />
                     
                     <div className="flex flex-col sm:flex-row gap-3">
-                      {gameMode === "practice" && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="lg"
-                          className="flex-1 text-lg h-12 md:h-14"
-                          onClick={handleSkip}
-                          data-testid="button-skip"
-                        >
-                          <SkipForward className="w-5 h-5 mr-2" />
-                          Skip
-                        </Button>
-                      )}
                       <Button
                         type="button"
                         variant="outline"
@@ -785,17 +772,6 @@ export default function Game() {
                   </div>
 
                   <div className="flex gap-4 flex-col sm:flex-row">
-                    {!isCorrect && gameMode === "practice" && (
-                      <Button
-                        variant="outline"
-                        size="lg"
-                        className="flex-1 text-lg h-12 md:h-14"
-                        onClick={handleTryAgain}
-                        data-testid="button-try-again"
-                      >
-                        Try Again
-                      </Button>
-                    )}
                     <Button
                       variant="default"
                       size="lg"

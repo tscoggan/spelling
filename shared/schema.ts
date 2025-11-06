@@ -60,7 +60,7 @@ export const customWordLists = pgTable("custom_word_lists", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
   name: text("name").notNull(),
-  description: text("description"),
+  difficulty: text("difficulty").notNull(),
   words: text("words").array().notNull(),
   isPublic: boolean("is_public").notNull().default(false),
   gradeLevel: text("grade_level"),
@@ -151,7 +151,7 @@ export const insertCustomWordListSchema = createInsertSchema(customWordLists).om
 }).extend({
   words: z.array(z.string().min(1).max(100)).min(5).max(100),
   name: z.string().min(1).max(100),
-  description: z.string().max(500).optional(),
+  difficulty: z.enum(["easy", "medium", "hard"]),
   gradeLevel: z.string().max(50).optional(),
 });
 
@@ -169,7 +169,7 @@ export type InsertCustomWordList = z.infer<typeof insertCustomWordListSchema>;
 export type CustomWordList = typeof customWordLists.$inferSelect;
 
 export type DifficultyLevel = "easy" | "medium" | "hard" | "custom";
-export type GameMode = "standard" | "practice" | "timed" | "quiz";
+export type GameMode = "standard" | "timed" | "quiz";
 
 export interface GameState {
   sessionId: number;

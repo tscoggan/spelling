@@ -28,7 +28,7 @@ export default function WordListsPage() {
   const [gradeFilter, setGradeFilter] = useState<string>("all");
   const [formData, setFormData] = useState({
     name: "",
-    description: "",
+    difficulty: "medium" as "easy" | "medium" | "hard",
     words: "",
     isPublic: false,
     gradeLevel: "",
@@ -48,7 +48,7 @@ export default function WordListsPage() {
       const words = data.words.split('\n').map(w => w.trim()).filter(w => w.length > 0);
       const response = await apiRequest("POST", "/api/word-lists", {
         name: data.name,
-        description: data.description || undefined,
+        difficulty: data.difficulty,
         words,
         isPublic: data.isPublic,
         gradeLevel: data.gradeLevel || undefined,
@@ -78,7 +78,7 @@ export default function WordListsPage() {
     mutationFn: async ({ id, data }: { id: number; data: Partial<typeof formData> }) => {
       const updates: any = {
         name: data.name,
-        description: data.description || undefined,
+        difficulty: data.difficulty,
         isPublic: data.isPublic,
         gradeLevel: data.gradeLevel || undefined,
       };
@@ -132,7 +132,7 @@ export default function WordListsPage() {
   const resetForm = () => {
     setFormData({
       name: "",
-      description: "",
+      difficulty: "medium",
       words: "",
       isPublic: false,
       gradeLevel: "",
@@ -143,7 +143,7 @@ export default function WordListsPage() {
     setEditingList(list);
     setFormData({
       name: list.name,
-      description: list.description || "",
+      difficulty: list.difficulty as "easy" | "medium" | "hard",
       words: list.words.join('\n'),
       isPublic: list.isPublic,
       gradeLevel: list.gradeLevel || "",
@@ -265,11 +265,18 @@ export default function WordListsPage() {
                 <Lock className="w-4 h-4 text-gray-600" data-testid="icon-private" />
               )}
             </CardTitle>
-            {list.description && (
-              <CardDescription className="mt-2">{list.description}</CardDescription>
-            )}
             <div className="mt-2 flex items-center gap-4 text-sm text-gray-600">
               <span>{list.words.length} words</span>
+              <span 
+                className={`px-2 py-0.5 rounded-md font-medium ${
+                  list.difficulty === "easy" ? "bg-green-100 text-green-800" :
+                  list.difficulty === "medium" ? "bg-yellow-100 text-yellow-800" :
+                  "bg-red-100 text-red-800"
+                }`}
+                data-testid={`difficulty-${list.id}`}
+              >
+                {list.difficulty.charAt(0).toUpperCase() + list.difficulty.slice(1)}
+              </span>
               {list.gradeLevel && (
                 <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-md font-medium" data-testid={`grade-${list.id}`}>
                   Grade {list.gradeLevel}
@@ -396,14 +403,20 @@ export default function WordListsPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="description">Description (optional)</Label>
-                    <Input
-                      id="description"
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      placeholder="Brief description of this word list"
-                      data-testid="input-list-description"
-                    />
+                    <Label htmlFor="difficulty">Difficulty Level</Label>
+                    <Select
+                      value={formData.difficulty}
+                      onValueChange={(value: "easy" | "medium" | "hard") => setFormData({ ...formData, difficulty: value })}
+                    >
+                      <SelectTrigger id="difficulty" data-testid="select-difficulty">
+                        <SelectValue placeholder="Select difficulty" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="easy" data-testid="difficulty-easy">Easy</SelectItem>
+                        <SelectItem value="medium" data-testid="difficulty-medium">Medium</SelectItem>
+                        <SelectItem value="hard" data-testid="difficulty-hard">Hard</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label htmlFor="gradeLevel">Grade Level (optional)</Label>
