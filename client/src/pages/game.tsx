@@ -316,14 +316,14 @@ export default function Game() {
       } else {
         const allAnswers = [...quizAnswers, { word: currentWord, userAnswer: userInput.trim(), isCorrect: correct }];
         const totalCorrect = allAnswers.filter(a => a.isCorrect).length;
-        const points = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : 30;
+        const points = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : difficulty === "custom" ? 20 : 30;
         setScore(totalCorrect * points);
         setGameComplete(true);
       }
     } else if (gameMode === "timed") {
       // Timed mode: No feedback, immediate next word
       if (correct) {
-        const points = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : 30;
+        const points = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : difficulty === "custom" ? 20 : 30;
         setScore(score + points + (streak * 5));
         setCorrectCount(correctCount + 1);
         const newStreak = streak + 1;
@@ -350,7 +350,7 @@ export default function Game() {
       setShowFeedback(true);
 
       if (correct) {
-        const points = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : 30;
+        const points = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : difficulty === "custom" ? 20 : 30;
         setScore(score + points + (streak * 5));
         setCorrectCount(correctCount + 1);
         const newStreak = streak + 1;
@@ -393,7 +393,7 @@ export default function Game() {
   };
 
   // Validate difficulty AFTER all hooks
-  if (!difficulty || !["easy", "medium", "hard"].includes(difficulty)) {
+  if ((!difficulty && !listId) || (difficulty && !["easy", "medium", "hard", "custom"].includes(difficulty))) {
     setLocation("/");
     return null;
   }
