@@ -90,7 +90,7 @@ export default function Home() {
     {
       id: "standard" as GameMode,
       name: "Standard",
-      description: "Classic spelling practice with immediate feedback",
+      description: "Classic spelling game with immediate feedback",
       icon: Target,
       color: "text-blue-600",
     },

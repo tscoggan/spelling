@@ -11,8 +11,8 @@ Spelling Champions is a fun and engaging educational app that helps children pra
 ### Core Features
 - **User Authentication**: Create accounts with unique usernames, passwords, and avatar selection from 12 emoji options
 - **User Profiles**: Display logged-in user with avatar in header, personalized leaderboard entries
-- **Three Difficulty Levels**: Easy, Medium, and Hard modes tailored to different skill levels
-- **Four Game Modes**: Standard, Practice, Timed Challenge, and Quiz Mode
+- **Three Difficulty Levels**: Easy, Medium, and Hard word lists for different skill levels
+- **Three Game Modes**: Standard, Timed Challenge, and Quiz Mode
 - **Custom Word Lists**: Create and share your own spelling word lists
   - Create lists with 5-100 custom words
   - Import words from .txt or .csv files
@@ -131,8 +131,12 @@ Words are randomly selected (10 per game) to provide variety across sessions.
    - Protected routes redirect unauthenticated users here
 2. **Home Page**: 
    - Logged-in user displayed in header with avatar and logout button
-   - User selects difficulty level (Easy, Medium, or Hard)
-   - User selects game mode (Standard, Practice, Timed, Quiz)
+   - User selects game mode (Standard, Timed Challenge, or Quiz Mode)
+   - Word list selection dialog opens showing:
+     - Built-in word lists (Easy Words, Medium Words, Hard Words)
+     - User's custom word lists (if any)
+     - Public custom word lists shared by other users
+   - User selects a word list to start the game
 3. **Game Page**: 
    - Word is automatically spoken using customizable text-to-speech voice
    - User can replay audio by clicking the speaker button
@@ -227,6 +231,14 @@ Server runs on port 5000, Vite handles hot module replacement for instant update
 
 ## Recent Updates
 
+- **November 6, 2025**: Redesigned home page with streamlined user experience
+  - Removed difficulty selection screen - users now see game modes directly
+  - Removed Practice mode (now 3 modes: Standard, Timed Challenge, Quiz Mode)
+  - Added word list selection dialog that opens when selecting a game mode
+  - Dialog shows built-in difficulties (Easy, Medium, Hard) plus custom and public lists
+  - Updated Timed Challenge description to "Spell as many words correctly in 60 seconds as you can!"
+  - Removed duplicate "View Leaderboard" button for cleaner interface
+  - New flow: Choose mode → Select word list → Start game
 - **November 6, 2025**: Added grade level organization for custom word lists
   - Grade level field added to custom word lists (K, 1-12, 9-12)
   - Filter lists by grade level in both "My Lists" and "Public Lists" tabs
@@ -258,7 +270,7 @@ Server runs on port 5000, Vite handles hot module replacement for instant update
   - Leaderboard now shows usernames and avatars instead of "Anonymous"
   - Game sessions and scores linked to user accounts
   - Login/logout functionality with session persistence
-- Implemented four game modes: Standard, Practice, Timed Challenge, and Quiz Mode
+- Implemented three game modes: Standard, Timed Challenge, and Quiz Mode
 - Created competitive leaderboard system with difficulty filtering and rankings
 - Added PostgreSQL database with game sessions and leaderboard tracking
 - Added Web Speech API integration with customizable voice selection
