@@ -18,6 +18,9 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
+import session from "express-session";
+import connectPg from "connect-pg-simple";
+import { pool } from "./db";
 
 export interface IStorage {
   getAllWords(): Promise<Word[]>;
@@ -41,9 +44,22 @@ export interface IStorage {
   createLeaderboardScore(score: InsertLeaderboardScore): Promise<LeaderboardScore>;
   getTopScores(difficulty?: DifficultyLevel, gameMode?: string, limit?: number): Promise<LeaderboardScore[]>;
   getUserBestScores(userId: number): Promise<LeaderboardScore[]>;
+  
+  sessionStore: session.Store;
 }
 
+const PostgresSessionStore = connectPg(session);
+
 export class DatabaseStorage implements IStorage {
+  sessionStore: session.Store;
+
+  constructor() {
+    this.sessionStore = new PostgresSessionStore({ 
+      pool, 
+      createTableIfMissing: true 
+    });
+  }
+
   async getAllWords(): Promise<Word[]> {
     return await db.select().from(words);
   }

@@ -3,8 +3,10 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertGameSessionSchema, insertWordSchema, type DifficultyLevel } from "@shared/schema";
 import { z } from "zod";
+import { setupAuth } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  setupAuth(app);
   app.get("/api/words", async (req, res) => {
     try {
       const words = await storage.getAllWords();
