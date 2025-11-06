@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,14 +7,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload } from "lucide-react";
+import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload, Filter } from "lucide-react";
 import { motion } from "framer-motion";
 import type { CustomWordList } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+
+const GRADE_LEVELS = ["K", "1", "2", "3", "4", "5", "6", "7", "8", "9-12"];
 
 export default function WordListsPage() {
   const { user } = useAuth();
@@ -22,11 +25,13 @@ export default function WordListsPage() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingList, setEditingList] = useState<CustomWordList | null>(null);
+  const [gradeFilter, setGradeFilter] = useState<string>("all");
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     words: "",
     isPublic: false,
+    gradeLevel: "",
   });
 
   const { data: userLists = [], isLoading: loadingUserLists } = useQuery<CustomWordList[]>({
@@ -46,6 +51,7 @@ export default function WordListsPage() {
         description: data.description || undefined,
         words,
         isPublic: data.isPublic,
+        gradeLevel: data.gradeLevel || undefined,
       });
       return await response.json();
     },
@@ -74,6 +80,7 @@ export default function WordListsPage() {
         name: data.name,
         description: data.description || undefined,
         isPublic: data.isPublic,
+        gradeLevel: data.gradeLevel || undefined,
       };
       if (data.words) {
         updates.words = data.words.split('\n').map(w => w.trim()).filter(w => w.length > 0);
@@ -128,6 +135,7 @@ export default function WordListsPage() {
       description: "",
       words: "",
       isPublic: false,
+      gradeLevel: "",
     });
   };
 
@@ -138,6 +146,7 @@ export default function WordListsPage() {
       description: list.description || "",
       words: list.words.join('\n'),
       isPublic: list.isPublic,
+      gradeLevel: list.gradeLevel || "",
     });
     setDialogOpen(true);
   };
@@ -216,6 +225,33 @@ export default function WordListsPage() {
     setLocation(`/game?listId=${list.id}&difficulty=custom&mode=standard`);
   };
 
+  const filteredUserLists = useMemo(() => {
+    if (gradeFilter === "all") return userLists;
+    if (gradeFilter === "none") return userLists.filter(list => !list.gradeLevel);
+    return userLists.filter(list => list.gradeLevel === gradeFilter);
+  }, [userLists, gradeFilter]);
+
+  const filteredPublicLists = useMemo(() => {
+    if (gradeFilter === "all") return publicLists;
+    if (gradeFilter === "none") return publicLists.filter(list => !list.gradeLevel);
+    return publicLists.filter(list => list.gradeLevel === gradeFilter);
+  }, [publicLists, gradeFilter]);
+
+  const availableGradeLevels = useMemo(() => {
+    const grades = new Set<string>();
+    [...userLists, ...publicLists].forEach(list => {
+      if (list.gradeLevel) grades.add(list.gradeLevel);
+    });
+    return Array.from(grades).sort((a, b) => {
+      if (a === "K") return -1;
+      if (b === "K") return 1;
+      const aNum = parseInt(a);
+      const bNum = parseInt(b);
+      if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
+      return a.localeCompare(b);
+    });
+  }, [userLists, publicLists]);
+
   const renderWordList = (list: CustomWordList, canEdit: boolean) => (
     <Card key={list.id} className="hover-elevate" data-testid={`card-word-list-${list.id}`}>
       <CardHeader>
@@ -232,8 +268,13 @@ export default function WordListsPage() {
             {list.description && (
               <CardDescription className="mt-2">{list.description}</CardDescription>
             )}
-            <div className="mt-2 text-sm text-gray-600">
-              {list.words.length} words
+            <div className="mt-2 flex items-center gap-4 text-sm text-gray-600">
+              <span>{list.words.length} words</span>
+              {list.gradeLevel && (
+                <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-md font-medium" data-testid={`grade-${list.id}`}>
+                  Grade {list.gradeLevel}
+                </span>
+              )}
             </div>
           </div>
           <div className="flex gap-2">
@@ -297,7 +338,7 @@ export default function WordListsPage() {
         animate={{ opacity: 1, y: 0 }}
         className="max-w-6xl mx-auto"
       >
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <div>
             <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
               Custom Word Lists
@@ -305,6 +346,23 @@ export default function WordListsPage() {
             <p className="text-gray-600 mt-2">
               Create your own spelling word lists and share them with others
             </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-gray-600" />
+            <Select value={gradeFilter} onValueChange={setGradeFilter}>
+              <SelectTrigger className="w-[180px]" data-testid="select-grade-filter">
+                <SelectValue placeholder="Filter by grade" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" data-testid="filter-all">All Grades</SelectItem>
+                <SelectItem value="none" data-testid="filter-none">No Grade</SelectItem>
+                {availableGradeLevels.map((grade) => (
+                  <SelectItem key={grade} value={grade} data-testid={`filter-${grade}`}>
+                    Grade {grade}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex gap-2">
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -346,6 +404,24 @@ export default function WordListsPage() {
                       placeholder="Brief description of this word list"
                       data-testid="input-list-description"
                     />
+                  </div>
+                  <div>
+                    <Label htmlFor="gradeLevel">Grade Level (optional)</Label>
+                    <Select
+                      value={formData.gradeLevel}
+                      onValueChange={(value) => setFormData({ ...formData, gradeLevel: value })}
+                    >
+                      <SelectTrigger id="gradeLevel" data-testid="select-grade-level">
+                        <SelectValue placeholder="Select grade level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {GRADE_LEVELS.map((grade) => (
+                          <SelectItem key={grade} value={grade} data-testid={`grade-option-${grade}`}>
+                            {grade === "K" ? "Kindergarten" : `Grade ${grade}`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label htmlFor="file-import">
@@ -452,8 +528,14 @@ export default function WordListsPage() {
                   </Button>
                 </CardContent>
               </Card>
+            ) : filteredUserLists.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-gray-600">No word lists found for the selected grade level</p>
+                </CardContent>
+              </Card>
             ) : (
-              userLists.map((list) => renderWordList(list, true))
+              filteredUserLists.map((list) => renderWordList(list, true))
             )}
           </TabsContent>
 
@@ -468,8 +550,14 @@ export default function WordListsPage() {
                   <p className="text-gray-600">No public word lists available yet</p>
                 </CardContent>
               </Card>
+            ) : filteredPublicLists.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-gray-600">No word lists found for the selected grade level</p>
+                </CardContent>
+              </Card>
             ) : (
-              publicLists.map((list) => renderWordList(list, user?.id === list.userId))
+              filteredPublicLists.map((list) => renderWordList(list, user?.id === list.userId))
             )}
           </TabsContent>
         </Tabs>
