@@ -89,15 +89,40 @@ export default function Game() {
       const setVoiceAndSpeak = () => {
         const voices = window.speechSynthesis.getVoices();
         
-        // Try to find a female voice
-        const femaleVoice = voices.find(voice => 
-          voice.name.toLowerCase().includes('female') || 
-          voice.name.toLowerCase().includes('samantha') ||
-          voice.name.toLowerCase().includes('victoria') ||
-          voice.name.toLowerCase().includes('karen') ||
-          voice.name.toLowerCase().includes('zira') ||
-          voice.name.toLowerCase().includes('susan')
-        );
+        // Priority list of female voice names (from highest to lowest quality)
+        const femaleVoiceNames = [
+          'google uk english female',
+          'microsoft libby',
+          'samantha',
+          'karen',
+          'serena',
+          'fiona',
+          'tessa',
+          'victoria',
+          'susan',
+          'zira',
+          'denise',
+          'xiaoxiao',
+          'female'
+        ];
+        
+        // Try to find the best available female voice
+        let femaleVoice = null;
+        for (const voiceName of femaleVoiceNames) {
+          femaleVoice = voices.find(voice => 
+            voice.name.toLowerCase().includes(voiceName) &&
+            voice.lang.startsWith('en')
+          );
+          if (femaleVoice) break;
+        }
+        
+        // Fallback: any English female voice
+        if (!femaleVoice) {
+          femaleVoice = voices.find(voice => 
+            voice.lang.startsWith('en') &&
+            (voice.name.toLowerCase().includes('female') || voice.name.toLowerCase().includes('woman'))
+          );
+        }
         
         if (femaleVoice) {
           utterance.voice = femaleVoice;
