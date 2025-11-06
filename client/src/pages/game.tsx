@@ -40,6 +40,7 @@ export default function Game() {
   const params = new URLSearchParams(searchParams);
   const difficulty = params.get("difficulty") as DifficultyLevel;
   const gameMode = (params.get("mode") || "standard") as GameMode;
+  const listId = params.get("listId");
   
   const [userInput, setUserInput] = useState("");
   const [showFeedback, setShowFeedback] = useState(false);
@@ -61,7 +62,7 @@ export default function Game() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const createSessionMutation = useMutation({
-    mutationFn: async (sessionData: { difficulty: string; gameMode: string; userId: number | null }) => {
+    mutationFn: async (sessionData: { difficulty: string; gameMode: string; userId: number | null; customListId?: number }) => {
       const response = await apiRequest("POST", "/api/sessions", sessionData);
       return await response.json();
     },
@@ -78,19 +79,32 @@ export default function Game() {
   });
 
   const { data: words, isLoading } = useQuery<Word[]>({
-    queryKey: [`/api/words/${difficulty}`, { limit: 10 }],
+    queryKey: listId ? [`/api/word-lists/${listId}`] : [`/api/words/${difficulty}`, { limit: 10 }],
     queryFn: async () => {
-      const response = await fetch(`/api/words/${difficulty}?limit=10`);
-      if (!response.ok) throw new Error('Failed to fetch words');
-      return response.json();
+      if (listId) {
+        const response = await fetch(`/api/word-lists/${listId}`);
+        if (!response.ok) throw new Error('Failed to fetch custom word list');
+        const listData = await response.json();
+        return listData.words.map((word: string, index: number) => ({
+          id: index + 1,
+          word,
+          difficulty: 'custom' as DifficultyLevel,
+        }));
+      } else {
+        const response = await fetch(`/api/words/${difficulty}?limit=10`);
+        if (!response.ok) throw new Error('Failed to fetch words');
+        return response.json();
+      }
     },
+    enabled: !!difficulty || !!listId,
   });
 
   useEffect(() => {
-    if (difficulty && gameMode && !sessionId && user) {
-      createSessionMutation.mutate({ difficulty, gameMode, userId: user.id });
+    if ((difficulty || listId) && gameMode && !sessionId && user) {
+      const sessionDifficulty = listId ? 'custom' : difficulty;
+      createSessionMutation.mutate({ difficulty: sessionDifficulty, gameMode, userId: user.id });
     }
-  }, [difficulty, gameMode, sessionId, user]);
+  }, [difficulty, gameMode, sessionId, user, listId]);
 
   // Load available voices
   useEffect(() => {
