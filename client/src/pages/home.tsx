@@ -2,43 +2,84 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Sparkles, Trophy, Clock, Target, Award, LogOut, User, List } from "lucide-react";
+import { BookOpen, Sparkles, Trophy, Clock, Target, LogOut, List, ChevronRight } from "lucide-react";
 import type { DifficultyLevel, GameMode } from "@shared/schema";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useQuery } from "@tanstack/react-query";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+
+interface CustomWordList {
+  id: number;
+  name: string;
+  description: string;
+  words: string[];
+  isPublic: boolean;
+  gradeLevel?: string;
+}
 
 export default function Home() {
   const [, setLocation] = useLocation();
   const { user, logoutMutation } = useAuth();
-  const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel | null>(null);
+  const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
+  const [wordListDialogOpen, setWordListDialogOpen] = useState(false);
+
+  const { data: customLists } = useQuery<CustomWordList[]>({
+    queryKey: ["/api/word-lists"],
+    enabled: wordListDialogOpen,
+  });
+
+  const { data: publicLists } = useQuery<CustomWordList[]>({
+    queryKey: ["/api/word-lists/public"],
+    enabled: wordListDialogOpen,
+  });
 
   const handleLogout = () => {
     logoutMutation.mutate();
   };
 
-  const startGame = (mode: GameMode) => {
-    if (!selectedDifficulty) return;
-    setLocation(`/game?difficulty=${selectedDifficulty}&mode=${mode}`);
+  const handleModeClick = (mode: GameMode) => {
+    setSelectedMode(mode);
+    setWordListDialogOpen(true);
   };
 
-  const difficulties = [
+  const startGameWithDifficulty = (difficulty: DifficultyLevel) => {
+    if (!selectedMode) return;
+    setWordListDialogOpen(false);
+    setLocation(`/game?difficulty=${difficulty}&mode=${selectedMode}`);
+  };
+
+  const startGameWithCustomList = (listId: number) => {
+    if (!selectedMode) return;
+    setWordListDialogOpen(false);
+    setLocation(`/game?listId=${listId}&difficulty=custom&mode=${selectedMode}`);
+  };
+
+  const builtInDifficulties = [
     {
       id: "easy" as DifficultyLevel,
-      name: "Easy Mode",
+      name: "Easy Words",
       description: "Perfect for beginners! Simple words to build confidence.",
       icon: Sparkles,
       color: "text-green-600",
     },
     {
       id: "medium" as DifficultyLevel,
-      name: "Medium Mode",
+      name: "Medium Words",
       description: "Ready for a challenge? Test your growing vocabulary!",
       icon: BookOpen,
       color: "text-yellow-600",
     },
     {
       id: "hard" as DifficultyLevel,
-      name: "Hard Mode",
+      name: "Hard Words",
       description: "For spelling champions! Tackle the toughest words.",
       icon: Trophy,
       color: "text-purple-600",
@@ -54,16 +95,9 @@ export default function Home() {
       color: "text-blue-600",
     },
     {
-      id: "practice" as GameMode,
-      name: "Practice",
-      description: "No pressure! Skip words and take your time",
-      icon: BookOpen,
-      color: "text-green-600",
-    },
-    {
       id: "timed" as GameMode,
       name: "Timed Challenge",
-      description: "60 seconds per word! Beat the clock!",
+      description: "Spell as many words correctly in 60 seconds as you can!",
       icon: Clock,
       color: "text-orange-600",
     },
@@ -142,123 +176,168 @@ export default function Home() {
           >
             Spelling Champions
           </motion.h1>
-          <p className="text-lg md:text-xl text-gray-700 mb-4">
+          <p className="text-lg md:text-xl text-gray-700">
             Master your spelling skills with fun, interactive challenges!
           </p>
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={() => setLocation("/leaderboard")}
-            data-testid="button-leaderboard"
-            className="mt-2"
-          >
-            <Award className="w-5 h-5 mr-2" />
-            View Leaderboard
-          </Button>
         </div>
 
-        {!selectedDifficulty ? (
-          <>
-            <h2 className="text-2xl md:text-3xl font-bold text-center mb-6 text-gray-800">
-              Choose Your Difficulty
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-              {difficulties.map((difficulty, index) => {
-                const Icon = difficulty.icon;
-                return (
-                  <motion.div
-                    key={difficulty.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-6 text-gray-800">
+          Choose Your Game Mode
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+          {gameModes.map((mode, index) => {
+            const Icon = mode.icon;
+            return (
+              <motion.div
+                key={mode.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <Card
+                  className="hover-elevate active-elevate-2 cursor-pointer h-full"
+                  onClick={() => handleModeClick(mode.id)}
+                  data-testid={`card-mode-${mode.id}`}
+                >
+                  <CardHeader className="space-y-1">
+                    <div className="flex items-center gap-3">
+                      <Icon className={`w-8 h-8 ${mode.color}`} />
+                      <CardTitle className="text-2xl">{mode.name}</CardTitle>
+                    </div>
+                    <CardDescription className="text-base">
+                      {mode.description}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button
+                      size="lg"
+                      className="w-full text-lg"
+                      data-testid={`button-select-${mode.id}`}
+                    >
+                      Select {mode.name}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            );
+          })}
+        </div>
+      </motion.div>
+
+      <Dialog open={wordListDialogOpen} onOpenChange={setWordListDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">Choose Your Word List</DialogTitle>
+            <DialogDescription>
+              Select a built-in difficulty or one of your custom word lists
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-3">Built-in Word Lists</h3>
+              <div className="grid grid-cols-1 gap-3">
+                {builtInDifficulties.map((difficulty) => {
+                  const Icon = difficulty.icon;
+                  return (
                     <Card
-                      className="hover-elevate active-elevate-2 cursor-pointer h-full"
-                      onClick={() => setSelectedDifficulty(difficulty.id)}
+                      key={difficulty.id}
+                      className="hover-elevate active-elevate-2 cursor-pointer"
+                      onClick={() => startGameWithDifficulty(difficulty.id)}
                       data-testid={`card-difficulty-${difficulty.id}`}
                     >
-                      <CardHeader className="space-y-1">
-                        <div className="flex items-center gap-3">
-                          <Icon className={`w-8 h-8 ${difficulty.color}`} />
-                          <CardTitle className="text-2xl">{difficulty.name}</CardTitle>
+                      <CardHeader className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Icon className={`w-6 h-6 ${difficulty.color}`} />
+                            <div>
+                              <CardTitle className="text-lg">{difficulty.name}</CardTitle>
+                              <CardDescription className="text-sm">
+                                {difficulty.description}
+                              </CardDescription>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-5 h-5 text-gray-400" />
                         </div>
-                        <CardDescription className="text-base">
-                          {difficulty.description}
-                        </CardDescription>
                       </CardHeader>
-                      <CardContent>
-                        <Button
-                          size="lg"
-                          className="w-full text-lg"
-                          data-testid={`button-select-${difficulty.id}`}
-                        >
-                          Select {difficulty.name}
-                        </Button>
-                      </CardContent>
                     </Card>
-                  </motion.div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </>
-        ) : (
-          <>
-            <div className="text-center mb-6">
-              <Button
-                variant="outline"
-                onClick={() => setSelectedDifficulty(null)}
-                data-testid="button-back"
-              >
-                ← Back to Difficulty
-              </Button>
-              <h2 className="text-2xl md:text-3xl font-bold mt-4 mb-2 text-gray-800">
-                Choose Your Game Mode
-              </h2>
-              <p className="text-gray-600">
-                Selected: <span className="font-bold capitalize">{selectedDifficulty}</span>
-              </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-              {gameModes.map((mode, index) => {
-                const Icon = mode.icon;
-                return (
-                  <motion.div
-                    key={mode.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
+
+            {customLists && customLists.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold mb-3">My Custom Lists</h3>
+                <div className="grid grid-cols-1 gap-3">
+                  {customLists.map((list) => (
                     <Card
-                      className="hover-elevate active-elevate-2 cursor-pointer h-full"
-                      onClick={() => startGame(mode.id)}
-                      data-testid={`card-mode-${mode.id}`}
+                      key={list.id}
+                      className="hover-elevate active-elevate-2 cursor-pointer"
+                      onClick={() => startGameWithCustomList(list.id)}
+                      data-testid={`card-custom-list-${list.id}`}
                     >
-                      <CardHeader className="space-y-1">
-                        <div className="flex items-center gap-3">
-                          <Icon className={`w-8 h-8 ${mode.color}`} />
-                          <CardTitle className="text-2xl">{mode.name}</CardTitle>
+                      <CardHeader className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <CardTitle className="text-lg">{list.name}</CardTitle>
+                              {list.gradeLevel && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Grade {list.gradeLevel}
+                                </Badge>
+                              )}
+                            </div>
+                            <CardDescription className="text-sm">
+                              {list.description} • {list.words.length} words
+                            </CardDescription>
+                          </div>
+                          <ChevronRight className="w-5 h-5 text-gray-400" />
                         </div>
-                        <CardDescription className="text-base">
-                          {mode.description}
-                        </CardDescription>
                       </CardHeader>
-                      <CardContent>
-                        <Button
-                          size="lg"
-                          className="w-full text-lg"
-                          data-testid={`button-start-${mode.id}`}
-                        >
-                          Start {mode.name}
-                        </Button>
-                      </CardContent>
                     </Card>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </>
-        )}
-      </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {publicLists && publicLists.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Public Lists</h3>
+                <div className="grid grid-cols-1 gap-3 max-h-64 overflow-y-auto">
+                  {publicLists.map((list) => (
+                    <Card
+                      key={list.id}
+                      className="hover-elevate active-elevate-2 cursor-pointer"
+                      onClick={() => startGameWithCustomList(list.id)}
+                      data-testid={`card-public-list-${list.id}`}
+                    >
+                      <CardHeader className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <CardTitle className="text-lg">{list.name}</CardTitle>
+                              {list.gradeLevel && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Grade {list.gradeLevel}
+                                </Badge>
+                              )}
+                            </div>
+                            <CardDescription className="text-sm">
+                              {list.description} • {list.words.length} words
+                            </CardDescription>
+                          </div>
+                          <ChevronRight className="w-5 h-5 text-gray-400" />
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
