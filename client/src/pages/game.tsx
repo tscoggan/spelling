@@ -119,6 +119,11 @@ export default function Game() {
 
   const { data: wordIllustrations } = useQuery<WordIllustration[]>({
     queryKey: ['/api/word-illustrations'],
+    queryFn: async () => {
+      const response = await fetch('/api/word-illustrations');
+      if (!response.ok) throw new Error('Failed to fetch word illustrations');
+      return response.json();
+    },
   });
 
   useEffect(() => {
