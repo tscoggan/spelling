@@ -14,7 +14,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload, Filter, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
-import type { CustomWordList } from "@shared/schema";
+import type { CustomWordList, WordIllustration } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
 
@@ -676,13 +676,13 @@ export default function WordListsPage() {
 // Component to preview words with their images
 function WordListPreview({ words, listId }: { words: string[]; listId: number }) {
   // Query for all word illustrations
-  const { data: illustrations = [] } = useQuery({
+  const { data: illustrations = [] } = useQuery<WordIllustration[]>({
     queryKey: ["/api/word-illustrations"],
   });
 
   // Get illustration for a word
   const getIllustration = (word: string) => {
-    return illustrations.find((ill: any) => ill.word.toLowerCase() === word.toLowerCase());
+    return illustrations.find((ill) => ill.word.toLowerCase() === word.toLowerCase());
   };
 
   return (
@@ -722,7 +722,7 @@ function EditImagesDialog({ list, open, onOpenChange }: {
   const [loadingPreviews, setLoadingPreviews] = useState(false);
 
   // Query for all word illustrations
-  const { data: illustrations = [], refetch: refetchIllustrations } = useQuery({
+  const { data: illustrations = [], refetch: refetchIllustrations } = useQuery<WordIllustration[]>({
     queryKey: ["/api/word-illustrations"],
     enabled: open,
   });
@@ -775,7 +775,7 @@ function EditImagesDialog({ list, open, onOpenChange }: {
 
   // Get illustration for a word
   const getIllustration = (word: string) => {
-    return illustrations.find((ill: any) => ill.word.toLowerCase() === word.toLowerCase());
+    return illustrations.find((ill) => ill.word.toLowerCase() === word.toLowerCase());
   };
 
   // Handle selecting a word to change its image
