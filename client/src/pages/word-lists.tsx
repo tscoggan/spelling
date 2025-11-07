@@ -16,9 +16,7 @@ import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload, Filter } from "luc
 import { motion } from "framer-motion";
 import type { CustomWordList } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
-import { PageTitleBanner } from "@/components/PageTitleBanner";
-import pencilDecor from "@assets/generated_images/Large_colorful_cartoon_pencil_271d1e79.png";
-import bookStackDecor from "@assets/generated_images/Large_colorful_book_stack_2eb95aeb.png";
+import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
 
 const GRADE_LEVELS = ["K", "1", "2", "3", "4", "5", "6", "7", "8", "9-12"];
 
@@ -342,36 +340,30 @@ export default function WordListsPage() {
   );
 
   return (
-    <div className="min-h-screen p-4 md:p-8 relative overflow-hidden" style={{ backgroundColor: 'hsl(var(--page-wordlists-bg))' }}>
-      <motion.img
-        src={pencilDecor}
-        alt=""
-        initial={{ opacity: 0, rotate: 20 }}
-        animate={{ opacity: 0.5, rotate: 20 }}
-        transition={{ delay: 0.2 }}
-        className="absolute top-20 right-5 w-40 md:w-52 pointer-events-none hidden md:block"
-        style={{ zIndex: 1 }}
-      />
-      <motion.img
-        src={bookStackDecor}
-        alt=""
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 0.5, x: 0 }}
-        transition={{ delay: 0.3 }}
-        className="absolute bottom-10 left-5 w-36 md:w-48 pointer-events-none hidden md:block"
-        style={{ zIndex: 1 }}
-      />
+    <div className="min-h-screen p-4 md:p-8 relative" style={{ backgroundColor: 'hsl(var(--page-wordlists-bg))' }}>
+      <div 
+        className="absolute inset-0 opacity-50"
+        style={{
+          backgroundImage: `url(${schoolPattern})`,
+          backgroundSize: '240px 240px',
+          backgroundRepeat: 'repeat',
+          backgroundPosition: 'center',
+        }}
+      ></div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="max-w-6xl mx-auto relative z-10"
       >
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
-          <PageTitleBanner 
-            title="Custom Word Lists"
-            subtitle="Create your own spelling word lists and share them with others"
-            size="page"
-          />
+          <div>
+            <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 font-crayon">
+              Custom Word Lists
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Create your own spelling word lists and share them with others
+            </p>
+          </div>
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-gray-600" />
             <Select value={gradeFilter} onValueChange={setGradeFilter}>

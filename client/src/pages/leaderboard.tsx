@@ -7,8 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trophy, Medal, Home, Crown, Award } from "lucide-react";
 import type { LeaderboardScore, DifficultyLevel } from "@shared/schema";
 import { motion } from "framer-motion";
-import { PageTitleBanner } from "@/components/PageTitleBanner";
-import bookwormDecor from "@assets/generated_images/Large_cute_bookworm_character_93a366b1.png";
+import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
 
 export default function Leaderboard() {
   const [, setLocation] = useLocation();
@@ -42,23 +41,28 @@ export default function Leaderboard() {
   };
 
   return (
-    <div className="min-h-screen p-4 md:p-8 relative overflow-hidden" style={{ backgroundColor: 'hsl(var(--page-leaderboard-bg))' }}>
-      <motion.img
-        src={bookwormDecor}
-        alt=""
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 0.55, scale: 1 }}
-        transition={{ delay: 0.2 }}
-        className="absolute top-10 right-10 w-44 md:w-60 pointer-events-none hidden md:block"
-        style={{ zIndex: 1 }}
-      />
+    <div className="min-h-screen p-4 md:p-8 relative" style={{ backgroundColor: 'hsl(var(--page-leaderboard-bg))' }}>
+      <div 
+        className="absolute inset-0 opacity-50"
+        style={{
+          backgroundImage: `url(${schoolPattern})`,
+          backgroundSize: '240px 240px',
+          backgroundRepeat: 'repeat',
+          backgroundPosition: 'center',
+        }}
+      ></div>
       <div className="max-w-6xl mx-auto relative z-10">
         <div className="flex items-center justify-between mb-8">
-          <PageTitleBanner 
-            title="Leaderboard"
-            subtitle="Top spelling champions across all difficulty levels"
-            size="page"
-          />
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center gap-4"
+          >
+            <Trophy className="w-12 h-12 text-purple-600" />
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-800 font-crayon">
+              Leaderboard
+            </h1>
+          </motion.div>
           <Button
             variant="outline"
             size="lg"
