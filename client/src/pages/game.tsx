@@ -44,8 +44,9 @@ import heartImage from "@assets/generated_images/Colorful_cartoon_heart_illustra
 import rainbowImage from "@assets/generated_images/Colorful_cartoon_rainbow_illustration_353f2578.png";
 import balloonImage from "@assets/generated_images/Colorful_cartoon_balloon_illustration_c9942b53.png";
 
-// Import background pattern
-import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
+// Import large decorative images
+import bookwormDecor from "@assets/generated_images/Large_cute_bookworm_character_93a366b1.png";
+import bookStackDecor from "@assets/generated_images/Large_colorful_book_stack_2eb95aeb.png";
 
 // Mapping of simple kid-friendly words to their cartoon illustrations
 const WORD_ILLUSTRATIONS: Record<string, string> = {
@@ -782,20 +783,29 @@ export default function Game() {
 
   return (
     <div 
-      className="min-h-screen flex flex-col relative"
+      className="min-h-screen flex flex-col relative overflow-hidden"
       style={{
         backgroundColor: 'hsl(var(--page-game-bg))',
       }}
     >
-      <div 
-        className="absolute inset-0 opacity-50"
-        style={{
-          backgroundImage: `url(${schoolPattern})`,
-          backgroundSize: '240px 240px',
-          backgroundRepeat: 'repeat',
-          backgroundPosition: 'center',
-        }}
-      ></div>
+      <motion.img
+        src={bookwormDecor}
+        alt=""
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 0.4, x: 0 }}
+        transition={{ delay: 0.2 }}
+        className="absolute bottom-10 left-5 w-36 md:w-48 pointer-events-none hidden md:block"
+        style={{ zIndex: 1 }}
+      />
+      <motion.img
+        src={bookStackDecor}
+        alt=""
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 0.4, scale: 1 }}
+        transition={{ delay: 0.3 }}
+        className="absolute top-32 right-10 w-32 md:w-44 pointer-events-none hidden lg:block"
+        style={{ zIndex: 1 }}
+      />
       <header className="p-4 md:p-6 bg-white/80 backdrop-blur-sm border-b border-gray-200 relative z-10">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 flex-wrap">
           <Button

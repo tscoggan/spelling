@@ -22,8 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import titleBanner from "@assets/generated_images/Hand-drawn_crayon_Spelling_Champions_text_fc50a8a9.png";
-import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
+import { PageTitleBanner } from "@/components/PageTitleBanner";
+import pencilDecor from "@assets/generated_images/Large_colorful_cartoon_pencil_271d1e79.png";
+import bookwormDecor from "@assets/generated_images/Large_cute_bookworm_character_93a366b1.png";
+import bookStackDecor from "@assets/generated_images/Large_colorful_book_stack_2eb95aeb.png";
 
 interface CustomWordList {
   id: number;
@@ -133,20 +135,38 @@ export default function Home() {
 
   return (
     <div 
-      className="min-h-screen p-4 md:p-8 relative"
+      className="min-h-screen p-4 md:p-8 relative overflow-hidden"
       style={{
         backgroundColor: 'hsl(var(--page-home-bg))',
       }}
     >
-      <div 
-        className="absolute inset-0 opacity-50"
-        style={{
-          backgroundImage: `url(${schoolPattern})`,
-          backgroundSize: '240px 240px',
-          backgroundRepeat: 'repeat',
-          backgroundPosition: 'center',
-        }}
-      ></div>
+      <motion.img
+        src={pencilDecor}
+        alt=""
+        initial={{ opacity: 0, rotate: -15 }}
+        animate={{ opacity: 0.6, rotate: -15 }}
+        transition={{ delay: 0.2 }}
+        className="absolute top-10 right-10 w-48 md:w-64 pointer-events-none hidden md:block"
+        style={{ zIndex: 1 }}
+      />
+      <motion.img
+        src={bookwormDecor}
+        alt=""
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 0.6, scale: 1 }}
+        transition={{ delay: 0.4 }}
+        className="absolute bottom-20 left-10 w-40 md:w-56 pointer-events-none hidden md:block"
+        style={{ zIndex: 1 }}
+      />
+      <motion.img
+        src={bookStackDecor}
+        alt=""
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 0.5, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="absolute top-1/2 left-5 w-32 md:w-44 pointer-events-none hidden lg:block"
+        style={{ zIndex: 1 }}
+      />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -202,23 +222,12 @@ export default function Home() {
           </Button>
         </div>
 
-        <div className="text-center mb-8 md:mb-12">
-          <motion.div
-            className="mb-4 flex justify-center"
-            initial={{ scale: 0.9 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.3 }}
-          >
-            <img 
-              src={titleBanner} 
-              alt="Spelling Champions" 
-              className="w-full max-w-2xl h-auto"
-              data-testid="img-title-banner"
-            />
-          </motion.div>
-          <p className="text-lg md:text-xl text-gray-700">
-            Master your spelling skills with fun, interactive challenges!
-          </p>
+        <div className="text-center mb-8 md:mb-12 flex flex-col items-center">
+          <PageTitleBanner 
+            title="Spelling Champions"
+            subtitle="Master your spelling skills with fun, interactive challenges!"
+            size="hero"
+          />
         </div>
 
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-6 text-gray-800 font-crayon">

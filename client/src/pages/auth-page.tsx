@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sparkles, UserCircle } from "lucide-react";
-import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
+import pencilDecor from "@assets/generated_images/Large_colorful_cartoon_pencil_271d1e79.png";
+import bookStackDecor from "@assets/generated_images/Large_colorful_book_stack_2eb95aeb.png";
 
 const avatarOptions = [
   { emoji: "🐶", label: "Dog" },
@@ -53,20 +54,23 @@ export default function AuthPage() {
 
   return (
     <div 
-      className="min-h-screen flex relative"
+      className="min-h-screen flex relative overflow-hidden"
       style={{
         backgroundColor: 'hsl(var(--page-auth-bg))',
       }}
     >
-      <div 
-        className="absolute inset-0 opacity-50"
-        style={{
-          backgroundImage: `url(${schoolPattern})`,
-          backgroundSize: '240px 240px',
-          backgroundRepeat: 'repeat',
-          backgroundPosition: 'center',
-        }}
-      ></div>
+      <img
+        src={pencilDecor}
+        alt=""
+        className="absolute top-10 left-10 w-40 md:w-52 pointer-events-none hidden md:block opacity-50"
+        style={{ zIndex: 1, transform: 'rotate(-25deg)' }}
+      />
+      <img
+        src={bookStackDecor}
+        alt=""
+        className="absolute bottom-10 right-10 w-36 md:w-48 pointer-events-none hidden md:block opacity-50"
+        style={{ zIndex: 1 }}
+      />
       <div className="flex-1 flex items-center justify-center p-6 relative z-10">
         <Card className="w-full max-w-md p-8">
           <div className="text-center mb-8">
