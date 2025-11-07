@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload, Filter, Sparkles } from "lucide-react";
+import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload, Filter, Sparkles, X } from "lucide-react";
 import { motion } from "framer-motion";
 import type { CustomWordList, WordIllustration } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -729,7 +729,7 @@ function EditImagesDialog({ list, open, onOpenChange }: {
 
   // Mutation to select a new image
   const selectImageMutation = useMutation({
-    mutationFn: async ({ word, imageUrl }: { word: string; imageUrl: string }) => {
+    mutationFn: async ({ word, imageUrl }: { word: string; imageUrl: string | null }) => {
       const response = await apiRequest("POST", "/api/word-illustrations/select", {
         word,
         imageUrl,
@@ -759,7 +759,7 @@ function EditImagesDialog({ list, open, onOpenChange }: {
   const fetchPixabayPreviews = async (word: string) => {
     setLoadingPreviews(true);
     try {
-      const response = await fetch(`/api/pixabay/previews?word=${encodeURIComponent(word)}&limit=10`);
+      const response = await fetch(`/api/pixabay/previews?word=${encodeURIComponent(word)}&limit=16`);
       if (!response.ok) throw new Error("Failed to fetch previews");
       const data = await response.json();
       setPixabayPreviews(data);
@@ -785,8 +785,8 @@ function EditImagesDialog({ list, open, onOpenChange }: {
     fetchPixabayPreviews(word);
   };
 
-  // Handle selecting a new image
-  const handleSelectImage = (imageUrl: string) => {
+  // Handle selecting a new image (or removing it with null)
+  const handleSelectImage = (imageUrl: string | null) => {
     if (!selectedWord) return;
     selectImageMutation.mutate({ word: selectedWord, imageUrl });
   };
@@ -872,6 +872,21 @@ function EditImagesDialog({ list, open, onOpenChange }: {
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {/* "No Image" option */}
+                <Card
+                  className="cursor-pointer hover-elevate active-elevate-2 transition-all"
+                  onClick={() => handleSelectImage(null)}
+                  data-testid="preview-image-no-image"
+                >
+                  <CardContent className="p-2">
+                    <div className="w-full h-32 bg-gray-100 rounded flex flex-col items-center justify-center gap-2">
+                      <X className="w-12 h-12 text-gray-400" />
+                      <p className="text-sm font-semibold text-gray-600">No Image</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                {/* Pixabay preview images */}
                 {pixabayPreviews.map((preview, index) => (
                   <Card
                     key={preview.id}

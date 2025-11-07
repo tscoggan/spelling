@@ -413,6 +413,13 @@ export class DatabaseStorage implements IStorage {
   async getAllWordIllustrations(): Promise<WordIllustration[]> {
     return await db.select().from(wordIllustrations);
   }
+
+  async deleteWordIllustration(word: string): Promise<boolean> {
+    const result = await db
+      .delete(wordIllustrations)
+      .where(eq(wordIllustrations.word, word.toLowerCase()));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
 }
 
 export const storage = new DatabaseStorage();

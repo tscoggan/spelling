@@ -268,7 +268,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Select and download a specific Pixabay image
+  // Select and download a specific Pixabay image (or remove image if imageUrl is null)
   app.post("/api/word-illustrations/select", async (req, res) => {
     try {
       if (!req.isAuthenticated()) {
@@ -277,8 +277,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { word, imageUrl } = req.body;
 
-      if (!word || !imageUrl) {
-        return res.status(400).json({ error: "Word and imageUrl are required" });
+      if (!word) {
+        return res.status(400).json({ error: "Word is required" });
+      }
+
+      // If imageUrl is null, delete the illustration for this word
+      if (imageUrl === null) {
+        await storage.deleteWordIllustration(word);
+        return res.json({ success: true, message: "Image removed" });
+      }
+
+      if (!imageUrl) {
+        return res.status(400).json({ error: "imageUrl must be a string or null" });
       }
 
       // Security: Validate that imageUrl is from Pixabay domain only
