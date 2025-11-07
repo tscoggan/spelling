@@ -287,6 +287,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/backfill-illustrations", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const jobService = new IllustrationJobService();
+      const jobId = await jobService.createBackfillJob();
+      
+      res.json({ jobId, message: "Backfill job started" });
+    } catch (error: any) {
+      console.error("Error starting backfill job:", error);
+      res.status(500).json({ error: "Failed to start backfill job", details: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

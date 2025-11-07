@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { illustrationJobs, illustrationJobItems, wordIllustrations, customWordLists } from '@shared/schema';
+import { illustrationJobs, illustrationJobItems, wordIllustrations, customWordLists, words } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { PixabayService } from './pixabay';
 
@@ -199,5 +199,57 @@ export class IllustrationJobService {
       ...job,
       items,
     };
+  }
+
+  async createBackfillJob(): Promise<number> {
+    const allWords = new Set<string>();
+    
+    const canonicalWords = await db.select().from(words);
+    for (const wordEntry of canonicalWords) {
+      allWords.add(wordEntry.word.toLowerCase());
+    }
+    console.log(`📖 Found ${canonicalWords.length} canonical words from words table`);
+    
+    const allWordLists = await db.select().from(customWordLists);
+    for (const list of allWordLists) {
+      for (const word of list.words) {
+        allWords.add(word.toLowerCase());
+      }
+    }
+    console.log(`📝 Found ${allWordLists.length} custom word lists`);
+
+    const uniqueWords = Array.from(allWords).filter(word => {
+      const isTestWord = /^(word|extra|dinosau)\d*$/.test(word);
+      const isTooShort = word.length < 3;
+      return !isTestWord && !isTooShort;
+    }).sort();
+
+    console.log(`📚 Total ${uniqueWords.length} unique real words to backfill (filtered out test words)`);
+
+    const [job] = await db
+      .insert(illustrationJobs)
+      .values({
+        wordListId: 0,
+        status: 'pending',
+        totalWords: uniqueWords.length,
+        processedWords: 0,
+        successCount: 0,
+        failureCount: 0,
+      })
+      .returning();
+
+    for (const word of uniqueWords) {
+      await db.insert(illustrationJobItems).values({
+        jobId: job.id,
+        word: word,
+        status: 'pending',
+      });
+    }
+
+    console.log(`✓ Created backfill job ${job.id} with ${uniqueWords.length} words`);
+
+    this.processJobAsync(job.id);
+
+    return job.id;
   }
 }

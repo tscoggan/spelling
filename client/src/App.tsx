@@ -9,6 +9,7 @@ import Home from "@/pages/home";
 import Game from "@/pages/game";
 import Leaderboard from "@/pages/leaderboard";
 import WordListsPage from "@/pages/word-lists";
+import AdminPage from "@/pages/admin";
 import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
 
@@ -19,6 +20,7 @@ function Router() {
       <ProtectedRoute path="/game" component={Game} />
       <ProtectedRoute path="/leaderboard" component={Leaderboard} />
       <ProtectedRoute path="/word-lists" component={WordListsPage} />
+      <ProtectedRoute path="/admin" component={AdminPage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
