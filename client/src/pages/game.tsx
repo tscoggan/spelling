@@ -256,9 +256,11 @@ export default function Game() {
     setWordExample(null);
     
     try {
-      // First, try Simple English Wiktionary
+      // First, try Simple English Wiktionary using MediaWiki API
       console.log(`🔍 Trying Simple English Wiktionary for "${fetchWord}"...`);
-      const wiktionaryResponse = await fetch(`https://simple.wiktionary.org/api/rest_v1/page/definition/${fetchWord}`);
+      const wiktionaryResponse = await fetch(
+        `https://simple.wiktionary.org/w/api.php?action=query&titles=${fetchWord}&prop=extracts&explaintext=1&format=json&origin=*`
+      );
       
       if (wiktionaryResponse.ok) {
         const wiktionaryData = await wiktionaryResponse.json();
@@ -268,44 +270,64 @@ export default function Game() {
           return;
         }
         
-        // Parse Simple English Wiktionary format
-        if (wiktionaryData && Object.keys(wiktionaryData).length > 0) {
-          // Get the first part of speech (noun, verb, etc.)
-          const firstPartOfSpeech = Object.keys(wiktionaryData)[0];
-          const definitions = wiktionaryData[firstPartOfSpeech];
+        // Parse Simple English Wiktionary MediaWiki format
+        const pages = wiktionaryData?.query?.pages;
+        if (pages) {
+          const pageId = Object.keys(pages)[0];
+          const pageData = pages[pageId];
           
-          if (definitions && definitions.length > 0) {
-            const firstDef = definitions[0];
+          if (pageData && pageData.extract && !pageData.missing) {
+            const extract = pageData.extract;
             
-            // Set definition
-            if (firstDef.definition) {
-              // Clean up HTML tags from definition
-              const cleanDefinition = firstDef.definition.replace(/<[^>]*>/g, '');
-              setWordDefinition(cleanDefinition);
-              console.log(`✅ Found definition in Simple English Wiktionary for "${fetchWord}"`);
-            }
+            // Parse the extract text to find definitions and examples
+            // Format: "== Noun ==\n\n(countable) An apple is a sweet fruit.\nI gave my teacher an apple."
+            const lines = extract.split('\n').map((line: string) => line.trim()).filter((line: string) => line.length > 0);
             
-            // Look for examples in Simple English Wiktionary
+            let foundDefinition = false;
             let foundExample = false;
-            for (const def of definitions) {
-              if (def.examples && def.examples.length > 0) {
-                const cleanExample = def.examples[0].replace(/<[^>]*>/g, '');
-                setWordExample(cleanExample);
-                foundExample = true;
-                console.log(`✅ Found example in Simple English Wiktionary for "${fetchWord}":`, cleanExample);
-                break;
+            
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i];
+              
+              // Skip headers and pronunciation sections
+              if (line.startsWith('==') || line.startsWith('Pronunciation') || 
+                  line.startsWith('enPR:') || line.startsWith('IPA') || line.startsWith('SAMPA')) {
+                continue;
+              }
+              
+              // Look for definition lines (start with countable/uncountable or are descriptive sentences)
+              if (!foundDefinition && line.includes(' is ') && !line.startsWith('I ') && !line.startsWith('The ')) {
+                // Remove any grammatical markers like "(countable)" or "(uncountable)"
+                const cleanDefinition = line.replace(/^\(.*?\)\s*/, '');
+                setWordDefinition(cleanDefinition);
+                foundDefinition = true;
+                console.log(`✅ Found definition in Simple English Wiktionary for "${fetchWord}": ${cleanDefinition}`);
+                continue;
+              }
+              
+              // Look for example sentences (usually start with "I ", "The ", etc. and end with period)
+              if (foundDefinition && !foundExample && line.match(/^[A-Z].*\.$/) && line.length < 150) {
+                // Skip lines that look like definitions or related words
+                if (!line.startsWith('Related') && !line.startsWith('an apple') && 
+                    line.toLowerCase().includes(fetchWord)) {
+                  setWordExample(line);
+                  foundExample = true;
+                  console.log(`✅ Found example in Simple English Wiktionary for "${fetchWord}": ${line}`);
+                  break;
+                }
               }
             }
             
-            if (!foundExample) {
-              console.log(`⚠️ No example in Simple English Wiktionary for "${fetchWord}" - generating fallback`);
-              const fallbackExample = generateFallbackExample(fetchWord);
-              setWordExample(fallbackExample);
-              console.log(`✨ Generated fallback example: "${fallbackExample}"`);
+            // If we found a definition, return early (even if no example found)
+            if (foundDefinition) {
+              if (!foundExample) {
+                console.log(`⚠️ No example in Simple English Wiktionary for "${fetchWord}" - generating fallback`);
+                const fallbackExample = generateFallbackExample(fetchWord);
+                setWordExample(fallbackExample);
+                console.log(`✨ Generated fallback example: "${fallbackExample}"`);
+              }
+              return;
             }
-            
-            // Successfully got data from Wiktionary, return early
-            return;
           }
         }
       }
