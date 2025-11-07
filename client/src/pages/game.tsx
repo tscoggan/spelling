@@ -623,7 +623,7 @@ export default function Game() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-violet-100 via-sky-100 to-pink-100 flex items-center justify-center">
         <Card className="p-12">
           <div className="text-center space-y-4">
             <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
@@ -642,7 +642,7 @@ export default function Game() {
     const accuracy = totalWords > 0 ? Math.round((correctCount / totalWords) * 100) : 0;
     
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gradient-to-br from-violet-100 via-amber-50 to-emerald-100 flex items-center justify-center p-6">
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -766,7 +766,7 @@ export default function Game() {
 
   if (!words || words.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gradient-to-br from-violet-100 via-sky-100 to-pink-100 flex items-center justify-center p-6">
         <Card className="p-12 text-center space-y-6">
           <p className="text-2xl">No words available for this difficulty.</p>
           <Button onClick={() => setLocation("/")} size="lg" data-testid="button-back-home">
@@ -784,7 +784,7 @@ export default function Game() {
     <div 
       className="min-h-screen flex flex-col relative"
       style={{
-        background: 'linear-gradient(135deg, #E9D5FF 0%, #DBEAFE 25%, #FCE7F3 50%, #FEF3C7 75%, #D1FAE5 100%)',
+        background: 'linear-gradient(135deg, #DDD6FE 0%, #BFDBFE 20%, #FBCFE8 40%, #FDE68A 60%, #BBF7D0 80%, #FED7AA 100%)',
       }}
     >
       <div 

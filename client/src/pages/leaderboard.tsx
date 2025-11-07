@@ -40,7 +40,7 @@ export default function Leaderboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-violet-100 via-amber-50 to-emerald-100 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <motion.div

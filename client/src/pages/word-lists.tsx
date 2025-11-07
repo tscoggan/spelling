@@ -339,7 +339,7 @@ export default function WordListsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-violet-100 via-sky-100 to-pink-100 p-4 md:p-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
