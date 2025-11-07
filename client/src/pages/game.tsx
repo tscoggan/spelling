@@ -302,8 +302,9 @@ export default function Game() {
               
               // Look for definition lines (multiple patterns)
               if (!foundDefinition) {
-                // Remove grammatical markers like "(countable)", "(uncountable)", "(transitive)" etc. FIRST
-                const cleanLine = line.replace(/^\(.*?\)\s*/, '');
+                // Remove grammatical markers like "(countable)", "(uncountable)", "(transitive)", "(vehicle)" etc.
+                // Remove all parenthetical content at the start of the line
+                let cleanLine = line.replace(/^\(.*?\)\s*/g, '').trim();
                 
                 const isDefinition = (
                   // Pattern 1: "An apple is..." or "A throw is..."
@@ -317,9 +318,11 @@ export default function Game() {
                 );
                 
                 if (isDefinition && cleanLine.length > 10 && cleanLine.length < 200) {
-                  setWordDefinition(cleanLine);
+                  // Remove any remaining parenthetical content from the entire line
+                  const finalDefinition = cleanLine.replace(/\s*\(.*?\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
+                  setWordDefinition(finalDefinition);
                   foundDefinition = true;
-                  console.log(`✅ Found definition in Simple English Wiktionary for "${fetchWord}": ${cleanLine}`);
+                  console.log(`✅ Found definition in Simple English Wiktionary for "${fetchWord}": ${finalDefinition}`);
                   continue;
                 }
               }
