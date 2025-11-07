@@ -135,7 +135,7 @@ export default function Home() {
     <div 
       className="min-h-screen p-4 md:p-8 relative"
       style={{
-        background: 'linear-gradient(135deg, #E9D5FF 0%, #DBEAFE 25%, #FCE7F3 50%, #FEF3C7 75%, #D1FAE5 100%)',
+        background: 'linear-gradient(135deg, #DDD6FE 0%, #BFDBFE 20%, #FBCFE8 40%, #FDE68A 60%, #BBF7D0 80%, #FED7AA 100%)',
       }}
     >
       <div 

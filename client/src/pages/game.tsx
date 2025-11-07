@@ -35,6 +35,14 @@ import appleImage from "@assets/generated_images/Cute_cartoon_apple_illustration
 import bookImage from "@assets/generated_images/Cute_cartoon_book_illustration_43b70df8.png";
 import sunImage from "@assets/generated_images/Cute_cartoon_sun_illustration_9719bf3e.png";
 import houseImage from "@assets/generated_images/Cute_cartoon_house_illustration_d98900ea.png";
+import ballImage from "@assets/generated_images/Colorful_cartoon_ball_illustration_fbcfe401.png";
+import starImage from "@assets/generated_images/Colorful_cartoon_star_illustration_88486c7e.png";
+import treeImage from "@assets/generated_images/Colorful_cartoon_tree_illustration_3579cb03.png";
+import flowerImage from "@assets/generated_images/Colorful_cartoon_flower_illustration_c1abac3a.png";
+import carImage from "@assets/generated_images/Colorful_cartoon_car_illustration_f84f9861.png";
+import heartImage from "@assets/generated_images/Colorful_cartoon_heart_illustration_cc91aacf.png";
+import rainbowImage from "@assets/generated_images/Colorful_cartoon_rainbow_illustration_353f2578.png";
+import balloonImage from "@assets/generated_images/Colorful_cartoon_balloon_illustration_c9942b53.png";
 
 // Import background pattern
 import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
@@ -47,6 +55,14 @@ const WORD_ILLUSTRATIONS: Record<string, string> = {
   "book": bookImage,
   "sun": sunImage,
   "house": houseImage,
+  "ball": ballImage,
+  "star": starImage,
+  "tree": treeImage,
+  "flower": flowerImage,
+  "car": carImage,
+  "heart": heartImage,
+  "rainbow": rainbowImage,
+  "balloon": balloonImage,
 };
 
 interface QuizAnswer {
