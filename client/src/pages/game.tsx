@@ -26,6 +26,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 interface QuizAnswer {
   word: Word;
@@ -60,6 +61,7 @@ export default function Game() {
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [showWordHints, setShowWordHints] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const createSessionMutation = useMutation({
@@ -228,10 +230,10 @@ export default function Game() {
   }, [currentWord, showFeedback, gameMode]);
 
   useEffect(() => {
-    if (currentWord && gameMode === "quiz" && currentWordIndex === 0 && quizAnswers.length === 0) {
+    if (currentWord && gameMode === "quiz") {
       speakWord(currentWord.word);
     }
-  }, [currentWord, gameMode, currentWordIndex, quizAnswers.length]);
+  }, [currentWord, gameMode, currentWordIndex]);
 
   useEffect(() => {
     if (inputRef.current && !showFeedback && gameMode !== "quiz") {
@@ -652,6 +654,23 @@ export default function Game() {
                       </Button>
                     )}
                   </div>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <Label htmlFor="word-hints">Word Length Hints</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Show blank spaces for each letter
+                        </p>
+                      </div>
+                      <Switch
+                        id="word-hints"
+                        checked={showWordHints}
+                        onCheckedChange={setShowWordHints}
+                        data-testid="switch-word-hints"
+                      />
+                    </div>
+                  </div>
                 </div>
               </SheetContent>
             </Sheet>
@@ -705,7 +724,7 @@ export default function Game() {
                       value={userInput}
                       onChange={(e) => setUserInput(e.target.value)}
                       className="text-center text-2xl md:text-4xl h-16 md:h-20 rounded-2xl"
-                      placeholder="Type your answer..."
+                      placeholder={showWordHints && currentWord ? "_ ".repeat(currentWord.word.length).trim() : "Type your answer..."}
                       autoComplete="off"
                       data-testid="input-spelling"
                     />
