@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Sparkles, Trophy, Clock, Target, LogOut, List, ChevronRight, Lock, Globe } from "lucide-react";
+import { BookOpen, Sparkles, Trophy, Clock, Target, LogOut, List, ChevronRight, Lock, Globe, Shuffle } from "lucide-react";
 import type { DifficultyLevel, GameMode } from "@shared/schema";
 import { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -128,6 +128,13 @@ export default function Home() {
       description: "Spell all the words in a list, then see your results",
       icon: Trophy,
       color: "text-purple-600",
+    },
+    {
+      id: "scramble" as GameMode,
+      name: "Word Scramble",
+      description: "Drag and drop letter tiles to unscramble the word",
+      icon: Shuffle,
+      color: "text-green-600",
     },
   ];
 

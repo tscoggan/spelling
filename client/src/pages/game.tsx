@@ -71,6 +71,11 @@ export default function Game() {
   const [loadingDictionary, setLoadingDictionary] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const currentWordRef = useRef<string | null>(null);
+  
+  // Scramble mode states
+  const [scrambledLetters, setScrambledLetters] = useState<string[]>([]);
+  const [placedLetters, setPlacedLetters] = useState<(string | null)[]>([]);
+  const [draggedLetter, setDraggedLetter] = useState<{letter: string; sourceIndex: number} | null>(null);
 
   const createSessionMutation = useMutation({
     mutationFn: async (sessionData: { difficulty: string; gameMode: string; userId: number | null; customListId?: number }) => {
@@ -577,6 +582,34 @@ export default function Game() {
     }
   }, [timeLeft, timerActive, gameMode, gameComplete]);
 
+  // Scramble mode: Initialize scrambled letters when word changes
+  useEffect(() => {
+    if (gameMode === "scramble" && currentWord) {
+      const word = currentWord.word;
+      const letters = word.split('');
+      
+      // Fisher-Yates shuffle algorithm
+      const shuffled = [...letters];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      
+      // Ensure scrambled is different from original (for words with unique letters)
+      let attempts = 0;
+      while (shuffled.join('') === word && attempts < 10) {
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        attempts++;
+      }
+      
+      setScrambledLetters(shuffled);
+      setPlacedLetters(new Array(word.length).fill(null));
+    }
+  }, [gameMode, currentWord, currentWordIndex]);
+
   const handleTimerExpired = () => {
     // Not used in new timed mode
     setGameComplete(true);
@@ -688,6 +721,84 @@ export default function Game() {
       setCurrentWordIndex(currentWordIndex + 1);
     } else {
       setGameComplete(true);
+    }
+  };
+
+  // Scramble mode drag-and-drop handlers
+  const handleDragStart = (letter: string, sourceIndex: number) => {
+    setDraggedLetter({ letter, sourceIndex });
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault(); // Allow drop
+  };
+
+  const handleDrop = (targetIndex: number) => {
+    if (!draggedLetter) return;
+
+    const newPlaced = [...placedLetters];
+    const newScrambled = [...scrambledLetters];
+
+    // If dropping on a filled slot, return the displaced letter to the tray
+    if (newPlaced[targetIndex] !== null) {
+      const displacedLetter = newPlaced[targetIndex]!;
+      // Put displaced letter back in source position before clearing it
+      newScrambled[draggedLetter.sourceIndex] = displacedLetter;
+      newPlaced[targetIndex] = draggedLetter.letter;
+    } else {
+      // Dropping on empty slot - just move the letter
+      newPlaced[targetIndex] = draggedLetter.letter;
+      newScrambled[draggedLetter.sourceIndex] = '';
+    }
+
+    setPlacedLetters(newPlaced);
+    setScrambledLetters(newScrambled);
+    setDraggedLetter(null);
+  };
+
+  const handleRemoveLetter = (targetIndex: number) => {
+    if (placedLetters[targetIndex] === null) return;
+
+    const letter = placedLetters[targetIndex]!;
+    const newPlaced = [...placedLetters];
+    const newScrambled = [...scrambledLetters];
+
+    // Find first empty spot in scrambled letters
+    const emptyIndex = newScrambled.findIndex(l => l === '');
+    if (emptyIndex !== -1) {
+      newScrambled[emptyIndex] = letter;
+    }
+
+    newPlaced[targetIndex] = null;
+    setPlacedLetters(newPlaced);
+    setScrambledLetters(newScrambled);
+  };
+
+  const handleScrambleSubmit = () => {
+    if (!currentWord) return;
+
+    // Check if all letters are placed
+    if (placedLetters.some(l => l === null)) {
+      return; // Not all letters placed
+    }
+
+    const userAnswer = placedLetters.join('');
+    const correct = userAnswer.toLowerCase() === currentWord.word.toLowerCase();
+
+    setIsCorrect(correct);
+    setShowFeedback(true);
+
+    if (correct) {
+      const points = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : difficulty === "custom" ? 20 : 30;
+      setScore(score + points + (streak * 5));
+      setCorrectCount(correctCount + 1);
+      const newStreak = streak + 1;
+      setStreak(newStreak);
+      if (newStreak > bestStreak) {
+        setBestStreak(newStreak);
+      }
+    } else {
+      setStreak(0);
     }
   };
 
@@ -989,7 +1100,7 @@ export default function Game() {
                 Word {currentWordIndex + 1} of {words.length}
               </span>
               <span className="text-gray-800 capitalize" data-testid="text-difficulty">
-                {difficulty} - {gameMode === "standard" ? "Standard" : gameMode === "timed" ? "Timed" : "Quiz"}
+                {difficulty} - {gameMode === "standard" ? "Standard" : gameMode === "timed" ? "Timed" : gameMode === "quiz" ? "Quiz" : "Word Scramble"}
               </span>
             </div>
             <Progress value={progress} className="h-3" data-testid="progress-game" />
@@ -1006,7 +1117,7 @@ export default function Game() {
                 <Card className="p-6 md:p-12 space-y-8 bg-white">
                   <div className="text-center space-y-6">
                     <h2 className="text-2xl md:text-3xl font-bold text-gray-800" data-testid="text-instruction">
-                      {gameMode === "quiz" ? "Spell the word" : "Listen and spell the word"}
+                      {gameMode === "quiz" ? "Spell the word" : gameMode === "scramble" ? "Unscramble the letters" : "Listen and spell the word"}
                     </h2>
                     
                     {currentWord && wordIllustrations && (() => {
@@ -1045,8 +1156,59 @@ export default function Game() {
                     </Button>
                   </div>
 
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    {showWordHints && currentWord ? (
+                  <form onSubmit={gameMode === "scramble" ? (e) => { e.preventDefault(); handleScrambleSubmit(); } : handleSubmit} className="space-y-6">
+                    {gameMode === "scramble" && currentWord ? (
+                      <div className="space-y-8">
+                        {/* Drop zones - blank spaces to place letters */}
+                        <div className="flex items-center justify-center gap-2 md:gap-3 flex-wrap">
+                          {placedLetters.map((letter, index) => (
+                            <div
+                              key={`target-${index}`}
+                              className="relative"
+                              onDragOver={handleDragOver}
+                              onDrop={() => handleDrop(index)}
+                            >
+                              <div
+                                className="w-12 h-16 md:w-16 md:h-20 rounded-xl border-2 border-dashed border-primary bg-purple-50 flex items-center justify-center cursor-pointer hover-elevate active-elevate-2"
+                                data-testid={`drop-zone-${index}`}
+                                onClick={() => handleRemoveLetter(index)}
+                              >
+                                {letter ? (
+                                  <span className="text-2xl md:text-4xl font-bold text-gray-800">
+                                    {letter}
+                                  </span>
+                                ) : (
+                                  <div className="w-6 md:w-8 h-0.5 bg-gray-400"></div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Draggable letter tiles */}
+                        <div className="flex items-center justify-center gap-2 md:gap-3 flex-wrap">
+                          {scrambledLetters.map((letter, index) => (
+                            letter && (
+                              <div
+                                key={`source-${index}`}
+                                draggable
+                                onDragStart={() => handleDragStart(letter, index)}
+                                className="w-12 h-16 md:w-16 md:h-20 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-lg flex items-center justify-center cursor-move hover-elevate active-elevate-2 touch-none"
+                                data-testid={`letter-tile-${index}`}
+                              >
+                                <span className="text-2xl md:text-4xl font-bold text-gray-800 select-none">
+                                  {letter}
+                                </span>
+                              </div>
+                            )
+                          ))}
+                        </div>
+
+                        <div className="text-center text-sm text-gray-600">
+                          Drag the yellow tiles to the blank spaces above
+                        </div>
+                      </div>
+                    ) : showWordHints && currentWord ? (
                       <div className="relative">
                         <Input
                           ref={inputRef}
@@ -1088,26 +1250,28 @@ export default function Game() {
                     
                     <div className="space-y-3">
                       <div className="flex flex-col sm:flex-row gap-3">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="lg"
-                          className="flex-1 text-lg h-12 md:h-14"
-                          onClick={(e) => {
-                            if (currentWord) {
-                              speakWithRefocus(currentWord.word, e.currentTarget);
-                            }
-                          }}
-                          data-testid="button-repeat"
-                        >
-                          <Volume2 className="w-5 h-5 mr-2" />
-                          Repeat
-                        </Button>
+                        {gameMode !== "scramble" && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="lg"
+                            className="flex-1 text-lg h-12 md:h-14"
+                            onClick={(e) => {
+                              if (currentWord) {
+                                speakWithRefocus(currentWord.word, e.currentTarget);
+                              }
+                            }}
+                            data-testid="button-repeat"
+                          >
+                            <Volume2 className="w-5 h-5 mr-2" />
+                            Repeat
+                          </Button>
+                        )}
                         <Button
                           type="submit"
                           size="lg"
-                          className="flex-1 text-lg h-12 md:h-14"
-                          disabled={!userInput.trim()}
+                          className={`${gameMode === "scramble" ? "w-full" : "flex-1"} text-lg h-12 md:h-14`}
+                          disabled={gameMode === "scramble" ? placedLetters.some(l => l === null) : !userInput.trim()}
                           data-testid="button-submit"
                         >
                           {gameMode === "quiz" ? "Submit" : "Check"}
