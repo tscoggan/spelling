@@ -11,6 +11,18 @@ Spelling Champions is an interactive and engaging educational app designed to he
 - Ask before making major changes.
 - I prefer detailed explanations.
 
+## Recent Fixes & Testing
+
+### iPad Button Accessibility Fix
+- **Issue**: On iPad devices, the "Update List" button in the word list edit dialog was not clickable due to scroll container interference with touch events.
+- **Solution**: Restructured dialog layout to separate scrollable form content (`max-h-[60vh] overflow-y-auto`) from fixed button footer. This ensures buttons remain visible and tappable on all touch devices.
+- **Status**: Verified working via automated end-to-end test on 768x1024 iPad viewport.
+
+### Test Infrastructure
+- **Test User Credentials**: Username "tgs4", Password "test123" (configured for automated testing with properly hashed password in development database)
+- **Camera Icon**: Used throughout image editing UI to represent image-related features (replaced previous sparkle icons)
+- **Practice Mode Scoring**: Practice mode correctly excludes score saving to leaderboard (only Standard, Timed Challenge, Quiz, and Word Scramble modes save scores)
+
 ## System Architecture
 
 ### UI/UX Decisions
