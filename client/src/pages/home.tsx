@@ -39,6 +39,7 @@ export default function Home() {
   const [wordListDialogOpen, setWordListDialogOpen] = useState(false);
   const [filterDifficulty, setFilterDifficulty] = useState<string>("all");
   const [filterGradeLevel, setFilterGradeLevel] = useState<string>("all");
+  const [quizWordCount, setQuizWordCount] = useState<"10" | "all">("10");
 
   const { data: customLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists"],
@@ -58,13 +59,15 @@ export default function Home() {
     setSelectedMode(mode);
     setFilterDifficulty("all");
     setFilterGradeLevel("all");
+    setQuizWordCount("10");
     setWordListDialogOpen(true);
   };
 
   const startGameWithCustomList = (list: CustomWordList) => {
     if (!selectedMode) return;
     setWordListDialogOpen(false);
-    setLocation(`/game?listId=${list.id}&difficulty=${list.difficulty}&mode=${selectedMode}`);
+    const quizParam = selectedMode === "quiz" ? `&quizCount=${quizWordCount}` : "";
+    setLocation(`/game?listId=${list.id}&difficulty=${list.difficulty}&mode=${selectedMode}${quizParam}`);
   };
 
   const allLists = useMemo(() => {
@@ -248,6 +251,32 @@ export default function Home() {
               Select a word list to start playing
             </DialogDescription>
           </DialogHeader>
+
+          {selectedMode === "quiz" && (
+            <div className="mb-4 p-3 bg-purple-50 rounded-md border border-purple-200">
+              <label className="text-sm font-medium mb-2 block">Quiz Length</label>
+              <div className="flex gap-3">
+                <Button
+                  variant={quizWordCount === "10" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setQuizWordCount("10")}
+                  data-testid="button-quiz-10"
+                  className="flex-1"
+                >
+                  10 Words
+                </Button>
+                <Button
+                  variant={quizWordCount === "all" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setQuizWordCount("all")}
+                  data-testid="button-quiz-all"
+                  className="flex-1"
+                >
+                  All Words
+                </Button>
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-3 mb-4">
             <div className="flex-1">

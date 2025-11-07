@@ -41,6 +41,7 @@ export default function Game() {
   const difficulty = params.get("difficulty") as DifficultyLevel;
   const gameMode = (params.get("mode") || "standard") as GameMode;
   const listId = params.get("listId");
+  const quizCount = params.get("quizCount") || "10";
   
   const [userInput, setUserInput] = useState("");
   const [showFeedback, setShowFeedback] = useState(false);
@@ -79,17 +80,24 @@ export default function Game() {
   });
 
   const { data: words, isLoading } = useQuery<Word[]>({
-    queryKey: listId ? [`/api/word-lists/${listId}`] : [`/api/words/${difficulty}`, { limit: 10 }],
+    queryKey: listId ? ['/api/word-lists', listId, { quizCount }] : ['/api/words', difficulty, { limit: 10 }],
     queryFn: async () => {
       if (listId) {
         const response = await fetch(`/api/word-lists/${listId}`);
         if (!response.ok) throw new Error('Failed to fetch custom word list');
         const listData = await response.json();
-        return listData.words.map((word: string, index: number) => ({
+        let wordsArray = listData.words.map((word: string, index: number) => ({
           id: index + 1,
           word,
           difficulty: 'custom' as DifficultyLevel,
         }));
+        
+        // For quiz mode, limit to 10 words if quizCount is "10"
+        if (gameMode === "quiz" && quizCount === "10") {
+          wordsArray = wordsArray.slice(0, 10);
+        }
+        
+        return wordsArray;
       } else {
         const response = await fetch(`/api/words/${difficulty}?limit=10`);
         if (!response.ok) throw new Error('Failed to fetch words');
@@ -239,7 +247,7 @@ export default function Game() {
 
   useEffect(() => {
     if (gameComplete && !scoreSaved && sessionId && user) {
-      const totalWords = gameMode === "quiz" ? 10 : (words?.length || 10);
+      const totalWords = words?.length || 10;
       const accuracy = Math.round((correctCount / totalWords) * 100);
       
       console.log("Saving score to leaderboard:", { score, accuracy, difficulty, gameMode, sessionId });
@@ -311,7 +319,7 @@ export default function Game() {
       
       setUserInput("");
       
-      if (currentWordIndex < 9) {
+      if (currentWordIndex < (words?.length || 10) - 1) {
         setCurrentWordIndex(currentWordIndex + 1);
       } else {
         const allAnswers = [...quizAnswers, { word: currentWord, userAnswer: userInput.trim(), isCorrect: correct }];
@@ -415,7 +423,7 @@ export default function Game() {
     // For timed mode, count words attempted (current index + 1)
     const totalWords = gameMode === "timed" 
       ? (currentWordIndex + 1) 
-      : (gameMode === "quiz" ? 10 : (words?.length || 10));
+      : (words?.length || 10);
     const accuracy = totalWords > 0 ? Math.round((correctCount / totalWords) * 100) : 0;
     
     return (
@@ -464,7 +472,7 @@ export default function Game() {
                   <span className="font-bold text-gray-900">{totalWords}</span> words correctly in 60 seconds!</>
                 ) : (
                   <>You spelled <span className="font-bold text-gray-900" data-testid="text-correct-count">{correctCount}</span> out of{" "}
-                  <span className="font-bold text-gray-900">{gameMode === "quiz" ? 10 : words?.length}</span> words correctly!</>
+                  <span className="font-bold text-gray-900">{words?.length}</span> words correctly!</>
                 )}
               </p>
               {bestStreak > 2 && (
@@ -666,7 +674,7 @@ export default function Game() {
           </div>
 
           <AnimatePresence mode="wait">
-            {gameMode === "quiz" || (!showFeedback && gameMode !== "quiz") ? (
+            {gameMode === "quiz" || !showFeedback ? (
               <motion.div
                 key="input"
                 initial={{ opacity: 0, y: 20 }}
