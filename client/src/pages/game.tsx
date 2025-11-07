@@ -295,25 +295,45 @@ export default function Game() {
                 continue;
               }
               
-              // Look for definition lines (start with countable/uncountable or are descriptive sentences)
-              if (!foundDefinition && line.includes(' is ') && !line.startsWith('I ') && !line.startsWith('The ')) {
-                // Remove any grammatical markers like "(countable)" or "(uncountable)"
-                const cleanDefinition = line.replace(/^\(.*?\)\s*/, '');
-                setWordDefinition(cleanDefinition);
-                foundDefinition = true;
-                console.log(`✅ Found definition in Simple English Wiktionary for "${fetchWord}": ${cleanDefinition}`);
-                continue;
+              // Look for definition lines (multiple patterns)
+              if (!foundDefinition) {
+                const isDefinition = (
+                  // Pattern 1: "An apple is..." or "A throw is..."
+                  (line.includes(' is ') && !line.startsWith('I ') && !line.startsWith('The ')) ||
+                  // Pattern 2: "When you throw..." (verb definitions)
+                  line.startsWith('When you ') ||
+                  // Pattern 3: "If you throw..." (verb definitions)
+                  line.startsWith('If you ') ||
+                  // Pattern 4: "To throw..." (infinitive verb definitions)
+                  line.startsWith('To ' + fetchWord)
+                );
+                
+                if (isDefinition && line.length > 10 && line.length < 200) {
+                  // Remove any grammatical markers like "(countable)" or "(uncountable)"
+                  const cleanDefinition = line.replace(/^\(.*?\)\s*/, '');
+                  setWordDefinition(cleanDefinition);
+                  foundDefinition = true;
+                  console.log(`✅ Found definition in Simple English Wiktionary for "${fetchWord}": ${cleanDefinition}`);
+                  continue;
+                }
               }
               
-              // Look for example sentences (usually start with "I ", "The ", etc. and end with period)
-              if (foundDefinition && !foundExample && line.match(/^[A-Z].*\.$/) && line.length < 150) {
-                // Skip lines that look like definitions or related words
-                if (!line.startsWith('Related') && !line.startsWith('an apple') && 
-                    line.toLowerCase().includes(fetchWord)) {
+              // Look for example sentences (must contain the word and be a complete sentence)
+              if (!foundExample && line.match(/^[A-Z].*\.$/) && line.length > 10 && line.length < 150) {
+                // Must contain the target word and not be a definition-like line
+                if (line.toLowerCase().includes(fetchWord) && 
+                    !line.startsWith('Related') && 
+                    !line.startsWith('When you') &&
+                    !line.startsWith('If you') &&
+                    !line.startsWith('To ')) {
                   setWordExample(line);
                   foundExample = true;
                   console.log(`✅ Found example in Simple English Wiktionary for "${fetchWord}": ${line}`);
-                  break;
+                  
+                  // If we also found a definition, we're done
+                  if (foundDefinition) {
+                    break;
+                  }
                 }
               }
             }
