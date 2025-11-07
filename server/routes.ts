@@ -281,6 +281,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Word and imageUrl are required" });
       }
 
+      // Security: Validate that imageUrl is from Pixabay domain only
+      try {
+        const url = new URL(imageUrl);
+        const allowedDomains = ['pixabay.com', 'cdn.pixabay.com'];
+        const isValidDomain = allowedDomains.some(domain => 
+          url.hostname === domain || url.hostname.endsWith(`.${domain}`)
+        );
+        
+        if (!isValidDomain || url.protocol !== 'https:') {
+          return res.status(400).json({ 
+            error: "Invalid image URL - must be HTTPS from pixabay.com" 
+          });
+        }
+      } catch (e) {
+        return res.status(400).json({ error: "Invalid URL format" });
+      }
+
       const { PixabayService } = await import("./services/pixabay");
       const pixabayService = new PixabayService();
       

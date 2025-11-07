@@ -71,6 +71,7 @@ export default function Game() {
   const [loadingDictionary, setLoadingDictionary] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const currentWordRef = useRef<string | null>(null);
+  const nextButtonRef = useRef<HTMLButtonElement>(null);
   
   // Scramble mode states
   const [scrambledLetters, setScrambledLetters] = useState<string[]>([]);
@@ -543,6 +544,22 @@ export default function Game() {
       });
     }
   }, [currentWord, gameMode, currentWordIndex]);
+
+  // Auto-focus Next Word button when feedback appears in Practice mode
+  useEffect(() => {
+    if (showFeedback && gameMode === "standard") {
+      const focusButton = () => {
+        if (nextButtonRef.current) {
+          nextButtonRef.current.focus();
+        }
+      };
+
+      // Multiple focus attempts to handle animation timing
+      setTimeout(focusButton, 100);
+      setTimeout(focusButton, 300);
+      setTimeout(focusButton, 500);
+    }
+  }, [showFeedback, gameMode]);
 
   useEffect(() => {
     if (gameComplete && !scoreSaved && sessionId && user) {
@@ -1360,6 +1377,7 @@ export default function Game() {
 
                   <div className="flex gap-4 flex-col sm:flex-row">
                     <Button
+                      ref={nextButtonRef}
                       variant="default"
                       size="lg"
                       className="flex-1 text-lg h-12 md:h-14"
