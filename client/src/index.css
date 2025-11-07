@@ -76,12 +76,12 @@
   --chart-4: 200 90% 50%;
   --chart-5: 10 95% 55%;
 
-  /* Page-specific bright solid backgrounds for crayon aesthetic */
-  --page-home-bg: 204 96% 75%;
-  --page-game-bg: 48 100% 70%;
-  --page-wordlists-bg: 150 80% 75%;
-  --page-leaderboard-bg: 25 100% 75%;
-  --page-auth-bg: 270 70% 80%;
+  /* Page-specific white backgrounds with decorative art overlay */
+  --page-home-bg: 0 0% 100%;
+  --page-game-bg: 0 0% 100%;
+  --page-wordlists-bg: 0 0% 100%;
+  --page-leaderboard-bg: 0 0% 100%;
+  --page-auth-bg: 0 0% 100%;
 
   --font-sans: Nunito, system-ui, -apple-system, sans-serif;
   --font-serif: Georgia, serif;
