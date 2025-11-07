@@ -833,7 +833,6 @@ export default function Game() {
 
   // Touch event handlers for mobile devices
   const handleTouchStart = (e: React.TouchEvent, letter: string, sourceIndex: number) => {
-    e.preventDefault();
     const touch = e.touches[0];
     setTouchDragging(true);
     setTouchPosition({ x: touch.clientX, y: touch.clientY });
@@ -843,7 +842,6 @@ export default function Game() {
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!touchDragging) return;
-    e.preventDefault();
     const touch = e.touches[0];
     setTouchPosition({ x: touch.clientX, y: touch.clientY });
   };
@@ -856,7 +854,6 @@ export default function Game() {
       return;
     }
 
-    e.preventDefault();
     const touch = e.changedTouches[0];
     
     // Find which drop zone the touch ended over
