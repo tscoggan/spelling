@@ -235,6 +235,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/word-illustrations", async (req, res) => {
+    try {
+      const illustrations = await storage.getAllWordIllustrations();
+      res.json(illustrations);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch word illustrations" });
+    }
+  });
+
+  app.get("/api/word-illustrations/:word", async (req, res) => {
+    try {
+      const word = req.params.word.toLowerCase();
+      const illustration = await storage.getWordIllustration(word);
+      
+      if (!illustration) {
+        return res.status(404).json({ error: "Illustration not found for this word" });
+      }
+      
+      res.json(illustration);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch word illustration" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

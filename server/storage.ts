@@ -12,12 +12,15 @@ import {
   type InsertLeaderboardScore,
   type CustomWordList,
   type InsertCustomWordList,
+  type WordIllustration,
+  type InsertWordIllustration,
   words,
   gameSessions,
   users,
   wordAttempts,
   leaderboardScores,
   customWordLists,
+  wordIllustrations,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -54,6 +57,10 @@ export interface IStorage {
   getPublicCustomWordLists(): Promise<CustomWordList[]>;
   updateCustomWordList(id: number, updates: Partial<InsertCustomWordList>): Promise<CustomWordList | undefined>;
   deleteCustomWordList(id: number): Promise<boolean>;
+  
+  createWordIllustration(illustration: InsertWordIllustration): Promise<WordIllustration>;
+  getWordIllustration(word: string): Promise<WordIllustration | undefined>;
+  getAllWordIllustrations(): Promise<WordIllustration[]>;
   
   sessionStore: session.Store;
 }
@@ -344,6 +351,40 @@ export class DatabaseStorage implements IStorage {
   async deleteCustomWordList(id: number): Promise<boolean> {
     const result = await db.delete(customWordLists).where(eq(customWordLists.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async createWordIllustration(illustration: InsertWordIllustration): Promise<WordIllustration> {
+    const [existingIllustration] = await db
+      .select()
+      .from(wordIllustrations)
+      .where(eq(wordIllustrations.word, illustration.word.toLowerCase()));
+    
+    if (existingIllustration) {
+      return existingIllustration;
+    }
+    
+    const [newIllustration] = await db
+      .insert(wordIllustrations)
+      .values({
+        word: illustration.word.toLowerCase(),
+        imagePath: illustration.imagePath,
+      })
+      .returning();
+    
+    return newIllustration;
+  }
+
+  async getWordIllustration(word: string): Promise<WordIllustration | undefined> {
+    const [illustration] = await db
+      .select()
+      .from(wordIllustrations)
+      .where(eq(wordIllustrations.word, word.toLowerCase()));
+    
+    return illustration || undefined;
+  }
+
+  async getAllWordIllustrations(): Promise<WordIllustration[]> {
+    return await db.select().from(wordIllustrations);
   }
 }
 
