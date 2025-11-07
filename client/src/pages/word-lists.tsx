@@ -292,7 +292,7 @@ export default function WordListsPage() {
     });
   }, [userLists, publicLists]);
 
-  const renderWordList = (list: CustomWordList, canEdit: boolean) => (
+  const renderWordList = (list: any, canEdit: boolean) => (
     <Card key={list.id} className="hover-elevate" data-testid={`card-word-list-${list.id}`}>
       <CardHeader>
         <div className="flex items-start justify-between">
@@ -306,6 +306,9 @@ export default function WordListsPage() {
               )}
             </CardTitle>
             <div className="mt-2 flex items-center gap-4 text-sm text-gray-600">
+              <span data-testid={`author-${list.id}`}>
+                by <span className="font-semibold">{list.authorUsername || 'Unknown'}</span>
+              </span>
               <span>{list.words.length} words</span>
               <span 
                 className={`px-2 py-0.5 rounded-md font-medium ${

@@ -342,16 +342,40 @@ export class DatabaseStorage implements IStorage {
     return wordList || undefined;
   }
 
-  async getUserCustomWordLists(userId: number): Promise<CustomWordList[]> {
-    return await db.select()
+  async getUserCustomWordLists(userId: number): Promise<any[]> {
+    return await db
+      .select({
+        id: customWordLists.id,
+        userId: customWordLists.userId,
+        name: customWordLists.name,
+        difficulty: customWordLists.difficulty,
+        words: customWordLists.words,
+        isPublic: customWordLists.isPublic,
+        gradeLevel: customWordLists.gradeLevel,
+        createdAt: customWordLists.createdAt,
+        authorUsername: users.username,
+      })
       .from(customWordLists)
+      .leftJoin(users, eq(customWordLists.userId, users.id))
       .where(eq(customWordLists.userId, userId))
       .orderBy(desc(customWordLists.createdAt));
   }
 
-  async getPublicCustomWordLists(): Promise<CustomWordList[]> {
-    return await db.select()
+  async getPublicCustomWordLists(): Promise<any[]> {
+    return await db
+      .select({
+        id: customWordLists.id,
+        userId: customWordLists.userId,
+        name: customWordLists.name,
+        difficulty: customWordLists.difficulty,
+        words: customWordLists.words,
+        isPublic: customWordLists.isPublic,
+        gradeLevel: customWordLists.gradeLevel,
+        createdAt: customWordLists.createdAt,
+        authorUsername: users.username,
+      })
       .from(customWordLists)
+      .leftJoin(users, eq(customWordLists.userId, users.id))
       .where(eq(customWordLists.isPublic, true))
       .orderBy(desc(customWordLists.createdAt));
   }
