@@ -158,6 +158,7 @@ export default function WordListsPage() {
 
   useEffect(() => {
     if (jobStatus?.status === 'completed' && jobId) {
+      queryClient.invalidateQueries({ queryKey: ["/api/word-illustrations"] });
       toast({
         title: "Image Search Complete!",
         description: `Found ${jobStatus.successCount} cartoon images for your words`,

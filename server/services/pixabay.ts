@@ -61,8 +61,25 @@ export class PixabayService {
         return null;
       }
 
-      const image = data.hits[0];
-      const imageUrl = image.largeImageURL || image.webformatURL;
+      const wordLower = word.toLowerCase();
+      let selectedImage: PixabayImage | null = null;
+
+      for (const hit of data.hits) {
+        const tagsLower = hit.tags.toLowerCase();
+        if (tagsLower.includes(wordLower)) {
+          selectedImage = hit;
+          console.log(`✅ Found matching image for "${word}": ${hit.tags} (ID: ${hit.id})`);
+          break;
+        }
+      }
+
+      if (!selectedImage) {
+        selectedImage = data.hits[0];
+        console.log(`⚠️ No exact match for "${word}", using first result: ${selectedImage.tags} (ID: ${selectedImage.id})`);
+      }
+
+      const imageUrl = selectedImage.largeImageURL || selectedImage.webformatURL;
+      console.log(`🔗 Image URL: ${imageUrl}`);
       
       const downloadedPath = await this.downloadImage(imageUrl, word);
       return downloadedPath;
