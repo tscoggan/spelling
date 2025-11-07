@@ -59,9 +59,12 @@ export default function Leaderboard() {
             className="flex items-center gap-4"
           >
             <Trophy className="w-12 h-12 text-purple-600" />
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-800 font-crayon">
-              Leaderboard
-            </h1>
+            <div>
+              <h1 className="text-4xl md:text-5xl font-bold text-gray-800 font-crayon">
+                Leaderboard
+              </h1>
+              <p className="text-lg text-gray-600 mt-1">Top 10 Champions</p>
+            </div>
           </motion.div>
           <Button
             variant="outline"

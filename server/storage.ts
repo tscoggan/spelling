@@ -265,6 +265,22 @@ export class DatabaseStorage implements IStorage {
 
   async createLeaderboardScore(insertScore: InsertLeaderboardScore): Promise<LeaderboardScore> {
     const [score] = await db.insert(leaderboardScores).values(insertScore).returning();
+    
+    // Keep only top 10 scores - delete all scores outside the top 10
+    const topScores = await db
+      .select({ id: leaderboardScores.id })
+      .from(leaderboardScores)
+      .orderBy(desc(leaderboardScores.score))
+      .limit(10);
+    
+    const topScoreIds = topScores.map(s => s.id);
+    
+    if (topScoreIds.length > 0) {
+      await db
+        .delete(leaderboardScores)
+        .where(sql`${leaderboardScores.id} NOT IN (${sql.join(topScoreIds.map(id => sql`${id}`), sql`, `)})`);
+    }
+    
     return score;
   }
 

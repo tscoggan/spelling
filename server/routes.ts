@@ -87,7 +87,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const difficulty = req.query.difficulty as DifficultyLevel | undefined;
       const gameMode = req.query.gameMode as string | undefined;
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      const limit = 10; // Always show top 10 only
       
       const scores = await storage.getTopScores(difficulty, gameMode, limit);
       res.json(scores);
