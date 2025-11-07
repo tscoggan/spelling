@@ -332,15 +332,40 @@ export default function Game() {
     return templates[randomIndex];
   };
 
-  const speakDefinition = () => {
+  const speakWithRefocus = (text: string, buttonElement?: HTMLElement) => {
+    if (!text) return;
+    
+    // Blur the button immediately to allow focus elsewhere
+    if (buttonElement) {
+      buttonElement.blur();
+    }
+    
+    speakWord(text, () => {
+      // Focus after TTS completes
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      }, 150);
+    });
+    
+    // Also focus immediately as backup (in case TTS callback fails)
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 200);
+  };
+
+  const speakDefinition = (e?: React.MouseEvent<HTMLButtonElement>) => {
     if (wordDefinition && currentWord) {
-      speakWord(wordDefinition);
+      speakWithRefocus(wordDefinition, e?.currentTarget);
     }
   };
 
-  const speakExample = () => {
+  const speakExample = (e?: React.MouseEvent<HTMLButtonElement>) => {
     if (wordExample && currentWord) {
-      speakWord(wordExample);
+      speakWithRefocus(wordExample, e?.currentTarget);
     }
   };
 
@@ -863,24 +888,7 @@ export default function Game() {
                       className="w-20 h-20 md:w-24 md:h-24 rounded-full p-0"
                       onClick={(e) => {
                         if (currentWord) {
-                          // Blur the button immediately to allow focus elsewhere
-                          (e.target as HTMLButtonElement).blur();
-                          
-                          speakWord(currentWord.word, () => {
-                            // Focus after TTS completes
-                            setTimeout(() => {
-                              if (inputRef.current) {
-                                inputRef.current.focus();
-                              }
-                            }, 150);
-                          });
-                          
-                          // Also focus immediately as backup (in case TTS callback fails)
-                          setTimeout(() => {
-                            if (inputRef.current) {
-                              inputRef.current.focus();
-                            }
-                          }, 200);
+                          speakWithRefocus(currentWord.word, e.currentTarget);
                         }
                       }}
                       data-testid="button-play-audio"
@@ -939,24 +947,7 @@ export default function Game() {
                           className="flex-1 text-lg h-12 md:h-14"
                           onClick={(e) => {
                             if (currentWord) {
-                              // Blur the button immediately to allow focus elsewhere
-                              (e.target as HTMLButtonElement).blur();
-                              
-                              speakWord(currentWord.word, () => {
-                                // Focus after TTS completes
-                                setTimeout(() => {
-                                  if (inputRef.current) {
-                                    inputRef.current.focus();
-                                  }
-                                }, 150);
-                              });
-                              
-                              // Also focus immediately as backup (in case TTS callback fails)
-                              setTimeout(() => {
-                                if (inputRef.current) {
-                                  inputRef.current.focus();
-                                }
-                              }, 200);
+                              speakWithRefocus(currentWord.word, e.currentTarget);
                             }
                           }}
                           data-testid="button-repeat"
