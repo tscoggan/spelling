@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import titleBanner from "@assets/generated_images/Hand-drawn_crayon_Spelling_Champions_text_fc50a8a9.png";
+import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
 
 interface CustomWordList {
   id: number;
@@ -131,12 +132,22 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 p-4 md:p-8">
+    <div 
+      className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 p-4 md:p-8 relative"
+      style={{
+        backgroundImage: `url(${schoolPattern})`,
+        backgroundSize: '400px 400px',
+        backgroundRepeat: 'repeat',
+        backgroundPosition: 'center',
+        backgroundBlendMode: 'soft-light'
+      }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-50/90 via-blue-50/90 to-pink-50/90"></div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="max-w-6xl mx-auto"
+        className="max-w-6xl mx-auto relative z-10"
       >
         <div className="flex justify-end mb-6">
           <Card className="px-6 py-3">

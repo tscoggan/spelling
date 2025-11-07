@@ -36,6 +36,9 @@ import bookImage from "@assets/generated_images/Cute_cartoon_book_illustration_4
 import sunImage from "@assets/generated_images/Cute_cartoon_sun_illustration_9719bf3e.png";
 import houseImage from "@assets/generated_images/Cute_cartoon_house_illustration_d98900ea.png";
 
+// Import background pattern
+import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
+
 // Mapping of simple kid-friendly words to their cartoon illustrations
 const WORD_ILLUSTRATIONS: Record<string, string> = {
   "cat": catImage,
@@ -762,8 +765,18 @@ export default function Game() {
   const progress = ((currentWordIndex + 1) / words.length) * 100;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 flex flex-col">
-      <header className="p-4 md:p-6 bg-white/80 backdrop-blur-sm border-b border-gray-200">
+    <div 
+      className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 flex flex-col relative"
+      style={{
+        backgroundImage: `url(${schoolPattern})`,
+        backgroundSize: '400px 400px',
+        backgroundRepeat: 'repeat',
+        backgroundPosition: 'center',
+        backgroundBlendMode: 'soft-light'
+      }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-50/90 via-blue-50/90 to-pink-50/90"></div>
+      <header className="p-4 md:p-6 bg-white/80 backdrop-blur-sm border-b border-gray-200 relative z-10">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 flex-wrap">
           <Button
             variant="outline"
@@ -872,7 +885,7 @@ export default function Game() {
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center p-4 md:p-6">
+      <main className="flex-1 flex items-center justify-center p-4 md:p-6 relative z-10">
         <div className="w-full max-w-3xl space-y-6">
           <div className="space-y-4">
             <div className="flex items-center justify-between text-base md:text-lg font-semibold">
