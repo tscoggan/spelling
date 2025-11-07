@@ -588,6 +588,8 @@ export default function Game() {
       const word = currentWord.word;
       const letters = word.split('');
       
+      console.log(`🔄 Initializing scramble for word: "${word}"`, letters);
+      
       // Fisher-Yates shuffle algorithm
       const shuffled = [...letters];
       for (let i = shuffled.length - 1; i > 0; i--) {
@@ -605,6 +607,7 @@ export default function Game() {
         attempts++;
       }
       
+      console.log(`✅ Scrambled letters:`, shuffled, `Placed letters initialized to:`, new Array(word.length).fill(null));
       setScrambledLetters(shuffled);
       setPlacedLetters(new Array(word.length).fill(null));
     }
