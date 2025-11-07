@@ -3,11 +3,13 @@ import { illustrationJobs, illustrationJobItems, wordIllustrations, customWordLi
 import { eq } from 'drizzle-orm';
 import { PixabayService } from './pixabay';
 
+const pixabayServiceInstance = new PixabayService();
+
 export class IllustrationJobService {
   private pixabayService: PixabayService;
 
   constructor() {
-    this.pixabayService = new PixabayService();
+    this.pixabayService = pixabayServiceInstance;
   }
 
   async createJob(wordListId: number): Promise<number> {
@@ -155,10 +157,7 @@ export class IllustrationJobService {
       await db
         .update(illustrationJobs)
         .set({
-          processedWords: db.$count(
-            db.select().from(illustrationJobItems)
-              .where(eq(illustrationJobItems.jobId, jobId))
-          ),
+          processedWords: successCount + failureCount,
           successCount,
           failureCount,
         })
