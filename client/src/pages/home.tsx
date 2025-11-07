@@ -204,7 +204,7 @@ export default function Home() {
 
         <div className="text-center mb-8 md:mb-12">
           <motion.div
-            className="mb-4 flex justify-center"
+            className="mb-4 flex justify-center overflow-hidden"
             initial={{ scale: 0.9 }}
             animate={{ scale: 1 }}
             transition={{ duration: 0.3 }}
@@ -212,7 +212,8 @@ export default function Home() {
             <img 
               src={titleBanner} 
               alt="Spelling Champions" 
-              className="w-full max-w-2xl h-auto"
+              className="w-full max-w-2xl h-auto scale-125"
+              style={{ margin: '-5% 0' }}
               data-testid="img-title-banner"
             />
           </motion.div>
