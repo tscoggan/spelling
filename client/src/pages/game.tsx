@@ -766,16 +766,20 @@ export default function Game() {
 
   return (
     <div 
-      className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 flex flex-col relative"
+      className="min-h-screen flex flex-col relative"
       style={{
-        backgroundImage: `url(${schoolPattern})`,
-        backgroundSize: '400px 400px',
-        backgroundRepeat: 'repeat',
-        backgroundPosition: 'center',
-        backgroundBlendMode: 'soft-light'
+        background: 'linear-gradient(135deg, #E9D5FF 0%, #DBEAFE 25%, #FCE7F3 50%, #FEF3C7 75%, #D1FAE5 100%)',
       }}
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-50/90 via-blue-50/90 to-pink-50/90"></div>
+      <div 
+        className="absolute inset-0 opacity-30"
+        style={{
+          backgroundImage: `url(${schoolPattern})`,
+          backgroundSize: '300px 300px',
+          backgroundRepeat: 'repeat',
+          backgroundPosition: 'center',
+        }}
+      ></div>
       <header className="p-4 md:p-6 bg-white/80 backdrop-blur-sm border-b border-gray-200 relative z-10">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 flex-wrap">
           <Button

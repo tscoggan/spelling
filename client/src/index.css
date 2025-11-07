@@ -355,3 +355,14 @@
     inset: -1px;
   }
 }
+
+/* Kid-friendly crayon-style font for all buttons */
+@layer components {
+  button,
+  .btn,
+  [role="button"] {
+    font-family: 'Fredoka', 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+}

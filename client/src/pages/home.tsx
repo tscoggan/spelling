@@ -133,16 +133,20 @@ export default function Home() {
 
   return (
     <div 
-      className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 p-4 md:p-8 relative"
+      className="min-h-screen p-4 md:p-8 relative"
       style={{
-        backgroundImage: `url(${schoolPattern})`,
-        backgroundSize: '400px 400px',
-        backgroundRepeat: 'repeat',
-        backgroundPosition: 'center',
-        backgroundBlendMode: 'soft-light'
+        background: 'linear-gradient(135deg, #E9D5FF 0%, #DBEAFE 25%, #FCE7F3 50%, #FEF3C7 75%, #D1FAE5 100%)',
       }}
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-50/90 via-blue-50/90 to-pink-50/90"></div>
+      <div 
+        className="absolute inset-0 opacity-30"
+        style={{
+          backgroundImage: `url(${schoolPattern})`,
+          backgroundSize: '300px 300px',
+          backgroundRepeat: 'repeat',
+          backgroundPosition: 'center',
+        }}
+      ></div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
