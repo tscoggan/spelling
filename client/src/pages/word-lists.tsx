@@ -28,6 +28,8 @@ export default function WordListsPage() {
   const [editingList, setEditingList] = useState<CustomWordList | null>(null);
   const [gradeFilter, setGradeFilter] = useState<string>("all");
   const [jobId, setJobId] = useState<number | null>(null);
+  const [editImagesDialogOpen, setEditImagesDialogOpen] = useState(false);
+  const [editingImagesList, setEditingImagesList] = useState<CustomWordList | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     difficulty: "medium" as "easy" | "medium" | "hard",
@@ -344,6 +346,17 @@ export default function WordListsPage() {
                 <Button
                   size="sm"
                   variant="outline"
+                  onClick={() => {
+                    setEditingImagesList(list);
+                    setEditImagesDialogOpen(true);
+                  }}
+                  data-testid={`button-edit-images-${list.id}`}
+                >
+                  <Sparkles className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
                   onClick={() => deleteMutation.mutate(list.id)}
                   disabled={deleteMutation.isPending}
                   data-testid={`button-delete-${list.id}`}
@@ -356,22 +369,12 @@ export default function WordListsPage() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-wrap gap-1">
-          {list.words.slice(0, 10).map((word, i) => (
-            <span
-              key={i}
-              className="px-2 py-1 bg-purple-100 text-purple-800 rounded-md text-sm"
-              data-testid={`word-${list.id}-${i}`}
-            >
-              {word}
-            </span>
-          ))}
-          {list.words.length > 10 && (
-            <span className="px-2 py-1 text-gray-600 text-sm">
-              +{list.words.length - 10} more
-            </span>
-          )}
-        </div>
+        <WordListPreview words={list.words.slice(0, 10)} listId={list.id} />
+        {list.words.length > 10 && (
+          <span className="px-2 py-1 text-gray-600 text-sm block mt-2">
+            +{list.words.length - 10} more words
+          </span>
+        )}
       </CardContent>
     </Card>
   );
@@ -656,7 +659,239 @@ export default function WordListsPage() {
             )}
           </TabsContent>
         </Tabs>
+
+        {/* Edit Images Dialog */}
+        {editingImagesList && (
+          <EditImagesDialog
+            list={editingImagesList}
+            open={editImagesDialogOpen}
+            onOpenChange={setEditImagesDialogOpen}
+          />
+        )}
       </motion.div>
     </div>
+  );
+}
+
+// Component to preview words with their images
+function WordListPreview({ words, listId }: { words: string[]; listId: number }) {
+  // Query for all word illustrations
+  const { data: illustrations = [] } = useQuery({
+    queryKey: ["/api/word-illustrations"],
+  });
+
+  // Get illustration for a word
+  const getIllustration = (word: string) => {
+    return illustrations.find((ill: any) => ill.word.toLowerCase() === word.toLowerCase());
+  };
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {words.map((word, i) => {
+        const illustration = getIllustration(word);
+        return (
+          <div
+            key={i}
+            className="inline-flex items-center gap-1.5 px-2 py-1 bg-purple-100 text-purple-800 rounded-md text-sm"
+            data-testid={`word-${listId}-${i}`}
+          >
+            {illustration && (
+              <img
+                src={`/${illustration.imagePath}`}
+                alt={word}
+                className="w-5 h-5 object-cover rounded"
+              />
+            )}
+            <span>{word}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Component to edit images for a word list
+function EditImagesDialog({ list, open, onOpenChange }: {
+  list: CustomWordList;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { toast } = useToast();
+  const [selectedWord, setSelectedWord] = useState<string | null>(null);
+  const [pixabayPreviews, setPixabayPreviews] = useState<any[]>([]);
+  const [loadingPreviews, setLoadingPreviews] = useState(false);
+
+  // Query for all word illustrations
+  const { data: illustrations = [], refetch: refetchIllustrations } = useQuery({
+    queryKey: ["/api/word-illustrations"],
+    enabled: open,
+  });
+
+  // Mutation to select a new image
+  const selectImageMutation = useMutation({
+    mutationFn: async ({ word, imageUrl }: { word: string; imageUrl: string }) => {
+      const response = await apiRequest("POST", "/api/word-illustrations/select", {
+        word,
+        imageUrl,
+      });
+      return await response.json();
+    },
+    onSuccess: () => {
+      refetchIllustrations();
+      setSelectedWord(null);
+      setPixabayPreviews([]);
+      toast({
+        title: "Success!",
+        description: "Image updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update image",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Fetch Pixabay previews for a word
+  const fetchPixabayPreviews = async (word: string) => {
+    setLoadingPreviews(true);
+    try {
+      const response = await fetch(`/api/pixabay/previews?word=${encodeURIComponent(word)}&limit=10`);
+      if (!response.ok) throw new Error("Failed to fetch previews");
+      const data = await response.json();
+      setPixabayPreviews(data);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load image previews",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingPreviews(false);
+    }
+  };
+
+  // Get illustration for a word
+  const getIllustration = (word: string) => {
+    return illustrations.find((ill: any) => ill.word.toLowerCase() === word.toLowerCase());
+  };
+
+  // Handle selecting a word to change its image
+  const handleSelectWord = (word: string) => {
+    setSelectedWord(word);
+    fetchPixabayPreviews(word);
+  };
+
+  // Handle selecting a new image
+  const handleSelectImage = (imageUrl: string) => {
+    if (!selectedWord) return;
+    selectImageMutation.mutate({ word: selectedWord, imageUrl });
+  };
+
+  // Reset state when dialog closes
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      setSelectedWord(null);
+      setPixabayPreviews([]);
+    }
+    onOpenChange(isOpen);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Edit Images for "{list.name}"</DialogTitle>
+          <DialogDescription>
+            Click on any word to change its cartoon image
+          </DialogDescription>
+        </DialogHeader>
+
+        {!selectedWord ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            {list.words.map((word, index) => {
+              const illustration = getIllustration(word);
+              return (
+                <Card
+                  key={index}
+                  className="cursor-pointer hover-elevate active-elevate-2 transition-all"
+                  onClick={() => handleSelectWord(word)}
+                  data-testid={`word-image-card-${index}`}
+                >
+                  <CardContent className="p-4 flex items-center gap-4">
+                    <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-md flex items-center justify-center overflow-hidden">
+                      {illustration ? (
+                        <img
+                          src={`/${illustration.imagePath}`}
+                          alt={word}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Sparkles className="w-8 h-8 text-gray-400" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-lg">{word}</p>
+                      <p className="text-sm text-gray-600">
+                        {illustration ? "Click to change" : "Click to add image"}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSelectedWord(null);
+                  setPixabayPreviews([]);
+                }}
+                data-testid="button-back"
+              >
+                <Home className="w-4 h-4 mr-2" />
+                Back to List
+              </Button>
+              <p className="text-lg font-semibold">Selecting image for: {selectedWord}</p>
+            </div>
+
+            {loadingPreviews ? (
+              <div className="text-center py-12">
+                <p className="text-gray-600">Loading image options...</p>
+              </div>
+            ) : pixabayPreviews.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-600">No images found for this word</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {pixabayPreviews.map((preview, index) => (
+                  <Card
+                    key={preview.id}
+                    className="cursor-pointer hover-elevate active-elevate-2 transition-all"
+                    onClick={() => handleSelectImage(preview.largeImageURL || preview.webformatURL)}
+                    data-testid={`preview-image-${index}`}
+                  >
+                    <CardContent className="p-2">
+                      <img
+                        src={preview.previewURL}
+                        alt={preview.tags}
+                        className="w-full h-32 object-cover rounded"
+                      />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
