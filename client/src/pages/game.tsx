@@ -1267,6 +1267,7 @@ export default function Game() {
                             <div
                               key={`target-${index}`}
                               className="relative"
+                              ref={(el) => (dropZoneRefs.current[index] = el)}
                               onDragOver={handleDragOver}
                               onDrop={() => handleDrop(index)}
                             >
@@ -1288,14 +1289,16 @@ export default function Game() {
                         </div>
 
                         {/* Draggable letter tiles */}
-                        <div className="flex items-center justify-center gap-2 md:gap-3 flex-wrap">
+                        <div className="flex items-center justify-center gap-2 md:gap-3 flex-wrap" onTouchMove={handleTouchMove}>
                           {scrambledLetters.map((letter, index) => (
                             letter && (
                               <div
                                 key={`source-${index}`}
                                 draggable
                                 onDragStart={() => handleDragStart(letter, index)}
-                                className="w-12 h-16 md:w-16 md:h-20 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-lg flex items-center justify-center cursor-move hover-elevate active-elevate-2 touch-none"
+                                onTouchStart={(e) => handleTouchStart(e, letter, index)}
+                                onTouchEnd={handleTouchEnd}
+                                className="w-12 h-16 md:w-16 md:h-20 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-lg flex items-center justify-center cursor-move hover-elevate active-elevate-2"
                                 data-testid={`letter-tile-${index}`}
                               >
                                 <span className="text-2xl md:text-4xl font-bold text-gray-800 select-none">
@@ -1473,6 +1476,24 @@ export default function Game() {
           </AnimatePresence>
         </div>
       </main>
+
+      {/* Floating letter element for touch dragging */}
+      {touchDragging && touchPosition && draggedLetterElement && (
+        <div
+          style={{
+            position: 'fixed',
+            left: touchPosition.x - 24,
+            top: touchPosition.y - 32,
+            pointerEvents: 'none',
+            zIndex: 9999,
+          }}
+          className="w-12 h-16 md:w-16 md:h-20 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-2xl flex items-center justify-center opacity-90"
+        >
+          <span className="text-2xl md:text-4xl font-bold text-gray-800 select-none">
+            {draggedLetterElement}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
