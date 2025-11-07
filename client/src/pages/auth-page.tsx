@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sparkles, UserCircle } from "lucide-react";
+import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
 
 const avatarOptions = [
   { emoji: "🐶", label: "Dog" },
@@ -51,8 +52,22 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 flex">
-      <div className="flex-1 flex items-center justify-center p-6">
+    <div 
+      className="min-h-screen flex relative"
+      style={{
+        background: 'linear-gradient(135deg, #E9D5FF 0%, #DBEAFE 25%, #FCE7F3 50%, #FEF3C7 75%, #D1FAE5 100%)',
+      }}
+    >
+      <div 
+        className="absolute inset-0 opacity-30"
+        style={{
+          backgroundImage: `url(${schoolPattern})`,
+          backgroundSize: '300px 300px',
+          backgroundRepeat: 'repeat',
+          backgroundPosition: 'center',
+        }}
+      ></div>
+      <div className="flex-1 flex items-center justify-center p-6 relative z-10">
         <Card className="w-full max-w-md p-8">
           <div className="text-center mb-8">
             <Sparkles className="w-16 h-16 text-purple-600 mx-auto mb-4" />
@@ -170,7 +185,7 @@ export default function AuthPage() {
         </Card>
       </div>
 
-      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-purple-600 via-blue-600 to-pink-600 items-center justify-center p-12">
+      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-purple-600 via-blue-600 to-pink-600 items-center justify-center p-12 relative z-10">
         <div className="text-white text-center space-y-6 max-w-lg">
           <UserCircle className="w-32 h-32 mx-auto opacity-90" />
           <h2 className="text-4xl font-bold">Join the Fun!</h2>
