@@ -3,7 +3,7 @@ import { useLocation, useSearch } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Volume2, Home, ArrowRight, CheckCircle2, XCircle, Sparkles, Flame, Clock, SkipForward, Trophy, Settings } from "lucide-react";
+import { Volume2, Home, ArrowRight, CheckCircle2, XCircle, Sparkles, Flame, Clock, SkipForward, Trophy, Settings, BookOpen, MessageSquare } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { Word, DifficultyLevel, GameMode } from "@shared/schema";
@@ -62,7 +62,11 @@ export default function Game() {
   const [selectedVoice, setSelectedVoice] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showWordHints, setShowWordHints] = useState(true);
+  const [wordDefinition, setWordDefinition] = useState<string | null>(null);
+  const [wordExample, setWordExample] = useState<string | null>(null);
+  const [loadingDictionary, setLoadingDictionary] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const currentWordRef = useRef<string | null>(null);
 
   const createSessionMutation = useMutation({
     mutationFn: async (sessionData: { difficulty: string; gameMode: string; userId: number | null; customListId?: number }) => {
@@ -222,6 +226,81 @@ export default function Game() {
       }
     }
   };
+
+  const fetchWordData = async (word: string) => {
+    if (!word) return;
+    
+    const fetchWord = word.toLowerCase();
+    setLoadingDictionary(true);
+    setWordDefinition(null);
+    setWordExample(null);
+    
+    try {
+      const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${fetchWord}`);
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Check if we're still on the same word before updating state (using ref to avoid closure issue)
+        if (currentWordRef.current?.toLowerCase() !== fetchWord) {
+          return; // Word changed, discard this response
+        }
+        
+        if (data && data.length > 0) {
+          const entry = data[0];
+          
+          // Get first definition
+          const firstMeaning = entry.meanings?.[0];
+          const firstDefinition = firstMeaning?.definitions?.[0];
+          if (firstDefinition?.definition) {
+            setWordDefinition(firstDefinition.definition);
+          }
+          
+          // Get first example sentence
+          if (firstDefinition?.example) {
+            setWordExample(firstDefinition.example);
+          } else {
+            // Try to find an example in any definition
+            for (const meaning of entry.meanings || []) {
+              for (const def of meaning.definitions || []) {
+                if (def.example) {
+                  setWordExample(def.example);
+                  return;
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching dictionary data:', error);
+    } finally {
+      // Only clear loading if we're still on the same word (using ref)
+      if (currentWordRef.current?.toLowerCase() === fetchWord) {
+        setLoadingDictionary(false);
+      }
+    }
+  };
+
+  const speakDefinition = () => {
+    if (wordDefinition && currentWord) {
+      const text = `${currentWord.word}. Definition: ${wordDefinition}`;
+      speakWord(text);
+    }
+  };
+
+  const speakExample = () => {
+    if (wordExample && currentWord) {
+      const text = `${currentWord.word} used in a sentence: ${wordExample}`;
+      speakWord(text);
+    }
+  };
+
+  useEffect(() => {
+    if (currentWord) {
+      currentWordRef.current = currentWord.word;
+      fetchWordData(currentWord.word);
+    }
+  }, [currentWord]);
 
   useEffect(() => {
     if (currentWord && !showFeedback && gameMode !== "quiz") {
@@ -756,28 +835,57 @@ export default function Game() {
                       />
                     )}
                     
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="lg"
-                        className="flex-1 text-lg h-12 md:h-14"
-                        onClick={() => currentWord && speakWord(currentWord.word)}
-                        data-testid="button-repeat"
-                      >
-                        <Volume2 className="w-5 h-5 mr-2" />
-                        Repeat
-                      </Button>
-                      <Button
-                        type="submit"
-                        size="lg"
-                        className="flex-1 text-lg h-12 md:h-14"
-                        disabled={!userInput.trim()}
-                        data-testid="button-submit"
-                      >
-                        {gameMode === "quiz" ? "Submit" : "Check"}
-                        <ArrowRight className="w-5 h-5 ml-2" />
-                      </Button>
+                    <div className="space-y-3">
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="lg"
+                          className="flex-1 text-lg h-12 md:h-14"
+                          onClick={() => currentWord && speakWord(currentWord.word)}
+                          data-testid="button-repeat"
+                        >
+                          <Volume2 className="w-5 h-5 mr-2" />
+                          Repeat
+                        </Button>
+                        <Button
+                          type="submit"
+                          size="lg"
+                          className="flex-1 text-lg h-12 md:h-14"
+                          disabled={!userInput.trim()}
+                          data-testid="button-submit"
+                        >
+                          {gameMode === "quiz" ? "Submit" : "Check"}
+                          <ArrowRight className="w-5 h-5 ml-2" />
+                        </Button>
+                      </div>
+                      
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="lg"
+                          className="flex-1 text-base h-12"
+                          onClick={speakDefinition}
+                          disabled={!wordDefinition || loadingDictionary}
+                          data-testid="button-definition"
+                        >
+                          <BookOpen className="w-4 h-4 mr-2" />
+                          {loadingDictionary ? "Loading..." : "Definition"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="lg"
+                          className="flex-1 text-base h-12"
+                          onClick={speakExample}
+                          disabled={!wordExample || loadingDictionary}
+                          data-testid="button-example"
+                        >
+                          <MessageSquare className="w-4 h-4 mr-2" />
+                          {loadingDictionary ? "Loading..." : "Use in Sentence"}
+                        </Button>
+                      </div>
                     </div>
                   </form>
                 </Card>
