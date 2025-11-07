@@ -737,7 +737,8 @@ function EditImagesDialog({ list, open, onOpenChange }: {
       return await response.json();
     },
     onSuccess: () => {
-      refetchIllustrations();
+      // Invalidate all queries using word illustrations so thumbnails update everywhere
+      queryClient.invalidateQueries({ queryKey: ["/api/word-illustrations"] });
       setSelectedWord(null);
       setPixabayPreviews([]);
       toast({

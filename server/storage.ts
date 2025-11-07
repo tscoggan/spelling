@@ -376,7 +376,17 @@ export class DatabaseStorage implements IStorage {
       .where(eq(wordIllustrations.word, illustration.word.toLowerCase()));
     
     if (existingIllustration) {
-      return existingIllustration;
+      // Update existing illustration with new image path
+      const [updatedIllustration] = await db
+        .update(wordIllustrations)
+        .set({
+          imagePath: illustration.imagePath,
+          source: illustration.source || 'pixabay',
+        })
+        .where(eq(wordIllustrations.word, illustration.word.toLowerCase()))
+        .returning();
+      
+      return updatedIllustration;
     }
     
     const [newIllustration] = await db
@@ -384,6 +394,7 @@ export class DatabaseStorage implements IStorage {
       .values({
         word: illustration.word.toLowerCase(),
         imagePath: illustration.imagePath,
+        source: illustration.source || 'pixabay',
       })
       .returning();
     
