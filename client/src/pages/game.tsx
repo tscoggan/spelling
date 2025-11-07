@@ -281,19 +281,55 @@ export default function Game() {
               }
             }
             if (!foundExample) {
-              console.log(`❌ No example found for "${fetchWord}" (checked ${entry.meanings?.length || 0} meanings)`);
+              console.log(`❌ No example found for "${fetchWord}" (checked ${entry.meanings?.length || 0} meanings) - generating fallback`);
+              // Generate a simple example sentence as fallback
+              const fallbackExample = generateFallbackExample(fetchWord);
+              setWordExample(fallbackExample);
+              console.log(`✨ Generated fallback example: "${fallbackExample}"`);
             }
           }
+        }
+      } else {
+        // API returned non-OK response (e.g., 404 word not found)
+        console.log(`⚠️ Dictionary API returned ${response.status} for "${fetchWord}" - generating fallback`);
+        if (currentWordRef.current?.toLowerCase() === fetchWord) {
+          const fallbackExample = generateFallbackExample(fetchWord);
+          setWordExample(fallbackExample);
+          console.log(`✨ Generated fallback example (API ${response.status}): "${fallbackExample}"`);
         }
       }
     } catch (error) {
       console.error('Error fetching dictionary data:', error);
+      // Generate fallback example if API fails
+      if (currentWordRef.current?.toLowerCase() === fetchWord) {
+        const fallbackExample = generateFallbackExample(fetchWord);
+        setWordExample(fallbackExample);
+        console.log(`✨ Generated fallback example (API error): "${fallbackExample}"`);
+      }
     } finally {
       // Only clear loading if we're still on the same word (using ref)
       if (currentWordRef.current?.toLowerCase() === fetchWord) {
         setLoadingDictionary(false);
       }
     }
+  };
+
+  const generateFallbackExample = (word: string): string => {
+    const templates = [
+      `I saw a ${word} today.`,
+      `The ${word} was very interesting.`,
+      `Can you find the ${word}?`,
+      `Look at that ${word}!`,
+      `My friend has a ${word}.`,
+      `We learned about ${word} in school.`,
+      `The ${word} is important.`,
+      `I like to use ${word}.`,
+      `Let me tell you about ${word}.`,
+      `Everyone needs ${word}.`,
+    ];
+    
+    const randomIndex = Math.floor(Math.random() * templates.length);
+    return templates[randomIndex];
   };
 
   const speakDefinition = () => {
@@ -320,12 +356,21 @@ export default function Game() {
   // Auto-focus input when word changes (fallback + immediate focus)
   useEffect(() => {
     if (currentWord && !showFeedback) {
-      // Immediate focus as fallback
-      setTimeout(() => {
+      // Multiple focus attempts to ensure it works
+      const focusInput = () => {
         if (inputRef.current) {
           inputRef.current.focus();
         }
-      }, 100);
+      };
+      
+      // Try immediately
+      focusInput();
+      
+      // Try after short delay (for initial render)
+      setTimeout(focusInput, 100);
+      
+      // Try after longer delay (for slower systems)
+      setTimeout(focusInput, 300);
     }
   }, [currentWordIndex, showFeedback]);
 
@@ -818,13 +863,28 @@ export default function Game() {
                       size="lg"
                       variant="default"
                       className="w-20 h-20 md:w-24 md:h-24 rounded-full p-0"
-                      onClick={() => currentWord && speakWord(currentWord.word, () => {
-                        setTimeout(() => {
-                          if (inputRef.current) {
-                            inputRef.current.focus();
-                          }
-                        }, 100);
-                      })}
+                      onClick={(e) => {
+                        if (currentWord) {
+                          // Blur the button immediately to allow focus elsewhere
+                          (e.target as HTMLButtonElement).blur();
+                          
+                          speakWord(currentWord.word, () => {
+                            // Focus after TTS completes
+                            setTimeout(() => {
+                              if (inputRef.current) {
+                                inputRef.current.focus();
+                              }
+                            }, 150);
+                          });
+                          
+                          // Also focus immediately as backup (in case TTS callback fails)
+                          setTimeout(() => {
+                            if (inputRef.current) {
+                              inputRef.current.focus();
+                            }
+                          }, 200);
+                        }
+                      }}
                       data-testid="button-play-audio"
                     >
                       <Volume2 className="w-14 h-14 md:w-16 md:h-16" />
@@ -841,6 +901,7 @@ export default function Game() {
                           onChange={(e) => setUserInput(e.target.value)}
                           className="text-transparent caret-transparent absolute inset-0 text-center text-2xl md:text-4xl h-16 md:h-20 rounded-2xl bg-transparent border-transparent pointer-events-auto"
                           autoComplete="off"
+                          autoFocus
                           data-testid="input-spelling"
                           style={{ caretColor: 'transparent' }}
                         />
@@ -866,6 +927,7 @@ export default function Game() {
                         className="text-center text-2xl md:text-4xl h-16 md:h-20 rounded-2xl"
                         placeholder="Type your answer..."
                         autoComplete="off"
+                        autoFocus
                         data-testid="input-spelling"
                       />
                     )}
@@ -877,13 +939,28 @@ export default function Game() {
                           variant="outline"
                           size="lg"
                           className="flex-1 text-lg h-12 md:h-14"
-                          onClick={() => currentWord && speakWord(currentWord.word, () => {
-                            setTimeout(() => {
-                              if (inputRef.current) {
-                                inputRef.current.focus();
-                              }
-                            }, 100);
-                          })}
+                          onClick={(e) => {
+                            if (currentWord) {
+                              // Blur the button immediately to allow focus elsewhere
+                              (e.target as HTMLButtonElement).blur();
+                              
+                              speakWord(currentWord.word, () => {
+                                // Focus after TTS completes
+                                setTimeout(() => {
+                                  if (inputRef.current) {
+                                    inputRef.current.focus();
+                                  }
+                                }, 150);
+                              });
+                              
+                              // Also focus immediately as backup (in case TTS callback fails)
+                              setTimeout(() => {
+                                if (inputRef.current) {
+                                  inputRef.current.focus();
+                                }
+                              }, 200);
+                            }
+                          }}
                           data-testid="button-repeat"
                         >
                           <Volume2 className="w-5 h-5 mr-2" />
