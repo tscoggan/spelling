@@ -30,16 +30,17 @@ The backend uses **Express.js** with **TypeScript** for type safety. **PostgreSQ
 - **Auto-Focus Input**: Input field automatically receives focus on new word load (via HTML autoFocus attribute) and after clicking any audio button (Play Audio, Repeat, Definition, Use in Sentence) using a shared `speakWithRefocus()` helper with button blur + dual timeout strategy (TTS callback + backup). Input uses transparent styling to display word hints while remaining fully focusable.
 - **Dictionary Integration**: Free Dictionary API (dictionaryapi.dev) provides definitions and example sentences. When API lacks examples, app generates age-appropriate fallback sentences using 10 kid-friendly templates. "Use in Sentence" button always enabled (real or fallback examples).
 - **Word Hints**: Visual letter placeholders with underlines show word length. Typed letters appear above blanks. Input field remains transparent but focusable (text-transparent, pointer-events-auto).
-- **Cartoon Illustrations**: Word illustrations are stored in the PostgreSQL database (word_illustrations table) and dynamically loaded during gameplay. Currently, fourteen common kid-friendly words (cat, dog, apple, book, sun, house, ball, star, tree, flower, car, heart, rainbow, balloon) have vibrant, colorful cartoon illustrations. Images appear between the instruction text and play button with spring animations. New illustrations can be added to the database for any word, and they will automatically display during gameplay. All images are stored in attached_assets/generated_images/.
+- **Cartoon Illustrations**: Word illustrations are stored in the PostgreSQL database (word_illustrations table) and dynamically loaded during gameplay. The system now features **automatic cartoon image enrichment** using the Pixabay API - when users create custom word lists, the app automatically searches for and downloads kid-friendly cartoon images for each word in the background. A real-time progress indicator with animated sparkle icon and progress bar shows users the search status. Images appear between the instruction text and play button with spring animations during gameplay. All images are stored in attached_assets/generated_images/. The automated enrichment system uses a background job queue (illustration_jobs, illustration_job_items tables) to handle async processing without blocking the user experience.
 - **Scoring System**: Points awarded based on the custom list's difficulty (Easy: 10, Medium: 20, Hard: 30 points per word) with streak bonuses (+5 points per consecutive correct answer).
 - **Leaderboard**: Displays all players' scores, filterable by difficulty, showing usernames, avatars, and game statistics.
 - **Progress Tracking**: Shows words completed, accuracy, and streak information per game session.
 
 ### System Design Choices
 - **Client-Server Architecture**: A React frontend communicates with an Express.js backend.
-- **Database Schema**: PostgreSQL stores user data (id, username, password, avatar), game sessions, leaderboard entries, and custom word lists (id, userId, name, difficulty, words, isPublic, gradeLevel, createdAt).
+- **Database Schema**: PostgreSQL stores user data (id, username, password, avatar), game sessions, leaderboard entries, custom word lists (id, userId, name, difficulty, words, isPublic, gradeLevel, createdAt), word illustrations (id, word, imagePath, source, createdAt), and background job tracking (illustration_jobs, illustration_job_items).
 - **Authentication Flow**: User registration and login managed by Passport.js, with session persistence. Protected routes ensure authenticated access to game features.
-- **API Endpoints**: A comprehensive set of RESTful APIs for authentication, game management, leaderboard interactions, and CRUD operations for custom word lists.
+- **API Endpoints**: A comprehensive set of RESTful APIs for authentication, game management, leaderboard interactions, CRUD operations for custom word lists, illustration job status tracking, and word illustration retrieval.
+- **Background Job System**: Automated cartoon image enrichment using Pixabay API (60,000+ kid-friendly images). When users create word lists, the system asynchronously searches for, downloads, and stores cartoon illustrations. Jobs track progress (pending/processing/completed states) with success/failure/skipped counts. Frontend polls job status every 2 seconds to display real-time progress with animated UI indicators.
 
 ## External Dependencies
 
@@ -56,3 +57,4 @@ The backend uses **Express.js** with **TypeScript** for type safety. **PostgreSQ
 - **Passport.js**: Authentication middleware.
 - **Scrypt**: Password hashing library.
 - **Drizzle ORM**: Type-safe ORM for database interactions.
+- **Pixabay API**: Free stock image service providing 60,000+ kid-friendly cartoon illustrations for automated word enrichment.
