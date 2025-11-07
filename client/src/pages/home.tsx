@@ -212,8 +212,8 @@ export default function Home() {
             <img 
               src={titleBanner} 
               alt="Spelling Champions" 
-              className="w-full max-w-2xl h-auto scale-125"
-              style={{ margin: '-5% 0' }}
+              className="w-full max-w-2xl h-auto scale-110"
+              style={{ margin: '-2% 0' }}
               data-testid="img-title-banner"
             />
           </motion.div>
