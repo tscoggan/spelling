@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import titleBanner from "@assets/generated_images/Crayon_style_Spelling_Champions_banner_9a62762c.png";
+import titleBanner from "@assets/generated_images/Hand-drawn_crayon_Spelling_Champions_text_fc50a8a9.png";
 
 interface CustomWordList {
   id: number;

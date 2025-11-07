@@ -28,6 +28,24 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
+// Import cartoon illustrations for simple words
+import catImage from "@assets/generated_images/Cute_cartoon_cat_illustration_38cb1a10.png";
+import dogImage from "@assets/generated_images/Cute_cartoon_dog_illustration_8728de5a.png";
+import appleImage from "@assets/generated_images/Cute_cartoon_apple_illustration_6c421123.png";
+import bookImage from "@assets/generated_images/Cute_cartoon_book_illustration_43b70df8.png";
+import sunImage from "@assets/generated_images/Cute_cartoon_sun_illustration_9719bf3e.png";
+import houseImage from "@assets/generated_images/Cute_cartoon_house_illustration_d98900ea.png";
+
+// Mapping of simple kid-friendly words to their cartoon illustrations
+const WORD_ILLUSTRATIONS: Record<string, string> = {
+  "cat": catImage,
+  "dog": dogImage,
+  "apple": appleImage,
+  "book": bookImage,
+  "sun": sunImage,
+  "house": houseImage,
+};
+
 interface QuizAnswer {
   word: Word;
   userAnswer: string;
@@ -881,6 +899,22 @@ export default function Game() {
                     <h2 className="text-2xl md:text-3xl font-bold text-gray-800" data-testid="text-instruction">
                       {gameMode === "quiz" ? "Spell the word" : "Listen and spell the word"}
                     </h2>
+                    
+                    {currentWord && WORD_ILLUSTRATIONS[currentWord.word.toLowerCase()] && (
+                      <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ duration: 0.4, type: "spring" }}
+                        className="flex justify-center"
+                      >
+                        <img 
+                          src={WORD_ILLUSTRATIONS[currentWord.word.toLowerCase()]} 
+                          alt={`Cartoon ${currentWord.word}`}
+                          className="w-32 h-32 md:w-48 md:h-48 object-contain"
+                          data-testid="img-word-illustration"
+                        />
+                      </motion.div>
+                    )}
                     
                     <Button
                       size="lg"
