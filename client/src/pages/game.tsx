@@ -297,23 +297,24 @@ export default function Game() {
               
               // Look for definition lines (multiple patterns)
               if (!foundDefinition) {
+                // Remove grammatical markers like "(countable)", "(uncountable)", "(transitive)" etc. FIRST
+                const cleanLine = line.replace(/^\(.*?\)\s*/, '');
+                
                 const isDefinition = (
                   // Pattern 1: "An apple is..." or "A throw is..."
-                  (line.includes(' is ') && !line.startsWith('I ') && !line.startsWith('The ')) ||
+                  (cleanLine.includes(' is ') && !cleanLine.startsWith('I ') && !cleanLine.startsWith('The ')) ||
                   // Pattern 2: "When you throw..." (verb definitions)
-                  line.startsWith('When you ') ||
+                  cleanLine.startsWith('When you ') ||
                   // Pattern 3: "If you throw..." (verb definitions)
-                  line.startsWith('If you ') ||
+                  cleanLine.startsWith('If you ') ||
                   // Pattern 4: "To throw..." (infinitive verb definitions)
-                  line.startsWith('To ' + fetchWord)
+                  cleanLine.startsWith('To ' + fetchWord)
                 );
                 
-                if (isDefinition && line.length > 10 && line.length < 200) {
-                  // Remove any grammatical markers like "(countable)" or "(uncountable)"
-                  const cleanDefinition = line.replace(/^\(.*?\)\s*/, '');
-                  setWordDefinition(cleanDefinition);
+                if (isDefinition && cleanLine.length > 10 && cleanLine.length < 200) {
+                  setWordDefinition(cleanLine);
                   foundDefinition = true;
-                  console.log(`✅ Found definition in Simple English Wiktionary for "${fetchWord}": ${cleanDefinition}`);
+                  console.log(`✅ Found definition in Simple English Wiktionary for "${fetchWord}": ${cleanLine}`);
                   continue;
                 }
               }
