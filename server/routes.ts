@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { insertGameSessionSchema, insertWordSchema, insertCustomWordListSchema, type DifficultyLevel } from "@shared/schema";
 import { z } from "zod";
 import { setupAuth } from "./auth";
+import { IllustrationJobService } from "./services/illustrationJobService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -121,7 +122,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const wordList = await storage.createCustomWordList(listData);
-      res.json(wordList);
+      
+      const jobService = new IllustrationJobService();
+      const jobId = await jobService.createJob(wordList.id);
+      
+      res.json({ 
+        ...wordList, 
+        illustrationJobId: jobId 
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         console.error("Validation error creating word list:", error.errors);
@@ -256,6 +264,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(illustration);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch word illustration" });
+    }
+  });
+
+  app.get("/api/illustration-jobs/:jobId", async (req, res) => {
+    try {
+      const jobId = parseInt(req.params.jobId);
+      if (isNaN(jobId)) {
+        return res.status(400).json({ error: "Invalid job ID" });
+      }
+
+      const jobService = new IllustrationJobService();
+      const jobStatus = await jobService.getJobStatus(jobId);
+      
+      if (!jobStatus) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      
+      res.json(jobStatus);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch job status" });
     }
   });
 

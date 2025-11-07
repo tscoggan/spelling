@@ -71,7 +71,31 @@ export const wordIllustrations = pgTable("word_illustrations", {
   id: serial("id").primaryKey(),
   word: text("word").notNull().unique(),
   imagePath: text("image_path").notNull(),
+  source: text("source").default("manual"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const illustrationJobs = pgTable("illustration_jobs", {
+  id: serial("id").primaryKey(),
+  wordListId: integer("word_list_id").notNull(),
+  status: text("status").notNull().default("pending"),
+  totalWords: integer("total_words").notNull().default(0),
+  processedWords: integer("processed_words").notNull().default(0),
+  successCount: integer("success_count").notNull().default(0),
+  failureCount: integer("failure_count").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+});
+
+export const illustrationJobItems = pgTable("illustration_job_items", {
+  id: serial("id").primaryKey(),
+  jobId: integer("job_id").notNull(),
+  word: text("word").notNull(),
+  status: text("status").notNull().default("pending"),
+  imagePath: text("image_path"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
 });
 
 export const usersRelations = relations(users, ({ many }) => ({
