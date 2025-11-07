@@ -67,6 +67,13 @@ export const customWordLists = pgTable("custom_word_lists", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const wordIllustrations = pgTable("word_illustrations", {
+  id: serial("id").primaryKey(),
+  word: text("word").notNull().unique(),
+  imagePath: text("image_path").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const usersRelations = relations(users, ({ many }) => ({
   gameSessions: many(gameSessions),
   wordAttempts: many(wordAttempts),
@@ -155,6 +162,11 @@ export const insertCustomWordListSchema = createInsertSchema(customWordLists).om
   gradeLevel: z.string().max(50).optional(),
 });
 
+export const insertWordIllustrationSchema = createInsertSchema(wordIllustrations).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertWord = z.infer<typeof insertWordSchema>;
@@ -167,6 +179,8 @@ export type InsertLeaderboardScore = z.infer<typeof insertLeaderboardScoreSchema
 export type LeaderboardScore = typeof leaderboardScores.$inferSelect;
 export type InsertCustomWordList = z.infer<typeof insertCustomWordListSchema>;
 export type CustomWordList = typeof customWordLists.$inferSelect;
+export type InsertWordIllustration = z.infer<typeof insertWordIllustrationSchema>;
+export type WordIllustration = typeof wordIllustrations.$inferSelect;
 
 export type DifficultyLevel = "easy" | "medium" | "hard" | "custom";
 export type GameMode = "standard" | "timed" | "quiz";
