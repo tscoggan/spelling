@@ -165,13 +165,17 @@ export default function Game() {
 
   const currentWord = words?.[currentWordIndex];
 
-  const speakWord = (word: string) => {
+  const speakWord = (word: string, onComplete?: () => void) => {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(word);
       utterance.rate = 0.8;
       utterance.pitch = 1;
       utterance.volume = 1;
+      
+      if (onComplete) {
+        utterance.onend = onComplete;
+      }
       
       const setVoiceAndSpeak = () => {
         const voices = window.speechSynthesis.getVoices();
@@ -224,6 +228,9 @@ export default function Game() {
         // Fallback timeout in case voiceschanged doesn't fire
         setTimeout(setVoiceAndSpeak, 100);
       }
+    } else if (onComplete) {
+      // If speech synthesis is not available, still call the callback
+      onComplete();
     }
   };
 
@@ -260,11 +267,14 @@ export default function Game() {
             setWordExample(firstDefinition.example);
           } else {
             // Try to find an example in any definition
+            let foundExample = false;
             for (const meaning of entry.meanings || []) {
+              if (foundExample) break;
               for (const def of meaning.definitions || []) {
                 if (def.example) {
                   setWordExample(def.example);
-                  return;
+                  foundExample = true;
+                  break;
                 }
               }
             }
@@ -302,29 +312,43 @@ export default function Game() {
     }
   }, [currentWord]);
 
+  // Auto-focus input when word changes (fallback + immediate focus)
+  useEffect(() => {
+    if (currentWord && !showFeedback) {
+      // Immediate focus as fallback
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      }, 100);
+    }
+  }, [currentWordIndex, showFeedback]);
+
   useEffect(() => {
     if (currentWord && !showFeedback && gameMode !== "quiz") {
-      speakWord(currentWord.word);
+      speakWord(currentWord.word, () => {
+        // Re-focus after TTS completes
+        setTimeout(() => {
+          if (inputRef.current) {
+            inputRef.current.focus();
+          }
+        }, 100);
+      });
     }
   }, [currentWord, showFeedback, gameMode]);
 
   useEffect(() => {
     if (currentWord && gameMode === "quiz") {
-      speakWord(currentWord.word);
+      speakWord(currentWord.word, () => {
+        // Re-focus after TTS completes
+        setTimeout(() => {
+          if (inputRef.current) {
+            inputRef.current.focus();
+          }
+        }, 100);
+      });
     }
   }, [currentWord, gameMode, currentWordIndex]);
-
-  useEffect(() => {
-    if (inputRef.current && !showFeedback && gameMode !== "quiz") {
-      inputRef.current.focus();
-    }
-  }, [currentWordIndex, showFeedback, gameMode]);
-
-  useEffect(() => {
-    if (inputRef.current && gameMode === "quiz" && !gameComplete) {
-      inputRef.current.focus();
-    }
-  }, [currentWordIndex, gameMode, gameComplete]);
 
   useEffect(() => {
     if (gameComplete && !scoreSaved && sessionId && user) {
@@ -804,13 +828,13 @@ export default function Game() {
                           type="text"
                           value={userInput}
                           onChange={(e) => setUserInput(e.target.value)}
-                          className="opacity-0 absolute inset-0 text-center text-2xl md:text-4xl h-16 md:h-20 rounded-2xl"
+                          className="text-transparent caret-transparent absolute inset-0 text-center text-2xl md:text-4xl h-16 md:h-20 rounded-2xl bg-transparent border-transparent pointer-events-auto"
                           autoComplete="off"
                           data-testid="input-spelling"
+                          style={{ caretColor: 'transparent' }}
                         />
                         <div 
-                          className="h-16 md:h-20 rounded-2xl border-2 border-input bg-background flex items-center justify-center gap-2 md:gap-3 px-4 cursor-text"
-                          onClick={() => inputRef.current?.focus()}
+                          className="h-16 md:h-20 rounded-2xl border-2 border-input bg-background flex items-center justify-center gap-2 md:gap-3 px-4 cursor-text pointer-events-none"
                         >
                           {Array.from({ length: currentWord.word.length }).map((_, index) => (
                             <div key={index} className="flex flex-col items-center gap-1">
