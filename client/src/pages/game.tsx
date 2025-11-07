@@ -265,6 +265,7 @@ export default function Game() {
           // Get first example sentence
           if (firstDefinition?.example) {
             setWordExample(firstDefinition.example);
+            console.log(`✅ Found example in first definition for "${fetchWord}":`, firstDefinition.example);
           } else {
             // Try to find an example in any definition
             let foundExample = false;
@@ -274,9 +275,13 @@ export default function Game() {
                 if (def.example) {
                   setWordExample(def.example);
                   foundExample = true;
+                  console.log(`✅ Found example in other definition for "${fetchWord}":`, def.example);
                   break;
                 }
               }
+            }
+            if (!foundExample) {
+              console.log(`❌ No example found for "${fetchWord}" (checked ${entry.meanings?.length || 0} meanings)`);
             }
           }
         }
@@ -813,7 +818,13 @@ export default function Game() {
                       size="lg"
                       variant="default"
                       className="w-20 h-20 md:w-24 md:h-24 rounded-full p-0"
-                      onClick={() => currentWord && speakWord(currentWord.word)}
+                      onClick={() => currentWord && speakWord(currentWord.word, () => {
+                        setTimeout(() => {
+                          if (inputRef.current) {
+                            inputRef.current.focus();
+                          }
+                        }, 100);
+                      })}
                       data-testid="button-play-audio"
                     >
                       <Volume2 className="w-14 h-14 md:w-16 md:h-16" />
@@ -866,7 +877,13 @@ export default function Game() {
                           variant="outline"
                           size="lg"
                           className="flex-1 text-lg h-12 md:h-14"
-                          onClick={() => currentWord && speakWord(currentWord.word)}
+                          onClick={() => currentWord && speakWord(currentWord.word, () => {
+                            setTimeout(() => {
+                              if (inputRef.current) {
+                                inputRef.current.focus();
+                              }
+                            }, 100);
+                          })}
                           data-testid="button-repeat"
                         >
                           <Volume2 className="w-5 h-5 mr-2" />
