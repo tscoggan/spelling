@@ -76,6 +76,7 @@ export class IllustrationJobService {
 
     let successCount = 0;
     let failureCount = 0;
+    let skippedCount = 0;
 
     for (const item of items) {
       try {
@@ -95,51 +96,49 @@ export class IllustrationJobService {
             })
             .where(eq(illustrationJobItems.id, item.id));
           
-          successCount++;
-          continue;
-        }
-
-        await db
-          .update(illustrationJobItems)
-          .set({ status: 'processing' })
-          .where(eq(illustrationJobItems.id, item.id));
-
-        const imagePath = await this.pixabayService.searchCartoonImage(item.word);
-
-        if (imagePath) {
-          await db.insert(wordIllustrations).values({
-            word: item.word,
-            imagePath,
-            source: 'pixabay',
-          });
-
-          await db
-            .update(illustrationJobItems)
-            .set({
-              status: 'completed',
-              imagePath,
-              completedAt: new Date(),
-            })
-            .where(eq(illustrationJobItems.id, item.id));
-
-          successCount++;
-          console.log(`✅ Found and saved image for "${item.word}"`);
+          skippedCount++;
         } else {
           await db
             .update(illustrationJobItems)
-            .set({
-              status: 'failed',
-              errorMessage: 'No suitable image found',
-              completedAt: new Date(),
-            })
+            .set({ status: 'processing' })
             .where(eq(illustrationJobItems.id, item.id));
 
-          failureCount++;
-          console.log(`❌ No image found for "${item.word}"`);
+          const imagePath = await this.pixabayService.searchCartoonImage(item.word);
+
+          if (imagePath) {
+            await db.insert(wordIllustrations).values({
+              word: item.word,
+              imagePath,
+              source: 'pixabay',
+            });
+
+            await db
+              .update(illustrationJobItems)
+              .set({
+                status: 'completed',
+                imagePath,
+                completedAt: new Date(),
+              })
+              .where(eq(illustrationJobItems.id, item.id));
+
+            successCount++;
+            console.log(`✅ Found and saved image for "${item.word}"`);
+          } else {
+            await db
+              .update(illustrationJobItems)
+              .set({
+                status: 'failed',
+                errorMessage: 'No suitable image found',
+                completedAt: new Date(),
+              })
+              .where(eq(illustrationJobItems.id, item.id));
+
+            failureCount++;
+            console.log(`❌ No image found for "${item.word}"`);
+          }
+
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
-
-        await new Promise(resolve => setTimeout(resolve, 500));
-
       } catch (error: any) {
         failureCount++;
         console.error(`Error processing word "${item.word}":`, error);
@@ -157,7 +156,7 @@ export class IllustrationJobService {
       await db
         .update(illustrationJobs)
         .set({
-          processedWords: successCount + failureCount,
+          processedWords: successCount + failureCount + skippedCount,
           successCount,
           failureCount,
         })
@@ -175,7 +174,7 @@ export class IllustrationJobService {
       })
       .where(eq(illustrationJobs.id, jobId));
 
-    console.log(`🎉 Completed illustration job ${jobId}: ${successCount} success, ${failureCount} failed`);
+    console.log(`🎉 Completed illustration job ${jobId}: ${successCount} success, ${failureCount} failed, ${skippedCount} skipped`);
   }
 
   async getJobStatus(jobId: number) {
