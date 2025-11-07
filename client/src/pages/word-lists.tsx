@@ -347,7 +347,7 @@ export default function WordListsPage() {
       >
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <div>
-            <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
+            <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 font-crayon">
               Custom Word Lists
             </h1>
             <p className="text-gray-600 mt-2">

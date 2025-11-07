@@ -641,7 +641,7 @@ export default function Game() {
               className="text-center"
             >
               <Sparkles className="w-20 h-20 md:w-24 md:h-24 text-purple-600 mx-auto mb-4" />
-              <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-2" data-testid="text-game-complete">
+              <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-2 font-crayon" data-testid="text-game-complete">
                 {gameMode === "quiz" ? "Quiz Complete!" : "Amazing Work!"}
               </h1>
               <p className="text-lg text-gray-600 capitalize">

@@ -49,7 +49,7 @@ export default function Leaderboard() {
             className="flex items-center gap-4"
           >
             <Trophy className="w-12 h-12 text-purple-600" />
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-800">
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-800 font-crayon">
               Leaderboard
             </h1>
           </motion.div>

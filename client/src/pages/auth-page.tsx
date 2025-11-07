@@ -71,7 +71,7 @@ export default function AuthPage() {
         <Card className="w-full max-w-md p-8">
           <div className="text-center mb-8">
             <Sparkles className="w-16 h-16 text-purple-600 mx-auto mb-4" />
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Spelling Champions</h1>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2 font-crayon">Spelling Champions</h1>
             <p className="text-gray-600">Create an account or log in to start your spelling adventure!</p>
           </div>
 
