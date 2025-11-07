@@ -709,25 +709,52 @@ export default function Game() {
                     <Button
                       size="lg"
                       variant="default"
-                      className="w-20 h-20 md:w-24 md:h-24 rounded-full"
+                      className="w-20 h-20 md:w-24 md:h-24 rounded-full p-0"
                       onClick={() => currentWord && speakWord(currentWord.word)}
                       data-testid="button-play-audio"
                     >
-                      <Volume2 className="w-10 h-10 md:w-12 md:h-12" />
+                      <Volume2 className="w-14 h-14 md:w-16 md:h-16" />
                     </Button>
                   </div>
 
                   <form onSubmit={handleSubmit} className="space-y-6">
-                    <Input
-                      ref={inputRef}
-                      type="text"
-                      value={userInput}
-                      onChange={(e) => setUserInput(e.target.value)}
-                      className="text-center text-2xl md:text-4xl h-16 md:h-20 rounded-2xl"
-                      placeholder={showWordHints && currentWord ? "_ ".repeat(currentWord.word.length).trim() : "Type your answer..."}
-                      autoComplete="off"
-                      data-testid="input-spelling"
-                    />
+                    {showWordHints && currentWord ? (
+                      <div className="relative">
+                        <Input
+                          ref={inputRef}
+                          type="text"
+                          value={userInput}
+                          onChange={(e) => setUserInput(e.target.value)}
+                          className="opacity-0 absolute inset-0 text-center text-2xl md:text-4xl h-16 md:h-20 rounded-2xl"
+                          autoComplete="off"
+                          data-testid="input-spelling"
+                        />
+                        <div 
+                          className="h-16 md:h-20 rounded-2xl border-2 border-input bg-background flex items-center justify-center gap-2 md:gap-3 px-4 cursor-text"
+                          onClick={() => inputRef.current?.focus()}
+                        >
+                          {Array.from({ length: currentWord.word.length }).map((_, index) => (
+                            <div key={index} className="flex flex-col items-center gap-1">
+                              <div className="text-2xl md:text-4xl font-semibold text-gray-800 h-8 md:h-10 flex items-center justify-center min-w-[1.5rem] md:min-w-[2rem]">
+                                {userInput[index] || ""}
+                              </div>
+                              <div className="w-6 md:w-8 h-0.5 bg-gray-400"></div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <Input
+                        ref={inputRef}
+                        type="text"
+                        value={userInput}
+                        onChange={(e) => setUserInput(e.target.value)}
+                        className="text-center text-2xl md:text-4xl h-16 md:h-20 rounded-2xl"
+                        placeholder="Type your answer..."
+                        autoComplete="off"
+                        data-testid="input-spelling"
+                      />
+                    )}
                     
                     <div className="flex flex-col sm:flex-row gap-3">
                       <Button
