@@ -34,16 +34,16 @@ export class PixabayService {
     this.apiKey = PIXABAY_API_KEY;
   }
 
-  async searchCartoonImage(word: string): Promise<string | null> {
+  async searchCartoonImage(word: string, usedImageIds: Set<number> = new Set()): Promise<{ imagePath: string; imageId: number } | null> {
     try {
-      const searchQuery = `cute cartoon ${word} kid-friendly illustration`;
+      const searchQuery = `cartoon ${word}`;
       
       const params = new URLSearchParams({
         key: this.apiKey,
         q: searchQuery,
         image_type: 'illustration',
         safesearch: 'true',
-        per_page: '3',
+        per_page: '10',
         orientation: 'horizontal',
       });
 
@@ -65,6 +65,11 @@ export class PixabayService {
       let selectedImage: PixabayImage | null = null;
 
       for (const hit of data.hits) {
+        if (usedImageIds.has(hit.id)) {
+          console.log(`⏭️  Skipping duplicate image ID ${hit.id} for "${word}"`);
+          continue;
+        }
+
         const tagsLower = hit.tags.toLowerCase();
         if (tagsLower.includes(wordLower)) {
           selectedImage = hit;
@@ -74,15 +79,25 @@ export class PixabayService {
       }
 
       if (!selectedImage) {
-        selectedImage = data.hits[0];
-        console.log(`⚠️ No exact match for "${word}", using first result: ${selectedImage.tags} (ID: ${selectedImage.id})`);
+        for (const hit of data.hits) {
+          if (!usedImageIds.has(hit.id)) {
+            selectedImage = hit;
+            console.log(`⚠️ No exact match for "${word}", using first unused result: ${selectedImage.tags} (ID: ${selectedImage.id})`);
+            break;
+          }
+        }
+      }
+
+      if (!selectedImage) {
+        console.log(`❌ All results already used for "${word}"`);
+        return null;
       }
 
       const imageUrl = selectedImage.largeImageURL || selectedImage.webformatURL;
       console.log(`🔗 Image URL: ${imageUrl}`);
       
       const downloadedPath = await this.downloadImage(imageUrl, word);
-      return downloadedPath;
+      return { imagePath: downloadedPath, imageId: selectedImage.id };
       
     } catch (error) {
       console.error(`Error searching for image of "${word}":`, error);

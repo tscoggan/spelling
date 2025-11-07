@@ -77,6 +77,7 @@ export class IllustrationJobService {
     let successCount = 0;
     let failureCount = 0;
     let skippedCount = 0;
+    const usedImageIds = new Set<number>();
 
     for (const item of items) {
       try {
@@ -103,12 +104,14 @@ export class IllustrationJobService {
             .set({ status: 'processing' })
             .where(eq(illustrationJobItems.id, item.id));
 
-          const imagePath = await this.pixabayService.searchCartoonImage(item.word);
+          const result = await this.pixabayService.searchCartoonImage(item.word, usedImageIds);
 
-          if (imagePath) {
+          if (result) {
+            usedImageIds.add(result.imageId);
+            
             await db.insert(wordIllustrations).values({
               word: item.word,
-              imagePath,
+              imagePath: result.imagePath,
               source: 'pixabay',
             });
 
@@ -116,7 +119,7 @@ export class IllustrationJobService {
               .update(illustrationJobItems)
               .set({
                 status: 'completed',
-                imagePath,
+                imagePath: result.imagePath,
                 completedAt: new Date(),
               })
               .where(eq(illustrationJobItems.id, item.id));
