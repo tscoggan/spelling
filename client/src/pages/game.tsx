@@ -334,15 +334,13 @@ export default function Game() {
 
   const speakDefinition = () => {
     if (wordDefinition && currentWord) {
-      const text = `${currentWord.word}. Definition: ${wordDefinition}`;
-      speakWord(text);
+      speakWord(wordDefinition);
     }
   };
 
   const speakExample = () => {
     if (wordExample && currentWord) {
-      const text = `${currentWord.word} used in a sentence: ${wordExample}`;
-      speakWord(text);
+      speakWord(wordExample);
     }
   };
 

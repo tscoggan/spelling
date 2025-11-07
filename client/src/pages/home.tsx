@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import titleBanner from "@assets/generated_images/Crayon_style_Spelling_Champions_banner_9a62762c.png";
 
 interface CustomWordList {
   id: number;
@@ -123,7 +124,7 @@ export default function Home() {
     {
       id: "quiz" as GameMode,
       name: "Quiz Mode",
-      description: "Spell all the words, then see your results",
+      description: "Spell all the words in a list, then see your results",
       icon: Trophy,
       color: "text-purple-600",
     },
@@ -187,14 +188,19 @@ export default function Home() {
         </div>
 
         <div className="text-center mb-8 md:mb-12">
-          <motion.h1
-            className="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 mb-4"
+          <motion.div
+            className="mb-4 flex justify-center"
             initial={{ scale: 0.9 }}
             animate={{ scale: 1 }}
             transition={{ duration: 0.3 }}
           >
-            Spelling Champions
-          </motion.h1>
+            <img 
+              src={titleBanner} 
+              alt="Spelling Champions" 
+              className="w-full max-w-2xl h-auto"
+              data-testid="img-title-banner"
+            />
+          </motion.div>
           <p className="text-lg md:text-xl text-gray-700">
             Master your spelling skills with fun, interactive challenges!
           </p>
