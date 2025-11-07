@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload, Filter, Sparkles, X } from "lucide-react";
+import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload, Filter, Camera, X } from "lucide-react";
 import { motion } from "framer-motion";
 import type { CustomWordList, WordIllustration } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -355,7 +355,7 @@ export default function WordListsPage() {
                   }}
                   data-testid={`button-edit-images-${list.id}`}
                 >
-                  <Sparkles className="w-4 h-4" />
+                  <Camera className="w-4 h-4" />
                 </Button>
                 <Button
                   size="sm"
@@ -579,7 +579,7 @@ export default function WordListsPage() {
                   animate={{ rotate: 360 }}
                   transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
                 >
-                  <Sparkles className="w-5 h-5 text-purple-600" />
+                  <Camera className="w-5 h-5 text-purple-600" />
                 </motion.div>
                 <div>
                   <h3 className="font-semibold text-purple-900">Searching for Cartoon Images</h3>
@@ -833,7 +833,7 @@ function EditImagesDialog({ list, open, onOpenChange }: {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <Sparkles className="w-8 h-8 text-gray-400" />
+                        <Camera className="w-8 h-8 text-gray-400" />
                       )}
                     </div>
                     <div className="flex-1">
