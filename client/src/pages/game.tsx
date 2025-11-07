@@ -77,6 +77,12 @@ export default function Game() {
   const [scrambledLetters, setScrambledLetters] = useState<string[]>([]);
   const [placedLetters, setPlacedLetters] = useState<(string | null)[]>([]);
   const [draggedLetter, setDraggedLetter] = useState<{letter: string; sourceIndex: number} | null>(null);
+  
+  // Touch event states for mobile
+  const [touchDragging, setTouchDragging] = useState(false);
+  const [touchPosition, setTouchPosition] = useState<{x: number; y: number} | null>(null);
+  const [draggedLetterElement, setDraggedLetterElement] = useState<string | null>(null);
+  const dropZoneRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const createSessionMutation = useMutation({
     mutationFn: async (sessionData: { difficulty: string; gameMode: string; userId: number | null; customListId?: number }) => {
@@ -823,6 +829,79 @@ export default function Game() {
     } else {
       setStreak(0);
     }
+  };
+
+  // Touch event handlers for mobile devices
+  const handleTouchStart = (e: React.TouchEvent, letter: string, sourceIndex: number) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    setTouchDragging(true);
+    setTouchPosition({ x: touch.clientX, y: touch.clientY });
+    setDraggedLetter({ letter, sourceIndex });
+    setDraggedLetterElement(letter);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchDragging) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    setTouchPosition({ x: touch.clientX, y: touch.clientY });
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchDragging || !draggedLetter) {
+      setTouchDragging(false);
+      setTouchPosition(null);
+      setDraggedLetterElement(null);
+      return;
+    }
+
+    e.preventDefault();
+    const touch = e.changedTouches[0];
+    
+    // Find which drop zone the touch ended over
+    let targetIndex = -1;
+    for (let i = 0; i < dropZoneRefs.current.length; i++) {
+      const dropZone = dropZoneRefs.current[i];
+      if (dropZone) {
+        const rect = dropZone.getBoundingClientRect();
+        if (
+          touch.clientX >= rect.left &&
+          touch.clientX <= rect.right &&
+          touch.clientY >= rect.top &&
+          touch.clientY <= rect.bottom
+        ) {
+          targetIndex = i;
+          break;
+        }
+      }
+    }
+
+    // If dropped on a valid drop zone, place the letter
+    if (targetIndex !== -1) {
+      const newPlaced = [...placedLetters];
+      const newScrambled = [...scrambledLetters];
+
+      // If dropping on a filled slot, return the displaced letter to the tray
+      if (newPlaced[targetIndex] !== null) {
+        const displacedLetter = newPlaced[targetIndex]!;
+        newScrambled[draggedLetter.sourceIndex] = displacedLetter;
+        newPlaced[targetIndex] = draggedLetter.letter;
+      } else {
+        // Dropping on empty slot - just move the letter
+        newPlaced[targetIndex] = draggedLetter.letter;
+        newScrambled[draggedLetter.sourceIndex] = '';
+      }
+
+      setPlacedLetters(newPlaced);
+      setScrambledLetters(newScrambled);
+    }
+
+    // Reset touch state
+    setTouchDragging(false);
+    setTouchPosition(null);
+    setDraggedLetter(null);
+    setDraggedLetterElement(null);
   };
 
   // Validate difficulty AFTER all hooks
