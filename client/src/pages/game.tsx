@@ -27,43 +27,10 @@ import {
 } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-
-// Import cartoon illustrations for simple words
-import catImage from "@assets/generated_images/Cute_cartoon_cat_illustration_38cb1a10.png";
-import dogImage from "@assets/generated_images/Cute_cartoon_dog_illustration_8728de5a.png";
-import appleImage from "@assets/generated_images/Cute_cartoon_apple_illustration_6c421123.png";
-import bookImage from "@assets/generated_images/Cute_cartoon_book_illustration_43b70df8.png";
-import sunImage from "@assets/generated_images/Cute_cartoon_sun_illustration_9719bf3e.png";
-import houseImage from "@assets/generated_images/Cute_cartoon_house_illustration_d98900ea.png";
-import ballImage from "@assets/generated_images/Colorful_cartoon_ball_illustration_fbcfe401.png";
-import starImage from "@assets/generated_images/Colorful_cartoon_star_illustration_88486c7e.png";
-import treeImage from "@assets/generated_images/Colorful_cartoon_tree_illustration_3579cb03.png";
-import flowerImage from "@assets/generated_images/Colorful_cartoon_flower_illustration_c1abac3a.png";
-import carImage from "@assets/generated_images/Colorful_cartoon_car_illustration_f84f9861.png";
-import heartImage from "@assets/generated_images/Colorful_cartoon_heart_illustration_cc91aacf.png";
-import rainbowImage from "@assets/generated_images/Colorful_cartoon_rainbow_illustration_353f2578.png";
-import balloonImage from "@assets/generated_images/Colorful_cartoon_balloon_illustration_c9942b53.png";
+import type { WordIllustration } from "@shared/schema";
 
 // Import background pattern
 import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
-
-// Mapping of simple kid-friendly words to their cartoon illustrations
-const WORD_ILLUSTRATIONS: Record<string, string> = {
-  "cat": catImage,
-  "dog": dogImage,
-  "apple": appleImage,
-  "book": bookImage,
-  "sun": sunImage,
-  "house": houseImage,
-  "ball": ballImage,
-  "star": starImage,
-  "tree": treeImage,
-  "flower": flowerImage,
-  "car": carImage,
-  "heart": heartImage,
-  "rainbow": rainbowImage,
-  "balloon": balloonImage,
-};
 
 interface QuizAnswer {
   word: Word;
@@ -148,6 +115,10 @@ export default function Game() {
       }
     },
     enabled: !!difficulty || !!listId,
+  });
+
+  const { data: wordIllustrations } = useQuery<WordIllustration[]>({
+    queryKey: ['/api/word-illustrations'],
   });
 
   useEffect(() => {
@@ -933,21 +904,26 @@ export default function Game() {
                       {gameMode === "quiz" ? "Spell the word" : "Listen and spell the word"}
                     </h2>
                     
-                    {currentWord && WORD_ILLUSTRATIONS[currentWord.word.toLowerCase()] && (
-                      <motion.div
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ duration: 0.4, type: "spring" }}
-                        className="flex justify-center"
-                      >
-                        <img 
-                          src={WORD_ILLUSTRATIONS[currentWord.word.toLowerCase()]} 
-                          alt={`Cartoon ${currentWord.word}`}
-                          className="w-32 h-32 md:w-48 md:h-48 object-contain"
-                          data-testid="img-word-illustration"
-                        />
-                      </motion.div>
-                    )}
+                    {currentWord && wordIllustrations && (() => {
+                      const illustration = wordIllustrations.find(
+                        (ill) => ill.word === currentWord.word.toLowerCase()
+                      );
+                      return illustration ? (
+                        <motion.div
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ duration: 0.4, type: "spring" }}
+                          className="flex justify-center"
+                        >
+                          <img 
+                            src={`/${illustration.imagePath}`}
+                            alt={`Cartoon ${currentWord.word}`}
+                            className="w-32 h-32 md:w-48 md:h-48 object-contain"
+                            data-testid="img-word-illustration"
+                          />
+                        </motion.div>
+                      ) : null;
+                    })()}
                     
                     <Button
                       size="lg"
