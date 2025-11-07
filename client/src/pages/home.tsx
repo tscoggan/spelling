@@ -2,9 +2,9 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Sparkles, Trophy, Clock, Target, LogOut, List, ChevronRight } from "lucide-react";
+import { BookOpen, Sparkles, Trophy, Clock, Target, LogOut, List, ChevronRight, Lock, Globe } from "lucide-react";
 import type { DifficultyLevel, GameMode } from "@shared/schema";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -15,6 +15,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface CustomWordList {
   id: number;
@@ -30,6 +37,8 @@ export default function Home() {
   const { user, logoutMutation } = useAuth();
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [wordListDialogOpen, setWordListDialogOpen] = useState(false);
+  const [filterDifficulty, setFilterDifficulty] = useState<string>("all");
+  const [filterGradeLevel, setFilterGradeLevel] = useState<string>("all");
 
   const { data: customLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists"],
@@ -47,6 +56,8 @@ export default function Home() {
 
   const handleModeClick = (mode: GameMode) => {
     setSelectedMode(mode);
+    setFilterDifficulty("all");
+    setFilterGradeLevel("all");
     setWordListDialogOpen(true);
   };
 
@@ -55,6 +66,41 @@ export default function Home() {
     setWordListDialogOpen(false);
     setLocation(`/game?listId=${list.id}&difficulty=${list.difficulty}&mode=${selectedMode}`);
   };
+
+  const allLists = useMemo(() => {
+    const myLists = (customLists || []).map(list => ({ ...list, isMine: true }));
+    const pubLists = (publicLists || []).map(list => ({ ...list, isMine: false }));
+    const combined = [...myLists, ...pubLists];
+    
+    // Remove duplicates (user's own public lists)
+    const uniqueLists = combined.filter((list, index, self) => 
+      index === self.findIndex(l => l.id === list.id)
+    );
+    
+    // Apply filters
+    let filtered = uniqueLists;
+    if (filterDifficulty !== "all") {
+      filtered = filtered.filter(list => list.difficulty === filterDifficulty);
+    }
+    if (filterGradeLevel !== "all") {
+      filtered = filtered.filter(list => list.gradeLevel === filterGradeLevel);
+    }
+    
+    // Sort by name
+    return filtered.sort((a, b) => a.name.localeCompare(b.name));
+  }, [customLists, publicLists, filterDifficulty, filterGradeLevel]);
+
+  const availableGradeLevels = useMemo(() => {
+    const myLists = customLists || [];
+    const pubLists = publicLists || [];
+    const combined = [...myLists, ...pubLists];
+    const grades = new Set(combined.map(list => list.gradeLevel).filter(Boolean));
+    return Array.from(grades).sort((a, b) => {
+      const numA = parseInt(a || "0");
+      const numB = parseInt(b || "0");
+      return numA - numB;
+    });
+  }, [customLists, publicLists]);
 
   const gameModes = [
     {
@@ -195,103 +241,103 @@ export default function Home() {
       </motion.div>
 
       <Dialog open={wordListDialogOpen} onOpenChange={setWordListDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="text-2xl">Choose Your Word List</DialogTitle>
             <DialogDescription>
-              Select one of your custom word lists to start playing
+              Select a word list to start playing
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6">
-            {customLists && customLists.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold mb-3">My Custom Lists</h3>
-                <div className="grid grid-cols-1 gap-3">
-                  {customLists.map((list) => (
-                    <Card
-                      key={list.id}
-                      className="hover-elevate active-elevate-2 cursor-pointer"
-                      onClick={() => startGameWithCustomList(list)}
-                      data-testid={`card-custom-list-${list.id}`}
-                    >
-                      <CardHeader className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <CardTitle className="text-lg">{list.name}</CardTitle>
-                              <Badge 
-                                variant="secondary" 
-                                className={`text-xs ${
-                                  list.difficulty === "easy" ? "bg-green-100 text-green-800" :
-                                  list.difficulty === "medium" ? "bg-yellow-100 text-yellow-800" :
-                                  "bg-red-100 text-red-800"
-                                }`}
-                              >
-                                {list.difficulty.charAt(0).toUpperCase() + list.difficulty.slice(1)}
-                              </Badge>
-                              {list.gradeLevel && (
-                                <Badge variant="secondary" className="text-xs">
-                                  Grade {list.gradeLevel}
-                                </Badge>
-                              )}
-                            </div>
-                            <CardDescription className="text-sm">
-                              {list.words.length} words
-                            </CardDescription>
-                          </div>
-                          <ChevronRight className="w-5 h-5 text-gray-400" />
-                        </div>
-                      </CardHeader>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            )}
+          <div className="flex gap-3 mb-4">
+            <div className="flex-1">
+              <label className="text-sm font-medium mb-1.5 block">Difficulty</label>
+              <Select 
+                value={filterDifficulty} 
+                onValueChange={setFilterDifficulty}
+              >
+                <SelectTrigger data-testid="filter-difficulty">
+                  <SelectValue placeholder="All Difficulties" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Difficulties</SelectItem>
+                  <SelectItem value="easy">Easy</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="hard">Hard</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-            {publicLists && publicLists.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold mb-3">Public Lists</h3>
-                <div className="grid grid-cols-1 gap-3 max-h-64 overflow-y-auto">
-                  {publicLists.map((list) => (
-                    <Card
-                      key={list.id}
-                      className="hover-elevate active-elevate-2 cursor-pointer"
-                      onClick={() => startGameWithCustomList(list)}
-                      data-testid={`card-public-list-${list.id}`}
-                    >
-                      <CardHeader className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <CardTitle className="text-lg">{list.name}</CardTitle>
-                              <Badge 
-                                variant="secondary" 
-                                className={`text-xs ${
-                                  list.difficulty === "easy" ? "bg-green-100 text-green-800" :
-                                  list.difficulty === "medium" ? "bg-yellow-100 text-yellow-800" :
-                                  "bg-red-100 text-red-800"
-                                }`}
-                              >
-                                {list.difficulty.charAt(0).toUpperCase() + list.difficulty.slice(1)}
-                              </Badge>
-                              {list.gradeLevel && (
-                                <Badge variant="secondary" className="text-xs">
-                                  Grade {list.gradeLevel}
-                                </Badge>
-                              )}
-                            </div>
-                            <CardDescription className="text-sm">
-                              {list.words.length} words
-                            </CardDescription>
-                          </div>
-                          <ChevronRight className="w-5 h-5 text-gray-400" />
-                        </div>
-                      </CardHeader>
-                    </Card>
+            <div className="flex-1">
+              <label className="text-sm font-medium mb-1.5 block">Grade Level</label>
+              <Select 
+                value={filterGradeLevel} 
+                onValueChange={setFilterGradeLevel}
+              >
+                <SelectTrigger data-testid="filter-grade">
+                  <SelectValue placeholder="All Grades" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Grades</SelectItem>
+                  {availableGradeLevels.map((grade) => (
+                    <SelectItem key={grade} value={grade || ""}>
+                      Grade {grade}
+                    </SelectItem>
                   ))}
-                </div>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+            {allLists.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                {filterDifficulty !== "all" || filterGradeLevel !== "all" 
+                  ? "No word lists match your filters" 
+                  : "No word lists available"}
               </div>
+            ) : (
+              allLists.map((list) => (
+                <div
+                  key={list.id}
+                  className="flex items-center gap-3 p-3 rounded-md border hover-elevate active-elevate-2 cursor-pointer"
+                  onClick={() => startGameWithCustomList(list)}
+                  data-testid={`card-word-list-${list.id}`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-base truncate" data-testid={`text-list-name-${list.id}`}>
+                      {list.name}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {list.words.length} words
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {list.gradeLevel && (
+                      <Badge variant="secondary" className="text-xs" data-testid={`badge-grade-${list.id}`}>
+                        Grade {list.gradeLevel}
+                      </Badge>
+                    )}
+                    <Badge 
+                      variant="secondary" 
+                      className={`text-xs ${
+                        list.difficulty === "easy" ? "bg-green-100 text-green-800" :
+                        list.difficulty === "medium" ? "bg-yellow-100 text-yellow-800" :
+                        "bg-red-100 text-red-800"
+                      }`}
+                      data-testid={`badge-difficulty-${list.id}`}
+                    >
+                      {list.difficulty.charAt(0).toUpperCase() + list.difficulty.slice(1)}
+                    </Badge>
+                    {list.isPublic ? (
+                      <Globe className="w-4 h-4 text-blue-600" data-testid={`icon-public-${list.id}`} />
+                    ) : (
+                      <Lock className="w-4 h-4 text-gray-400" data-testid={`icon-private-${list.id}`} />
+                    )}
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </DialogContent>
