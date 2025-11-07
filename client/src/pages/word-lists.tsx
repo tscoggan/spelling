@@ -432,7 +432,7 @@ export default function WordListsPage() {
                   Create List
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
                 <DialogHeader>
                   <DialogTitle>
                     {editingList ? "Edit Word List" : "Create New Word List"}
@@ -443,7 +443,8 @@ export default function WordListsPage() {
                       : "Create a custom list of spelling words (minimum 5 words, maximum 500)"}
                   </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+                  <div className="space-y-4 overflow-y-auto flex-1 pr-2">
                   <div>
                     <Label htmlFor="name">List Name</Label>
                     <Input
@@ -544,7 +545,8 @@ export default function WordListsPage() {
                       Make this list public (others can use it)
                     </Label>
                   </div>
-                  <div className="flex gap-2 justify-end">
+                  </div>
+                  <div className="flex gap-2 justify-end pt-4 border-t mt-4">
                     <Button
                       type="button"
                       variant="outline"
