@@ -854,7 +854,7 @@ export default function Game() {
                 {gameMode === "quiz" ? "Quiz Complete!" : "Amazing Work!"}
               </h1>
               <p className="text-lg text-gray-600 capitalize">
-                {difficulty} Mode - {gameMode === "standard" ? "Standard" : gameMode === "timed" ? "Timed Challenge" : "Quiz Mode"}
+                {difficulty} Mode - {gameMode === "standard" ? "Practice" : gameMode === "timed" ? "Timed Challenge" : gameMode === "quiz" ? "Quiz Mode" : "Word Scramble"}
               </p>
             </motion.div>
 
@@ -1106,7 +1106,7 @@ export default function Game() {
                 Word {currentWordIndex + 1} of {words.length}
               </span>
               <span className="text-gray-800 capitalize" data-testid="text-difficulty">
-                {difficulty} - {gameMode === "standard" ? "Standard" : gameMode === "timed" ? "Timed" : gameMode === "quiz" ? "Quiz" : "Word Scramble"}
+                {difficulty} - {gameMode === "standard" ? "Practice" : gameMode === "timed" ? "Timed" : gameMode === "quiz" ? "Quiz" : "Word Scramble"}
               </span>
             </div>
             <Progress value={progress} className="h-3" data-testid="progress-game" />

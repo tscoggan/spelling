@@ -110,7 +110,7 @@ export default function Home() {
   const gameModes = [
     {
       id: "standard" as GameMode,
-      name: "Standard",
+      name: "Practice",
       description: "Classic spelling game with immediate feedback",
       icon: Target,
       color: "text-blue-600",
