@@ -123,7 +123,7 @@ export default function Home() {
     {
       id: "quiz" as GameMode,
       name: "Quiz Mode",
-      description: "Answer all 10 words, then see your results",
+      description: "Spell all the words, then see your results",
       icon: Trophy,
       color: "text-purple-600",
     },

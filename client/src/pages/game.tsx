@@ -61,7 +61,7 @@ export default function Game() {
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [showWordHints, setShowWordHints] = useState(false);
+  const [showWordHints, setShowWordHints] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const createSessionMutation = useMutation({
