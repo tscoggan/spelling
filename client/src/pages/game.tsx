@@ -623,7 +623,7 @@ export default function Game() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-100 via-sky-100 to-pink-100 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--page-game-bg))' }}>
         <Card className="p-12">
           <div className="text-center space-y-4">
             <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
@@ -642,7 +642,7 @@ export default function Game() {
     const accuracy = totalWords > 0 ? Math.round((correctCount / totalWords) * 100) : 0;
     
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-100 via-amber-50 to-emerald-100 flex items-center justify-center p-6">
+      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: 'hsl(var(--page-game-bg))' }}>
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -766,7 +766,7 @@ export default function Game() {
 
   if (!words || words.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-100 via-sky-100 to-pink-100 flex items-center justify-center p-6">
+      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: 'hsl(var(--page-game-bg))' }}>
         <Card className="p-12 text-center space-y-6">
           <p className="text-2xl">No words available for this difficulty.</p>
           <Button onClick={() => setLocation("/")} size="lg" data-testid="button-back-home">
@@ -784,14 +784,14 @@ export default function Game() {
     <div 
       className="min-h-screen flex flex-col relative"
       style={{
-        background: 'linear-gradient(135deg, #DDD6FE 0%, #BFDBFE 20%, #FBCFE8 40%, #FDE68A 60%, #BBF7D0 80%, #FED7AA 100%)',
+        backgroundColor: 'hsl(var(--page-game-bg))',
       }}
     >
       <div 
-        className="absolute inset-0 opacity-30"
+        className="absolute inset-0 opacity-50"
         style={{
           backgroundImage: `url(${schoolPattern})`,
-          backgroundSize: '300px 300px',
+          backgroundSize: '240px 240px',
           backgroundRepeat: 'repeat',
           backgroundPosition: 'center',
         }}

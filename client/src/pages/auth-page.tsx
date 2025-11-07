@@ -55,14 +55,14 @@ export default function AuthPage() {
     <div 
       className="min-h-screen flex relative"
       style={{
-        background: 'linear-gradient(135deg, #E9D5FF 0%, #DBEAFE 25%, #FCE7F3 50%, #FEF3C7 75%, #D1FAE5 100%)',
+        backgroundColor: 'hsl(var(--page-auth-bg))',
       }}
     >
       <div 
-        className="absolute inset-0 opacity-30"
+        className="absolute inset-0 opacity-50"
         style={{
           backgroundImage: `url(${schoolPattern})`,
-          backgroundSize: '300px 300px',
+          backgroundSize: '240px 240px',
           backgroundRepeat: 'repeat',
           backgroundPosition: 'center',
         }}

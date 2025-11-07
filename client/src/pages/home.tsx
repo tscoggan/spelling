@@ -135,14 +135,14 @@ export default function Home() {
     <div 
       className="min-h-screen p-4 md:p-8 relative"
       style={{
-        background: 'linear-gradient(135deg, #DDD6FE 0%, #BFDBFE 20%, #FBCFE8 40%, #FDE68A 60%, #BBF7D0 80%, #FED7AA 100%)',
+        backgroundColor: 'hsl(var(--page-home-bg))',
       }}
     >
       <div 
-        className="absolute inset-0 opacity-30"
+        className="absolute inset-0 opacity-50"
         style={{
           backgroundImage: `url(${schoolPattern})`,
-          backgroundSize: '300px 300px',
+          backgroundSize: '240px 240px',
           backgroundRepeat: 'repeat',
           backgroundPosition: 'center',
         }}

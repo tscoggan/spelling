@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trophy, Medal, Home, Crown, Award } from "lucide-react";
 import type { LeaderboardScore, DifficultyLevel } from "@shared/schema";
 import { motion } from "framer-motion";
+import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
 
 export default function Leaderboard() {
   const [, setLocation] = useLocation();
@@ -40,8 +41,17 @@ export default function Leaderboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-100 via-amber-50 to-emerald-100 p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen p-4 md:p-8 relative" style={{ backgroundColor: 'hsl(var(--page-leaderboard-bg))' }}>
+      <div 
+        className="absolute inset-0 opacity-50"
+        style={{
+          backgroundImage: `url(${schoolPattern})`,
+          backgroundSize: '240px 240px',
+          backgroundRepeat: 'repeat',
+          backgroundPosition: 'center',
+        }}
+      ></div>
+      <div className="max-w-6xl mx-auto relative z-10">
         <div className="flex items-center justify-between mb-8">
           <motion.div
             initial={{ opacity: 0, x: -20 }}

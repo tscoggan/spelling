@@ -16,6 +16,7 @@ import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload, Filter } from "luc
 import { motion } from "framer-motion";
 import type { CustomWordList } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
 
 const GRADE_LEVELS = ["K", "1", "2", "3", "4", "5", "6", "7", "8", "9-12"];
 
@@ -339,11 +340,20 @@ export default function WordListsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-100 via-sky-100 to-pink-100 p-4 md:p-8">
+    <div className="min-h-screen p-4 md:p-8 relative" style={{ backgroundColor: 'hsl(var(--page-wordlists-bg))' }}>
+      <div 
+        className="absolute inset-0 opacity-50"
+        style={{
+          backgroundImage: `url(${schoolPattern})`,
+          backgroundSize: '240px 240px',
+          backgroundRepeat: 'repeat',
+          backgroundPosition: 'center',
+        }}
+      ></div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-6xl mx-auto"
+        className="max-w-6xl mx-auto relative z-10"
       >
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <div>
