@@ -256,13 +256,70 @@ export default function Game() {
     setWordExample(null);
     
     try {
+      // First, try Simple English Wiktionary
+      console.log(`🔍 Trying Simple English Wiktionary for "${fetchWord}"...`);
+      const wiktionaryResponse = await fetch(`https://simple.wiktionary.org/api/rest_v1/page/definition/${fetchWord}`);
+      
+      if (wiktionaryResponse.ok) {
+        const wiktionaryData = await wiktionaryResponse.json();
+        
+        // Check if we're still on the same word
+        if (currentWordRef.current?.toLowerCase() !== fetchWord) {
+          return;
+        }
+        
+        // Parse Simple English Wiktionary format
+        if (wiktionaryData && Object.keys(wiktionaryData).length > 0) {
+          // Get the first part of speech (noun, verb, etc.)
+          const firstPartOfSpeech = Object.keys(wiktionaryData)[0];
+          const definitions = wiktionaryData[firstPartOfSpeech];
+          
+          if (definitions && definitions.length > 0) {
+            const firstDef = definitions[0];
+            
+            // Set definition
+            if (firstDef.definition) {
+              // Clean up HTML tags from definition
+              const cleanDefinition = firstDef.definition.replace(/<[^>]*>/g, '');
+              setWordDefinition(cleanDefinition);
+              console.log(`✅ Found definition in Simple English Wiktionary for "${fetchWord}"`);
+            }
+            
+            // Look for examples in Simple English Wiktionary
+            let foundExample = false;
+            for (const def of definitions) {
+              if (def.examples && def.examples.length > 0) {
+                const cleanExample = def.examples[0].replace(/<[^>]*>/g, '');
+                setWordExample(cleanExample);
+                foundExample = true;
+                console.log(`✅ Found example in Simple English Wiktionary for "${fetchWord}":`, cleanExample);
+                break;
+              }
+            }
+            
+            if (!foundExample) {
+              console.log(`⚠️ No example in Simple English Wiktionary for "${fetchWord}" - generating fallback`);
+              const fallbackExample = generateFallbackExample(fetchWord);
+              setWordExample(fallbackExample);
+              console.log(`✨ Generated fallback example: "${fallbackExample}"`);
+            }
+            
+            // Successfully got data from Wiktionary, return early
+            return;
+          }
+        }
+      }
+      
+      // If Simple English Wiktionary failed, fall back to regular dictionary API
+      console.log(`⚠️ Simple English Wiktionary not available for "${fetchWord}" - trying standard dictionary...`);
+      
       const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${fetchWord}`);
       if (response.ok) {
         const data = await response.json();
         
-        // Check if we're still on the same word before updating state (using ref to avoid closure issue)
+        // Check if we're still on the same word before updating state
         if (currentWordRef.current?.toLowerCase() !== fetchWord) {
-          return; // Word changed, discard this response
+          return;
         }
         
         if (data && data.length > 0) {
@@ -273,6 +330,7 @@ export default function Game() {
           const firstDefinition = firstMeaning?.definitions?.[0];
           if (firstDefinition?.definition) {
             setWordDefinition(firstDefinition.definition);
+            console.log(`✅ Found definition in standard dictionary for "${fetchWord}"`);
           }
           
           // Get first example sentence
@@ -295,7 +353,6 @@ export default function Game() {
             }
             if (!foundExample) {
               console.log(`❌ No example found for "${fetchWord}" (checked ${entry.meanings?.length || 0} meanings) - generating fallback`);
-              // Generate a simple example sentence as fallback
               const fallbackExample = generateFallbackExample(fetchWord);
               setWordExample(fallbackExample);
               console.log(`✨ Generated fallback example: "${fallbackExample}"`);
@@ -303,8 +360,8 @@ export default function Game() {
           }
         }
       } else {
-        // API returned non-OK response (e.g., 404 word not found)
-        console.log(`⚠️ Dictionary API returned ${response.status} for "${fetchWord}" - generating fallback`);
+        // Both APIs returned non-OK response
+        console.log(`⚠️ Both dictionary APIs returned errors for "${fetchWord}" - generating fallback`);
         if (currentWordRef.current?.toLowerCase() === fetchWord) {
           const fallbackExample = generateFallbackExample(fetchWord);
           setWordExample(fallbackExample);
@@ -320,7 +377,7 @@ export default function Game() {
         console.log(`✨ Generated fallback example (API error): "${fallbackExample}"`);
       }
     } finally {
-      // Only clear loading if we're still on the same word (using ref)
+      // Only clear loading if we're still on the same word
       if (currentWordRef.current?.toLowerCase() === fetchWord) {
         setLoadingDictionary(false);
       }
