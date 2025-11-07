@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload, Filter } from "lucide-react";
+import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload, Filter, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import type { CustomWordList } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +27,7 @@ export default function WordListsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingList, setEditingList] = useState<CustomWordList | null>(null);
   const [gradeFilter, setGradeFilter] = useState<string>("all");
+  const [jobId, setJobId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     difficulty: "medium" as "easy" | "medium" | "hard",
@@ -44,6 +45,22 @@ export default function WordListsPage() {
     queryKey: ["/api/word-lists/public"],
   });
 
+  const { data: jobStatus } = useQuery({
+    queryKey: ["/api/illustration-jobs", jobId],
+    queryFn: async () => {
+      if (!jobId) return null;
+      const response = await fetch(`/api/illustration-jobs/${jobId}`);
+      if (!response.ok) throw new Error("Failed to fetch job status");
+      return await response.json();
+    },
+    enabled: !!jobId,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data?.status || data.status === 'completed') return false;
+      return 2000;
+    },
+  });
+
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       const words = data.words.split('\n').map(w => w.trim()).filter(w => w.length > 0);
@@ -56,15 +73,24 @@ export default function WordListsPage() {
       });
       return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/word-lists"] });
       queryClient.invalidateQueries({ queryKey: ["/api/word-lists/public"] });
       setDialogOpen(false);
       resetForm();
-      toast({
-        title: "Success!",
-        description: "Word list created successfully",
-      });
+      
+      if (data.illustrationJobId) {
+        setJobId(data.illustrationJobId);
+        toast({
+          title: "Success!",
+          description: "Word list created! Searching for cartoon images...",
+        });
+      } else {
+        toast({
+          title: "Success!",
+          description: "Word list created successfully",
+        });
+      }
     },
     onError: (error: any) => {
       toast({
@@ -129,6 +155,16 @@ export default function WordListsPage() {
       });
     },
   });
+
+  useEffect(() => {
+    if (jobStatus?.status === 'completed' && jobId) {
+      toast({
+        title: "Image Search Complete!",
+        description: `Found ${jobStatus.successCount} cartoon images for your words`,
+      });
+      setJobId(null);
+    }
+  }, [jobStatus?.status, jobId, toast]);
 
   const resetForm = () => {
     setFormData({
@@ -527,6 +563,41 @@ export default function WordListsPage() {
             </Button>
           </div>
         </div>
+
+        {jobStatus && jobStatus.status !== 'completed' && (
+          <Card className="mb-6 border-purple-200 bg-purple-50">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3 mb-3">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                >
+                  <Sparkles className="w-5 h-5 text-purple-600" />
+                </motion.div>
+                <div>
+                  <h3 className="font-semibold text-purple-900">Searching for Cartoon Images</h3>
+                  <p className="text-sm text-purple-700">
+                    Finding kid-friendly illustrations for your words...
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm text-purple-800">
+                  <span>Progress: {jobStatus.processedWords} / {jobStatus.totalWords} words</span>
+                  <span>{jobStatus.successCount} found</span>
+                </div>
+                <div className="w-full bg-purple-200 rounded-full h-2 overflow-hidden">
+                  <motion.div
+                    className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(jobStatus.processedWords / jobStatus.totalWords) * 100}%` }}
+                    transition={{ duration: 0.5 }}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Tabs defaultValue="my-lists" className="space-y-6">
           <TabsList className="grid w-full max-w-md grid-cols-2">
