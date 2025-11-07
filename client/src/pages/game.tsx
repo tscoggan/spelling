@@ -568,7 +568,7 @@ export default function Game() {
   }, [showFeedback, gameMode]);
 
   useEffect(() => {
-    if (gameComplete && !scoreSaved && sessionId && user) {
+    if (gameComplete && !scoreSaved && sessionId && user && gameMode !== "standard") {
       const totalWords = words?.length || 10;
       const accuracy = Math.round((correctCount / totalWords) * 100);
       
