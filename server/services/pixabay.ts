@@ -1,7 +1,5 @@
 import fetch from 'node-fetch';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as crypto from 'crypto';
+import { ObjectStorageService } from '../objectStorage';
 
 const PIXABAY_API_KEY = process.env.PIXABAY_API_KEY;
 const PIXABAY_API_URL = 'https://pixabay.com/api/';
@@ -114,22 +112,15 @@ export class PixabayService {
 
       const buffer = await response.buffer();
       
-      const hash = crypto.randomBytes(4).toString('hex');
-      const sanitizedWord = word.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      const filename = `pixabay_${sanitizedWord}_${hash}.jpg`;
+      const objectStorageService = new ObjectStorageService();
+      const objectPath = await objectStorageService.uploadImageBuffer(
+        Buffer.from(buffer),
+        'image/jpeg'
+      );
       
-      const imagesDir = path.join(process.cwd(), 'attached_assets', 'stock_images');
-      if (!fs.existsSync(imagesDir)) {
-        fs.mkdirSync(imagesDir, { recursive: true });
-      }
-
-      const filepath = path.join(imagesDir, filename);
-      fs.writeFileSync(filepath, buffer);
+      console.log(`✓ Uploaded image for "${word}" to Object Storage: ${objectPath}`);
       
-      const relativePath = path.join('attached_assets', 'stock_images', filename);
-      console.log(`✓ Downloaded image for "${word}" to: ${relativePath}`);
-      
-      return relativePath;
+      return objectPath;
       
     } catch (error) {
       console.error(`Error downloading image for "${word}":`, error);
