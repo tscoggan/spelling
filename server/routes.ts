@@ -243,6 +243,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Pixabay preview endpoint - fetch top results without downloading
+  app.get("/api/pixabay/previews", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const word = req.query.word as string;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+
+      if (!word) {
+        return res.status(400).json({ error: "Word parameter is required" });
+      }
+
+      const { PixabayService } = await import("./services/pixabay");
+      const pixabayService = new PixabayService();
+      const previews = await pixabayService.getImagePreviews(word, limit);
+      
+      res.json(previews);
+    } catch (error) {
+      console.error("Error fetching Pixabay previews:", error);
+      res.status(500).json({ error: "Failed to fetch image previews" });
+    }
+  });
+
+  // Select and download a specific Pixabay image
+  app.post("/api/word-illustrations/select", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const { word, imageUrl } = req.body;
+
+      if (!word || !imageUrl) {
+        return res.status(400).json({ error: "Word and imageUrl are required" });
+      }
+
+      const { PixabayService } = await import("./services/pixabay");
+      const pixabayService = new PixabayService();
+      
+      // Download the selected image
+      const imagePath = await pixabayService.downloadImageById(imageUrl, word);
+
+      // Save to database
+      const illustration = await storage.createWordIllustration({
+        word: word.toLowerCase(),
+        imagePath,
+        source: 'pixabay',
+      });
+
+      res.json(illustration);
+    } catch (error) {
+      console.error("Error selecting image:", error);
+      res.status(500).json({ error: "Failed to save selected image" });
+    }
+  });
+
   app.get("/api/word-illustrations", async (req, res) => {
     try {
       const illustrations = await storage.getAllWordIllustrations();

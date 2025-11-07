@@ -137,6 +137,39 @@ export class PixabayService {
     }
   }
 
+  async getImagePreviews(word: string, limit: number = 10): Promise<PixabayImage[]> {
+    try {
+      const searchQuery = `cartoon ${word}`;
+      
+      const params = new URLSearchParams({
+        key: this.apiKey,
+        q: searchQuery,
+        image_type: 'illustration',
+        safesearch: 'true',
+        per_page: limit.toString(),
+        orientation: 'horizontal',
+      });
+
+      const response = await fetch(`${PIXABAY_API_URL}?${params.toString()}`);
+      
+      if (!response.ok) {
+        console.error(`Pixabay API error: ${response.status} ${response.statusText}`);
+        return [];
+      }
+
+      const data = await response.json() as PixabayResponse;
+      return data.hits || [];
+      
+    } catch (error) {
+      console.error(`Error fetching previews for "${word}":`, error);
+      return [];
+    }
+  }
+
+  async downloadImageById(imageUrl: string, word: string): Promise<string> {
+    return this.downloadImage(imageUrl, word);
+  }
+
   async testConnection(): Promise<boolean> {
     try {
       const params = new URLSearchParams({
