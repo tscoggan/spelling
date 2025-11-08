@@ -85,6 +85,10 @@ export default function Game() {
   const [touchPosition, setTouchPosition] = useState<{x: number; y: number} | null>(null);
   const [draggedLetterElement, setDraggedLetterElement] = useState<string | null>(null);
   const dropZoneRefs = useRef<(HTMLDivElement | null)[]>([]);
+  
+  // Mistake mode states
+  const [mistakeChoices, setMistakeChoices] = useState<string[]>([]);
+  const [misspelledIndex, setMisspelledIndex] = useState<number>(-1);
 
   const createSessionMutation = useMutation({
     mutationFn: async (sessionData: { difficulty: string; gameMode: string; userId: number | null; customListId?: number }) => {
@@ -695,6 +699,110 @@ export default function Game() {
     }
   }, [gameMode, currentWord, currentWordIndex]);
 
+  // Helper function to misspell a word
+  const misspellWord = (word: string): string => {
+    const vowels = 'aeiou';
+    const consonants = 'bcdfghjklmnpqrstvwxyz';
+    const wordLower = word.toLowerCase();
+    const letters = wordLower.split('');
+    
+    // Choose a misspelling strategy
+    const strategies = [
+      // Strategy 1: Replace a vowel with a different vowel
+      () => {
+        const vowelIndices = letters.map((l, i) => vowels.includes(l) ? i : -1).filter(i => i !== -1);
+        if (vowelIndices.length > 0) {
+          const idx = vowelIndices[Math.floor(Math.random() * vowelIndices.length)];
+          const currentVowel = letters[idx];
+          const otherVowels = vowels.replace(currentVowel, '');
+          letters[idx] = otherVowels[Math.floor(Math.random() * otherVowels.length)];
+          return true;
+        }
+        return false;
+      },
+      // Strategy 2: Double a consonant or remove a doubled consonant
+      () => {
+        for (let i = 0; i < letters.length - 1; i++) {
+          if (letters[i] === letters[i + 1] && consonants.includes(letters[i])) {
+            // Remove one of the doubled letters
+            letters.splice(i, 1);
+            return true;
+          }
+        }
+        // If no doubled consonant, double a random consonant
+        const consonantIndices = letters.map((l, i) => consonants.includes(l) ? i : -1).filter(i => i !== -1);
+        if (consonantIndices.length > 0) {
+          const idx = consonantIndices[Math.floor(Math.random() * consonantIndices.length)];
+          letters.splice(idx, 0, letters[idx]);
+          return true;
+        }
+        return false;
+      },
+      // Strategy 3: Swap two adjacent letters
+      () => {
+        if (letters.length > 1) {
+          const idx = Math.floor(Math.random() * (letters.length - 1));
+          [letters[idx], letters[idx + 1]] = [letters[idx + 1], letters[idx]];
+          return true;
+        }
+        return false;
+      },
+      // Strategy 4: Replace a consonant with a similar sounding one
+      () => {
+        const similar: { [key: string]: string } = {
+          'c': 'k', 'k': 'c', 's': 'z', 'z': 's', 'f': 'v', 'v': 'f',
+          'b': 'p', 'p': 'b', 'd': 't', 't': 'd', 'g': 'j', 'j': 'g'
+        };
+        for (let i = 0; i < letters.length; i++) {
+          if (similar[letters[i]]) {
+            letters[i] = similar[letters[i]];
+            return true;
+          }
+        }
+        return false;
+      }
+    ];
+    
+    // Try strategies in random order until one succeeds
+    const shuffledStrategies = [...strategies].sort(() => Math.random() - 0.5);
+    for (const strategy of shuffledStrategies) {
+      if (strategy()) break;
+    }
+    
+    const misspelled = letters.join('');
+    // Preserve original capitalization
+    return word[0] === word[0].toUpperCase() 
+      ? misspelled.charAt(0).toUpperCase() + misspelled.slice(1)
+      : misspelled;
+  };
+
+  // Mistake mode: Initialize 4 word choices when word changes
+  useEffect(() => {
+    if (gameMode === "mistake" && words && words.length >= 4) {
+      // Get 4 random words from the word list (not just current word)
+      const availableWords = [...words];
+      const selectedWords: string[] = [];
+      
+      for (let i = 0; i < 4 && availableWords.length > 0; i++) {
+        const randomIdx = Math.floor(Math.random() * availableWords.length);
+        selectedWords.push(availableWords[randomIdx].word);
+        availableWords.splice(randomIdx, 1);
+      }
+      
+      // Choose one to misspell
+      const misspellIdx = Math.floor(Math.random() * selectedWords.length);
+      const choices = selectedWords.map((word, idx) => 
+        idx === misspellIdx ? misspellWord(word) : word
+      );
+      
+      console.log(`🎯 Mistake mode: Selected words:`, selectedWords);
+      console.log(`❌ Misspelled word at index ${misspellIdx}:`, choices[misspellIdx]);
+      
+      setMistakeChoices(choices);
+      setMisspelledIndex(misspellIdx);
+    }
+  }, [gameMode, currentWordIndex, words]);
+
   const handleTimerExpired = () => {
     // Not used in new timed mode
     setGameComplete(true);
@@ -870,6 +978,26 @@ export default function Game() {
     const userAnswer = placedLetters.join('');
     const correct = userAnswer.toLowerCase() === currentWord.word.toLowerCase();
 
+    setIsCorrect(correct);
+    setShowFeedback(true);
+
+    if (correct) {
+      const points = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : difficulty === "custom" ? 20 : 30;
+      setScore(score + points + (streak * 5));
+      setCorrectCount(correctCount + 1);
+      const newStreak = streak + 1;
+      setStreak(newStreak);
+      if (newStreak > bestStreak) {
+        setBestStreak(newStreak);
+      }
+    } else {
+      setStreak(0);
+    }
+  };
+
+  const handleMistakeChoice = (choiceIndex: number) => {
+    const correct = choiceIndex === misspelledIndex;
+    
     setIsCorrect(correct);
     setShowFeedback(true);
 
@@ -1272,7 +1400,7 @@ export default function Game() {
                 <Card className="p-6 md:p-12 space-y-8 bg-white">
                   <div className="text-center space-y-6">
                     <h2 className="text-2xl md:text-3xl font-bold text-gray-800" data-testid="text-instruction">
-                      {gameMode === "quiz" ? "Spell the word" : gameMode === "scramble" ? "Unscramble the letters" : "Listen and spell the word"}
+                      {gameMode === "quiz" ? "Spell the word" : gameMode === "scramble" ? "Unscramble the letters" : gameMode === "mistake" ? "Find the misspelled word" : "Listen and spell the word"}
                     </h2>
                     
                     {currentWord && wordIllustrations && (() => {
@@ -1296,27 +1424,50 @@ export default function Game() {
                       ) : null;
                     })()}
                     
-                    <Button
-                      size="lg"
-                      variant="default"
-                      className="w-20 h-20 md:w-24 md:h-24 rounded-full p-0 overflow-hidden"
-                      onClick={(e) => {
-                        if (currentWord) {
-                          speakWithRefocus(currentWord.word, e.currentTarget);
-                        }
-                      }}
-                      data-testid="button-play-audio"
-                    >
-                      <img 
-                        src={audioIcon} 
-                        alt="Play audio" 
-                        className="w-14 h-14 md:w-16 md:h-16 object-contain"
-                      />
-                    </Button>
+                    {gameMode !== "mistake" && (
+                      <Button
+                        size="lg"
+                        variant="default"
+                        className="w-20 h-20 md:w-24 md:h-24 rounded-full p-0 overflow-hidden"
+                        onClick={(e) => {
+                          if (currentWord) {
+                            speakWithRefocus(currentWord.word, e.currentTarget);
+                          }
+                        }}
+                        data-testid="button-play-audio"
+                      >
+                        <img 
+                          src={audioIcon} 
+                          alt="Play audio" 
+                          className="w-14 h-14 md:w-16 md:h-16 object-contain"
+                        />
+                      </Button>
+                    )}
                   </div>
 
-                  <form onSubmit={gameMode === "scramble" ? (e) => { e.preventDefault(); handleScrambleSubmit(); } : handleSubmit} className="space-y-6">
-                    {gameMode === "scramble" && currentWord ? (
+                  <form onSubmit={gameMode === "scramble" ? (e) => { e.preventDefault(); handleScrambleSubmit(); } : gameMode === "mistake" ? (e) => { e.preventDefault(); } : handleSubmit} className="space-y-6">
+                    {gameMode === "mistake" && mistakeChoices.length === 4 ? (
+                      <div className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {mistakeChoices.map((word, index) => (
+                            <Button
+                              key={index}
+                              type="button"
+                              variant="outline"
+                              size="lg"
+                              className="h-16 md:h-20 text-xl md:text-2xl font-bold"
+                              onClick={() => handleMistakeChoice(index)}
+                              data-testid={`button-choice-${index}`}
+                            >
+                              {word}
+                            </Button>
+                          ))}
+                        </div>
+                        <div className="text-center text-sm text-gray-600">
+                          Click on the word that is spelled incorrectly
+                        </div>
+                      </div>
+                    ) : gameMode === "scramble" && currentWord ? (
                       <div className="space-y-8 overscroll-contain">
                         {/* Drop zones - blank spaces to place letters */}
                         <div className="flex items-center justify-center gap-2 md:gap-3 flex-wrap">
@@ -1411,59 +1562,64 @@ export default function Game() {
                     )}
                     
                     <div className="space-y-3">
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        {gameMode !== "scramble" && (
+                      {gameMode !== "mistake" && (
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          {gameMode !== "scramble" && (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="lg"
+                              className="flex-1 text-lg h-12 md:h-14"
+                              onClick={speakPartsOfSpeech}
+                              disabled={!wordPartsOfSpeech || loadingDictionary}
+                              data-testid="button-parts-of-speech"
+                            >
+                              <Sparkles className="w-5 h-5 mr-2" />
+                              {loadingDictionary ? "Loading..." : "Part of Speech"}
+                            </Button>
+                          )}
+                          <Button
+                            type="submit"
+                            size="lg"
+                            className={`${gameMode === "scramble" ? "w-full" : "flex-1"} text-lg h-12 md:h-14`}
+                            disabled={gameMode === "scramble" ? placedLetters.some(l => l === null) : !userInput.trim()}
+                            data-testid="button-submit"
+                          >
+                            {gameMode === "quiz" ? "Submit" : "Check"}
+                            <ArrowRight className="w-5 h-5 ml-2" />
+                          </Button>
+                        </div>
+                      )}
+
+                      
+                      {gameMode !== "mistake" && (
+                        <div className="flex flex-col sm:flex-row gap-3">
                           <Button
                             type="button"
                             variant="secondary"
                             size="lg"
-                            className="flex-1 text-lg h-12 md:h-14"
-                            onClick={speakPartsOfSpeech}
-                            disabled={!wordPartsOfSpeech || loadingDictionary}
-                            data-testid="button-parts-of-speech"
+                            className="flex-1 text-base h-12"
+                            onClick={speakDefinition}
+                            disabled={!wordDefinition || loadingDictionary}
+                            data-testid="button-definition"
                           >
-                            <Sparkles className="w-5 h-5 mr-2" />
-                            {loadingDictionary ? "Loading..." : "Part of Speech"}
+                            <BookOpen className="w-4 h-4 mr-2" />
+                            {loadingDictionary ? "Loading..." : "Definition"}
                           </Button>
-                        )}
-                        <Button
-                          type="submit"
-                          size="lg"
-                          className={`${gameMode === "scramble" ? "w-full" : "flex-1"} text-lg h-12 md:h-14`}
-                          disabled={gameMode === "scramble" ? placedLetters.some(l => l === null) : !userInput.trim()}
-                          data-testid="button-submit"
-                        >
-                          {gameMode === "quiz" ? "Submit" : "Check"}
-                          <ArrowRight className="w-5 h-5 ml-2" />
-                        </Button>
-                      </div>
-                      
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="lg"
-                          className="flex-1 text-base h-12"
-                          onClick={speakDefinition}
-                          disabled={!wordDefinition || loadingDictionary}
-                          data-testid="button-definition"
-                        >
-                          <BookOpen className="w-4 h-4 mr-2" />
-                          {loadingDictionary ? "Loading..." : "Definition"}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="lg"
-                          className="flex-1 text-base h-12"
-                          onClick={speakExample}
-                          disabled={!wordExample || loadingDictionary}
-                          data-testid="button-example"
-                        >
-                          <MessageSquare className="w-4 h-4 mr-2" />
-                          {loadingDictionary ? "Loading..." : "Use in Sentence"}
-                        </Button>
-                      </div>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="lg"
+                            className="flex-1 text-base h-12"
+                            onClick={speakExample}
+                            disabled={!wordExample || loadingDictionary}
+                            data-testid="button-example"
+                          >
+                            <MessageSquare className="w-4 h-4 mr-2" />
+                            {loadingDictionary ? "Loading..." : "Use in Sentence"}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </form>
                 </Card>

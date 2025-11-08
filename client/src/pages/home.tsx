@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Sparkles, Trophy, Clock, Target, LogOut, List, ChevronRight, Lock, Globe, Shuffle } from "lucide-react";
+import { BookOpen, Sparkles, Trophy, Clock, Target, LogOut, List, ChevronRight, Lock, Globe, Shuffle, AlertCircle } from "lucide-react";
 import type { DifficultyLevel, GameMode } from "@shared/schema";
 import { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -135,6 +135,13 @@ export default function Home() {
       description: "Drag and drop letter tiles to unscramble the word",
       icon: Shuffle,
       color: "text-green-600",
+    },
+    {
+      id: "mistake" as GameMode,
+      name: "Find the Mistake",
+      description: "Identify the one misspelled word from four choices",
+      icon: AlertCircle,
+      color: "text-red-600",
     },
   ];
 
