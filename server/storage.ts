@@ -61,6 +61,7 @@ export interface IStorage {
   createWordIllustration(illustration: InsertWordIllustration): Promise<WordIllustration>;
   getWordIllustration(word: string): Promise<WordIllustration | undefined>;
   getAllWordIllustrations(): Promise<WordIllustration[]>;
+  updateWordIllustration(id: number, updates: Partial<InsertWordIllustration>): Promise<WordIllustration | undefined>;
   
   sessionStore: session.Store;
 }
@@ -436,6 +437,15 @@ export class DatabaseStorage implements IStorage {
 
   async getAllWordIllustrations(): Promise<WordIllustration[]> {
     return await db.select().from(wordIllustrations);
+  }
+
+  async updateWordIllustration(id: number, updates: Partial<InsertWordIllustration>): Promise<WordIllustration | undefined> {
+    const [updated] = await db
+      .update(wordIllustrations)
+      .set(updates)
+      .where(eq(wordIllustrations.id, id))
+      .returning();
+    return updated || undefined;
   }
 
   async deleteWordIllustration(word: string): Promise<boolean> {

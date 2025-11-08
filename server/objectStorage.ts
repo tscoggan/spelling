@@ -7,6 +7,7 @@ import {
   canAccessObject,
   getObjectAclPolicy,
   setObjectAclPolicy,
+  ACL_POLICY_METADATA_KEY,
 } from "./objectAcl";
 
 const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
@@ -303,5 +304,3 @@ async function signObjectURL({
   const { signed_url: signedURL } = await response.json();
   return signedURL;
 }
-
-const ACL_POLICY_METADATA_KEY = "custom:aclPolicy";
