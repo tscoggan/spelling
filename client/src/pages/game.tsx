@@ -1231,7 +1231,7 @@ export default function Game() {
                           className="flex justify-center"
                         >
                           <img 
-                            src={`/${illustration.imagePath}`}
+                            src={illustration.imagePath}
                             alt={`Cartoon ${currentWord.word}`}
                             className="w-32 h-32 md:w-48 md:h-48 object-contain"
                             data-testid="img-word-illustration"

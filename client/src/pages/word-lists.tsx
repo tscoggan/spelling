@@ -702,7 +702,7 @@ function WordListPreview({ words, listId }: { words: string[]; listId: number })
           >
             {illustration && (
               <img
-                src={`/${illustration.imagePath}`}
+                src={illustration.imagePath}
                 alt={word}
                 className="w-5 h-5 object-cover rounded"
               />
@@ -830,7 +830,7 @@ function EditImagesDialog({ list, open, onOpenChange }: {
                     <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-md flex items-center justify-center overflow-hidden">
                       {illustration ? (
                         <img
-                          src={`/${illustration.imagePath}`}
+                          src={illustration.imagePath}
                           alt={word}
                           className="w-full h-full object-cover"
                         />
