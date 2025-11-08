@@ -31,7 +31,7 @@ import type { WordIllustration } from "@shared/schema";
 
 // Import background pattern
 import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
-import audioIcon from "@assets/stock_images/volume_sound_audio_i_9217c1ea.jpg";
+import audioIcon from "@assets/stock_images/speaker_sound_waves__fb33fb42.jpg";
 
 interface QuizAnswer {
   word: Word;
@@ -1415,7 +1415,7 @@ export default function Game() {
                         {gameMode !== "scramble" && (
                           <Button
                             type="button"
-                            variant="outline"
+                            variant="secondary"
                             size="lg"
                             className="flex-1 text-lg h-12 md:h-14"
                             onClick={speakPartsOfSpeech}
