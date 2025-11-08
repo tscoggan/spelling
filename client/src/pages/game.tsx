@@ -1403,7 +1403,7 @@ export default function Game() {
                       {gameMode === "quiz" ? "Spell the word" : gameMode === "scramble" ? "Unscramble the letters" : gameMode === "mistake" ? "Find the misspelled word" : "Listen and spell the word"}
                     </h2>
                     
-                    {currentWord && wordIllustrations && (() => {
+                    {gameMode !== "mistake" && currentWord && wordIllustrations && (() => {
                       const illustration = wordIllustrations.find(
                         (ill) => ill.word === currentWord.word.toLowerCase()
                       );
@@ -1455,7 +1455,7 @@ export default function Game() {
                               type="button"
                               variant="outline"
                               size="lg"
-                              className="h-16 md:h-20 text-xl md:text-2xl font-bold"
+                              className="h-16 md:h-20 text-xl md:text-2xl font-bold border-2"
                               onClick={() => handleMistakeChoice(index)}
                               data-testid={`button-choice-${index}`}
                             >
