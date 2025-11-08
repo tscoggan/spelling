@@ -586,7 +586,7 @@ export default function Game() {
   }, [currentWordIndex, showFeedback]);
 
   useEffect(() => {
-    if (currentWord && !showFeedback && gameMode !== "quiz") {
+    if (currentWord && !showFeedback && gameMode !== "quiz" && gameMode !== "mistake") {
       speakWord(currentWord.word, () => {
         // Re-focus after TTS completes
         setTimeout(() => {
@@ -699,38 +699,61 @@ export default function Game() {
     }
   }, [gameMode, currentWord, currentWordIndex]);
 
-  // Helper function to misspell a word
+  // Helper function to misspell a word using common spelling mistakes
   const misspellWord = (word: string): string => {
-    const vowels = 'aeiou';
-    const consonants = 'bcdfghjklmnpqrstvwxyz';
     const wordLower = word.toLowerCase();
     const letters = wordLower.split('');
     
-    // Choose a misspelling strategy
+    // Common spelling mistake strategies
     const strategies = [
-      // Strategy 1: Replace a vowel with a different vowel
+      // Strategy 1: Reverse "ie" to "ei" or "ei" to "ie" (very common mistake)
       () => {
-        const vowelIndices = letters.map((l, i) => vowels.includes(l) ? i : -1).filter(i => i !== -1);
-        if (vowelIndices.length > 0) {
-          const idx = vowelIndices[Math.floor(Math.random() * vowelIndices.length)];
-          const currentVowel = letters[idx];
-          const otherVowels = vowels.replace(currentVowel, '');
-          letters[idx] = otherVowels[Math.floor(Math.random() * otherVowels.length)];
+        const ieIndex = wordLower.indexOf('ie');
+        const eiIndex = wordLower.indexOf('ei');
+        
+        if (ieIndex !== -1) {
+          // Replace "ie" with "ei"
+          letters[ieIndex] = 'e';
+          letters[ieIndex + 1] = 'i';
+          return true;
+        } else if (eiIndex !== -1) {
+          // Replace "ei" with "ie"
+          letters[eiIndex] = 'i';
+          letters[eiIndex + 1] = 'e';
           return true;
         }
         return false;
       },
-      // Strategy 2: Double a consonant or remove a doubled consonant
+      
+      // Strategy 2: Drop silent 'e' at the end or add it where it shouldn't be
       () => {
+        if (letters.length > 2 && letters[letters.length - 1] === 'e') {
+          // Remove silent 'e' (e.g., "make" → "mak")
+          letters.pop();
+          return true;
+        } else if (letters.length > 2 && letters[letters.length - 1] !== 'e') {
+          // Add unnecessary 'e' (e.g., "cat" → "cate")
+          letters.push('e');
+          return true;
+        }
+        return false;
+      },
+      
+      // Strategy 3: Double or un-double consonants (very common)
+      () => {
+        const consonants = 'bcdfghjklmnpqrstvwxyz';
         for (let i = 0; i < letters.length - 1; i++) {
           if (letters[i] === letters[i + 1] && consonants.includes(letters[i])) {
-            // Remove one of the doubled letters
+            // Remove doubled consonant (e.g., "rabbit" → "rabit")
             letters.splice(i, 1);
             return true;
           }
         }
-        // If no doubled consonant, double a random consonant
-        const consonantIndices = letters.map((l, i) => consonants.includes(l) ? i : -1).filter(i => i !== -1);
+        // Or double a single consonant (e.g., "began" → "beggan")
+        const consonantIndices = letters.map((l, i) => 
+          consonants.includes(l) && (i === letters.length - 1 || letters[i] !== letters[i + 1]) ? i : -1
+        ).filter(i => i !== -1 && i > 0 && i < letters.length - 1);
+        
         if (consonantIndices.length > 0) {
           const idx = consonantIndices[Math.floor(Math.random() * consonantIndices.length)];
           letters.splice(idx, 0, letters[idx]);
@@ -738,26 +761,51 @@ export default function Game() {
         }
         return false;
       },
-      // Strategy 3: Swap two adjacent letters
+      
+      // Strategy 4: Common phonetic errors (c/k, s/c, f/ph, etc.)
       () => {
-        if (letters.length > 1) {
+        const phonetic: { pattern: string, replacement: string }[] = [
+          { pattern: 'c', replacement: 'k' },  // cat → kat
+          { pattern: 'k', replacement: 'c' },  // kite → cite
+          { pattern: 'ph', replacement: 'f' }, // phone → fone
+          { pattern: 'f', replacement: 'ph' }, // feel → pheel
+          { pattern: 'tion', replacement: 'shun' }, // station → stashun
+          { pattern: 'ght', replacement: 't' },     // light → lit
+        ];
+        
+        for (const { pattern, replacement } of phonetic) {
+          const index = wordLower.indexOf(pattern);
+          if (index !== -1) {
+            const before = letters.slice(0, index);
+            const after = letters.slice(index + pattern.length);
+            return (before.concat(replacement.split(''), after)).length !== letters.length 
+              ? (letters.splice(0, letters.length, ...before, ...replacement.split(''), ...after), true)
+              : false;
+          }
+        }
+        return false;
+      },
+      
+      // Strategy 5: Swap adjacent letters (common typo)
+      () => {
+        if (letters.length > 2) {
           const idx = Math.floor(Math.random() * (letters.length - 1));
           [letters[idx], letters[idx + 1]] = [letters[idx + 1], letters[idx]];
           return true;
         }
         return false;
       },
-      // Strategy 4: Replace a consonant with a similar sounding one
+      
+      // Strategy 6: Confuse similar vowel sounds (a/e, i/e, o/u)
       () => {
-        const similar: { [key: string]: string } = {
-          'c': 'k', 'k': 'c', 's': 'z', 'z': 's', 'f': 'v', 'v': 'f',
-          'b': 'p', 'p': 'b', 'd': 't', 't': 'd', 'g': 'j', 'j': 'g'
+        const vowelConfusions: { [key: string]: string } = {
+          'a': 'e', 'e': 'a', 'i': 'e', 'o': 'u', 'u': 'o'
         };
-        for (let i = 0; i < letters.length; i++) {
-          if (similar[letters[i]]) {
-            letters[i] = similar[letters[i]];
-            return true;
-          }
+        const vowelIndices = letters.map((l, i) => vowelConfusions[l] ? i : -1).filter(i => i !== -1);
+        if (vowelIndices.length > 0) {
+          const idx = vowelIndices[Math.floor(Math.random() * vowelIndices.length)];
+          letters[idx] = vowelConfusions[letters[idx]];
+          return true;
         }
         return false;
       }
