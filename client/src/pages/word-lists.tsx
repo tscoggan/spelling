@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload, Filter, Camera, X } from "lucide-react";
@@ -338,34 +339,49 @@ export default function WordListsPage() {
             </Button>
             {canEdit && (
               <>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleEdit(list)}
-                  data-testid={`button-edit-${list.id}`}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setEditingImagesList(list);
-                    setEditImagesDialogOpen(true);
-                  }}
-                  data-testid={`button-edit-images-${list.id}`}
-                >
-                  <Camera className="w-4 h-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => deleteMutation.mutate(list.id)}
-                  disabled={deleteMutation.isPending}
-                  data-testid={`button-delete-${list.id}`}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEdit(list)}
+                      data-testid={`button-edit-${list.id}`}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit List</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditingImagesList(list);
+                        setEditImagesDialogOpen(true);
+                      }}
+                      data-testid={`button-edit-images-${list.id}`}
+                    >
+                      <Camera className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit Images</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => deleteMutation.mutate(list.id)}
+                      disabled={deleteMutation.isPending}
+                      data-testid={`button-delete-${list.id}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Delete List</TooltipContent>
+                </Tooltip>
               </>
             )}
           </div>
@@ -700,7 +716,7 @@ function WordListPreview({ words, listId }: { words: string[]; listId: number })
             className="inline-flex items-center gap-1.5 px-2 py-1 bg-purple-100 text-purple-800 rounded-md text-sm"
             data-testid={`word-${listId}-${i}`}
           >
-            {illustration && (
+            {illustration && illustration.imagePath && (
               <img
                 src={illustration.imagePath}
                 alt={word}
@@ -725,6 +741,7 @@ function EditImagesDialog({ list, open, onOpenChange }: {
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [pixabayPreviews, setPixabayPreviews] = useState<any[]>([]);
   const [loadingPreviews, setLoadingPreviews] = useState(false);
+  const [customSearchTerm, setCustomSearchTerm] = useState("");
 
   // Query for all word illustrations
   const { data: illustrations = [], refetch: refetchIllustrations } = useQuery<WordIllustration[]>({
@@ -828,7 +845,7 @@ function EditImagesDialog({ list, open, onOpenChange }: {
                 >
                   <CardContent className="p-4 flex items-center gap-4">
                     <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-md flex items-center justify-center overflow-hidden">
-                      {illustration ? (
+                      {illustration && illustration.imagePath ? (
                         <img
                           src={illustration.imagePath}
                           alt={word}
@@ -858,6 +875,7 @@ function EditImagesDialog({ list, open, onOpenChange }: {
                 onClick={() => {
                   setSelectedWord(null);
                   setPixabayPreviews([]);
+                  setCustomSearchTerm("");
                 }}
                 data-testid="button-back"
               >
@@ -865,6 +883,32 @@ function EditImagesDialog({ list, open, onOpenChange }: {
                 Back to List
               </Button>
               <p className="text-lg font-semibold">Selecting image for: {selectedWord}</p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Input
+                type="text"
+                placeholder="Custom search (e.g., 'cartoon dog')"
+                value={customSearchTerm}
+                onChange={(e) => setCustomSearchTerm(e.target.value)}
+                className="flex-1 text-sm h-9"
+                data-testid="input-custom-search"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  if (customSearchTerm.trim()) {
+                    fetchPixabayPreviews(customSearchTerm);
+                  } else if (selectedWord) {
+                    fetchPixabayPreviews(selectedWord);
+                  }
+                }}
+                disabled={loadingPreviews}
+                data-testid="button-custom-search"
+              >
+                Search
+              </Button>
             </div>
 
             {loadingPreviews ? (

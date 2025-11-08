@@ -131,8 +131,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Authentication required" });
       }
 
+      // Capitalize all words before validation
+      const wordsArray = Array.isArray(req.body.words) 
+        ? req.body.words.map((word: string) => word.toUpperCase())
+        : req.body.words;
+
       const listData = insertCustomWordListSchema.parse({
         ...req.body,
+        words: wordsArray,
         userId: req.user!.id,
       });
       
@@ -219,7 +225,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Access denied" });
       }
 
-      const updates = insertCustomWordListSchema.partial().parse(req.body);
+      // Capitalize all words before validation if words array is being updated
+      const bodyData = req.body.words && Array.isArray(req.body.words)
+        ? { ...req.body, words: req.body.words.map((word: string) => word.toUpperCase()) }
+        : req.body;
+
+      const updates = insertCustomWordListSchema.partial().parse(bodyData);
       const updatedList = await storage.updateCustomWordList(id, updates);
       
       res.json(updatedList);
@@ -349,6 +360,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(illustrations);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch word illustrations" });
+    }
+  });
+
+  // Update parts of speech for a word illustration
+  app.patch("/api/word-illustrations/:word/parts-of-speech", async (req, res) => {
+    try {
+      const word = req.params.word.toLowerCase();
+      const { partsOfSpeech } = req.body;
+
+      if (!partsOfSpeech && partsOfSpeech !== null) {
+        return res.status(400).json({ error: "partsOfSpeech is required" });
+      }
+
+      // Get existing illustration
+      const existing = await storage.getWordIllustration(word);
+      
+      if (existing) {
+        // Update existing illustration
+        const updated = await storage.updateWordIllustration(existing.id, {
+          partsOfSpeech: partsOfSpeech || null,
+        });
+        return res.json(updated);
+      } else {
+        // Create new illustration entry with just parts of speech (no image)
+        const newIllustration = await storage.createWordIllustration({
+          word,
+          imagePath: null,
+          source: 'dictionary',
+          partsOfSpeech: partsOfSpeech || null,
+        });
+        return res.json(newIllustration);
+      }
+    } catch (error) {
+      console.error("Error updating parts of speech:", error);
+      res.status(500).json({ error: "Failed to update parts of speech" });
     }
   });
 

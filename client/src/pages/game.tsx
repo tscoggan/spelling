@@ -68,6 +68,7 @@ export default function Game() {
   const [showWordHints, setShowWordHints] = useState(true);
   const [wordDefinition, setWordDefinition] = useState<string | null>(null);
   const [wordExample, setWordExample] = useState<string | null>(null);
+  const [wordPartsOfSpeech, setWordPartsOfSpeech] = useState<string | null>(null);
   const [loadingDictionary, setLoadingDictionary] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const currentWordRef = useRef<string | null>(null);
@@ -266,6 +267,7 @@ export default function Game() {
     setLoadingDictionary(true);
     setWordDefinition(null);
     setWordExample(null);
+    setWordPartsOfSpeech(null);
     
     try {
       // First, try Simple English Wiktionary using MediaWiki API
@@ -297,9 +299,19 @@ export default function Game() {
             
             let foundDefinition = false;
             let foundExample = false;
+            const partsOfSpeechFound = new Set<string>();
             
             for (let i = 0; i < lines.length; i++) {
               const line = lines[i];
+              
+              // Extract parts of speech from headers like "== Noun ==" or "== Verb =="
+              if (line.startsWith('==') && line.endsWith('==')) {
+                const partOfSpeech = line.replace(/=/g, '').trim().toLowerCase();
+                const validParts = ['noun', 'verb', 'adjective', 'adverb', 'pronoun', 'preposition', 'conjunction', 'interjection'];
+                if (validParts.includes(partOfSpeech)) {
+                  partsOfSpeechFound.add(partOfSpeech);
+                }
+              }
               
               // Skip headers and pronunciation sections
               if (line.startsWith('==') || line.startsWith('Pronunciation') || 
@@ -362,6 +374,14 @@ export default function Game() {
                 setWordExample(fallbackExample);
                 console.log(`✨ Generated fallback example: "${fallbackExample}"`);
               }
+              if (partsOfSpeechFound.size > 0) {
+                const partsArray = Array.from(partsOfSpeechFound);
+                const partsString = partsArray.join(' or ');
+                setWordPartsOfSpeech(partsString);
+                console.log(`✅ Found parts of speech in Simple English Wiktionary for "${fetchWord}": ${partsArray.join(', ')}`);
+                // Save to database
+                savePartsOfSpeech(fetchWord, partsString);
+              }
               return;
             }
           }
@@ -382,6 +402,24 @@ export default function Game() {
         
         if (data && data.length > 0) {
           const entry = data[0];
+          
+          // Extract all parts of speech
+          const partsOfSpeech = new Set<string>();
+          if (entry.meanings && Array.isArray(entry.meanings)) {
+            entry.meanings.forEach((meaning: any) => {
+              if (meaning.partOfSpeech) {
+                partsOfSpeech.add(meaning.partOfSpeech.toLowerCase());
+              }
+            });
+          }
+          if (partsOfSpeech.size > 0) {
+            const partsArray = Array.from(partsOfSpeech);
+            const partsString = partsArray.join(' or ');
+            setWordPartsOfSpeech(partsString);
+            console.log(`✅ Found parts of speech in standard dictionary for "${fetchWord}": ${partsArray.join(', ')}`);
+            // Save to database
+            savePartsOfSpeech(fetchWord, partsString);
+          }
           
           // Get first definition
           const firstMeaning = entry.meanings?.[0];
@@ -494,6 +532,23 @@ export default function Game() {
   const speakExample = (e?: React.MouseEvent<HTMLButtonElement>) => {
     if (wordExample && currentWord) {
       speakWithRefocus(wordExample, e?.currentTarget);
+    }
+  };
+
+  const speakPartsOfSpeech = (e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (wordPartsOfSpeech && currentWord) {
+      speakWithRefocus(wordPartsOfSpeech, e?.currentTarget);
+    }
+  };
+
+  const savePartsOfSpeech = async (word: string, partsOfSpeech: string) => {
+    try {
+      await apiRequest("PATCH", `/api/word-illustrations/${encodeURIComponent(word.toLowerCase())}/parts-of-speech`, {
+        partsOfSpeech,
+      });
+    } catch (error) {
+      console.error("Failed to save parts of speech:", error);
+      // Silently fail - this is not critical to gameplay
     }
   };
 
@@ -1223,7 +1278,7 @@ export default function Game() {
                       const illustration = wordIllustrations.find(
                         (ill) => ill.word === currentWord.word.toLowerCase()
                       );
-                      return illustration ? (
+                      return illustration && illustration.imagePath ? (
                         <motion.div
                           initial={{ scale: 0.8, opacity: 0 }}
                           animate={{ scale: 1, opacity: 1 }}
@@ -1310,7 +1365,7 @@ export default function Game() {
                           Drag the yellow tiles to the blank spaces above
                         </div>
                       </div>
-                    ) : showWordHints && currentWord ? (
+                    ) : showWordHints && currentWord && gameMode !== "quiz" ? (
                       <div className="relative">
                         <Input
                           ref={inputRef}
@@ -1381,30 +1436,44 @@ export default function Game() {
                         </Button>
                       </div>
                       
-                      <div className="flex flex-col sm:flex-row gap-3">
+                      <div className="flex flex-col gap-3">
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="lg"
+                            className="flex-1 text-base h-12"
+                            onClick={speakDefinition}
+                            disabled={!wordDefinition || loadingDictionary}
+                            data-testid="button-definition"
+                          >
+                            <BookOpen className="w-4 h-4 mr-2" />
+                            {loadingDictionary ? "Loading..." : "Definition"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="lg"
+                            className="flex-1 text-base h-12"
+                            onClick={speakExample}
+                            disabled={!wordExample || loadingDictionary}
+                            data-testid="button-example"
+                          >
+                            <MessageSquare className="w-4 h-4 mr-2" />
+                            {loadingDictionary ? "Loading..." : "Use in Sentence"}
+                          </Button>
+                        </div>
                         <Button
                           type="button"
                           variant="secondary"
                           size="lg"
-                          className="flex-1 text-base h-12"
-                          onClick={speakDefinition}
-                          disabled={!wordDefinition || loadingDictionary}
-                          data-testid="button-definition"
+                          className="w-full text-base h-12"
+                          onClick={speakPartsOfSpeech}
+                          disabled={!wordPartsOfSpeech || loadingDictionary}
+                          data-testid="button-parts-of-speech"
                         >
-                          <BookOpen className="w-4 h-4 mr-2" />
-                          {loadingDictionary ? "Loading..." : "Definition"}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="lg"
-                          className="flex-1 text-base h-12"
-                          onClick={speakExample}
-                          disabled={!wordExample || loadingDictionary}
-                          data-testid="button-example"
-                        >
-                          <MessageSquare className="w-4 h-4 mr-2" />
-                          {loadingDictionary ? "Loading..." : "Use in Sentence"}
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          {loadingDictionary ? "Loading..." : "Parts of Speech"}
                         </Button>
                       </div>
                     </div>

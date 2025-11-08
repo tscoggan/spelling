@@ -70,8 +70,9 @@ export const customWordLists = pgTable("custom_word_lists", {
 export const wordIllustrations = pgTable("word_illustrations", {
   id: serial("id").primaryKey(),
   word: text("word").notNull().unique(),
-  imagePath: text("image_path").notNull(),
+  imagePath: text("image_path"),
   source: text("source").default("manual"),
+  partsOfSpeech: text("parts_of_speech"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
