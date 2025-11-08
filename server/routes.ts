@@ -233,7 +233,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updates = insertCustomWordListSchema.partial().parse(bodyData);
       const updatedList = await storage.updateCustomWordList(id, updates);
       
-      res.json(updatedList);
+      if (!updatedList) {
+        return res.status(500).json({ error: "Failed to update word list" });
+      }
+      
+      // If words were updated, check for new words and trigger image enrichment
+      let illustrationJobId: number | undefined;
+      if (updates.words && Array.isArray(updates.words)) {
+        const oldWords = new Set(existingList.words.map((w: string) => w.toLowerCase()));
+        const newWords = updates.words.filter((w: string) => !oldWords.has(w.toLowerCase()));
+        
+        if (newWords.length > 0) {
+          const jobService = new IllustrationJobService();
+          illustrationJobId = await jobService.createJob(updatedList.id);
+        }
+      }
+      
+      res.json(illustrationJobId ? { ...updatedList, illustrationJobId } : updatedList);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid word list data", details: error.errors });

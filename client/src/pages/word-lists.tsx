@@ -118,16 +118,25 @@ export default function WordListsPage() {
       const response = await apiRequest("PUT", `/api/word-lists/${id}`, updates);
       return await response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/word-lists"] });
       queryClient.invalidateQueries({ queryKey: ["/api/word-lists/public"] });
       setDialogOpen(false);
       setEditingList(null);
       resetForm();
-      toast({
-        title: "Success!",
-        description: "Word list updated successfully",
-      });
+      
+      if (data.illustrationJobId) {
+        setJobId(data.illustrationJobId);
+        toast({
+          title: "Success!",
+          description: "Word list updated! Searching for cartoon images...",
+        });
+      } else {
+        toast({
+          title: "Success!",
+          description: "Word list updated successfully",
+        });
+      }
     },
     onError: (error: any) => {
       toast({

@@ -31,6 +31,7 @@ import type { WordIllustration } from "@shared/schema";
 
 // Import background pattern
 import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
+import audioIcon from "@assets/stock_images/volume_sound_audio_i_9217c1ea.jpg";
 
 interface QuizAnswer {
   word: Word;
@@ -1298,7 +1299,7 @@ export default function Game() {
                     <Button
                       size="lg"
                       variant="default"
-                      className="w-20 h-20 md:w-24 md:h-24 rounded-full p-0"
+                      className="w-20 h-20 md:w-24 md:h-24 rounded-full p-0 overflow-hidden"
                       onClick={(e) => {
                         if (currentWord) {
                           speakWithRefocus(currentWord.word, e.currentTarget);
@@ -1306,7 +1307,11 @@ export default function Game() {
                       }}
                       data-testid="button-play-audio"
                     >
-                      <Volume2 className="w-14 h-14 md:w-16 md:h-16" />
+                      <img 
+                        src={audioIcon} 
+                        alt="Play audio" 
+                        className="w-14 h-14 md:w-16 md:h-16 object-contain"
+                      />
                     </Button>
                   </div>
 
@@ -1372,7 +1377,7 @@ export default function Game() {
                           type="text"
                           value={userInput}
                           onChange={(e) => setUserInput(e.target.value)}
-                          className="text-transparent caret-transparent absolute inset-0 text-center text-2xl md:text-4xl h-16 md:h-20 rounded-2xl bg-transparent border-transparent pointer-events-auto"
+                          className="text-transparent caret-transparent absolute inset-0 text-center text-2xl md:text-4xl h-16 md:h-20 rounded-2xl bg-transparent border-transparent pointer-events-auto uppercase"
                           autoComplete="off"
                           autoFocus
                           data-testid="input-spelling"
@@ -1383,7 +1388,7 @@ export default function Game() {
                         >
                           {Array.from({ length: currentWord.word.length }).map((_, index) => (
                             <div key={index} className="flex flex-col items-center gap-1">
-                              <div className="text-2xl md:text-4xl font-semibold text-gray-800 h-8 md:h-10 flex items-center justify-center min-w-[1.5rem] md:min-w-[2rem]">
+                              <div className="text-2xl md:text-4xl font-semibold text-gray-800 h-8 md:h-10 flex items-center justify-center min-w-[1.5rem] md:min-w-[2rem] uppercase">
                                 {userInput[index] || ""}
                               </div>
                               <div className="w-6 md:w-8 h-0.5 bg-gray-400"></div>
@@ -1397,7 +1402,7 @@ export default function Game() {
                         type="text"
                         value={userInput}
                         onChange={(e) => setUserInput(e.target.value)}
-                        className="text-center text-2xl md:text-4xl h-16 md:h-20 rounded-2xl"
+                        className="text-center text-2xl md:text-4xl h-16 md:h-20 rounded-2xl uppercase"
                         placeholder="Type your answer..."
                         autoComplete="off"
                         autoFocus
@@ -1413,15 +1418,12 @@ export default function Game() {
                             variant="outline"
                             size="lg"
                             className="flex-1 text-lg h-12 md:h-14"
-                            onClick={(e) => {
-                              if (currentWord) {
-                                speakWithRefocus(currentWord.word, e.currentTarget);
-                              }
-                            }}
-                            data-testid="button-repeat"
+                            onClick={speakPartsOfSpeech}
+                            disabled={!wordPartsOfSpeech || loadingDictionary}
+                            data-testid="button-parts-of-speech"
                           >
-                            <Volume2 className="w-5 h-5 mr-2" />
-                            Repeat
+                            <Sparkles className="w-5 h-5 mr-2" />
+                            {loadingDictionary ? "Loading..." : "Part of Speech"}
                           </Button>
                         )}
                         <Button
@@ -1436,44 +1438,30 @@ export default function Game() {
                         </Button>
                       </div>
                       
-                      <div className="flex flex-col gap-3">
-                        <div className="flex flex-col sm:flex-row gap-3">
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="lg"
-                            className="flex-1 text-base h-12"
-                            onClick={speakDefinition}
-                            disabled={!wordDefinition || loadingDictionary}
-                            data-testid="button-definition"
-                          >
-                            <BookOpen className="w-4 h-4 mr-2" />
-                            {loadingDictionary ? "Loading..." : "Definition"}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="lg"
-                            className="flex-1 text-base h-12"
-                            onClick={speakExample}
-                            disabled={!wordExample || loadingDictionary}
-                            data-testid="button-example"
-                          >
-                            <MessageSquare className="w-4 h-4 mr-2" />
-                            {loadingDictionary ? "Loading..." : "Use in Sentence"}
-                          </Button>
-                        </div>
+                      <div className="flex flex-col sm:flex-row gap-3">
                         <Button
                           type="button"
                           variant="secondary"
                           size="lg"
-                          className="w-full text-base h-12"
-                          onClick={speakPartsOfSpeech}
-                          disabled={!wordPartsOfSpeech || loadingDictionary}
-                          data-testid="button-parts-of-speech"
+                          className="flex-1 text-base h-12"
+                          onClick={speakDefinition}
+                          disabled={!wordDefinition || loadingDictionary}
+                          data-testid="button-definition"
                         >
-                          <Sparkles className="w-4 h-4 mr-2" />
-                          {loadingDictionary ? "Loading..." : "Parts of Speech"}
+                          <BookOpen className="w-4 h-4 mr-2" />
+                          {loadingDictionary ? "Loading..." : "Definition"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="lg"
+                          className="flex-1 text-base h-12"
+                          onClick={speakExample}
+                          disabled={!wordExample || loadingDictionary}
+                          data-testid="button-example"
+                        >
+                          <MessageSquare className="w-4 h-4 mr-2" />
+                          {loadingDictionary ? "Loading..." : "Use in Sentence"}
                         </Button>
                       </div>
                     </div>
