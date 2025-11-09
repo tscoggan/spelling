@@ -5,13 +5,15 @@ Spelling Champions is an interactive educational app designed to improve childre
 
 ## Recent Changes (November 2025)
 
-### Crossword Puzzle Mode - NEW
-Complete implementation of interactive crossword puzzle game mode:
-- **Grid Generation**: Client-side algorithm places words with intersections (client/src/lib/crosswordGenerator.ts)
-- **Dictionary Clues**: Batch-fetches definitions from Simple English Wiktionary + Free Dictionary API
-- **UI**: Responsive grid with numbered cells, auto-advance input, Across/Down clue sections
+### Crossword Puzzle Mode - Audio-Only Interface (November 2025)
+Complete implementation of interactive crossword puzzle game mode with TTS-only interface:
+- **Grid Generation**: Client-side algorithm places words with intersections using BFS connectivity validation (client/src/lib/crosswordGenerator.ts)
+- **Connectivity Validation**: All words in puzzle connect to at least one other word; disconnected entries are automatically filtered out and grid is rebuilt
+- **Audio-Only Interface**: Play buttons (Volume icons) replace definition text and cell numbers; click to hear word via TTS
+- **UI**: Centered grid without clue lists; subheader instructs "Click the play icon at the start of each word to hear the word"
+- **Auto-Focus & Advance**: Clicking play button auto-focuses first letter; typing auto-advances through word (stops on last letter)
 - **Scoring**: Accuracy-based with completion bonus (base points + 2x bonus for perfect puzzles)
-- **Support**: Works with custom word lists containing 5-12 words
+- **Support**: Works with custom word lists containing 5-15 words (increased from 12)
 - **Status**: Production-ready, verified via automated testing
 
 ### Find the Mistake - Capitalization Fix
