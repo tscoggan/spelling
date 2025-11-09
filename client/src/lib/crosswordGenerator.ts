@@ -79,7 +79,7 @@ export function generateCrossword(
         ];
 
         for (const placement of placements) {
-          if (canPlaceWord(grid, word, placement.row, placement.col, placement.direction)) {
+          if (canPlaceWord(grid, word, placement.row, placement.col, placement.direction, entries)) {
             const intersections = countIntersections(
               grid,
               word,
@@ -113,15 +113,13 @@ export function generateCrossword(
     }
   }
 
-  if (!checkConnectivity(entries)) {
-    console.warn('🔗 Some words are disconnected. Filtering to keep only connected words.');
-    const connectedEntries = filterConnectedEntries(entries);
-    
-    const disconnectedWords = entries.filter(e => !connectedEntries.includes(e)).map(e => e.word);
-    console.log('🚫 Removed disconnected words:', disconnectedWords);
+  const nonIsolatedEntries = filterIsolatedWords(entries);
+  if (nonIsolatedEntries.length < entries.length) {
+    const isolatedWords = entries.filter(e => !nonIsolatedEntries.includes(e)).map(e => e.word);
+    console.log('🚫 Removed isolated words (no intersections):', isolatedWords);
     
     entries.length = 0;
-    entries.push(...connectedEntries);
+    entries.push(...nonIsolatedEntries);
     
     for (let r = 0; r < gridSize; r++) {
       for (let c = 0; c < gridSize; c++) {
@@ -129,7 +127,7 @@ export function generateCrossword(
       }
     }
     
-    connectedEntries.forEach(entry => {
+    nonIsolatedEntries.forEach(entry => {
       placeWord(grid, entry.word, entry.row, entry.col, entry.direction);
     });
   }
@@ -174,9 +172,17 @@ function canPlaceWord(
   word: string,
   row: number,
   col: number,
-  direction: "across" | "down"
+  direction: "across" | "down",
+  existingEntries: CrosswordEntry[] = []
 ): boolean {
   const gridSize = grid.length;
+
+  // Check if starting cell is already used as a starting cell for another word
+  for (const entry of existingEntries) {
+    if (entry.row === row && entry.col === col) {
+      return false; // Cannot start two words in the same box
+    }
+  }
 
   if (direction === "across") {
     if (col + word.length > gridSize) return false;
@@ -343,4 +349,18 @@ function filterConnectedEntries(entries: CrosswordEntry[]): CrosswordEntry[] {
   }
 
   return entries.filter((_, idx) => visited.has(idx));
+}
+
+function filterIsolatedWords(entries: CrosswordEntry[]): CrosswordEntry[] {
+  if (entries.length === 0) return [];
+  
+  return entries.filter((entry, idx) => {
+    for (let i = 0; i < entries.length; i++) {
+      if (i === idx) continue;
+      if (entriesIntersect(entry, entries[i])) {
+        return true;
+      }
+    }
+    return false;
+  });
 }
