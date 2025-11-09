@@ -865,6 +865,75 @@ export default function Game() {
     }
   }, [gameMode, currentWordIndex, words]);
 
+  // Crossword mode: Initialize grid and fetch clues
+  useEffect(() => {
+    if (gameMode === "crossword" && words && words.length >= 5) {
+      const wordList = words.map(w => w.word);
+      const limitedWords = wordList.slice(0, Math.min(12, wordList.length));
+      
+      console.log('🧩 Initializing crossword with words:', limitedWords);
+      
+      // Fetch definitions for all words in parallel
+      const fetchClues = async () => {
+        const cluePromises = limitedWords.map(async (word) => {
+          try {
+            const response = await fetch(`https://simple.wiktionary.org/w/api.php?action=parse&page=${encodeURIComponent(word.toLowerCase())}&prop=wikitext&format=json&origin=*`);
+            const data = await response.json();
+            
+            if (data.parse && data.parse.wikitext) {
+              const wikitext = data.parse.wikitext['*'];
+              const defMatch = wikitext.match(/\#\s*([^#\n]+)/);
+              if (defMatch) {
+                const definition = defMatch[1].replace(/<[^>]*>/g, '').trim();
+                return { word, clue: definition };
+              }
+            }
+            
+            // Fallback to Free Dictionary API
+            const freeDictResponse = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word.toLowerCase())}`);
+            const freeDictData = await freeDictResponse.json();
+            
+            if (Array.isArray(freeDictData) && freeDictData[0]?.meanings?.[0]?.definitions?.[0]?.definition) {
+              return { word, clue: freeDictData[0].meanings[0].definitions[0].definition };
+            }
+            
+            return { word, clue: "Spell this word" };
+          } catch (error) {
+            console.error(`Error fetching clue for ${word}:`, error);
+            return { word, clue: "Spell this word" };
+          }
+        });
+        
+        const cluesData = await Promise.all(cluePromises);
+        setCrosswordClues(cluesData);
+        
+        // Generate crossword grid with clues
+        const cluesArray = cluesData.map(c => c.clue);
+        const grid = generateCrossword(limitedWords, cluesArray);
+        console.log('✅ Generated crossword grid:', grid);
+        setCrosswordGrid(grid);
+        
+        // Initialize empty inputs for all cells
+        const initialInputs: {[key: string]: string} = {};
+        for (let r = 0; r < grid.rows; r++) {
+          for (let c = 0; c < grid.cols; c++) {
+            if (!grid.cells[r][c].isBlank) {
+              initialInputs[`${r}-${c}`] = '';
+            }
+          }
+        }
+        setCrosswordInputs(initialInputs);
+        
+        // Set first entry as active
+        if (grid.entries.length > 0) {
+          setActiveEntry(grid.entries[0].number);
+        }
+      };
+      
+      fetchClues();
+    }
+  }, [gameMode, words]);
+
   const handleTimerExpired = () => {
     // Not used in new timed mode
     setGameComplete(true);
@@ -1075,6 +1144,91 @@ export default function Game() {
     } else {
       setStreak(0);
     }
+  };
+
+  // Crossword mode handlers
+  const handleCrosswordCellInput = (row: number, col: number, value: string) => {
+    if (!crosswordGrid) return;
+    
+    const key = `${row}-${col}`;
+    const newInputs = { ...crosswordInputs };
+    
+    // Only allow single letters
+    if (value.length > 1) {
+      value = value[value.length - 1];
+    }
+    
+    newInputs[key] = value.toUpperCase();
+    setCrosswordInputs(newInputs);
+    
+    // Auto-advance to next cell in active entry
+    if (value && activeEntry !== null) {
+      const entry = crosswordGrid.entries.find(e => e.number === activeEntry);
+      if (entry) {
+        const cells = [];
+        for (let i = 0; i < entry.word.length; i++) {
+          const r = entry.direction === "across" ? entry.row : entry.row + i;
+          const c = entry.direction === "across" ? entry.col + i : entry.col;
+          cells.push({ r, c });
+        }
+        
+        const currentIndex = cells.findIndex(cell => cell.r === row && cell.c === col);
+        if (currentIndex >= 0 && currentIndex < cells.length - 1) {
+          const nextCell = cells[currentIndex + 1];
+          // Focus next input
+          setTimeout(() => {
+            const nextInput = document.querySelector(`input[data-row="${nextCell.r}"][data-col="${nextCell.c}"]`) as HTMLInputElement;
+            if (nextInput) {
+              nextInput.focus();
+              nextInput.select();
+            }
+          }, 10);
+        }
+      }
+    }
+  };
+
+  const handleCrosswordSubmit = () => {
+    if (!crosswordGrid) return;
+    
+    let correctWords = 0;
+    let totalScore = 0;
+    const points = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : difficulty === "custom" ? 20 : 30;
+    
+    // Check each entry
+    crosswordGrid.entries.forEach(entry => {
+      let entryCorrect = true;
+      const userWord: string[] = [];
+      
+      for (let i = 0; i < entry.word.length; i++) {
+        const r = entry.direction === "across" ? entry.row : entry.row + i;
+        const c = entry.direction === "across" ? entry.col + i : entry.col;
+        const userLetter = crosswordInputs[`${r}-${c}`] || '';
+        userWord.push(userLetter);
+        
+        if (userLetter.toUpperCase() !== entry.word[i].toUpperCase()) {
+          entryCorrect = false;
+        }
+      }
+      
+      if (entryCorrect) {
+        correctWords++;
+        totalScore += points;
+      }
+      
+      console.log(`Entry ${entry.number} (${entry.word}): User entered "${userWord.join('')}", Correct: ${entryCorrect}`);
+    });
+    
+    setCorrectCount(correctWords);
+    setScore(totalScore);
+    
+    // Add completion bonus if all words correct
+    if (correctWords === crosswordGrid.entries.length) {
+      setScore(totalScore + points * 2); // 2x bonus for completing puzzle
+      console.log('🎉 Crossword complete! Bonus applied');
+    }
+    
+    setGameComplete(true);
   };
 
   // Touch event handlers for mobile devices
