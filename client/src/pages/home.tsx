@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Sparkles, Trophy, Clock, Target, LogOut, List, ChevronRight, Lock, Globe, Shuffle, AlertCircle } from "lucide-react";
+import { BookOpen, Sparkles, Trophy, Clock, Target, LogOut, List, ChevronRight, Lock, Globe, Shuffle, AlertCircle, Grid3x3 } from "lucide-react";
 import type { DifficultyLevel, GameMode } from "@shared/schema";
 import { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -142,6 +142,13 @@ export default function Home() {
       description: "Identify the one misspelled word from four choices",
       icon: AlertCircle,
       color: "text-red-600",
+    },
+    {
+      id: "crossword" as GameMode,
+      name: "Crossword Puzzle",
+      description: "Solve a crossword using spelling words and their definitions",
+      icon: Grid3x3,
+      color: "text-indigo-600",
     },
   ];
 

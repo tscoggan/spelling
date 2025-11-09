@@ -28,6 +28,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import type { WordIllustration } from "@shared/schema";
+import { generateCrossword, type CrosswordGrid, type CrosswordEntry } from "@/lib/crosswordGenerator";
 
 // Import background pattern
 import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
@@ -89,6 +90,12 @@ export default function Game() {
   const [mistakeChoices, setMistakeChoices] = useState<string[]>([]);
   const [misspelledIndex, setMisspelledIndex] = useState<number>(-1);
   const [correctSpelling, setCorrectSpelling] = useState<string>("");
+  
+  // Crossword mode states
+  const [crosswordGrid, setCrosswordGrid] = useState<CrosswordGrid | null>(null);
+  const [crosswordInputs, setCrosswordInputs] = useState<{[key: string]: string}>({});
+  const [activeEntry, setActiveEntry] = useState<number | null>(null);
+  const [crosswordClues, setCrosswordClues] = useState<{word: string; clue: string}[]>([]);
 
   const createSessionMutation = useMutation({
     mutationFn: async (sessionData: { difficulty: string; gameMode: string; userId: number | null; customListId?: number }) => {
