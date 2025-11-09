@@ -1592,25 +1592,112 @@ export default function Game() {
       </header>
 
       <main className="flex-1 flex items-center justify-center p-4 md:p-6 relative z-10">
-        <div className="w-full max-w-3xl space-y-6">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between text-base md:text-lg font-semibold">
-              <span className="text-gray-600" data-testid="text-word-progress">
-                Word {currentWordIndex + 1} of {words.length}
-              </span>
-              <span className="text-gray-800 capitalize" data-testid="text-difficulty">
-                {difficulty} - {gameMode === "standard" ? "Practice" : gameMode === "timed" ? "Timed" : gameMode === "quiz" ? "Quiz" : "Word Scramble"}
-              </span>
-            </div>
-            <Progress value={progress} className="h-3" data-testid="progress-game" />
-          </div>
+        {gameMode === "crossword" && crosswordGrid ? (
+          <div className="w-full max-w-6xl">
+            <Card className="p-6 md:p-8 space-y-6 bg-white">
+              <div className="text-center">
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2" data-testid="text-instruction">
+                  Solve the Crossword Puzzle
+                </h2>
+                <p className="text-gray-600">Use the clues to fill in the words</p>
+              </div>
 
-          <AnimatePresence mode="wait">
-            {gameMode === "quiz" || !showFeedback ? (
-              <motion.div
-                key="input"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+              <div className="flex flex-col lg:flex-row gap-6">
+                {/* Crossword Grid */}
+                <div className="flex-1 flex justify-center">
+                  <div className="inline-block" style={{ display: 'grid', gridTemplateColumns: `repeat(${crosswordGrid.cols}, 2.5rem)`, gap: '2px' }}>
+                    {crosswordGrid.cells.map((row, rowIndex) => 
+                      row.map((cell, colIndex) => (
+                        <div key={`${rowIndex}-${colIndex}`} className="relative">
+                          {cell.isBlank ? (
+                            <div className="w-10 h-10 bg-gray-900"></div>
+                          ) : (
+                            <div className="w-10 h-10 border-2 border-gray-400 bg-white relative">
+                              {cell.number && (
+                                <span className="absolute top-0 left-0.5 text-xs font-semibold text-gray-600">
+                                  {cell.number}
+                                </span>
+                              )}
+                              <Input
+                                type="text"
+                                maxLength={1}
+                                value={crosswordInputs[`${rowIndex}-${colIndex}`] || ''}
+                                onChange={(e) => handleCrosswordCellInput(rowIndex, colIndex, e.target.value)}
+                                className="w-full h-full text-center text-xl font-bold border-0 p-0 uppercase focus-visible:ring-1 focus-visible:ring-primary"
+                                data-row={rowIndex}
+                                data-col={colIndex}
+                                data-testid={`cell-${rowIndex}-${colIndex}`}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Clues */}
+                <div className="lg:w-80 space-y-6">
+                  <div>
+                    <h3 className="text-lg font-bold mb-3">Across</h3>
+                    <div className="space-y-2">
+                      {crosswordGrid.entries
+                        .filter(entry => entry.direction === "across")
+                        .map(entry => (
+                          <div key={entry.number} className="text-sm" data-testid={`clue-across-${entry.number}`}>
+                            <span className="font-semibold">{entry.number}.</span> {entry.clue}
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold mb-3">Down</h3>
+                    <div className="space-y-2">
+                      {crosswordGrid.entries
+                        .filter(entry => entry.direction === "down")
+                        .map(entry => (
+                          <div key={entry.number} className="text-sm" data-testid={`clue-down-${entry.number}`}>
+                            <span className="font-semibold">{entry.number}.</span> {entry.clue}
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-center pt-4">
+                <Button
+                  size="lg"
+                  onClick={handleCrosswordSubmit}
+                  data-testid="button-submit-crossword"
+                >
+                  Check Puzzle
+                </Button>
+              </div>
+            </Card>
+          </div>
+        ) : (
+          <div className="w-full max-w-3xl space-y-6">
+            {gameMode !== "crossword" && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between text-base md:text-lg font-semibold">
+                  <span className="text-gray-600" data-testid="text-word-progress">
+                    Word {currentWordIndex + 1} of {words.length}
+                  </span>
+                  <span className="text-gray-800 capitalize" data-testid="text-difficulty">
+                    {difficulty} - {gameMode === "standard" ? "Practice" : gameMode === "timed" ? "Timed" : gameMode === "quiz" ? "Quiz" : "Word Scramble"}
+                  </span>
+                </div>
+                <Progress value={progress} className="h-3" data-testid="progress-game" />
+              </div>
+            )}
+
+            <AnimatePresence mode="wait">
+              {gameMode === "quiz" || !showFeedback ? (
+                <motion.div
+                  key="input"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
               >
                 <Card className="p-6 md:p-12 space-y-8 bg-white">
@@ -1897,6 +1984,7 @@ export default function Game() {
             )}
           </AnimatePresence>
         </div>
+        )}
       </main>
 
       {/* Floating letter element for touch dragging */}
