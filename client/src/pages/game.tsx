@@ -89,6 +89,7 @@ export default function Game() {
   // Mistake mode states
   const [mistakeChoices, setMistakeChoices] = useState<string[]>([]);
   const [misspelledIndex, setMisspelledIndex] = useState<number>(-1);
+  const [correctSpelling, setCorrectSpelling] = useState<string>("");
 
   const createSessionMutation = useMutation({
     mutationFn: async (sessionData: { difficulty: string; gameMode: string; userId: number | null; customListId?: number }) => {
@@ -839,15 +840,17 @@ export default function Game() {
       
       // Choose one to misspell
       const misspellIdx = Math.floor(Math.random() * selectedWords.length);
+      const correctWord = selectedWords[misspellIdx]; // Store correct spelling
       const choices = selectedWords.map((word, idx) => 
         idx === misspellIdx ? misspellWord(word) : word
       );
       
       console.log(`🎯 Mistake mode: Selected words:`, selectedWords);
-      console.log(`❌ Misspelled word at index ${misspellIdx}:`, choices[misspellIdx]);
+      console.log(`❌ Misspelled word at index ${misspellIdx}:`, choices[misspellIdx], `(correct: ${correctWord})`);
       
       setMistakeChoices(choices);
       setMisspelledIndex(misspellIdx);
+      setCorrectSpelling(correctWord);
     }
   }, [gameMode, currentWordIndex, words]);
 
@@ -1688,7 +1691,7 @@ export default function Game() {
                           Correct!
                         </h2>
                         <div className="text-4xl md:text-5xl font-bold text-gray-800" data-testid="text-correct-word">
-                          {currentWord?.word}
+                          {gameMode === "mistake" ? correctSpelling : currentWord?.word}
                         </div>
                       </>
                     ) : (
