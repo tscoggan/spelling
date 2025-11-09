@@ -1579,9 +1579,6 @@ export default function Game() {
                                 <>
                                   <span className="text-xl font-bold text-red-700 uppercase relative">
                                     {userLetter}
-                                    <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ top: '-2px', left: '-2px' }}>
-                                      <line x1="0" y1="100%" x2="100%" y2="0" stroke="red" strokeWidth="2" />
-                                    </svg>
                                   </span>
                                   <span className="absolute top-0 right-0 text-sm font-bold text-gray-900 bg-white px-1 rounded-bl" style={{ fontSize: '0.75rem', lineHeight: '1' }}>
                                     {correctLetter.toUpperCase()}
@@ -1600,7 +1597,7 @@ export default function Game() {
                   </div>
                 </div>
                 <p className="text-center text-sm text-gray-600">
-                  Incorrect letters are crossed out in red with the correct letter shown
+                  Incorrect letters are highlighted in red with the correct letter shown
                 </p>
               </div>
             )}

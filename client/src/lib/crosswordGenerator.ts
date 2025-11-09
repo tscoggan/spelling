@@ -114,12 +114,16 @@ export function generateCrossword(
   }
 
   const nonIsolatedEntries = filterIsolatedWords(entries);
-  if (nonIsolatedEntries.length < entries.length) {
-    const isolatedWords = entries.filter(e => !nonIsolatedEntries.includes(e)).map(e => e.word);
+  
+  // If no words intersect at all, keep at least the first word to avoid an empty puzzle
+  const finalEntries = nonIsolatedEntries.length > 0 ? nonIsolatedEntries : entries.slice(0, 1);
+  
+  if (finalEntries.length < entries.length) {
+    const isolatedWords = entries.filter(e => !finalEntries.includes(e)).map(e => e.word);
     console.log('🚫 Removed isolated words (no intersections):', isolatedWords);
     
     entries.length = 0;
-    entries.push(...nonIsolatedEntries);
+    entries.push(...finalEntries);
     
     for (let r = 0; r < gridSize; r++) {
       for (let c = 0; c < gridSize; c++) {
@@ -127,7 +131,7 @@ export function generateCrossword(
       }
     }
     
-    nonIsolatedEntries.forEach(entry => {
+    finalEntries.forEach(entry => {
       placeWord(grid, entry.word, entry.row, entry.col, entry.direction);
     });
   }
