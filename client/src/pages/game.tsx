@@ -869,7 +869,7 @@ export default function Game() {
   useEffect(() => {
     if (gameMode === "crossword" && words && words.length >= 5) {
       const wordList = words.map(w => w.word);
-      const limitedWords = wordList.slice(0, Math.min(12, wordList.length));
+      const limitedWords = wordList.slice(0, Math.min(15, wordList.length));
       
       console.log('🧩 Initializing crossword with words:', limitedWords);
       
@@ -1613,11 +1613,22 @@ export default function Game() {
                             <div className="w-10 h-10 bg-gray-900"></div>
                           ) : (
                             <div className="w-10 h-10 border-2 border-gray-400 bg-white relative">
-                              {cell.number && (
-                                <span className="absolute top-0 left-0.5 text-xs font-semibold text-gray-600">
-                                  {cell.number}
-                                </span>
-                              )}
+                              {cell.number && (() => {
+                                const entry = crosswordGrid.entries.find(e => e.number === cell.number);
+                                return entry ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      speakWord(entry.word);
+                                    }}
+                                    className="absolute top-0 left-0 w-4 h-4 flex items-center justify-center hover:bg-gray-100 rounded-sm z-10"
+                                    data-testid={`button-cell-play-${cell.number}`}
+                                  >
+                                    <Volume2 className="w-3 h-3 text-gray-600" />
+                                  </button>
+                                ) : null;
+                              })()}
                               <Input
                                 type="text"
                                 maxLength={1}
@@ -1644,8 +1655,16 @@ export default function Game() {
                       {crosswordGrid.entries
                         .filter(entry => entry.direction === "across")
                         .map(entry => (
-                          <div key={entry.number} className="text-sm" data-testid={`clue-across-${entry.number}`}>
-                            <span className="font-semibold">{entry.number}.</span> {entry.clue}
+                          <div key={entry.number} className="flex items-center gap-2" data-testid={`clue-across-${entry.number}`}>
+                            <span className="font-semibold text-sm">{entry.number}.</span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => speakWord(entry.word)}
+                              data-testid={`button-play-across-${entry.number}`}
+                            >
+                              <Volume2 className="w-4 h-4" />
+                            </Button>
                           </div>
                         ))}
                     </div>
@@ -1656,8 +1675,16 @@ export default function Game() {
                       {crosswordGrid.entries
                         .filter(entry => entry.direction === "down")
                         .map(entry => (
-                          <div key={entry.number} className="text-sm" data-testid={`clue-down-${entry.number}`}>
-                            <span className="font-semibold">{entry.number}.</span> {entry.clue}
+                          <div key={entry.number} className="flex items-center gap-2" data-testid={`clue-down-${entry.number}`}>
+                            <span className="font-semibold text-sm">{entry.number}.</span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => speakWord(entry.word)}
+                              data-testid={`button-play-down-${entry.number}`}
+                            >
+                              <Volume2 className="w-4 h-4" />
+                            </Button>
                           </div>
                         ))}
                     </div>
@@ -1758,7 +1785,7 @@ export default function Game() {
                               onClick={() => handleMistakeChoice(index)}
                               data-testid={`button-choice-${index}`}
                             >
-                              {word}
+                              {word.toUpperCase()}
                             </Button>
                           ))}
                         </div>

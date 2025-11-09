@@ -110,26 +110,28 @@ export function generateCrossword(
         clue,
       });
       placed[wordIndex] = true;
-    } else {
-      let fallbackPlaced = false;
-      for (let row = 2; row < gridSize - 2 && !fallbackPlaced; row++) {
-        for (let col = 2; col < gridSize - word.length - 2 && !fallbackPlaced; col++) {
-          if (canPlaceWord(grid, word, row, col, "across")) {
-            placeWord(grid, word, row, col, "across");
-            entries.push({
-              word,
-              number: entryNumber++,
-              direction: "across",
-              row,
-              col,
-              clue,
-            });
-            placed[wordIndex] = true;
-            fallbackPlaced = true;
-          }
-        }
+    }
+  }
+
+  if (!checkConnectivity(entries)) {
+    console.warn('🔗 Some words are disconnected. Filtering to keep only connected words.');
+    const connectedEntries = filterConnectedEntries(entries);
+    
+    const disconnectedWords = entries.filter(e => !connectedEntries.includes(e)).map(e => e.word);
+    console.log('🚫 Removed disconnected words:', disconnectedWords);
+    
+    entries.length = 0;
+    entries.push(...connectedEntries);
+    
+    for (let r = 0; r < gridSize; r++) {
+      for (let c = 0; c < gridSize; c++) {
+        grid[r][c] = null;
       }
     }
+    
+    connectedEntries.forEach(entry => {
+      placeWord(grid, entry.word, entry.row, entry.col, entry.direction);
+    });
   }
 
   const { minRow, maxRow, minCol, maxCol } = findBounds(grid);
@@ -269,4 +271,76 @@ function findBounds(grid: (string | null)[][]): {
   }
 
   return { minRow, maxRow, minCol, maxCol };
+}
+
+function checkConnectivity(entries: CrosswordEntry[]): boolean {
+  if (entries.length <= 1) return true;
+
+  const visited = new Set<number>();
+  const queue: number[] = [0];
+  visited.add(0);
+
+  while (queue.length > 0) {
+    const currentIdx = queue.shift()!;
+    const current = entries[currentIdx];
+
+    for (let i = 0; i < entries.length; i++) {
+      if (visited.has(i)) continue;
+      
+      const other = entries[i];
+      if (entriesIntersect(current, other)) {
+        visited.add(i);
+        queue.push(i);
+      }
+    }
+  }
+
+  return visited.size === entries.length;
+}
+
+function entriesIntersect(a: CrosswordEntry, b: CrosswordEntry): boolean {
+  if (a.direction === b.direction) return false;
+
+  const across = a.direction === "across" ? a : b;
+  const down = a.direction === "down" ? a : b;
+
+  const acrossStartCol = across.col;
+  const acrossEndCol = across.col + across.word.length - 1;
+  const acrossRow = across.row;
+
+  const downStartRow = down.row;
+  const downEndRow = down.row + down.word.length - 1;
+  const downCol = down.col;
+
+  return (
+    downCol >= acrossStartCol &&
+    downCol <= acrossEndCol &&
+    acrossRow >= downStartRow &&
+    acrossRow <= downEndRow
+  );
+}
+
+function filterConnectedEntries(entries: CrosswordEntry[]): CrosswordEntry[] {
+  if (entries.length === 0) return [];
+
+  const visited = new Set<number>();
+  const queue: number[] = [0];
+  visited.add(0);
+
+  while (queue.length > 0) {
+    const currentIdx = queue.shift()!;
+    const current = entries[currentIdx];
+
+    for (let i = 0; i < entries.length; i++) {
+      if (visited.has(i)) continue;
+      
+      const other = entries[i];
+      if (entriesIntersect(current, other)) {
+        visited.add(i);
+        queue.push(i);
+      }
+    }
+  }
+
+  return entries.filter((_, idx) => visited.has(idx));
 }
