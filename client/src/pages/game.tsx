@@ -1147,6 +1147,24 @@ export default function Game() {
   };
 
   // Crossword mode handlers
+  const focusFirstCellOfEntry = (entryNumber: number) => {
+    if (!crosswordGrid) return;
+    
+    const entry = crosswordGrid.entries.find(e => e.number === entryNumber);
+    if (entry) {
+      setActiveEntry(entryNumber);
+      
+      // Focus first cell
+      setTimeout(() => {
+        const firstInput = document.querySelector(`input[data-row="${entry.row}"][data-col="${entry.col}"]`) as HTMLInputElement;
+        if (firstInput) {
+          firstInput.focus();
+          firstInput.select();
+        }
+      }, 10);
+    }
+  };
+
   const handleCrosswordCellInput = (row: number, col: number, value: string) => {
     if (!crosswordGrid) return;
     
@@ -1161,7 +1179,7 @@ export default function Game() {
     newInputs[key] = value.toUpperCase();
     setCrosswordInputs(newInputs);
     
-    // Auto-advance to next cell in active entry
+    // Auto-advance to next cell in active entry (except for last letter)
     if (value && activeEntry !== null) {
       const entry = crosswordGrid.entries.find(e => e.number === activeEntry);
       if (entry) {
@@ -1173,6 +1191,7 @@ export default function Game() {
         }
         
         const currentIndex = cells.findIndex(cell => cell.r === row && cell.c === col);
+        // Only advance if NOT on the last letter
         if (currentIndex >= 0 && currentIndex < cells.length - 1) {
           const nextCell = cells[currentIndex + 1];
           // Focus next input
@@ -1599,12 +1618,12 @@ export default function Game() {
                 <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2" data-testid="text-instruction">
                   Solve the Crossword Puzzle
                 </h2>
-                <p className="text-gray-600">Use the clues to fill in the words</p>
+                <p className="text-gray-600">Click the play icon at the start of each word to hear the word</p>
               </div>
 
-              <div className="flex flex-col lg:flex-row gap-6">
+              <div className="flex justify-center">
                 {/* Crossword Grid */}
-                <div className="flex-1 flex justify-center">
+                <div>
                   <div className="inline-block" style={{ display: 'grid', gridTemplateColumns: `repeat(${crosswordGrid.cols}, 2.5rem)`, gap: '2px' }}>
                     {crosswordGrid.cells.map((row, rowIndex) => 
                       row.map((cell, colIndex) => (
@@ -1621,6 +1640,7 @@ export default function Game() {
                                     onClick={(e) => {
                                       e.preventDefault();
                                       speakWord(entry.word);
+                                      focusFirstCellOfEntry(entry.number);
                                     }}
                                     className="absolute top-0 left-0 w-4 h-4 flex items-center justify-center hover:bg-gray-100 rounded-sm z-10"
                                     data-testid={`button-cell-play-${cell.number}`}
@@ -1644,50 +1664,6 @@ export default function Game() {
                         </div>
                       ))
                     )}
-                  </div>
-                </div>
-
-                {/* Clues */}
-                <div className="lg:w-80 space-y-6">
-                  <div>
-                    <h3 className="text-lg font-bold mb-3">Across</h3>
-                    <div className="space-y-2">
-                      {crosswordGrid.entries
-                        .filter(entry => entry.direction === "across")
-                        .map(entry => (
-                          <div key={entry.number} className="flex items-center gap-2" data-testid={`clue-across-${entry.number}`}>
-                            <span className="font-semibold text-sm">{entry.number}.</span>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => speakWord(entry.word)}
-                              data-testid={`button-play-across-${entry.number}`}
-                            >
-                              <Volume2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold mb-3">Down</h3>
-                    <div className="space-y-2">
-                      {crosswordGrid.entries
-                        .filter(entry => entry.direction === "down")
-                        .map(entry => (
-                          <div key={entry.number} className="flex items-center gap-2" data-testid={`clue-down-${entry.number}`}>
-                            <span className="font-semibold text-sm">{entry.number}.</span>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => speakWord(entry.word)}
-                              data-testid={`button-play-down-${entry.number}`}
-                            >
-                              <Volume2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        ))}
-                    </div>
                   </div>
                 </div>
               </div>
