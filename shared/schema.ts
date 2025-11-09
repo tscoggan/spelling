@@ -208,7 +208,7 @@ export type InsertWordIllustration = z.infer<typeof insertWordIllustrationSchema
 export type WordIllustration = typeof wordIllustrations.$inferSelect;
 
 export type DifficultyLevel = "easy" | "medium" | "hard" | "custom";
-export type GameMode = "standard" | "timed" | "quiz" | "scramble" | "mistake";
+export type GameMode = "standard" | "timed" | "quiz" | "scramble" | "mistake" | "crossword";
 
 export interface GameState {
   sessionId: number;
