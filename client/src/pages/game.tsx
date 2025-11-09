@@ -1479,29 +1479,48 @@ export default function Game() {
               transition={{ delay: 0.2, type: "spring" }}
               className="text-center"
             >
-              <Sparkles className="w-20 h-20 md:w-24 md:h-24 text-purple-600 mx-auto mb-4" />
-              <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-2 font-crayon" data-testid="text-game-complete">
-                {gameMode === "quiz" ? "Quiz Complete!" : "Amazing Work!"}
-              </h1>
-              <p className="text-lg text-gray-600 capitalize">
-                {difficulty} Mode - {gameMode === "standard" ? "Practice" : gameMode === "timed" ? "Timed Challenge" : gameMode === "quiz" ? "Quiz Mode" : "Word Scramble"}
-              </p>
+              {gameMode === "crossword" ? (
+                <h1 className="text-3xl font-bold text-gray-800 mb-2 font-crayon" data-testid="text-game-complete">
+                  Amazing Work!
+                </h1>
+              ) : (
+                <>
+                  <Sparkles className="w-20 h-20 md:w-24 md:h-24 text-purple-600 mx-auto mb-4" />
+                  <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-2 font-crayon" data-testid="text-game-complete">
+                    {gameMode === "quiz" ? "Quiz Complete!" : "Amazing Work!"}
+                  </h1>
+                  <p className="text-lg text-gray-600 capitalize">
+                    {difficulty} Mode - {gameMode === "standard" ? "Practice" : gameMode === "timed" ? "Timed Challenge" : gameMode === "quiz" ? "Quiz Mode" : "Word Scramble"}
+                  </p>
+                </>
+              )}
             </motion.div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Card className="p-6 bg-purple-50 border-purple-200">
-                <div className="text-4xl md:text-5xl font-bold text-purple-600" data-testid="text-final-score">
-                  {score}
-                </div>
-                <div className="text-lg text-gray-600 mt-2">Points</div>
-              </Card>
-              <Card className="p-6 bg-green-50 border-green-200">
-                <div className="text-4xl md:text-5xl font-bold text-green-600" data-testid="text-accuracy">
-                  {accuracy}%
-                </div>
-                <div className="text-lg text-gray-600 mt-2">Accuracy</div>
-              </Card>
-            </div>
+            {gameMode === "crossword" ? (
+              <div className="flex justify-center">
+                <Card className="p-6 bg-green-50 border-green-200 w-64">
+                  <div className="text-4xl md:text-5xl font-bold text-green-600" data-testid="text-accuracy">
+                    {accuracy}%
+                  </div>
+                  <div className="text-lg text-gray-600 mt-2">Accuracy</div>
+                </Card>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Card className="p-6 bg-purple-50 border-purple-200">
+                  <div className="text-4xl md:text-5xl font-bold text-purple-600" data-testid="text-final-score">
+                    {score}
+                  </div>
+                  <div className="text-lg text-gray-600 mt-2">Points</div>
+                </Card>
+                <Card className="p-6 bg-green-50 border-green-200">
+                  <div className="text-4xl md:text-5xl font-bold text-green-600" data-testid="text-accuracy">
+                    {accuracy}%
+                  </div>
+                  <div className="text-lg text-gray-600 mt-2">Accuracy</div>
+                </Card>
+              </div>
+            )}
 
             <div className="space-y-3 text-center">
               <p className="text-lg text-gray-700">
@@ -1534,36 +1553,45 @@ export default function Game() {
                           return <div key={`${rowIndex}-${colIndex}`} className="w-10 h-10 bg-gray-900"></div>;
                         }
                         
-                        // Check if this cell is part of an incorrect word
+                        // Find the correct letter for this cell
+                        let correctLetter = '';
                         let isIncorrect = false;
                         completedGrid.grid.entries.forEach(entry => {
-                          let entryCorrect = true;
                           for (let i = 0; i < entry.word.length; i++) {
                             const r = entry.direction === "across" ? entry.row : entry.row + i;
                             const c = entry.direction === "across" ? entry.col + i : entry.col;
-                            const userLetter = completedGrid.inputs[`${r}-${c}`] || '';
-                            if (userLetter.toUpperCase() !== entry.word[i].toUpperCase()) {
-                              entryCorrect = false;
-                            }
-                          }
-                          // If entry is incorrect and this cell is part of it
-                          if (!entryCorrect) {
-                            for (let i = 0; i < entry.word.length; i++) {
-                              const r = entry.direction === "across" ? entry.row : entry.row + i;
-                              const c = entry.direction === "across" ? entry.col + i : entry.col;
-                              if (r === rowIndex && c === colIndex) {
+                            if (r === rowIndex && c === colIndex) {
+                              correctLetter = entry.word[i];
+                              const userLetter = completedGrid.inputs[`${r}-${c}`] || '';
+                              if (userLetter.toUpperCase() !== correctLetter.toUpperCase()) {
                                 isIncorrect = true;
                               }
                             }
                           }
                         });
                         
+                        const userLetter = completedGrid.inputs[`${rowIndex}-${colIndex}`] || '';
+                        
                         return (
                           <div key={`${rowIndex}-${colIndex}`} className="relative">
-                            <div className={`w-10 h-10 border-2 ${isIncorrect ? 'border-red-500 bg-red-50' : 'border-gray-400 bg-white'} relative flex items-center justify-center`}>
-                              <span className={`text-xl font-bold ${isIncorrect ? 'text-red-700' : 'text-gray-800'} uppercase`}>
-                                {completedGrid.inputs[`${rowIndex}-${colIndex}`] || ''}
-                              </span>
+                            <div className={`w-10 h-10 border-2 ${isIncorrect ? 'border-red-500 bg-red-50' : 'border-gray-400 bg-white'} relative flex items-center justify-center overflow-visible`}>
+                              {isIncorrect ? (
+                                <>
+                                  <span className="text-xl font-bold text-red-700 uppercase relative">
+                                    {userLetter}
+                                    <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ top: '-2px', left: '-2px' }}>
+                                      <line x1="0" y1="100%" x2="100%" y2="0" stroke="red" strokeWidth="2" />
+                                    </svg>
+                                  </span>
+                                  <span className="absolute top-0 right-0 text-sm font-bold text-gray-900 bg-white px-1 rounded-bl" style={{ fontSize: '0.75rem', lineHeight: '1' }}>
+                                    {correctLetter.toUpperCase()}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-xl font-bold text-gray-800 uppercase">
+                                  {userLetter}
+                                </span>
+                              )}
                             </div>
                           </div>
                         );
@@ -1572,7 +1600,7 @@ export default function Game() {
                   </div>
                 </div>
                 <p className="text-center text-sm text-gray-600">
-                  Incorrect words are highlighted in red
+                  Incorrect letters are crossed out in red with the correct letter shown
                 </p>
               </div>
             )}
@@ -1801,45 +1829,50 @@ export default function Game() {
                 <div>
                   <div className="inline-block" style={{ display: 'grid', gridTemplateColumns: `repeat(${crosswordGrid.cols}, 2.5rem)`, gap: '2px' }}>
                     {crosswordGrid.cells.map((row, rowIndex) => 
-                      row.map((cell, colIndex) => (
-                        <div key={`${rowIndex}-${colIndex}`} className="relative">
-                          {cell.isBlank ? (
-                            <div className="w-10 h-10 bg-gray-900"></div>
-                          ) : (
-                            <div className="w-10 h-10 border-2 border-gray-400 bg-white relative">
-                              {cell.number && (() => {
-                                const entry = crosswordGrid.entries.find(e => e.number === cell.number);
-                                return entry ? (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      speakWord(entry.word);
-                                      focusFirstCellOfEntry(entry.number);
-                                    }}
-                                    className="absolute top-0 left-0 w-4 h-4 flex items-center justify-center hover:bg-gray-100 rounded-sm z-10"
-                                    data-testid={`button-cell-play-${cell.number}`}
-                                  >
-                                    <Volume2 className="w-3 h-3 text-gray-600" />
-                                  </button>
-                                ) : null;
-                              })()}
-                              <Input
-                                type="text"
-                                maxLength={1}
-                                value={crosswordInputs[`${rowIndex}-${colIndex}`] || ''}
-                                onChange={(e) => handleCrosswordCellInput(rowIndex, colIndex, e.target.value)}
-                                onKeyDown={(e) => handleCrosswordKeyDown(rowIndex, colIndex, e)}
-                                onFocus={(e) => e.target.select()}
-                                className={`w-full h-full text-center text-xl font-bold border-0 p-0 uppercase focus-visible:ring-1 focus-visible:ring-primary ${highlightedMistakes.has(`${rowIndex}-${colIndex}`) ? 'bg-red-100 text-red-700' : ''}`}
-                                data-row={rowIndex}
-                                data-col={colIndex}
-                                data-testid={`cell-${rowIndex}-${colIndex}`}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      ))
+                      row.map((cell, colIndex) => {
+                        const cellKey = `${rowIndex}-${colIndex}`;
+                        const isMistake = highlightedMistakes.has(cellKey);
+                        
+                        return (
+                          <div key={cellKey} className="relative">
+                            {cell.isBlank ? (
+                              <div className="w-10 h-10 bg-gray-900"></div>
+                            ) : (
+                              <div className={`w-10 h-10 border-2 ${isMistake ? 'border-red-500 bg-red-50' : 'border-gray-400 bg-white'} relative`}>
+                                {cell.number && (() => {
+                                  const entry = crosswordGrid.entries.find(e => e.number === cell.number);
+                                  return entry ? (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        speakWord(entry.word);
+                                        focusFirstCellOfEntry(entry.number);
+                                      }}
+                                      className="absolute top-0 left-0 w-4 h-4 flex items-center justify-center hover:bg-gray-100 rounded-sm z-10"
+                                      data-testid={`button-cell-play-${cell.number}`}
+                                    >
+                                      <Volume2 className="w-3 h-3 text-gray-600" />
+                                    </button>
+                                  ) : null;
+                                })()}
+                                <Input
+                                  type="text"
+                                  maxLength={1}
+                                  value={crosswordInputs[cellKey] || ''}
+                                  onChange={(e) => handleCrosswordCellInput(rowIndex, colIndex, e.target.value)}
+                                  onKeyDown={(e) => handleCrosswordKeyDown(rowIndex, colIndex, e)}
+                                  onFocus={(e) => e.target.select()}
+                                  className={`w-full h-full text-center text-xl font-bold border-0 p-0 uppercase focus-visible:ring-1 focus-visible:ring-primary ${isMistake ? 'text-red-700' : ''}`}
+                                  data-row={rowIndex}
+                                  data-col={colIndex}
+                                  data-testid={`cell-${rowIndex}-${colIndex}`}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
                     )}
                   </div>
                 </div>
