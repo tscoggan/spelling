@@ -96,6 +96,8 @@ export default function Game() {
   const [crosswordInputs, setCrosswordInputs] = useState<{[key: string]: string}>({});
   const [activeEntry, setActiveEntry] = useState<number | null>(null);
   const [crosswordClues, setCrosswordClues] = useState<{word: string; clue: string}[]>([]);
+  const [highlightedMistakes, setHighlightedMistakes] = useState<Set<string>>(new Set());
+  const [completedGrid, setCompletedGrid] = useState<{inputs: {[key: string]: string}, grid: CrosswordGrid} | null>(null);
 
   const createSessionMutation = useMutation({
     mutationFn: async (sessionData: { difficulty: string; gameMode: string; userId: number | null; customListId?: number }) => {
@@ -1168,6 +1170,11 @@ export default function Game() {
   const handleCrosswordCellInput = (row: number, col: number, value: string) => {
     if (!crosswordGrid) return;
     
+    // Clear mistake highlights on any input
+    if (highlightedMistakes.size > 0) {
+      setHighlightedMistakes(new Set());
+    }
+    
     const key = `${row}-${col}`;
     const newInputs = { ...crosswordInputs };
     
@@ -1207,10 +1214,110 @@ export default function Game() {
     }
   };
 
+  const handleCrosswordKeyDown = (row: number, col: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!crosswordGrid) return;
+    
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      const key = `${row}-${col}`;
+      const currentValue = crosswordInputs[key] || '';
+      
+      // If cell has a value, just clear it (don't move)
+      if (currentValue) {
+        e.preventDefault();
+        const newInputs = { ...crosswordInputs };
+        newInputs[key] = '';
+        setCrosswordInputs(newInputs);
+        
+        // Clear highlight for this cell if it exists
+        if (highlightedMistakes.has(key)) {
+          const newHighlights = new Set(highlightedMistakes);
+          newHighlights.delete(key);
+          setHighlightedMistakes(newHighlights);
+        }
+        return;
+      }
+      
+      // If cell is empty, move to previous cell
+      e.preventDefault();
+      
+      // Find which entry this cell belongs to
+      let currentEntry = activeEntry ? crosswordGrid.entries.find(e => e.number === activeEntry) : null;
+      
+      // If no active entry, find entry containing this cell
+      if (!currentEntry) {
+        currentEntry = crosswordGrid.entries.find(entry => {
+          for (let i = 0; i < entry.word.length; i++) {
+            const r = entry.direction === "across" ? entry.row : entry.row + i;
+            const c = entry.direction === "across" ? entry.col + i : entry.col;
+            if (r === row && c === col) return true;
+          }
+          return false;
+        });
+      }
+      
+      if (currentEntry) {
+        const cells = [];
+        for (let i = 0; i < currentEntry.word.length; i++) {
+          const r = currentEntry.direction === "across" ? currentEntry.row : currentEntry.row + i;
+          const c = currentEntry.direction === "across" ? currentEntry.col + i : currentEntry.col;
+          cells.push({ r, c });
+        }
+        
+        const currentIndex = cells.findIndex(cell => cell.r === row && cell.c === col);
+        
+        // Move to previous cell if not at start
+        if (currentIndex > 0) {
+          const prevCell = cells[currentIndex - 1];
+          const prevKey = `${prevCell.r}-${prevCell.c}`;
+          const prevInput = document.querySelector(`input[data-row="${prevCell.r}"][data-col="${prevCell.c}"]`) as HTMLInputElement;
+          if (prevInput) {
+            prevInput.focus();
+            prevInput.select();
+            
+            // Clear the previous cell
+            const newInputs = { ...crosswordInputs };
+            newInputs[prevKey] = '';
+            setCrosswordInputs(newInputs);
+            
+            // Clear highlights for both current and previous cells if they exist
+            if (highlightedMistakes.has(key) || highlightedMistakes.has(prevKey)) {
+              const newHighlights = new Set(highlightedMistakes);
+              newHighlights.delete(key);
+              newHighlights.delete(prevKey);
+              setHighlightedMistakes(newHighlights);
+            }
+          }
+        }
+      }
+    }
+  };
+
+  const handleShowMistakes = () => {
+    if (!crosswordGrid) return;
+    
+    const mistakes = new Set<string>();
+    
+    crosswordGrid.entries.forEach(entry => {
+      for (let i = 0; i < entry.word.length; i++) {
+        const r = entry.direction === "across" ? entry.row : entry.row + i;
+        const c = entry.direction === "across" ? entry.col + i : entry.col;
+        const userLetter = crosswordInputs[`${r}-${c}`] || '';
+        
+        // Only highlight if user typed something AND it's wrong
+        if (userLetter && userLetter.toUpperCase() !== entry.word[i].toUpperCase()) {
+          mistakes.add(`${r}-${c}`);
+        }
+      }
+    });
+    
+    setHighlightedMistakes(mistakes);
+  };
+
   const handleCrosswordSubmit = () => {
     if (!crosswordGrid) return;
     
     let correctWords = 0;
+    let incorrectWords = 0;
     let totalScore = 0;
     const points = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : difficulty === "custom" ? 20 : 30;
     
@@ -1233,19 +1340,30 @@ export default function Game() {
       if (entryCorrect) {
         correctWords++;
         totalScore += points;
+      } else {
+        incorrectWords++;
       }
       
       console.log(`Entry ${entry.number} (${entry.word}): User entered "${userWord.join('')}", Correct: ${entryCorrect}`);
     });
     
+    const totalWords = crosswordGrid.entries.length;
+    const accuracy = totalWords > 0 ? Math.round((correctWords / totalWords) * 100) : 0;
+    
     setCorrectCount(correctWords);
     setScore(totalScore);
     
     // Add completion bonus if all words correct
-    if (correctWords === crosswordGrid.entries.length) {
+    if (correctWords === totalWords) {
       setScore(totalScore + points * 2); // 2x bonus for completing puzzle
       console.log('🎉 Crossword complete! Bonus applied');
     }
+    
+    // Save completed grid state (deep copy to avoid mutations)
+    setCompletedGrid({
+      inputs: { ...crosswordInputs },
+      grid: { ...crosswordGrid }
+    });
     
     setGameComplete(true);
   };
@@ -1387,7 +1505,10 @@ export default function Game() {
 
             <div className="space-y-3 text-center">
               <p className="text-lg text-gray-700">
-                {gameMode === "timed" ? (
+                {gameMode === "crossword" && completedGrid ? (
+                  <>You got <span className="font-bold text-gray-900" data-testid="text-correct-count">{correctCount}</span> out of{" "}
+                  <span className="font-bold text-gray-900">{completedGrid.grid.entries.length}</span> words correct!</>
+                ) : gameMode === "timed" ? (
                   <>You spelled <span className="font-bold text-gray-900" data-testid="text-correct-count">{correctCount}</span> out of{" "}
                   <span className="font-bold text-gray-900">{totalWords}</span> words correctly in 60 seconds!</>
                 ) : (
@@ -1401,6 +1522,60 @@ export default function Game() {
                 </p>
               )}
             </div>
+
+            {gameMode === "crossword" && completedGrid && (
+              <div className="space-y-4">
+                <h3 className="text-xl font-bold text-gray-800 text-center">Completed Puzzle</h3>
+                <div className="flex justify-center">
+                  <div className="inline-block" style={{ display: 'grid', gridTemplateColumns: `repeat(${completedGrid.grid.cols}, 2.5rem)`, gap: '2px' }}>
+                    {completedGrid.grid.cells.map((row, rowIndex) => 
+                      row.map((cell, colIndex) => {
+                        if (cell.isBlank) {
+                          return <div key={`${rowIndex}-${colIndex}`} className="w-10 h-10 bg-gray-900"></div>;
+                        }
+                        
+                        // Check if this cell is part of an incorrect word
+                        let isIncorrect = false;
+                        completedGrid.grid.entries.forEach(entry => {
+                          let entryCorrect = true;
+                          for (let i = 0; i < entry.word.length; i++) {
+                            const r = entry.direction === "across" ? entry.row : entry.row + i;
+                            const c = entry.direction === "across" ? entry.col + i : entry.col;
+                            const userLetter = completedGrid.inputs[`${r}-${c}`] || '';
+                            if (userLetter.toUpperCase() !== entry.word[i].toUpperCase()) {
+                              entryCorrect = false;
+                            }
+                          }
+                          // If entry is incorrect and this cell is part of it
+                          if (!entryCorrect) {
+                            for (let i = 0; i < entry.word.length; i++) {
+                              const r = entry.direction === "across" ? entry.row : entry.row + i;
+                              const c = entry.direction === "across" ? entry.col + i : entry.col;
+                              if (r === rowIndex && c === colIndex) {
+                                isIncorrect = true;
+                              }
+                            }
+                          }
+                        });
+                        
+                        return (
+                          <div key={`${rowIndex}-${colIndex}`} className="relative">
+                            <div className={`w-10 h-10 border-2 ${isIncorrect ? 'border-red-500 bg-red-50' : 'border-gray-400 bg-white'} relative flex items-center justify-center`}>
+                              <span className={`text-xl font-bold ${isIncorrect ? 'text-red-700' : 'text-gray-800'} uppercase`}>
+                                {completedGrid.inputs[`${rowIndex}-${colIndex}`] || ''}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+                <p className="text-center text-sm text-gray-600">
+                  Incorrect words are highlighted in red
+                </p>
+              </div>
+            )}
 
             {gameMode === "quiz" && quizAnswers.length > 0 && (
               <div className="space-y-3">
@@ -1654,7 +1829,9 @@ export default function Game() {
                                 maxLength={1}
                                 value={crosswordInputs[`${rowIndex}-${colIndex}`] || ''}
                                 onChange={(e) => handleCrosswordCellInput(rowIndex, colIndex, e.target.value)}
-                                className="w-full h-full text-center text-xl font-bold border-0 p-0 uppercase focus-visible:ring-1 focus-visible:ring-primary"
+                                onKeyDown={(e) => handleCrosswordKeyDown(rowIndex, colIndex, e)}
+                                onFocus={(e) => e.target.select()}
+                                className={`w-full h-full text-center text-xl font-bold border-0 p-0 uppercase focus-visible:ring-1 focus-visible:ring-primary ${highlightedMistakes.has(`${rowIndex}-${colIndex}`) ? 'bg-red-100 text-red-700' : ''}`}
                                 data-row={rowIndex}
                                 data-col={colIndex}
                                 data-testid={`cell-${rowIndex}-${colIndex}`}
@@ -1668,7 +1845,15 @@ export default function Game() {
                 </div>
               </div>
 
-              <div className="flex justify-center pt-4">
+              <div className="flex justify-center gap-3 pt-4">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={handleShowMistakes}
+                  data-testid="button-show-mistakes"
+                >
+                  Show Mistakes
+                </Button>
                 <Button
                   size="lg"
                   onClick={handleCrosswordSubmit}
