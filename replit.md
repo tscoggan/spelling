@@ -14,9 +14,17 @@ Complete implementation of interactive crossword puzzle game mode with TTS-only 
 - **Auto-Focus & Advance**: Clicking play button auto-focuses first letter; typing auto-advances through word (stops on last letter)
 - **Overwrite Input**: Clicking on cell with existing letter selects the text; typing immediately replaces it without needing backspace
 - **Smart Backspace Navigation**: Backspace/Delete clears current letter (stays in cell), pressing again moves to previous cell and clears it
-- **Show Mistakes Feature**: Button highlights incorrect cells in red (ignores blanks); highlights automatically clear when user types or deletes
-- **Results Grid Display**: Completed puzzle shown with all user answers; incorrect words highlighted in red with accuracy percentage and correct/total word count
-- **Scoring**: Accuracy-based with completion bonus (base points + 2x bonus for perfect puzzles)
+- **Show Mistakes Feature**: Button highlights incorrect cells with red border (border-red-500), light red background (bg-red-50), and red text; highlights automatically clear when user types or deletes
+- **Results Screen Enhancements**:
+  - Simplified header: Smaller "Amazing Work!" title without sparkle icon or subheader
+  - No points awarded (Crossword is practice-focused, not scored)
+  - Single centered Accuracy card showing percentage
+  - Completed puzzle grid display with per-letter feedback
+- **Results Grid Display**: 
+  - Incorrect letters: crossed out with red diagonal slash, correct letter shown in top-right corner overlay
+  - Correct letters: displayed normally in gray
+  - Caption: "Incorrect letters are crossed out in red with the correct letter shown"
+- **Scoring**: Accuracy-based for internal tracking only (not displayed to user)
 - **Support**: Works with custom word lists containing 5-15 words (increased from 12)
 - **Status**: Production-ready, verified via automated testing
 
