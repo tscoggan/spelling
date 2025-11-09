@@ -31,7 +31,6 @@ import type { WordIllustration } from "@shared/schema";
 
 // Import background pattern
 import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
-import audioIcon from "@assets/stock_images/speaker_sound_waves__fb33fb42.jpg";
 
 interface QuizAnswer {
   word: Word;
@@ -1479,7 +1478,7 @@ export default function Game() {
                       <Button
                         size="lg"
                         variant="default"
-                        className="w-20 h-20 md:w-24 md:h-24 rounded-full p-0 overflow-hidden"
+                        className="w-20 h-20 md:w-24 md:h-24 rounded-full"
                         onClick={(e) => {
                           if (currentWord) {
                             speakWithRefocus(currentWord.word, e.currentTarget);
@@ -1487,11 +1486,7 @@ export default function Game() {
                         }}
                         data-testid="button-play-audio"
                       >
-                        <img 
-                          src={audioIcon} 
-                          alt="Play audio" 
-                          className="w-14 h-14 md:w-16 md:h-16 object-contain"
-                        />
+                        <Volume2 className="w-12 h-12 md:w-14 md:h-14" />
                       </Button>
                     )}
                   </div>
