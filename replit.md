@@ -7,8 +7,11 @@ Spelling Champions is an interactive educational app designed to improve childre
 
 ### Crossword Puzzle Mode - Audio-Only Interface (November 2025)
 Complete implementation of interactive crossword puzzle game mode with TTS-only interface:
-- **Grid Generation**: Client-side algorithm places words with intersections using BFS connectivity validation (client/src/lib/crosswordGenerator.ts)
-- **Connectivity Validation**: All words in puzzle connect to at least one other word; disconnected entries are automatically filtered out and grid is rebuilt
+- **Grid Generation**: Client-side algorithm places words with intersections (client/src/lib/crosswordGenerator.ts)
+  - Prevents two words from starting in the same box (unique play button cells)
+  - Allows multiple disconnected word groups within a single puzzle
+  - Removes only truly isolated words (words with zero intersections)
+  - Fallback to single-word puzzle if no intersections possible
 - **Audio-Only Interface**: Play buttons (Volume icons) replace definition text and cell numbers; click to hear word via TTS
 - **UI**: Centered grid without clue lists; subheader instructs "Click the play icon at the start of each word to hear the word"
 - **Auto-Focus & Advance**: Clicking play button auto-focuses first letter; typing auto-advances through word (stops on last letter)
@@ -21,9 +24,9 @@ Complete implementation of interactive crossword puzzle game mode with TTS-only 
   - Single centered Accuracy card showing percentage
   - Completed puzzle grid display with per-letter feedback
 - **Results Grid Display**: 
-  - Incorrect letters: crossed out with red diagonal slash, correct letter shown in top-right corner overlay
+  - Incorrect letters: highlighted in red with correct letter shown in top-right corner overlay
   - Correct letters: displayed normally in gray
-  - Caption: "Incorrect letters are crossed out in red with the correct letter shown"
+  - Caption: "Incorrect letters are highlighted in red with the correct letter shown"
 - **Scoring**: Accuracy-based for internal tracking only (not displayed to user)
 - **Support**: Works with custom word lists containing 5-15 words (increased from 12)
 - **Status**: Production-ready, verified via automated testing
