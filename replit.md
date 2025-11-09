@@ -12,6 +12,10 @@ Complete implementation of interactive crossword puzzle game mode with TTS-only 
 - **Audio-Only Interface**: Play buttons (Volume icons) replace definition text and cell numbers; click to hear word via TTS
 - **UI**: Centered grid without clue lists; subheader instructs "Click the play icon at the start of each word to hear the word"
 - **Auto-Focus & Advance**: Clicking play button auto-focuses first letter; typing auto-advances through word (stops on last letter)
+- **Overwrite Input**: Clicking on cell with existing letter selects the text; typing immediately replaces it without needing backspace
+- **Smart Backspace Navigation**: Backspace/Delete clears current letter (stays in cell), pressing again moves to previous cell and clears it
+- **Show Mistakes Feature**: Button highlights incorrect cells in red (ignores blanks); highlights automatically clear when user types or deletes
+- **Results Grid Display**: Completed puzzle shown with all user answers; incorrect words highlighted in red with accuracy percentage and correct/total word count
 - **Scoring**: Accuracy-based with completion bonus (base points + 2x bonus for perfect puzzles)
 - **Support**: Works with custom word lists containing 5-15 words (increased from 12)
 - **Status**: Production-ready, verified via automated testing
