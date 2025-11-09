@@ -819,6 +819,11 @@ export default function Game() {
     
     const misspelled = letters.join('');
     // Preserve original capitalization
+    // Check if the entire word is uppercase
+    if (word === word.toUpperCase()) {
+      return misspelled.toUpperCase();
+    }
+    // Otherwise, just capitalize first letter if original was capitalized
     return word[0] === word[0].toUpperCase() 
       ? misspelled.charAt(0).toUpperCase() + misspelled.slice(1)
       : misspelled;
