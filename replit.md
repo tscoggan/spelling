@@ -20,7 +20,7 @@ Complete implementation of interactive crossword puzzle game mode with TTS-only 
 - **Auto-Focus & Advance**: Clicking play button auto-focuses first letter; typing auto-advances through word (stops on last letter)
 - **Overwrite Input**: Clicking on cell with existing letter selects the text; typing immediately replaces it without needing backspace
 - **Smart Backspace Navigation**: Backspace/Delete clears current letter (stays in cell), pressing again moves to previous cell and clears it
-- **Show Mistakes Feature**: Button highlights incorrect cells with red border (border-red-500), light red background (bg-red-50), and red text; highlights automatically clear when user types or deletes
+- **Show Mistakes Feature**: Button highlights incorrect cells with red border (border-red-500), light red background (bg-red-50), and red text (text-red-700); highlights automatically clear when user types or deletes. Does NOT show correct letter overlay - only highlights mistakes.
 - **Results Screen Enhancements**:
   - Simplified header: Smaller "Amazing Work!" title without sparkle icon or subheader
   - No points awarded (Crossword is practice-focused, not scored)
