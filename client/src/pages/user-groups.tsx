@@ -6,10 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { Plus, Trash2, Users, Globe, Lock, Home, UserPlus, Settings } from "lucide-react";
+import { Plus, Trash2, Users, Globe, Lock, Home, UserPlus, Settings, Search, Mail } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
@@ -20,7 +24,12 @@ export default function UserGroupsPage() {
   const { toast } = useToast();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [membersDialogOpen, setMembersDialogOpen] = useState(false);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
+  const [removeMemberConfirmOpen, setRemoveMemberConfirmOpen] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: "",
     isPublic: false,
@@ -74,6 +83,84 @@ export default function UserGroupsPage() {
     },
   });
 
+  const requestAccessMutation = useMutation({
+    mutationFn: async (groupId: number) => {
+      const response = await apiRequest("POST", `/api/user-groups/${groupId}/request-access`, {});
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success!",
+        description: "Your request to join this group has been sent to the group owner",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send request",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const inviteMutation = useMutation({
+    mutationFn: async ({ groupId, userIds }: { groupId: number; userIds: number[] }) => {
+      const response = await apiRequest("POST", `/api/user-groups/${groupId}/invite`, { userIds });
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user-groups"] });
+      setInviteDialogOpen(false);
+      setSearchQuery("");
+      setSelectedUsers([]);
+      toast({
+        title: "Success!",
+        description: "Invitations sent successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send invitations",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeMemberMutation = useMutation({
+    mutationFn: async ({ groupId, userId }: { groupId: number; userId: number }) => {
+      await apiRequest("DELETE", `/api/user-groups/${groupId}/members/${userId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user-groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-groups", selectedGroup?.id, "members"] });
+      setRemoveMemberConfirmOpen(false);
+      setMemberToRemove(null);
+      toast({
+        title: "Success!",
+        description: "Member removed from group",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to remove member",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const { data: searchResults = [] } = useQuery<any[]>({
+    queryKey: ["/api/users/search", searchQuery],
+    queryFn: async () => {
+      if (!searchQuery || searchQuery.length < 2) return [];
+      const response = await fetch(`/api/users/search?q=${encodeURIComponent(searchQuery)}`);
+      if (!response.ok) throw new Error("Failed to search users");
+      return await response.json();
+    },
+    enabled: inviteDialogOpen && searchQuery.length >= 2,
+  });
+
   const { data: members = [] } = useQuery<any[]>({
     queryKey: ["/api/user-groups", selectedGroup?.id, "members"],
     queryFn: async () => {
@@ -82,7 +169,7 @@ export default function UserGroupsPage() {
       if (!response.ok) throw new Error("Failed to fetch members");
       return await response.json();
     },
-    enabled: !!selectedGroup && membersDialogOpen,
+    enabled: !!selectedGroup && (membersDialogOpen || inviteDialogOpen),
   });
 
   const resetForm = () => {
@@ -106,6 +193,36 @@ export default function UserGroupsPage() {
   const viewMembers = (group: any) => {
     setSelectedGroup(group);
     setMembersDialogOpen(true);
+  };
+
+  const openInviteDialog = (group: any) => {
+    setSelectedGroup(group);
+    setSearchQuery("");
+    setSelectedUsers([]);
+    setInviteDialogOpen(true);
+  };
+
+  const toggleUserSelection = (userId: number) => {
+    setSelectedUsers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const handleInvite = () => {
+    if (!selectedGroup || selectedUsers.length === 0) return;
+    inviteMutation.mutate({ groupId: selectedGroup.id, userIds: selectedUsers });
+  };
+
+  const confirmRemoveMember = (member: any) => {
+    setMemberToRemove(member);
+    setRemoveMemberConfirmOpen(true);
+  };
+
+  const handleRemoveMember = () => {
+    if (!selectedGroup || !memberToRemove) return;
+    removeMemberMutation.mutate({ groupId: selectedGroup.id, userId: memberToRemove.id });
   };
 
   const ownedGroups = groups.filter(g => g.ownerUserId === user?.id);
@@ -260,24 +377,36 @@ export default function UserGroupsPage() {
                         <CardDescription>Owner</CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <div className="flex gap-2">
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => viewMembers(group)}
+                              className="flex-1"
+                              data-testid={`button-view-members-${group.id}`}
+                            >
+                              <Users className="w-4 h-4 mr-2" />
+                              Members
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete(group.id)}
+                              data-testid={`button-delete-${group.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                           <Button
-                            variant="outline"
+                            variant="default"
                             size="sm"
-                            onClick={() => viewMembers(group)}
-                            className="flex-1"
-                            data-testid={`button-view-members-${group.id}`}
+                            onClick={() => openInviteDialog(group)}
+                            className="w-full"
+                            data-testid={`button-invite-${group.id}`}
                           >
-                            <Users className="w-4 h-4 mr-2" />
-                            Members
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDelete(group.id)}
-                            data-testid={`button-delete-${group.id}`}
-                          >
-                            <Trash2 className="w-4 h-4" />
+                            <UserPlus className="w-4 h-4 mr-2" />
+                            Invite Members
                           </Button>
                         </div>
                       </CardContent>
@@ -358,11 +487,12 @@ export default function UserGroupsPage() {
                           </Button>
                           <Button
                             size="sm"
-                            onClick={() => toast({ title: "Request access feature coming soon!" })}
+                            onClick={() => requestAccessMutation.mutate(group.id)}
+                            disabled={requestAccessMutation.isPending}
                             data-testid={`button-request-access-${group.id}`}
                           >
                             <UserPlus className="w-4 h-4 mr-2" />
-                            Join
+                            {requestAccessMutation.isPending ? "Sending..." : "Join"}
                           </Button>
                         </div>
                       </CardContent>
@@ -387,30 +517,182 @@ export default function UserGroupsPage() {
                 <p className="text-gray-600 text-center py-4">No members yet</p>
               ) : (
                 <div className="space-y-2">
-                  {members.map((member: any) => (
-                    <Card key={member.id} className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl">
-                            {member.selectedAvatar}
-                          </div>
-                          <div>
-                            <p className="font-semibold">{member.username}</p>
-                            {(member.firstName || member.lastName) && (
-                              <p className="text-sm text-gray-600">
-                                {member.firstName} {member.lastName}
+                  {members.map((member: any) => {
+                    const isOwner = member.id === selectedGroup?.ownerUserId;
+                    const canRemove = selectedGroup?.ownerUserId === user?.id && !isOwner;
+                    return (
+                      <Card key={member.id} className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl">
+                              {member.selectedAvatar}
+                            </div>
+                            <div>
+                              <p className="font-semibold">
+                                {member.username}
+                                {isOwner && (
+                                  <Badge variant="secondary" className="ml-2">Owner</Badge>
+                                )}
                               </p>
-                            )}
+                              {(member.firstName || member.lastName) && (
+                                <p className="text-sm text-gray-600">
+                                  {member.firstName} {member.lastName}
+                                </p>
+                              )}
+                            </div>
                           </div>
+                          {canRemove && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => confirmRemoveMember(member)}
+                              data-testid={`button-remove-member-${member.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
-                      </div>
-                    </Card>
-                  ))}
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
             </div>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Invite Members</DialogTitle>
+              <DialogDescription>
+                Search for users to invite to {selectedGroup?.name}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Input
+                  placeholder="Search by username, email, or name (min 2 characters)..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                  data-testid="input-search-users"
+                />
+              </div>
+
+              {selectedUsers.length > 0 && (
+                <div className="bg-purple-50 p-3 rounded-md">
+                  <p className="text-sm font-semibold text-gray-700">
+                    {selectedUsers.length} user{selectedUsers.length === 1 ? '' : 's'} selected
+                  </p>
+                </div>
+              )}
+
+              <ScrollArea className="h-[300px] border rounded-md p-4">
+                {searchQuery.length < 2 ? (
+                  <p className="text-gray-500 text-center py-8">
+                    Enter at least 2 characters to search for users
+                  </p>
+                ) : searchResults.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">
+                    No users found matching "{searchQuery}"
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {searchResults
+                      .filter((result: any) => {
+                        const memberIds = members.map((m: any) => m.id);
+                        return !memberIds.includes(result.id) && result.id !== user?.id;
+                      })
+                      .map((result: any) => {
+                        const isSelected = selectedUsers.includes(result.id);
+                        return (
+                          <Card
+                            key={result.id}
+                            className="p-4 hover-elevate cursor-pointer"
+                            onClick={() => toggleUserSelection(result.id)}
+                            data-testid={`card-search-result-${result.id}`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl">
+                                  {result.selectedAvatar || '👤'}
+                                </div>
+                                <div className="flex-1">
+                                  <p className="font-semibold">{result.username}</p>
+                                  {(result.firstName || result.lastName) && (
+                                    <p className="text-sm text-gray-600">
+                                      {result.firstName} {result.lastName}
+                                    </p>
+                                  )}
+                                  {result.email && (
+                                    <p className="text-sm text-gray-500 flex items-center gap-1">
+                                      <Mail className="w-3 h-3" />
+                                      {result.email}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => toggleUserSelection(result.id)}
+                                data-testid={`checkbox-user-${result.id}`}
+                              />
+                            </div>
+                          </Card>
+                        );
+                      })}
+                  </div>
+                )}
+              </ScrollArea>
+
+              <div className="flex gap-2 justify-end pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setInviteDialogOpen(false);
+                    setSearchQuery("");
+                    setSelectedUsers([]);
+                  }}
+                  data-testid="button-cancel-invite"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleInvite}
+                  disabled={selectedUsers.length === 0 || inviteMutation.isPending}
+                  data-testid="button-send-invites"
+                >
+                  {inviteMutation.isPending ? "Sending..." : `Invite ${selectedUsers.length || ''}`}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <AlertDialog open={removeMemberConfirmOpen} onOpenChange={setRemoveMemberConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove Member</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to remove {memberToRemove?.username} from this group?
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-remove">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleRemoveMember}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                data-testid="button-confirm-remove"
+              >
+                Remove Member
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
