@@ -131,6 +131,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Authentication required" });
       }
 
+      // Validate words for inappropriate content before processing
+      if (Array.isArray(req.body.words)) {
+        const { validateWords } = await import("./contentModeration");
+        const validation = validateWords(req.body.words);
+        
+        console.log("Content moderation check:", { 
+          words: req.body.words, 
+          isValid: validation.isValid, 
+          inappropriateWords: validation.inappropriateWords 
+        });
+        
+        if (!validation.isValid) {
+          return res.status(400).json({ 
+            error: "Inappropriate content detected", 
+            details: `The following words are not appropriate for children: ${validation.inappropriateWords.join(", ")}` 
+          });
+        }
+      }
+
       // Capitalize all words before validation
       const wordsArray = Array.isArray(req.body.words) 
         ? req.body.words.map((word: string) => word.toUpperCase())
@@ -223,6 +242,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (existingList.userId !== req.user!.id) {
         return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Validate words for inappropriate content before processing
+      if (req.body.words && Array.isArray(req.body.words)) {
+        const { validateWords } = await import("./contentModeration");
+        const validation = validateWords(req.body.words);
+        
+        if (!validation.isValid) {
+          return res.status(400).json({ 
+            error: "Inappropriate content detected", 
+            details: `The following words are not appropriate for children: ${validation.inappropriateWords.join(", ")}` 
+          });
+        }
       }
 
       // Capitalize all words before validation if words array is being updated

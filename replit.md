@@ -41,6 +41,17 @@ Fixed capitalization inconsistency in Find the Mistake mode:
 - **Result**: All 4 word choices now display with consistent formatting
 - **Status**: Production-ready, verified via automated testing
 
+### Content Moderation for Children's Safety (November 2025)
+Implemented comprehensive content filtering to ensure age-appropriate content:
+- **Word Filtering**: Validates all user-submitted words against profanity filter using `bad-words` library
+  - Applied to both word list creation (POST /api/word-lists) and updates (PUT /api/word-lists/:id)
+  - Rejects submissions containing inappropriate words with detailed error messages
+  - Server-side validation (server/contentModeration.ts) ensures security
+- **Image Safety**: Relies on Pixabay's built-in safe search filtering for cartoon illustrations
+- **UI Enhancement**: Enter key now triggers search in Edit Images screen
+- **UI Simplification**: Removed "Difficulty - Game Mode" text from all modes except Crossword
+- **Status**: Production-ready
+
 ## User Preferences
 - I prefer simple language.
 - I want iterative development.
@@ -102,3 +113,4 @@ The backend uses **Express.js** with **TypeScript**. **PostgreSQL** serves as th
 - **Drizzle ORM**: Type-safe ORM.
 - **Pixabay API**: Provides kid-friendly cartoon illustrations for automated word enrichment.
 - **Replit Object Storage**: Cloud storage for permanent image hosting.
+- **bad-words**: Profanity filter library for content moderation to ensure child-appropriate content.
