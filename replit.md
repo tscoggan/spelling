@@ -7,14 +7,14 @@ Spelling Champions is an interactive educational app designed to improve childre
 
 ### Crossword Puzzle Mode - Audio-Only Interface (November 2025)
 Complete implementation of interactive crossword puzzle game mode with TTS-only interface:
-- **Grid Generation**: Client-side algorithm guarantees minimum 10 words (client/src/lib/crosswordGenerator.ts)
-  - **Multi-attempt strategy**: Tries 20 different word orderings to maximize intersections
-  - **Guaranteed fallback**: Uses deterministic grid pattern (9-row spacing on 100x100 grid) to ensure exactly 10 words when list has ≥10 valid words
-  - **Mathematical proof**: Grid can fit 10 words of up to 90 characters each without collisions
-  - **Safety checks**: Handles edge cases (empty lists, all words too long) without crashing
+- **Grid Generation**: Client-side algorithm prioritizes word connectivity (client/src/lib/crosswordGenerator.ts)
+  - **Multi-attempt strategy**: Tries 30 different word orderings to maximize connected words
+  - **Connectivity requirement**: ALL words must connect to at least one other word via shared letters
+  - **Isolation filtering**: Words with no common letters are automatically excluded from the puzzle
+  - **Quality over quantity**: Prioritizes fully-connected puzzles over reaching a specific word count
   - Prevents two words from starting in the same box (unique play button cells)
-  - Allows multiple disconnected word groups within a single puzzle
-  - Removes only truly isolated words (words with zero intersections) in intersection-based attempts
+  - Target: 15 words when possible, but accepts fewer if needed to maintain connectivity
+  - Typical results: 5-12 connected words depending on letter overlap in the word list
 - **Audio-Only Interface**: Play buttons (Volume icons) replace definition text and cell numbers; click to hear word via TTS
 - **UI**: Centered grid without clue lists; subheader instructs "Click the play icon at the start of each word to hear the word"
 - **Auto-Focus & Advance**: Clicking play button auto-focuses first letter; typing auto-advances through word (stops on last letter)
