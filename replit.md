@@ -21,9 +21,9 @@ Complete implementation of interactive crossword puzzle game mode with TTS-only 
 - **Overwrite Input**: Clicking on cell with existing letter selects the text; typing immediately replaces it without needing backspace
 - **Smart Backspace Navigation**: Backspace/Delete clears current letter (stays in cell), pressing again moves to previous cell and clears it
 - **Show Mistakes Feature**: Button highlights incorrect cells with red border (border-red-500), light red background (bg-red-50), and red text (text-red-700); highlights automatically clear when user types or deletes. Does NOT show correct letter overlay - only highlights mistakes.
+- **Loading Screen**: Shows spinner and "Generating crossword puzzle..." message while grid is being generated (2-5 seconds)
 - **Results Screen Enhancements**:
-  - Simplified header: Smaller "Amazing Work!" title without sparkle icon or subheader
-  - No points awarded (Crossword is practice-focused, not scored)
+  - NO header text or sparkle icon (practice-focused mode)
   - Single centered Accuracy card showing percentage
   - Completed puzzle grid display with per-letter feedback
 - **Results Grid Display**: 
@@ -35,9 +35,14 @@ Complete implementation of interactive crossword puzzle game mode with TTS-only 
 - **Status**: Production-ready, verified via automated testing
 
 ### Find the Mistake - Improved Feedback (November 2025)
-Enhanced educational feedback when users make incorrect selections:
+Enhanced educational feedback for both correct and incorrect selections:
 - **Capitalization Fix**: All 4 word choices display with consistent uppercase formatting
-- **Improved Incorrect Feedback**: When user selects a correctly-spelled word instead of the misspelled one:
+- **Correct Answer Feedback**: When user correctly selects the misspelled word:
+  - Shows "Correct!" heading with checkmark
+  - Displays "The misspelled word was:" label with strikethrough word
+  - Shows "Correct spelling:" label with proper spelling
+  - Uses same educational format as incorrect answer feedback
+- **Incorrect Answer Feedback**: When user selects a correctly-spelled word instead of the misspelled one:
   - Shows the selected word in green with "That word is spelled correctly!" message
   - Displays the actual misspelled word with strikethrough
   - Shows the correct spelling of the misspelled word
