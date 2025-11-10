@@ -511,6 +511,225 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User Groups endpoints
+  app.get("/api/user-groups", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const user = req.user as any;
+      const groups = await storage.getUserAccessibleGroups(user.id);
+      res.json(groups);
+    } catch (error) {
+      console.error("Error fetching user groups:", error);
+      res.status(500).json({ error: "Failed to fetch user groups" });
+    }
+  });
+
+  app.post("/api/user-groups", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const user = req.user as any;
+      const { insertUserGroupSchema } = await import("@shared/schema");
+      const groupData = insertUserGroupSchema.parse({
+        ...req.body,
+        ownerUserId: user.id,
+      });
+      
+      const group = await storage.createUserGroup(groupData);
+      res.json(group);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid group data", details: error.errors });
+      }
+      console.error("Error creating user group:", error);
+      res.status(500).json({ error: "Failed to create user group" });
+    }
+  });
+
+  app.delete("/api/user-groups/:id", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const groupId = parseInt(req.params.id);
+      const user = req.user as any;
+      
+      const group = await storage.getUserGroup(groupId);
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+      
+      if (group.ownerUserId !== user.id) {
+        return res.status(403).json({ error: "Only group owner can delete" });
+      }
+
+      await storage.deleteUserGroup(groupId);
+      res.json({ message: "Group deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting user group:", error);
+      res.status(500).json({ error: "Failed to delete user group" });
+    }
+  });
+
+  app.get("/api/user-groups/:id/members", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const groupId = parseInt(req.params.id);
+      const members = await storage.getGroupMembers(groupId);
+      res.json(members);
+    } catch (error) {
+      console.error("Error fetching group members:", error);
+      res.status(500).json({ error: "Failed to fetch group members" });
+    }
+  });
+
+  app.post("/api/user-groups/:id/members", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const groupId = parseInt(req.params.id);
+      const { userId } = req.body;
+      
+      const membership = await storage.addGroupMember(groupId, userId);
+      res.json(membership);
+    } catch (error) {
+      console.error("Error adding group member:", error);
+      res.status(500).json({ error: "Failed to add group member" });
+    }
+  });
+
+  app.delete("/api/user-groups/:id/members/:userId", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const groupId = parseInt(req.params.id);
+      const userId = parseInt(req.params.userId);
+      const user = req.user as any;
+      
+      const group = await storage.getUserGroup(groupId);
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+      
+      if (group.ownerUserId !== user.id) {
+        return res.status(403).json({ error: "Only group owner can remove members" });
+      }
+
+      await storage.removeGroupMember(groupId, userId);
+      res.json({ message: "Member removed successfully" });
+    } catch (error) {
+      console.error("Error removing group member:", error);
+      res.status(500).json({ error: "Failed to remove group member" });
+    }
+  });
+
+  // To-Do Items endpoints
+  app.get("/api/todos", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const user = req.user as any;
+      const todos = await storage.getUserToDoItems(user.id);
+      res.json(todos);
+    } catch (error) {
+      console.error("Error fetching todos:", error);
+      res.status(500).json({ error: "Failed to fetch todos" });
+    }
+  });
+
+  app.post("/api/todos", async (req, res) => {
+    try {
+      const { insertUserToDoItemSchema } = await import("@shared/schema");
+      const todoData = insertUserToDoItemSchema.parse(req.body);
+      const todo = await storage.createToDoItem(todoData);
+      res.json(todo);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid todo data", details: error.errors });
+      }
+      console.error("Error creating todo:", error);
+      res.status(500).json({ error: "Failed to create todo" });
+    }
+  });
+
+  app.patch("/api/todos/:id", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const todoId = parseInt(req.params.id);
+      const { completed } = req.body;
+      
+      const todo = await storage.updateToDoItem(todoId, { completed });
+      res.json(todo);
+    } catch (error) {
+      console.error("Error updating todo:", error);
+      res.status(500).json({ error: "Failed to update todo" });
+    }
+  });
+
+  app.delete("/api/todos/:id", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const todoId = parseInt(req.params.id);
+      const user = req.user as any;
+      
+      const todo = await storage.getToDoItem(todoId);
+      if (!todo) {
+        return res.status(404).json({ error: "Todo not found" });
+      }
+      
+      if (todo.userId !== user.id) {
+        return res.status(403).json({ error: "Cannot delete another user's todo" });
+      }
+
+      await storage.deleteToDoItem(todoId);
+      res.json({ message: "Todo deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting todo:", error);
+      res.status(500).json({ error: "Failed to delete todo" });
+    }
+  });
+
+  // User search endpoint for invitations
+  app.get("/api/users/search", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const { query } = req.query;
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ error: "Search query required" });
+      }
+
+      const users = await storage.searchUsers(query);
+      res.json(users);
+    } catch (error) {
+      console.error("Error searching users:", error);
+      res.status(500).json({ error: "Failed to search users" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

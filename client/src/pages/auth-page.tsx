@@ -32,6 +32,9 @@ export default function AuthPage() {
   const [registerData, setRegisterData] = useState({
     username: "",
     password: "",
+    firstName: "",
+    lastName: "",
+    email: "",
     selectedAvatar: avatarOptions[0].emoji,
   });
 
@@ -119,6 +122,41 @@ export default function AuthPage() {
 
           <TabsContent value="register">
             <form onSubmit={handleRegister} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="register-first-name">First Name</Label>
+                  <Input
+                    id="register-first-name"
+                    type="text"
+                    value={registerData.firstName}
+                    onChange={(e) => setRegisterData({ ...registerData, firstName: e.target.value })}
+                    placeholder="First name"
+                    data-testid="input-register-firstname"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="register-last-name">Last Name</Label>
+                  <Input
+                    id="register-last-name"
+                    type="text"
+                    value={registerData.lastName}
+                    onChange={(e) => setRegisterData({ ...registerData, lastName: e.target.value })}
+                    placeholder="Last name"
+                    data-testid="input-register-lastname"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="register-email">Email</Label>
+                <Input
+                  id="register-email"
+                  type="email"
+                  value={registerData.email}
+                  onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
+                  placeholder="your.email@example.com"
+                  data-testid="input-register-email"
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="register-username">Username</Label>
                 <Input

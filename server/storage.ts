@@ -14,6 +14,12 @@ import {
   type InsertCustomWordList,
   type WordIllustration,
   type InsertWordIllustration,
+  type UserGroup,
+  type InsertUserGroup,
+  type UserGroupMembership,
+  type InsertUserGroupMembership,
+  type UserToDoItem,
+  type InsertUserToDoItem,
   words,
   gameSessions,
   users,
@@ -21,6 +27,9 @@ import {
   leaderboardScores,
   customWordLists,
   wordIllustrations,
+  userGroups,
+  userGroupMembership,
+  userToDoItems,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -62,6 +71,22 @@ export interface IStorage {
   getWordIllustration(word: string): Promise<WordIllustration | undefined>;
   getAllWordIllustrations(): Promise<WordIllustration[]>;
   updateWordIllustration(id: number, updates: Partial<InsertWordIllustration>): Promise<WordIllustration | undefined>;
+  
+  createUserGroup(group: any): Promise<any>;
+  getUserGroup(groupId: number): Promise<any>;
+  getUserAccessibleGroups(userId: number): Promise<any[]>;
+  deleteUserGroup(groupId: number): Promise<boolean>;
+  addGroupMember(groupId: number, userId: number): Promise<any>;
+  removeGroupMember(groupId: number, userId: number): Promise<boolean>;
+  getGroupMembers(groupId: number): Promise<any[]>;
+  
+  createToDoItem(todo: any): Promise<any>;
+  getUserToDoItems(userId: number): Promise<any[]>;
+  getToDoItem(todoId: number): Promise<any>;
+  updateToDoItem(todoId: number, updates: any): Promise<any>;
+  deleteToDoItem(todoId: number): Promise<boolean>;
+  
+  searchUsers(query: string): Promise<any[]>;
   
   sessionStore: session.Store;
 }
@@ -453,6 +478,137 @@ export class DatabaseStorage implements IStorage {
       .delete(wordIllustrations)
       .where(eq(wordIllustrations.word, word.toLowerCase()));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async createUserGroup(group: InsertUserGroup): Promise<UserGroup> {
+    const [newGroup] = await db.insert(userGroups).values(group).returning();
+    return newGroup;
+  }
+
+  async getUserGroup(groupId: number): Promise<UserGroup | undefined> {
+    const [group] = await db.select().from(userGroups).where(eq(userGroups.id, groupId));
+    return group || undefined;
+  }
+
+  async getUserAccessibleGroups(userId: number): Promise<UserGroup[]> {
+    const ownedGroups = await db.select().from(userGroups).where(eq(userGroups.ownerUserId, userId));
+    
+    const memberGroups = await db
+      .select({
+        id: userGroups.id,
+        name: userGroups.name,
+        ownerUserId: userGroups.ownerUserId,
+        isPublic: userGroups.isPublic,
+        createdAt: userGroups.createdAt,
+      })
+      .from(userGroupMembership)
+      .innerJoin(userGroups, eq(userGroupMembership.groupId, userGroups.id))
+      .where(eq(userGroupMembership.userId, userId));
+    
+    const publicGroups = await db.select().from(userGroups).where(eq(userGroups.isPublic, true));
+    
+    const allGroups = [...ownedGroups, ...memberGroups, ...publicGroups];
+    const uniqueGroups = Array.from(new Map(allGroups.map(g => [g.id, g])).values());
+    
+    return uniqueGroups;
+  }
+
+  async deleteUserGroup(groupId: number): Promise<boolean> {
+    const result = await db.delete(userGroups).where(eq(userGroups.id, groupId));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async addGroupMember(groupId: number, userId: number): Promise<UserGroupMembership> {
+    const [membership] = await db
+      .insert(userGroupMembership)
+      .values({ groupId, userId })
+      .returning();
+    return membership;
+  }
+
+  async removeGroupMember(groupId: number, userId: number): Promise<boolean> {
+    const result = await db
+      .delete(userGroupMembership)
+      .where(and(
+        eq(userGroupMembership.groupId, groupId),
+        eq(userGroupMembership.userId, userId)
+      ));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getGroupMembers(groupId: number): Promise<any[]> {
+    const members = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        selectedAvatar: users.selectedAvatar,
+      })
+      .from(userGroupMembership)
+      .innerJoin(users, eq(userGroupMembership.userId, users.id))
+      .where(eq(userGroupMembership.groupId, groupId));
+    
+    return members;
+  }
+
+  async createToDoItem(todo: InsertUserToDoItem): Promise<UserToDoItem> {
+    const [newTodo] = await db.insert(userToDoItems).values(todo).returning();
+    return newTodo;
+  }
+
+  async getUserToDoItems(userId: number): Promise<UserToDoItem[]> {
+    return await db
+      .select()
+      .from(userToDoItems)
+      .where(and(
+        eq(userToDoItems.userId, userId),
+        eq(userToDoItems.completed, false)
+      ))
+      .orderBy(desc(userToDoItems.createdAt));
+  }
+
+  async getToDoItem(todoId: number): Promise<UserToDoItem | undefined> {
+    const [todo] = await db.select().from(userToDoItems).where(eq(userToDoItems.id, todoId));
+    return todo || undefined;
+  }
+
+  async updateToDoItem(todoId: number, updates: Partial<UserToDoItem>): Promise<UserToDoItem | undefined> {
+    const [updated] = await db
+      .update(userToDoItems)
+      .set(updates)
+      .where(eq(userToDoItems.id, todoId))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteToDoItem(todoId: number): Promise<boolean> {
+    const result = await db.delete(userToDoItems).where(eq(userToDoItems.id, todoId));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async searchUsers(query: string): Promise<any[]> {
+    const searchTerm = `%${query.toLowerCase()}%`;
+    const results = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        selectedAvatar: users.selectedAvatar,
+      })
+      .from(users)
+      .where(
+        sql`LOWER(${users.username}) LIKE ${searchTerm} 
+         OR LOWER(${users.firstName}) LIKE ${searchTerm}
+         OR LOWER(${users.lastName}) LIKE ${searchTerm}
+         OR LOWER(${users.email}) LIKE ${searchTerm}`
+      )
+      .limit(10);
+    
+    return results;
   }
 }
 
