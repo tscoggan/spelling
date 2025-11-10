@@ -900,6 +900,16 @@ function EditImagesDialog({ list, open, onOpenChange }: {
                 placeholder="Custom search (e.g., 'cartoon dog')"
                 value={customSearchTerm}
                 onChange={(e) => setCustomSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (customSearchTerm.trim()) {
+                      fetchPixabayPreviews(customSearchTerm);
+                    } else if (selectedWord) {
+                      fetchPixabayPreviews(selectedWord);
+                    }
+                  }
+                }}
                 className="flex-1 text-sm h-9"
                 data-testid="input-custom-search"
               />
