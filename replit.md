@@ -35,7 +35,9 @@ Complete implementation of interactive crossword puzzle game mode with TTS-only 
 - **Status**: Production-ready, verified via automated testing
 
 ### Find the Mistake - Realistic Misspellings (November 2025)
-Enhanced educational experience with believable spelling mistakes:
+Enhanced educational experience with randomized, believable spelling mistakes:
+- **Full Randomization**: Each playthrough randomly selects which word to misspell and randomly chooses misspelling strategies for maximum variety and replayability
+- **Dictionary API Validation**: Replaced hardcoded common-word list with runtime dictionary API checks to ensure misspellings aren't real words
 - **Capitalization Fix**: All 4 word choices display with consistent uppercase formatting
 - **Comprehensive Misspelling Patterns**: Two-tier strategy with 20+ realistic spelling mistake types
   - **Tier 1 - Common mistakes**: 
