@@ -763,13 +763,161 @@ export default function Game() {
         return null;
       },
       
-      // Drop double consonants (rabbit -> rabit, cannot -> canot)
+      // Remove silent letters (knife -> nife, gnaw -> naw, column -> colum)
+      () => {
+        const silentPatterns = [
+          { pattern: 'kn', replacement: 'n' },  // knife -> nife, know -> now
+          { pattern: 'gn', replacement: 'n' },  // gnaw -> naw, gnat -> nat
+          { pattern: 'wr', replacement: 'r' },  // write -> rite, wrong -> rong
+          { pattern: 'mb', replacement: 'm' },  // lamb -> lam, climb -> clim
+          { pattern: 'mn', replacement: 'm' },  // column -> colum, autumn -> autum
+          { pattern: 'gh', replacement: '' },   // light -> lit, night -> nit
+          { pattern: 'ck', replacement: 'k' },  // back -> bak, stick -> stik
+        ];
+        for (const { pattern, replacement } of silentPatterns) {
+          if (wordLower.includes(pattern)) {
+            return wordLower.replace(pattern, replacement);
+          }
+        }
+        return null;
+      },
+      
+      // Use wrong silent letters (knife -> gnife, gnat -> knat)
+      () => {
+        if (wordLower.startsWith('kn')) {
+          return 'gn' + wordLower.slice(2);  // knife -> gnife
+        }
+        if (wordLower.startsWith('gn')) {
+          return 'kn' + wordLower.slice(2);  // gnat -> knat
+        }
+        if (wordLower.startsWith('wr')) {
+          return 'rh' + wordLower.slice(2);  // write -> rhite
+        }
+        return null;
+      },
+      
+      // "cious" / "shus" / "shis" (delicious -> delishus or delishis)
+      () => {
+        if (wordLower.endsWith('cious')) {
+          return Math.random() > 0.5 
+            ? wordLower.replace(/cious$/, 'shus')
+            : wordLower.replace(/cious$/, 'shis');
+        }
+        if (wordLower.endsWith('tious')) {
+          return Math.random() > 0.5 
+            ? wordLower.replace(/tious$/, 'shus')
+            : wordLower.replace(/tious$/, 'shis');
+        }
+        return null;
+      },
+      
+      // Double a single consonant (top -> topp, banana -> bananna)
+      () => {
+        const consonants = 'bcdfghjklmnpqrstvwxyz';
+        for (let i = wordLower.length - 2; i >= 0; i--) {
+          if (consonants.includes(wordLower[i]) && wordLower[i] !== wordLower[i + 1]) {
+            return wordLower.slice(0, i + 1) + wordLower[i] + wordLower.slice(i + 1);
+          }
+        }
+        return null;
+      },
+      
+      // Remove one of a pair of consonants (terrific -> terific, rabbit -> rabit)
       () => {
         const consonants = 'bcdfghjklmnpqrstvwxyz';
         for (let i = 0; i < wordLower.length - 1; i++) {
           if (wordLower[i] === wordLower[i + 1] && consonants.includes(wordLower[i])) {
             return wordLower.slice(0, i) + wordLower.slice(i + 1);
           }
+        }
+        return null;
+      },
+      
+      // "oo" / "u" swaps (balloon -> balune, spoon -> spune, rune -> roon)
+      () => {
+        // Handle 'oon' ending -> 'une' ending (balloon -> balune, spoon -> spune)
+        if (wordLower.endsWith('oon')) {
+          return wordLower.slice(0, -3) + 'une';
+        }
+        // Handle 'une' ending -> 'oon' ending (rune -> roon)
+        if (wordLower.endsWith('une')) {
+          return wordLower.slice(0, -3) + 'oon';
+        }
+        // Handle 'oo' in middle -> 'u' (moon -> mun, food -> fud)
+        if (wordLower.includes('oo')) {
+          return wordLower.replace('oo', 'u');
+        }
+        // Handle 'u' in middle -> 'oo' (but -> boot)
+        if (wordLower.includes('u') && !wordLower.includes('oo')) {
+          return wordLower.replace('u', 'oo');
+        }
+        return null;
+      },
+      
+      // "ic" / "ick" swaps (fantastic -> fantastick, stick -> stic)
+      () => {
+        if (wordLower.endsWith('ic') && !wordLower.endsWith('ick')) {
+          return wordLower + 'k';
+        }
+        if (wordLower.endsWith('ick')) {
+          return wordLower.slice(0, -1);
+        }
+        return null;
+      },
+      
+      // "e" / "ea" swaps (weather -> wether, sweater -> sweter, tether -> teather)
+      () => {
+        if (wordLower.includes('ea')) {
+          return wordLower.replace('ea', 'e');
+        }
+        // Only add 'a' after 'e' in the middle of words
+        const eIndex = wordLower.indexOf('e', 1);
+        if (eIndex > 0 && eIndex < wordLower.length - 1 && wordLower[eIndex + 1] !== 'a') {
+          return wordLower.slice(0, eIndex) + 'ea' + wordLower.slice(eIndex + 1);
+        }
+        return null;
+      },
+      
+      // "eed" / "ede" swaps (exceed -> excede, succeed -> succede)
+      () => {
+        if (wordLower.endsWith('eed')) {
+          return wordLower.slice(0, -3) + 'ede';
+        }
+        if (wordLower.endsWith('ede')) {
+          return wordLower.slice(0, -3) + 'eed';
+        }
+        return null;
+      },
+      
+      // "aught" / "ought" swaps (daughter -> doughter,ought -> aught)
+      () => {
+        if (wordLower.includes('aught')) {
+          return wordLower.replace('aught', 'ought');
+        }
+        if (wordLower.includes('ought')) {
+          return wordLower.replace('ought', 'aught');
+        }
+        return null;
+      },
+      
+      // "or" / "our" swaps (forty -> fourty, color -> colour)
+      () => {
+        if (wordLower.includes('or') && !wordLower.includes('our')) {
+          return wordLower.replace('or', 'our');
+        }
+        if (wordLower.includes('our')) {
+          return wordLower.replace('our', 'or');
+        }
+        return null;
+      },
+      
+      // "able" / "ible" swaps (dispensable -> dispensible, visible -> visable)
+      () => {
+        if (wordLower.endsWith('able')) {
+          return wordLower.slice(0, -4) + 'ible';
+        }
+        if (wordLower.endsWith('ible')) {
+          return wordLower.slice(0, -4) + 'able';
         }
         return null;
       },
