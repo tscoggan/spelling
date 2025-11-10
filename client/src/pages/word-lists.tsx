@@ -96,9 +96,10 @@ export default function WordListsPage() {
       }
     },
     onError: (error: any) => {
+      const description = error.details || error.message || "Failed to create word list";
       toast({
         title: "Error",
-        description: error.message || "Failed to create word list",
+        description,
         variant: "destructive",
       });
     },
@@ -139,9 +140,10 @@ export default function WordListsPage() {
       }
     },
     onError: (error: any) => {
+      const description = error.details || error.message || "Failed to update word list";
       toast({
         title: "Error",
-        description: error.message || "Failed to update word list",
+        description,
         variant: "destructive",
       });
     },

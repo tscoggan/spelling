@@ -43,14 +43,19 @@ Fixed capitalization inconsistency in Find the Mistake mode:
 
 ### Content Moderation for Children's Safety (November 2025)
 Implemented comprehensive content filtering to ensure age-appropriate content:
-- **Word Filtering**: Validates all user-submitted words against profanity filter using `bad-words` library
+- **Word Filtering**: Validates all user-submitted content against profanity filter using `bad-words` library
+  - **List Names**: Checks list names for inappropriate content during creation and updates
+  - **Word Arrays**: Validates each word in custom word lists
   - Applied to both word list creation (POST /api/word-lists) and updates (PUT /api/word-lists/:id)
-  - Rejects submissions containing inappropriate words with detailed error messages
+  - Rejects submissions containing inappropriate content with detailed error messages
   - Server-side validation (server/contentModeration.ts) ensures security
+  - **False Positive Prevention**: Removed overly broad patterns (hell, ass, tit, god) to allow legitimate words like "hello", "class", "pass", "title"
+  - **Explicit Blocking**: Still blocks truly explicit profanity from bad-words default list
 - **Image Safety**: Relies on Pixabay's built-in safe search filtering for cartoon illustrations
+- **Error Handling**: Client displays detailed error messages showing which words/content were blocked
 - **UI Enhancement**: Enter key now triggers search in Edit Images screen
 - **UI Simplification**: Removed "Difficulty - Game Mode" text from all modes except Crossword
-- **Status**: Production-ready
+- **Status**: Production-ready, verified via automated testing
 
 ## User Preferences
 - I prefer simple language.

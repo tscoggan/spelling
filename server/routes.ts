@@ -131,16 +131,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Authentication required" });
       }
 
-      // Validate words for inappropriate content before processing
-      if (Array.isArray(req.body.words)) {
-        const { validateWords } = await import("./contentModeration");
-        const validation = validateWords(req.body.words);
-        
-        console.log("Content moderation check:", { 
-          words: req.body.words, 
-          isValid: validation.isValid, 
-          inappropriateWords: validation.inappropriateWords 
+      // Validate list name and words for inappropriate content before processing
+      const { containsInappropriateContent, validateWords } = await import("./contentModeration");
+      
+      // Check list name
+      if (req.body.name && containsInappropriateContent(req.body.name)) {
+        return res.status(400).json({ 
+          error: "Inappropriate content detected", 
+          details: `The list name contains inappropriate content for children. Please choose a different name.` 
         });
+      }
+      
+      // Check words array
+      if (Array.isArray(req.body.words)) {
+        const validation = validateWords(req.body.words);
         
         if (!validation.isValid) {
           return res.status(400).json({ 
@@ -244,9 +248,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Access denied" });
       }
 
-      // Validate words for inappropriate content before processing
+      // Validate list name and words for inappropriate content before processing
+      const { containsInappropriateContent, validateWords } = await import("./contentModeration");
+      
+      // Check list name if provided
+      if (req.body.name && containsInappropriateContent(req.body.name)) {
+        return res.status(400).json({ 
+          error: "Inappropriate content detected", 
+          details: `The list name contains inappropriate content for children. Please choose a different name.` 
+        });
+      }
+      
+      // Check words array if provided
       if (req.body.words && Array.isArray(req.body.words)) {
-        const { validateWords } = await import("./contentModeration");
         const validation = validateWords(req.body.words);
         
         if (!validation.isValid) {
