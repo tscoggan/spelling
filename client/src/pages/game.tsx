@@ -98,6 +98,7 @@ export default function Game() {
   const [crosswordClues, setCrosswordClues] = useState<{word: string; clue: string}[]>([]);
   const [highlightedMistakes, setHighlightedMistakes] = useState<Set<string>>(new Set());
   const [completedGrid, setCompletedGrid] = useState<{inputs: {[key: string]: string}, grid: CrosswordGrid} | null>(null);
+  const [finalAccuracy, setFinalAccuracy] = useState<number>(0);
 
   const createSessionMutation = useMutation({
     mutationFn: async (sessionData: { difficulty: string; gameMode: string; userId: number | null; customListId?: number }) => {
@@ -638,8 +639,10 @@ export default function Game() {
 
   useEffect(() => {
     if (gameComplete && !scoreSaved && sessionId && user && gameMode !== "standard") {
-      const totalWords = words?.length || 10;
-      const accuracy = Math.round((correctCount / totalWords) * 100);
+      // Use stored accuracy for crossword mode, calculate for other modes
+      const accuracy = gameMode === "crossword"
+        ? finalAccuracy
+        : Math.round((correctCount / (words?.length || 10)) * 100);
       
       console.log("Saving score to leaderboard:", { score, accuracy, difficulty, gameMode, sessionId });
       
@@ -653,7 +656,7 @@ export default function Game() {
       });
       setScoreSaved(true);
     }
-  }, [gameComplete, scoreSaved, score, gameMode, correctCount, words, difficulty, sessionId, user]);
+  }, [gameComplete, scoreSaved, score, gameMode, correctCount, finalAccuracy, words, difficulty, sessionId, user]);
 
   // Timed mode: Single 60-second timer for entire game
   useEffect(() => {
@@ -1352,6 +1355,7 @@ export default function Game() {
     
     setCorrectCount(correctWords);
     setScore(totalScore);
+    setFinalAccuracy(accuracy);
     
     // Add completion bonus if all words correct
     if (correctWords === totalWords) {
@@ -1462,7 +1466,10 @@ export default function Game() {
     const totalWords = gameMode === "timed" 
       ? (currentWordIndex + 1) 
       : (words?.length || 10);
-    const accuracy = totalWords > 0 ? Math.round((correctCount / totalWords) * 100) : 0;
+    // Use stored accuracy for crossword mode, calculate for other modes
+    const accuracy = gameMode === "crossword" 
+      ? finalAccuracy 
+      : (totalWords > 0 ? Math.round((correctCount / totalWords) * 100) : 0);
     
     return (
       <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: 'hsl(var(--page-game-bg))' }}>
