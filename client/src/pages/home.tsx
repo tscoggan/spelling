@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Sparkles, Trophy, Clock, Target, LogOut, List, ChevronRight, Lock, Globe, Shuffle, AlertCircle, Grid3x3 } from "lucide-react";
+import { BookOpen, Sparkles, Trophy, Clock, Target, LogOut, List, ChevronRight, Lock, Globe, Shuffle, AlertCircle, Grid3x3, Users } from "lucide-react";
 import type { DifficultyLevel, GameMode } from "@shared/schema";
 import { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -202,7 +202,7 @@ export default function Home() {
           </Card>
         </div>
 
-        <div className="flex justify-center gap-4 mb-6">
+        <div className="flex justify-center flex-wrap gap-4 mb-6">
           <Button
             variant="outline"
             size="lg"
@@ -211,6 +211,15 @@ export default function Home() {
           >
             <List className="w-4 h-4 mr-2" />
             Custom Word Lists
+          </Button>
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => setLocation("/user-groups")}
+            data-testid="button-user-groups"
+          >
+            <Users className="w-4 h-4 mr-2" />
+            User Groups
           </Button>
           <Button
             variant="outline"
