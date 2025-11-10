@@ -1909,9 +1909,6 @@ export default function Game() {
                   <span className="text-gray-600" data-testid="text-word-progress">
                     Word {currentWordIndex + 1} of {words.length}
                   </span>
-                  <span className="text-gray-800 capitalize" data-testid="text-difficulty">
-                    {difficulty} - {gameMode === "standard" ? "Practice" : gameMode === "timed" ? "Timed" : gameMode === "quiz" ? "Quiz" : "Word Scramble"}
-                  </span>
                 </div>
                 <Progress value={progress} className="h-3" data-testid="progress-game" />
               </div>
