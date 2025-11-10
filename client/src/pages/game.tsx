@@ -1303,8 +1303,8 @@ export default function Game() {
         const c = entry.direction === "across" ? entry.col + i : entry.col;
         const userLetter = crosswordInputs[`${r}-${c}`] || '';
         
-        // Only highlight if user typed something AND it's wrong
-        if (userLetter && userLetter.toUpperCase() !== entry.word[i].toUpperCase()) {
+        // Highlight if cell is empty OR if user typed something wrong
+        if (!userLetter || userLetter.toUpperCase() !== entry.word[i].toUpperCase()) {
           mistakes.add(`${r}-${c}`);
         }
       }
@@ -1830,12 +1830,26 @@ export default function Game() {
                         const cellKey = `${rowIndex}-${colIndex}`;
                         const isMistake = highlightedMistakes.has(cellKey);
                         
+                        // Find the correct letter for this cell (for showing in overlay when mistake is highlighted)
+                        let correctLetter = '';
+                        if (isMistake) {
+                          crosswordGrid.entries.forEach(entry => {
+                            for (let i = 0; i < entry.word.length; i++) {
+                              const r = entry.direction === "across" ? entry.row : entry.row + i;
+                              const c = entry.direction === "across" ? entry.col + i : entry.col;
+                              if (r === rowIndex && c === colIndex) {
+                                correctLetter = entry.word[i];
+                              }
+                            }
+                          });
+                        }
+                        
                         return (
                           <div key={cellKey} className="relative">
                             {cell.isBlank ? (
                               <div className="w-10 h-10 bg-gray-900"></div>
                             ) : (
-                              <div className={`w-10 h-10 border-2 ${isMistake ? 'border-red-500 bg-red-50' : 'border-gray-400 bg-white'} relative`}>
+                              <div className={`w-10 h-10 border-2 ${isMistake ? 'border-red-500 bg-red-50' : 'border-gray-400 bg-white'} relative flex items-center justify-center overflow-visible`}>
                                 {cell.number && (() => {
                                   const entry = crosswordGrid.entries.find(e => e.number === cell.number);
                                   return entry ? (
@@ -1865,6 +1879,11 @@ export default function Game() {
                                   data-col={colIndex}
                                   data-testid={`cell-${rowIndex}-${colIndex}`}
                                 />
+                                {isMistake && correctLetter && (
+                                  <span className="absolute top-0 right-0 text-sm font-bold text-gray-900 bg-white px-1 rounded-bl pointer-events-none z-20" style={{ fontSize: '0.75rem', lineHeight: '1' }}>
+                                    {correctLetter.toUpperCase()}
+                                  </span>
+                                )}
                               </div>
                             )}
                           </div>
