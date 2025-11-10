@@ -2,11 +2,13 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Sparkles, Trophy, Clock, Target, LogOut, List, ChevronRight, Lock, Globe, Shuffle, AlertCircle, Grid3x3, Users } from "lucide-react";
+import { BookOpen, Sparkles, Trophy, Clock, Target, LogOut, List, ChevronRight, Lock, Globe, Shuffle, AlertCircle, Grid3x3, Users, Bell } from "lucide-react";
 import type { DifficultyLevel, GameMode } from "@shared/schema";
 import { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -42,6 +44,40 @@ export default function Home() {
   const [filterDifficulty, setFilterDifficulty] = useState<string>("all");
   const [filterGradeLevel, setFilterGradeLevel] = useState<string>("all");
   const [quizWordCount, setQuizWordCount] = useState<"10" | "all">("10");
+  const [todoModalOpen, setTodoModalOpen] = useState(false);
+
+  const { toast } = useToast();
+
+  const { data: todoCount = 0 } = useQuery<number>({
+    queryKey: ["/api/user-to-dos/count"],
+    enabled: !!user,
+  });
+
+  const { data: todos = [] } = useQuery<any[]>({
+    queryKey: ["/api/user-to-dos"],
+    enabled: !!user && todoModalOpen,
+  });
+
+  const completeTodoMutation = useMutation({
+    mutationFn: async (todoId: number) => {
+      await apiRequest("POST", `/api/user-to-dos/${todoId}/complete`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos/count"] });
+      toast({
+        title: "Success!",
+        description: "To-do completed",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to complete to-do",
+        variant: "destructive",
+      });
+    },
+  });
 
   const { data: customLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists"],
@@ -188,16 +224,32 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLogout}
-                disabled={logoutMutation.isPending}
-                data-testid="button-logout"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                {logoutMutation.isPending ? "Logging out..." : "Logout"}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setTodoModalOpen(true)}
+                  className="relative"
+                  data-testid="button-todos"
+                >
+                  <Bell className="w-4 h-4" />
+                  {todoCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold" data-testid="badge-todo-count">
+                      {todoCount}
+                    </span>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLogout}
+                  disabled={logoutMutation.isPending}
+                  data-testid="button-logout"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  {logoutMutation.isPending ? "Logging out..." : "Logout"}
+                </Button>
+              </div>
             </div>
           </Card>
         </div>
@@ -419,6 +471,46 @@ export default function Home() {
                   </div>
                 </div>
               ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={todoModalOpen} onOpenChange={setTodoModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Your To-Do Items</DialogTitle>
+            <DialogDescription>
+              Pending notifications and tasks
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {todos.length === 0 ? (
+              <p className="text-gray-600 text-center py-4">No pending to-dos</p>
+            ) : (
+              <div className="space-y-2">
+                {todos.map((todo: any) => (
+                  <Card key={todo.id} className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <p className="font-semibold">{todo.type === "group_invite" ? "Group Invitation" : todo.type === "group_access_request" ? "Access Request" : "Notification"}</p>
+                        <p className="text-sm text-gray-600 mt-1">{todo.message}</p>
+                        <p className="text-xs text-gray-500 mt-2">
+                          {new Date(todo.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => completeTodoMutation.mutate(todo.id)}
+                        disabled={completeTodoMutation.isPending}
+                        data-testid={`button-complete-todo-${todo.id}`}
+                      >
+                        {completeTodoMutation.isPending ? "..." : "Complete"}
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
             )}
           </div>
         </DialogContent>
