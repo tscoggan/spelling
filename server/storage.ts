@@ -376,7 +376,8 @@ export class DatabaseStorage implements IStorage {
         name: customWordLists.name,
         difficulty: customWordLists.difficulty,
         words: customWordLists.words,
-        isPublic: customWordLists.isPublic,
+        visibility: customWordLists.visibility,
+        assignImages: customWordLists.assignImages,
         gradeLevel: customWordLists.gradeLevel,
         createdAt: customWordLists.createdAt,
         authorUsername: users.username,
@@ -395,14 +396,15 @@ export class DatabaseStorage implements IStorage {
         name: customWordLists.name,
         difficulty: customWordLists.difficulty,
         words: customWordLists.words,
-        isPublic: customWordLists.isPublic,
+        visibility: customWordLists.visibility,
+        assignImages: customWordLists.assignImages,
         gradeLevel: customWordLists.gradeLevel,
         createdAt: customWordLists.createdAt,
         authorUsername: users.username,
       })
       .from(customWordLists)
       .leftJoin(users, eq(customWordLists.userId, users.id))
-      .where(eq(customWordLists.isPublic, true))
+      .where(eq(customWordLists.visibility, 'public'))
       .orderBy(desc(customWordLists.createdAt));
   }
 

@@ -167,12 +167,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const wordList = await storage.createCustomWordList(listData);
       
-      const jobService = new IllustrationJobService();
-      const jobId = await jobService.createJob(wordList.id);
+      let illustrationJobId: number | undefined;
+      if (listData.assignImages !== false) {
+        const jobService = new IllustrationJobService();
+        illustrationJobId = await jobService.createJob(wordList.id);
+      }
       
       res.json({ 
         ...wordList, 
-        illustrationJobId: jobId 
+        ...(illustrationJobId && { illustrationJobId }) 
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -218,8 +221,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Word list not found" });
       }
 
-      if (!wordList.isPublic && (!req.isAuthenticated() || req.user!.id !== wordList.userId)) {
+      // Check access based on visibility
+      if (wordList.visibility === 'public') {
+        // Public lists are accessible to everyone
+      } else if (!req.isAuthenticated()) {
+        return res.status(403).json({ error: "Authentication required" });
+      } else if (wordList.visibility === 'private' && req.user!.id !== wordList.userId) {
         return res.status(403).json({ error: "Access denied" });
+      } else if (wordList.visibility === 'groups') {
+        // TODO: Check if user is member of any groups this list is shared with
+        // For now, allow owner and deny others until groups UI is implemented
+        if (req.user!.id !== wordList.userId) {
+          return res.status(403).json({ error: "Access denied - group membership required" });
+        }
       }
 
       res.json(wordList);
@@ -283,9 +297,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ error: "Failed to update word list" });
       }
       
-      // If words were updated, check for new words and trigger image enrichment
+      // If words were updated, check for new words and trigger image enrichment (if assignImages is enabled)
       let illustrationJobId: number | undefined;
-      if (updates.words && Array.isArray(updates.words)) {
+      const shouldAssignImages = updates.assignImages !== undefined ? updates.assignImages : updatedList.assignImages;
+      
+      if (shouldAssignImages !== false && updates.words && Array.isArray(updates.words)) {
         const oldWords = new Set(existingList.words.map((w: string) => w.toLowerCase()));
         const newWords = updates.words.filter((w: string) => !oldWords.has(w.toLowerCase()));
         
