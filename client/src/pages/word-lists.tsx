@@ -21,6 +21,11 @@ import schoolPattern from "@assets/generated_images/Cartoon_school_objects_backg
 
 const GRADE_LEVELS = ["K", "1", "2", "3", "4", "5", "6", "7", "8", "9-12"];
 
+function getVisibility(list: any): "public" | "private" | "groups" {
+  if (list.visibility) return list.visibility;
+  return list.isPublic ? "public" : "private";
+}
+
 export default function WordListsPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -197,11 +202,12 @@ export default function WordListsPage() {
 
   const handleEdit = (list: CustomWordList) => {
     setEditingList(list);
+    const visibility = getVisibility(list);
     setFormData({
       name: list.name,
       difficulty: list.difficulty as "easy" | "medium" | "hard",
       words: list.words.join('\n'),
-      visibility: (list as any).visibility || "private",
+      visibility,
       assignImages: (list as any).assignImages !== false,
       gradeLevel: list.gradeLevel || "",
     });
@@ -316,9 +322,9 @@ export default function WordListsPage() {
           <div className="flex-1">
             <CardTitle className="flex items-center gap-2">
               {list.name}
-              {(list as any).visibility === 'public' ? (
+              {getVisibility(list) === 'public' ? (
                 <Globe className="w-4 h-4 text-green-600" data-testid="icon-public" />
-              ) : (list as any).visibility === 'groups' ? (
+              ) : getVisibility(list) === 'groups' ? (
                 <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded" data-testid="badge-groups">
                   Groups
                 </span>
