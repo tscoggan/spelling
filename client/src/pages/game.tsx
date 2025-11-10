@@ -718,19 +718,6 @@ export default function Game() {
     const wordLower = word.toLowerCase();
     const otherWordsLower = otherWords.map(w => w.toLowerCase());
     
-    // Common short words to avoid creating (prevent "from" -> "form", "meet" -> "met", etc.)
-    const commonWords = new Set([
-      'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'her', 'was', 'one', 'our', 'out',
-      'day', 'get', 'has', 'him', 'his', 'how', 'man', 'new', 'now', 'old', 'see', 'two', 'way', 'who',
-      'boy', 'did', 'its', 'let', 'put', 'say', 'she', 'too', 'use', 'day', 'may', 'any', 'had', 'off',
-      'run', 'sun', 'fun', 'met', 'set', 'yet', 'bet', 'pet', 'net', 'wet', 'sat', 'mat', 'bat', 'hat',
-      'cat', 'rat', 'fat', 'pan', 'ran', 'tan', 'van', 'can', 'fan', 'man', 'car', 'far', 'jar', 'tar',
-      'war', 'bar', 'red', 'bed', 'fed', 'led', 'wed', 'big', 'dig', 'fig', 'pig', 'wig', 'hot', 'got',
-      'lot', 'not', 'pot', 'dot', 'top', 'hop', 'mop', 'pop', 'bad', 'dad', 'had', 'mad', 'sad', 'bag',
-      'bin', 'fin', 'pin', 'sin', 'tin', 'win', 'bit', 'fit', 'hit', 'kit', 'lit', 'pit', 'sit', 'wit',
-      'form', 'from', 'plan', 'plain', 'plane', 'meet', 'meat', 'made', 'make', 'like', 'live'
-    ]);
-    
     const preserveCapitalization = (misspelled: string): string => {
       if (word === word.toUpperCase()) {
         return misspelled.toUpperCase();
@@ -743,8 +730,7 @@ export default function Game() {
     
     const tryMisspelling = (misspelled: string): string | null => {
       if (misspelled !== wordLower && 
-          !otherWordsLower.includes(misspelled) && 
-          !commonWords.has(misspelled)) {
+          !otherWordsLower.includes(misspelled)) {
         return preserveCapitalization(misspelled);
       }
       return null;
@@ -961,8 +947,15 @@ export default function Game() {
       }
     ];
     
-    // Try realistic strategies first
-    for (const strategy of realisticStrategies) {
+    // Shuffle realistic strategies using Fisher-Yates algorithm for randomization
+    const shuffledRealistic = [...realisticStrategies];
+    for (let i = shuffledRealistic.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledRealistic[i], shuffledRealistic[j]] = [shuffledRealistic[j], shuffledRealistic[i]];
+    }
+    
+    // Try realistic strategies in random order
+    for (const strategy of shuffledRealistic) {
       const result = strategy();
       if (result) {
         const validated = tryMisspelling(result);
@@ -1012,8 +1005,15 @@ export default function Game() {
       }
     ];
     
-    // Try phonetic strategies
-    for (const strategy of phoneticStrategies) {
+    // Shuffle phonetic strategies for randomization
+    const shuffledPhonetic = [...phoneticStrategies];
+    for (let i = shuffledPhonetic.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledPhonetic[i], shuffledPhonetic[j]] = [shuffledPhonetic[j], shuffledPhonetic[i]];
+    }
+    
+    // Try phonetic strategies in random order
+    for (const strategy of shuffledPhonetic) {
       const result = strategy();
       if (result) {
         const validated = tryMisspelling(result);
