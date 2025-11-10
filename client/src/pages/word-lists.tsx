@@ -35,7 +35,8 @@ export default function WordListsPage() {
     name: "",
     difficulty: "medium" as "easy" | "medium" | "hard",
     words: "",
-    isPublic: false,
+    visibility: "private" as "public" | "private" | "groups",
+    assignImages: true,
     gradeLevel: "",
   });
 
@@ -71,7 +72,8 @@ export default function WordListsPage() {
         name: data.name,
         difficulty: data.difficulty,
         words,
-        isPublic: data.isPublic,
+        visibility: data.visibility,
+        assignImages: data.assignImages,
         gradeLevel: data.gradeLevel || undefined,
       });
       return await response.json();
@@ -110,7 +112,8 @@ export default function WordListsPage() {
       const updates: any = {
         name: data.name,
         difficulty: data.difficulty,
-        isPublic: data.isPublic,
+        visibility: data.visibility,
+        assignImages: data.assignImages,
         gradeLevel: data.gradeLevel || undefined,
       };
       if (data.words) {
@@ -186,7 +189,8 @@ export default function WordListsPage() {
       name: "",
       difficulty: "medium",
       words: "",
-      isPublic: false,
+      visibility: "private",
+      assignImages: true,
       gradeLevel: "",
     });
   };
@@ -197,7 +201,8 @@ export default function WordListsPage() {
       name: list.name,
       difficulty: list.difficulty as "easy" | "medium" | "hard",
       words: list.words.join('\n'),
-      isPublic: list.isPublic,
+      visibility: (list as any).visibility || "private",
+      assignImages: (list as any).assignImages !== false,
       gradeLevel: list.gradeLevel || "",
     });
     setDialogOpen(true);
@@ -311,8 +316,12 @@ export default function WordListsPage() {
           <div className="flex-1">
             <CardTitle className="flex items-center gap-2">
               {list.name}
-              {list.isPublic ? (
+              {(list as any).visibility === 'public' ? (
                 <Globe className="w-4 h-4 text-green-600" data-testid="icon-public" />
+              ) : (list as any).visibility === 'groups' ? (
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded" data-testid="badge-groups">
+                  Groups
+                </span>
               ) : (
                 <Lock className="w-4 h-4 text-gray-600" data-testid="icon-private" />
               )}
@@ -561,15 +570,48 @@ export default function WordListsPage() {
                       {formData.words.split('\n').filter(w => w.trim()).length} words entered
                     </p>
                   </div>
+                  <div>
+                    <Label htmlFor="visibility">Visibility</Label>
+                    <Select
+                      value={formData.visibility}
+                      onValueChange={(value: "public" | "private" | "groups") => setFormData({ ...formData, visibility: value })}
+                    >
+                      <SelectTrigger id="visibility" data-testid="select-visibility">
+                        <SelectValue placeholder="Select visibility" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="public" data-testid="visibility-public">
+                          <div className="flex items-center gap-2">
+                            <Globe className="w-4 h-4" />
+                            <span>Public - Anyone can use this list</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="private" data-testid="visibility-private">
+                          <div className="flex items-center gap-2">
+                            <Lock className="w-4 h-4" />
+                            <span>Private - Only you can use this list</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="groups" data-testid="visibility-groups">
+                          <div className="flex items-center gap-2">
+                            <span>Groups - Share with specific groups</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="flex items-center gap-2">
                     <Switch
-                      id="isPublic"
-                      checked={formData.isPublic}
-                      onCheckedChange={(checked) => setFormData({ ...formData, isPublic: checked })}
-                      data-testid="switch-public"
+                      id="assignImages"
+                      checked={formData.assignImages}
+                      onCheckedChange={(checked) => setFormData({ ...formData, assignImages: checked })}
+                      data-testid="switch-assign-images"
                     />
-                    <Label htmlFor="isPublic" className="cursor-pointer">
-                      Make this list public (others can use it)
+                    <Label htmlFor="assignImages" className="cursor-pointer">
+                      <div className="flex items-center gap-2">
+                        <Camera className="w-4 h-4" />
+                        <span>Automatically find cartoon images for words</span>
+                      </div>
                     </Label>
                   </div>
                   </div>
