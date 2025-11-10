@@ -713,134 +713,74 @@ export default function Game() {
     }
   }, [gameMode, currentWord, currentWordIndex]);
 
-  // Helper function to misspell a word using common spelling mistakes
-  const misspellWord = (word: string): string => {
+  const misspellWord = (word: string, otherWords: string[]): string => {
     const wordLower = word.toLowerCase();
-    const letters = wordLower.split('');
+    const otherWordsLower = otherWords.map(w => w.toLowerCase());
     
-    // Common spelling mistake strategies
-    const strategies = [
-      // Strategy 1: Reverse "ie" to "ei" or "ei" to "ie" (very common mistake)
-      () => {
-        const ieIndex = wordLower.indexOf('ie');
-        const eiIndex = wordLower.indexOf('ei');
-        
-        if (ieIndex !== -1) {
-          // Replace "ie" with "ei"
-          letters[ieIndex] = 'e';
-          letters[ieIndex + 1] = 'i';
-          return true;
-        } else if (eiIndex !== -1) {
-          // Replace "ei" with "ie"
-          letters[eiIndex] = 'i';
-          letters[eiIndex + 1] = 'e';
-          return true;
-        }
-        return false;
-      },
-      
-      // Strategy 2: Drop silent 'e' at the end or add it where it shouldn't be
-      () => {
-        if (letters.length > 2 && letters[letters.length - 1] === 'e') {
-          // Remove silent 'e' (e.g., "make" → "mak")
-          letters.pop();
-          return true;
-        } else if (letters.length > 2 && letters[letters.length - 1] !== 'e') {
-          // Add unnecessary 'e' (e.g., "cat" → "cate")
-          letters.push('e');
-          return true;
-        }
-        return false;
-      },
-      
-      // Strategy 3: Double or un-double consonants (very common)
-      () => {
-        const consonants = 'bcdfghjklmnpqrstvwxyz';
-        for (let i = 0; i < letters.length - 1; i++) {
-          if (letters[i] === letters[i + 1] && consonants.includes(letters[i])) {
-            // Remove doubled consonant (e.g., "rabbit" → "rabit")
-            letters.splice(i, 1);
-            return true;
-          }
-        }
-        // Or double a single consonant (e.g., "began" → "beggan")
-        const consonantIndices = letters.map((l, i) => 
-          consonants.includes(l) && (i === letters.length - 1 || letters[i] !== letters[i + 1]) ? i : -1
-        ).filter(i => i !== -1 && i > 0 && i < letters.length - 1);
-        
-        if (consonantIndices.length > 0) {
-          const idx = consonantIndices[Math.floor(Math.random() * consonantIndices.length)];
-          letters.splice(idx, 0, letters[idx]);
-          return true;
-        }
-        return false;
-      },
-      
-      // Strategy 4: Common phonetic errors (c/k, s/c, f/ph, etc.)
-      () => {
-        const phonetic: { pattern: string, replacement: string }[] = [
-          { pattern: 'c', replacement: 'k' },  // cat → kat
-          { pattern: 'k', replacement: 'c' },  // kite → cite
-          { pattern: 'ph', replacement: 'f' }, // phone → fone
-          { pattern: 'f', replacement: 'ph' }, // feel → pheel
-          { pattern: 'tion', replacement: 'shun' }, // station → stashun
-          { pattern: 'ght', replacement: 't' },     // light → lit
-        ];
-        
-        for (const { pattern, replacement } of phonetic) {
-          const index = wordLower.indexOf(pattern);
-          if (index !== -1) {
-            const before = letters.slice(0, index);
-            const after = letters.slice(index + pattern.length);
-            return (before.concat(replacement.split(''), after)).length !== letters.length 
-              ? (letters.splice(0, letters.length, ...before, ...replacement.split(''), ...after), true)
-              : false;
-          }
-        }
-        return false;
-      },
-      
-      // Strategy 5: Swap adjacent letters (common typo)
-      () => {
-        if (letters.length > 2) {
-          const idx = Math.floor(Math.random() * (letters.length - 1));
-          [letters[idx], letters[idx + 1]] = [letters[idx + 1], letters[idx]];
-          return true;
-        }
-        return false;
-      },
-      
-      // Strategy 6: Confuse similar vowel sounds (a/e, i/e, o/u)
-      () => {
-        const vowelConfusions: { [key: string]: string } = {
-          'a': 'e', 'e': 'a', 'i': 'e', 'o': 'u', 'u': 'o'
-        };
-        const vowelIndices = letters.map((l, i) => vowelConfusions[l] ? i : -1).filter(i => i !== -1);
-        if (vowelIndices.length > 0) {
-          const idx = vowelIndices[Math.floor(Math.random() * vowelIndices.length)];
-          letters[idx] = vowelConfusions[letters[idx]];
-          return true;
-        }
-        return false;
+    const preserveCapitalization = (misspelled: string): string => {
+      if (word === word.toUpperCase()) {
+        return misspelled.toUpperCase();
       }
-    ];
+      if (word[0] === word[0].toUpperCase()) {
+        return misspelled.charAt(0).toUpperCase() + misspelled.slice(1);
+      }
+      return misspelled;
+    };
     
-    // Try strategies in random order until one succeeds
-    const shuffledStrategies = [...strategies].sort(() => Math.random() - 0.5);
-    for (const strategy of shuffledStrategies) {
-      if (strategy()) break;
+    const tryMisspelling = (misspelled: string): string | null => {
+      if (misspelled !== wordLower && !otherWordsLower.includes(misspelled)) {
+        return preserveCapitalization(misspelled);
+      }
+      return null;
+    };
+    
+    let letters = wordLower.split('');
+    
+    const consonants = 'bcdfghjklmnpqrstvwxyz';
+    for (let i = 0; i < letters.length - 1; i++) {
+      if (letters[i] === letters[i + 1] && consonants.includes(letters[i])) {
+        const temp = [...letters];
+        temp.splice(i + 1, 0, temp[i]);
+        const result = tryMisspelling(temp.join(''));
+        if (result) return result;
+      }
     }
     
-    const misspelled = letters.join('');
-    // Preserve original capitalization
-    // Check if the entire word is uppercase
-    if (word === word.toUpperCase()) {
-      return misspelled.toUpperCase();
+    if (letters.length > 3) {
+      const temp = [...letters];
+      const midIdx = Math.floor(temp.length / 2);
+      temp.splice(midIdx, 0, 'z', 'z');
+      const result = tryMisspelling(temp.join(''));
+      if (result) return result;
     }
-    // Otherwise, just capitalize first letter if original was capitalized
-    return word[0] === word[0].toUpperCase() 
-      ? misspelled.charAt(0).toUpperCase() + misspelled.slice(1)
-      : misspelled;
+    
+    const vowels = 'aeiou';
+    for (let i = 0; i < letters.length; i++) {
+      if (vowels.includes(letters[i])) {
+        const temp = [...letters];
+        temp.splice(i, 1, 'y', 'y');
+        const result = tryMisspelling(temp.join(''));
+        if (result) return result;
+      }
+    }
+    
+    if (letters.length > 2) {
+      const temp = [...letters];
+      const insertIdx = Math.floor(Math.random() * (temp.length - 1)) + 1;
+      temp.splice(insertIdx, 0, 'x', 'x');
+      const result = tryMisspelling(temp.join(''));
+      if (result) return result;
+    }
+    
+    const temp = [...letters];
+    if (temp.length > 2) {
+      [temp[0], temp[1]] = [temp[1], temp[0]];
+    } else if (temp.length === 2) {
+      [temp[0], temp[1]] = [temp[1], temp[0]];
+    } else {
+      temp.push('x');
+    }
+    return preserveCapitalization(temp.join(''));
   };
 
   // Mistake mode: Initialize 4 word choices when word changes
@@ -860,7 +800,7 @@ export default function Game() {
       const misspellIdx = Math.floor(Math.random() * selectedWords.length);
       const correctWord = selectedWords[misspellIdx]; // Store correct spelling
       const choices = selectedWords.map((word, idx) => 
-        idx === misspellIdx ? misspellWord(word) : word
+        idx === misspellIdx ? misspellWord(word, selectedWords.filter((_, i) => i !== idx)) : word
       );
       
       console.log(`🎯 Mistake mode: Selected words:`, selectedWords);

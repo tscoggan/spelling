@@ -37,6 +37,11 @@ Complete implementation of interactive crossword puzzle game mode with TTS-only 
 ### Find the Mistake - Improved Feedback (November 2025)
 Enhanced educational feedback for both correct and incorrect selections:
 - **Capitalization Fix**: All 4 word choices display with consistent uppercase formatting
+- **Non-Word Misspellings**: Misspelled words are guaranteed to NOT be real English words
+  - Uses unlikely patterns: triple consonants, "zz"/"xx" insertions, "yy" vowel replacements
+  - Examples: "APPPLE" (triple p), "FIZZSH" (zz insertion), "CYYT" (yy vowel)
+  - Prevents confusion from valid alternative spellings
+  - Makes incorrect choice obviously wrong for educational clarity
 - **Correct Answer Feedback**: When user correctly selects the misspelled word:
   - Shows "Correct!" heading with checkmark
   - Displays "The misspelled word was:" label with strikethrough word
@@ -47,7 +52,7 @@ Enhanced educational feedback for both correct and incorrect selections:
   - Displays the actual misspelled word with strikethrough
   - Shows the correct spelling of the misspelled word
   - Provides clear, educational feedback explaining the mistake
-- **Implementation**: Added `selectedChoiceIndex` state tracking and enhanced feedback UI in game.tsx
+- **Implementation**: Enhanced `misspellWord` function with non-word guarantees and `selectedChoiceIndex` state tracking
 - **Status**: Production-ready, verified via automated testing
 
 ### Content Moderation for Children's Safety (November 2025)
