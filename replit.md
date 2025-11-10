@@ -7,11 +7,14 @@ Spelling Champions is an interactive educational app designed to improve childre
 
 ### Crossword Puzzle Mode - Audio-Only Interface (November 2025)
 Complete implementation of interactive crossword puzzle game mode with TTS-only interface:
-- **Grid Generation**: Client-side algorithm places words with intersections (client/src/lib/crosswordGenerator.ts)
+- **Grid Generation**: Client-side algorithm guarantees minimum 10 words (client/src/lib/crosswordGenerator.ts)
+  - **Multi-attempt strategy**: Tries 20 different word orderings to maximize intersections
+  - **Guaranteed fallback**: Uses deterministic grid pattern (9-row spacing on 100x100 grid) to ensure exactly 10 words when list has ≥10 valid words
+  - **Mathematical proof**: Grid can fit 10 words of up to 90 characters each without collisions
+  - **Safety checks**: Handles edge cases (empty lists, all words too long) without crashing
   - Prevents two words from starting in the same box (unique play button cells)
   - Allows multiple disconnected word groups within a single puzzle
-  - Removes only truly isolated words (words with zero intersections)
-  - Fallback to single-word puzzle if no intersections possible
+  - Removes only truly isolated words (words with zero intersections) in intersection-based attempts
 - **Audio-Only Interface**: Play buttons (Volume icons) replace definition text and cell numbers; click to hear word via TTS
 - **UI**: Centered grid without clue lists; subheader instructs "Click the play icon at the start of each word to hear the word"
 - **Auto-Focus & Advance**: Clicking play button auto-focuses first letter; typing auto-advances through word (stops on last letter)
