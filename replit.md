@@ -34,14 +34,15 @@ Complete implementation of interactive crossword puzzle game mode with TTS-only 
 - **Support**: Works with custom word lists containing 5-15 words (increased from 12)
 - **Status**: Production-ready, verified via automated testing
 
-### Find the Mistake - Improved Feedback (November 2025)
-Enhanced educational feedback for both correct and incorrect selections:
+### Find the Mistake - Realistic Misspellings (November 2025)
+Enhanced educational experience with believable spelling mistakes:
 - **Capitalization Fix**: All 4 word choices display with consistent uppercase formatting
-- **Non-Word Misspellings**: Misspelled words are guaranteed to NOT be real English words
-  - Uses unlikely patterns: triple consonants, "zz"/"xx" insertions, "yy" vowel replacements
-  - Examples: "APPPLE" (triple p), "FIZZSH" (zz insertion), "CYYT" (yy vowel)
-  - Prevents confusion from valid alternative spellings
-  - Makes incorrect choice obviously wrong for educational clarity
+- **Realistic Spelling Mistakes**: Two-tier misspelling strategy for challenging, educational gameplay
+  - **Tier 1 - Common mistakes**: ie/ei confusion (receive → recieve), dropped consonants (cannot → canot), silent e errors (make → mak, cat → cate), vowel drops (delicious → delicius), letter swaps (friend → freind)
+  - **Tier 2 - Phonetic alternatives**: Used when realistic mistakes conflict with other choices: c/k swaps (cat → kat), ph/f swaps (phonics → fonics), doubled consonants (pig → pigg)
+  - Validation ensures misspellings don't match any of the 3 correct choices
+  - Examples from testing: CATE, BIRDE, DOGE (realistic additions of silent 'e')
+  - Much more challenging than obviously fake patterns
 - **Correct Answer Feedback**: When user correctly selects the misspelled word:
   - Shows "Correct!" heading with checkmark
   - Displays "The misspelled word was:" label with strikethrough word
@@ -52,7 +53,7 @@ Enhanced educational feedback for both correct and incorrect selections:
   - Displays the actual misspelled word with strikethrough
   - Shows the correct spelling of the misspelled word
   - Provides clear, educational feedback explaining the mistake
-- **Implementation**: Enhanced `misspellWord` function with non-word guarantees and `selectedChoiceIndex` state tracking
+- **Implementation**: Enhanced `misspellWord` function with realistic strategies and `selectedChoiceIndex` state tracking
 - **Status**: Production-ready, verified via automated testing
 
 ### Content Moderation for Children's Safety (November 2025)

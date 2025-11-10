@@ -713,9 +713,23 @@ export default function Game() {
     }
   }, [gameMode, currentWord, currentWordIndex]);
 
+  // Helper to create realistic spelling mistakes
   const misspellWord = (word: string, otherWords: string[]): string => {
     const wordLower = word.toLowerCase();
     const otherWordsLower = otherWords.map(w => w.toLowerCase());
+    
+    // Common short words to avoid creating (prevent "from" -> "form", "meet" -> "met", etc.)
+    const commonWords = new Set([
+      'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'her', 'was', 'one', 'our', 'out',
+      'day', 'get', 'has', 'him', 'his', 'how', 'man', 'new', 'now', 'old', 'see', 'two', 'way', 'who',
+      'boy', 'did', 'its', 'let', 'put', 'say', 'she', 'too', 'use', 'day', 'may', 'any', 'had', 'off',
+      'run', 'sun', 'fun', 'met', 'set', 'yet', 'bet', 'pet', 'net', 'wet', 'sat', 'mat', 'bat', 'hat',
+      'cat', 'rat', 'fat', 'pan', 'ran', 'tan', 'van', 'can', 'fan', 'man', 'car', 'far', 'jar', 'tar',
+      'war', 'bar', 'red', 'bed', 'fed', 'led', 'wed', 'big', 'dig', 'fig', 'pig', 'wig', 'hot', 'got',
+      'lot', 'not', 'pot', 'dot', 'top', 'hop', 'mop', 'pop', 'bad', 'dad', 'had', 'mad', 'sad', 'bag',
+      'bin', 'fin', 'pin', 'sin', 'tin', 'win', 'bit', 'fit', 'hit', 'kit', 'lit', 'pit', 'sit', 'wit',
+      'form', 'from', 'plan', 'plain', 'plane', 'meet', 'meat', 'made', 'make', 'like', 'live'
+    ]);
     
     const preserveCapitalization = (misspelled: string): string => {
       if (word === word.toUpperCase()) {
@@ -728,59 +742,143 @@ export default function Game() {
     };
     
     const tryMisspelling = (misspelled: string): string | null => {
-      if (misspelled !== wordLower && !otherWordsLower.includes(misspelled)) {
+      if (misspelled !== wordLower && 
+          !otherWordsLower.includes(misspelled) && 
+          !commonWords.has(misspelled)) {
         return preserveCapitalization(misspelled);
       }
       return null;
     };
     
-    let letters = wordLower.split('');
+    // Strategy 1: Realistic spelling mistakes
+    const realisticStrategies = [
+      // ie/ei confusion (receive -> recieve, friend -> freind)
+      () => {
+        if (wordLower.includes('ie')) {
+          return wordLower.replace('ie', 'ei');
+        }
+        if (wordLower.includes('ei')) {
+          return wordLower.replace('ei', 'ie');
+        }
+        return null;
+      },
+      
+      // Drop double consonants (rabbit -> rabit, cannot -> canot)
+      () => {
+        const consonants = 'bcdfghjklmnpqrstvwxyz';
+        for (let i = 0; i < wordLower.length - 1; i++) {
+          if (wordLower[i] === wordLower[i + 1] && consonants.includes(wordLower[i])) {
+            return wordLower.slice(0, i) + wordLower.slice(i + 1);
+          }
+        }
+        return null;
+      },
+      
+      // Drop silent e (make -> mak, like -> lik)
+      () => {
+        if (wordLower.length > 3 && wordLower.endsWith('e')) {
+          return wordLower.slice(0, -1);
+        }
+        return null;
+      },
+      
+      // Add unnecessary e (cat -> cate, dog -> doge)
+      () => {
+        if (wordLower.length > 2 && !wordLower.endsWith('e')) {
+          return wordLower + 'e';
+        }
+        return null;
+      },
+      
+      // Common vowel drops (delicious -> delicius, beautiful -> beautful)
+      () => {
+        const vowels = 'aeiou';
+        for (let i = 1; i < wordLower.length - 1; i++) {
+          if (vowels.includes(wordLower[i])) {
+            return wordLower.slice(0, i) + wordLower.slice(i + 1);
+          }
+        }
+        return null;
+      },
+      
+      // Swap adjacent letters (friend -> freind, form -> from)
+      () => {
+        if (wordLower.length > 2) {
+          const idx = Math.floor(Math.random() * (wordLower.length - 1));
+          const letters = wordLower.split('');
+          [letters[idx], letters[idx + 1]] = [letters[idx + 1], letters[idx]];
+          return letters.join('');
+        }
+        return null;
+      }
+    ];
     
-    const consonants = 'bcdfghjklmnpqrstvwxyz';
-    for (let i = 0; i < letters.length - 1; i++) {
-      if (letters[i] === letters[i + 1] && consonants.includes(letters[i])) {
-        const temp = [...letters];
-        temp.splice(i + 1, 0, temp[i]);
-        const result = tryMisspelling(temp.join(''));
-        if (result) return result;
+    // Try realistic strategies first
+    for (const strategy of realisticStrategies) {
+      const result = strategy();
+      if (result) {
+        const validated = tryMisspelling(result);
+        if (validated) return validated;
       }
     }
     
-    if (letters.length > 3) {
-      const temp = [...letters];
-      const midIdx = Math.floor(temp.length / 2);
-      temp.splice(midIdx, 0, 'z', 'z');
-      const result = tryMisspelling(temp.join(''));
-      if (result) return result;
-    }
+    // Strategy 2: Phonetic misspellings (if realistic strategies fail or create conflicts)
+    const phoneticStrategies = [
+      // c -> k (cat -> kat, can -> kan)
+      () => wordLower.includes('c') ? wordLower.replace('c', 'k') : null,
+      
+      // k -> c (kite -> cite, keep -> ceep)
+      () => wordLower.includes('k') ? wordLower.replace('k', 'c') : null,
+      
+      // ph -> f (phonics -> fonics, phone -> fone)
+      () => wordLower.includes('ph') ? wordLower.replace('ph', 'f') : null,
+      
+      // f -> ph (feel -> pheel, fun -> phun)
+      () => wordLower.includes('f') && !wordLower.includes('ph') ? wordLower.replace('f', 'ph') : null,
+      
+      // Double a consonant (pig -> pigg, run -> runn)
+      () => {
+        const consonants = 'bcdfghjklmnpqrstvwxyz';
+        for (let i = wordLower.length - 2; i >= 0; i--) {
+          if (consonants.includes(wordLower[i]) && wordLower[i] !== wordLower[i + 1]) {
+            return wordLower.slice(0, i + 1) + wordLower[i] + wordLower.slice(i + 1);
+          }
+        }
+        return null;
+      },
+      
+      // s -> c (see -> cee, sun -> cun)
+      () => wordLower.includes('s') ? wordLower.replace('s', 'c') : null,
+      
+      // Replace vowel with similar sound (cat -> cet, dog -> dag)
+      () => {
+        const vowelMap: { [key: string]: string } = {
+          'a': 'e', 'e': 'i', 'i': 'e', 'o': 'u', 'u': 'o'
+        };
+        for (let i = 0; i < wordLower.length; i++) {
+          if (vowelMap[wordLower[i]]) {
+            return wordLower.slice(0, i) + vowelMap[wordLower[i]] + wordLower.slice(i + 1);
+          }
+        }
+        return null;
+      }
+    ];
     
-    const vowels = 'aeiou';
-    for (let i = 0; i < letters.length; i++) {
-      if (vowels.includes(letters[i])) {
-        const temp = [...letters];
-        temp.splice(i, 1, 'y', 'y');
-        const result = tryMisspelling(temp.join(''));
-        if (result) return result;
+    // Try phonetic strategies
+    for (const strategy of phoneticStrategies) {
+      const result = strategy();
+      if (result) {
+        const validated = tryMisspelling(result);
+        if (validated) return validated;
       }
     }
     
-    if (letters.length > 2) {
-      const temp = [...letters];
-      const insertIdx = Math.floor(Math.random() * (temp.length - 1)) + 1;
-      temp.splice(insertIdx, 0, 'x', 'x');
-      const result = tryMisspelling(temp.join(''));
-      if (result) return result;
+    // Fallback: Swap first two letters (guaranteed to work)
+    const letters = wordLower.split('');
+    if (letters.length > 1) {
+      [letters[0], letters[1]] = [letters[1], letters[0]];
     }
-    
-    const temp = [...letters];
-    if (temp.length > 2) {
-      [temp[0], temp[1]] = [temp[1], temp[0]];
-    } else if (temp.length === 2) {
-      [temp[0], temp[1]] = [temp[1], temp[0]];
-    } else {
-      temp.push('x');
-    }
-    return preserveCapitalization(temp.join(''));
+    return preserveCapitalization(letters.join(''));
   };
 
   // Mistake mode: Initialize 4 word choices when word changes
