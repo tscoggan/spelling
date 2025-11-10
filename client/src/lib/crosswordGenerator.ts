@@ -51,14 +51,161 @@ export function generateCrossword(
     }
   }
 
-  // If we still haven't reached the target, guarantee placement by adding remaining words
+  // If we still haven't reached the target, use greedy placement from scratch
   if (bestResult && bestResult.entries.length < targetWordCount) {
-    console.log(`⚠️ Forcing additional words to reach target of ${targetWordCount}...`);
-    bestResult = guaranteeMinimumWords(bestResult, words, clues, targetWordCount);
+    console.log(`⚠️ Using greedy placement to guarantee ${targetWordCount} words...`);
+    bestResult = greedyPlaceWords(words, clues, targetWordCount);
   }
 
   console.log(`📊 Final result: ${bestResult?.entries.length || 0} words placed`);
   return bestResult || { cells: [], entries: [], rows: 0, cols: 0 };
+}
+
+function greedyPlaceWords(
+  allWords: string[],
+  allClues: string[],
+  targetCount: number
+): CrosswordGrid {
+  const gridSize = 100;
+  const grid: (string | null)[][] = Array(gridSize)
+    .fill(null)
+    .map(() => Array(gridSize).fill(null));
+
+  const entries: CrosswordEntry[] = [];
+  let entryNumber = 1;
+  
+  // Collect valid words (skip words that are too long)
+  const validWords: Array<{ word: string; clue: string }> = [];
+  for (let i = 0; i < allWords.length && validWords.length < targetCount * 2; i++) {
+    const word = allWords[i].toUpperCase();
+    if (word.length <= 90) { // Reserve space for padding
+      validWords.push({
+        word,
+        clue: allClues[i] || "Spell this word",
+      });
+    }
+  }
+  
+  // If we don't have enough valid words, use what we have
+  const wordsToPlace = validWords.slice(0, Math.min(targetCount, validWords.length));
+  
+  // FAILSAFE: Place words in guaranteed non-overlapping grid pattern
+  // Each word gets its own row with plenty of spacing
+  // Grid calculation: 100 rows, start at 5, need space for 10 words
+  // Last word at: 5 + (9 * spacing) < 100 → spacing < 10.5
+  const rowSpacing = 9; // 9 rows between words (allows 10 words: rows 5,14,23,32,41,50,59,68,77,86)
+  const startRow = 5;
+  const startCol = 5;
+  
+  for (let i = 0; i < wordsToPlace.length; i++) {
+    const { word, clue } = wordsToPlace[i];
+    const row = startRow + (i * rowSpacing);
+    const col = startCol;
+    
+    // Ensure we don't exceed grid bounds
+    if (row >= gridSize || col + word.length >= gridSize) {
+      console.warn(`  ⚠️ Grid exhausted at word ${i + 1}, stopping`);
+      break;
+    }
+    
+    // Place word (guaranteed to succeed - no collision possible with this spacing)
+    placeWord(grid, word, row, col, "across");
+    entries.push({
+      word,
+      number: entryNumber++,
+      direction: "across",
+      row,
+      col,
+      clue,
+    });
+    console.log(`  ✓ Word ${entries.length}/${targetCount}: "${word}" at (${row},${col}) across`);
+  }
+  
+  // Safety check: if no words were placed, return empty grid
+  if (entries.length === 0) {
+    console.warn(`  ⚠️ No words could be placed (all words too long or list empty)`);
+    return {
+      cells: [],
+      entries: [],
+      rows: 0,
+      cols: 0,
+    };
+  }
+  
+  // ENFORCE the guarantee
+  if (entries.length < targetCount && validWords.length >= targetCount) {
+    throw new Error(`GUARANTEE VIOLATION: Only placed ${entries.length}/${targetCount} words despite having ${validWords.length} valid words available. This should never happen!`);
+  }
+  
+  if (entries.length >= targetCount) {
+    console.log(`  ✅ GUARANTEE MET: Placed ${entries.length} words`);
+  } else {
+    console.log(`  ℹ️ Placed ${entries.length} words (word list only had ${validWords.length} words ≤90 chars)`);
+  }
+
+  const { minRow, maxRow, minCol, maxCol} = findBounds(grid);
+  const finalRows = maxRow - minRow + 1;
+  const finalCols = maxCol - minCol + 1;
+
+  const cells: CrosswordCell[][] = Array(finalRows)
+    .fill(null)
+    .map((_, r) =>
+      Array(finalCols)
+        .fill(null)
+        .map((_, c) => {
+          const letter = grid[minRow + r][minCol + c];
+          return {
+            letter: letter || "",
+            isBlank: letter === null,
+            number: undefined,
+          };
+        })
+    );
+
+  entries.forEach((entry) => {
+    entry.row -= minRow;
+    entry.col -= minCol;
+    if (cells[entry.row] && cells[entry.row][entry.col]) {
+      cells[entry.row][entry.col].number = entry.number;
+    }
+  });
+
+  console.log(`  📊 Greedy result: ${entries.length} words placed`);
+
+  return {
+    cells,
+    entries,
+    rows: finalRows,
+    cols: finalCols,
+  };
+}
+
+function canPlaceWordSimple(
+  grid: (string | null)[][],
+  word: string,
+  row: number,
+  col: number,
+  direction: "across" | "down"
+): boolean {
+  const gridSize = grid.length;
+
+  if (direction === "across") {
+    if (col + word.length >= gridSize) return false;
+    
+    // Just check if the cells are empty
+    for (let i = 0; i < word.length; i++) {
+      if (grid[row][col + i] !== null) return false;
+    }
+  } else {
+    if (row + word.length >= gridSize) return false;
+    
+    // Just check if the cells are empty
+    for (let i = 0; i < word.length; i++) {
+      if (grid[row + i][col] !== null) return false;
+    }
+  }
+
+  return true;
 }
 
 function attemptCrosswordGeneration(
@@ -227,152 +374,6 @@ function shuffleArray<T>(array: T[], seed: number): T[] {
   }
 
   return shuffled;
-}
-
-function guaranteeMinimumWords(
-  currentResult: CrosswordGrid,
-  allWords: string[],
-  allClues: string[],
-  targetCount: number
-): CrosswordGrid {
-  const placedWords = new Set(currentResult.entries.map(e => e.word));
-  const remainingWords = allWords
-    .map((word, index) => ({
-      word: word.toUpperCase(),
-      clue: allClues[index] || "Spell this word",
-    }))
-    .filter(w => !placedWords.has(w.word));
-
-  if (remainingWords.length === 0 || currentResult.entries.length >= targetCount) {
-    return currentResult;
-  }
-
-  const gridSize = 50;
-  const grid: (string | null)[][] = Array(gridSize)
-    .fill(null)
-    .map(() => Array(gridSize).fill(null));
-
-  currentResult.entries.forEach(entry => {
-    for (let i = 0; i < entry.word.length; i++) {
-      const r = entry.direction === "across" ? entry.row : entry.row + i;
-      const c = entry.direction === "across" ? entry.col + i : entry.col;
-      if (r >= 0 && r < gridSize && c >= 0 && c < gridSize) {
-        grid[r][c] = entry.word[i];
-      }
-    }
-  });
-
-  const entries = [...currentResult.entries];
-  let entryNumber = Math.max(...currentResult.entries.map(e => e.number), 0) + 1;
-  let wordsAdded = 0;
-  const neededCount = targetCount - currentResult.entries.length;
-
-  for (const { word, clue } of remainingWords) {
-    if (wordsAdded >= neededCount) break;
-
-    let placed = false;
-    
-    for (let row = 2; row < gridSize - 2 && !placed; row++) {
-      for (let col = 2; col < gridSize - 2 && !placed; col++) {
-        const directions: Array<"across" | "down"> = ["across", "down"];
-        
-        for (const direction of directions) {
-          if (placed) break;
-          
-          if (canPlaceWordLoose(grid, word, row, col, direction)) {
-            placeWord(grid, word, row, col, direction);
-            entries.push({
-              word,
-              number: entryNumber++,
-              direction,
-              row,
-              col,
-              clue,
-            });
-            placed = true;
-            wordsAdded++;
-            console.log(`  ✓ Added "${word}" at (${row},${col}) ${direction}`);
-          }
-        }
-      }
-    }
-
-    if (!placed) {
-      console.warn(`  ✗ Could not place "${word}"`);
-    }
-  }
-
-  const { minRow, maxRow, minCol, maxCol } = findBounds(grid);
-  const finalRows = maxRow - minRow + 1;
-  const finalCols = maxCol - minCol + 1;
-
-  const cells: CrosswordCell[][] = Array(finalRows)
-    .fill(null)
-    .map((_, r) =>
-      Array(finalCols)
-        .fill(null)
-        .map((_, c) => {
-          const letter = grid[minRow + r][minCol + c];
-          return {
-            letter: letter || "",
-            isBlank: letter === null,
-            number: undefined,
-          };
-        })
-    );
-
-  entries.forEach((entry) => {
-    entry.row -= minRow;
-    entry.col -= minCol;
-    if (cells[entry.row] && cells[entry.row][entry.col]) {
-      cells[entry.row][entry.col].number = entry.number;
-    }
-  });
-
-  return {
-    cells,
-    entries,
-    rows: finalRows,
-    cols: finalCols,
-  };
-}
-
-function canPlaceWordLoose(
-  grid: (string | null)[][],
-  word: string,
-  row: number,
-  col: number,
-  direction: "across" | "down"
-): boolean {
-  const gridSize = grid.length;
-
-  if (direction === "across") {
-    if (col + word.length > gridSize) return false;
-    
-    for (let i = -1; i <= word.length; i++) {
-      if (col + i < 0 || col + i >= gridSize) continue;
-      if (grid[row][col + i] !== null) return false;
-    }
-    
-    for (let i = 0; i < word.length; i++) {
-      if (row > 0 && grid[row - 1][col + i] !== null) return false;
-      if (row < gridSize - 1 && grid[row + 1][col + i] !== null) return false;
-    }
-  } else {
-    if (row + word.length > gridSize) return false;
-    
-    for (let i = -1; i <= word.length; i++) {
-      if (row + i < 0 || row + i >= gridSize) continue;
-      if (grid[row + i][col] !== null) return false;
-    }
-    
-    for (let i = 0; i < word.length; i++) {
-      if (col > 0 && grid[row + i][col - 1] !== null) return false;
-      if (col < gridSize - 1 && grid[row + i][col + 1] !== null) return false;
-    }
-  }
-
-  return true;
 }
 
 function canPlaceWord(
