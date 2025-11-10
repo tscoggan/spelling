@@ -8,6 +8,9 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  email: text("email"),
   selectedAvatar: text("selected_avatar"),
   selectedTheme: text("selected_theme").default("default"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -63,6 +66,8 @@ export const customWordLists = pgTable("custom_word_lists", {
   difficulty: text("difficulty").notNull(),
   words: text("words").array().notNull(),
   isPublic: boolean("is_public").notNull().default(false),
+  visibility: text("visibility").notNull().default("private"),
+  assignImages: boolean("assign_images").notNull().default(true),
   gradeLevel: text("grade_level"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -99,11 +104,46 @@ export const illustrationJobItems = pgTable("illustration_job_items", {
   completedAt: timestamp("completed_at"),
 });
 
+export const userGroups = pgTable("user_groups", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  ownerUserId: integer("owner_user_id").notNull(),
+  isPublic: boolean("is_public").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const userGroupMembership = pgTable("user_group_membership", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  groupId: integer("group_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const wordListUserGroups = pgTable("word_list_user_groups", {
+  id: serial("id").primaryKey(),
+  wordListId: integer("word_list_id").notNull(),
+  groupId: integer("group_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const userToDoItems = pgTable("user_to_do_items", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  message: text("message").notNull(),
+  type: text("type").notNull(),
+  metadata: text("metadata"),
+  completed: boolean("completed").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const usersRelations = relations(users, ({ many }) => ({
   gameSessions: many(gameSessions),
   wordAttempts: many(wordAttempts),
   leaderboardScores: many(leaderboardScores),
   customWordLists: many(customWordLists),
+  ownedGroups: many(userGroups),
+  groupMemberships: many(userGroupMembership),
+  toDoItems: many(userToDoItems),
 }));
 
 export const gameSessionsRelations = relations(gameSessions, ({ one, many }) => ({
@@ -145,9 +185,48 @@ export const wordsRelations = relations(words, ({ many }) => ({
   wordAttempts: many(wordAttempts),
 }));
 
-export const customWordListsRelations = relations(customWordLists, ({ one }) => ({
+export const customWordListsRelations = relations(customWordLists, ({ one, many }) => ({
   user: one(users, {
     fields: [customWordLists.userId],
+    references: [users.id],
+  }),
+  wordListUserGroups: many(wordListUserGroups),
+}));
+
+export const userGroupsRelations = relations(userGroups, ({ one, many }) => ({
+  owner: one(users, {
+    fields: [userGroups.ownerUserId],
+    references: [users.id],
+  }),
+  memberships: many(userGroupMembership),
+  wordListGroups: many(wordListUserGroups),
+}));
+
+export const userGroupMembershipRelations = relations(userGroupMembership, ({ one }) => ({
+  user: one(users, {
+    fields: [userGroupMembership.userId],
+    references: [users.id],
+  }),
+  group: one(userGroups, {
+    fields: [userGroupMembership.groupId],
+    references: [userGroups.id],
+  }),
+}));
+
+export const wordListUserGroupsRelations = relations(wordListUserGroups, ({ one }) => ({
+  wordList: one(customWordLists, {
+    fields: [wordListUserGroups.wordListId],
+    references: [customWordLists.id],
+  }),
+  group: one(userGroups, {
+    fields: [wordListUserGroups.groupId],
+    references: [userGroups.id],
+  }),
+}));
+
+export const userToDoItemsRelations = relations(userToDoItems, ({ one }) => ({
+  user: one(users, {
+    fields: [userToDoItems.userId],
     references: [users.id],
   }),
 }));
@@ -185,9 +264,31 @@ export const insertCustomWordListSchema = createInsertSchema(customWordLists).om
   name: z.string().min(1).max(100),
   difficulty: z.enum(["easy", "medium", "hard"]),
   gradeLevel: z.string().max(50).optional(),
+  visibility: z.enum(["public", "private", "groups"]).optional(),
+  assignImages: z.boolean().optional(),
 });
 
 export const insertWordIllustrationSchema = createInsertSchema(wordIllustrations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserGroupSchema = createInsertSchema(userGroups).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserGroupMembershipSchema = createInsertSchema(userGroupMembership).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertWordListUserGroupSchema = createInsertSchema(wordListUserGroups).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserToDoItemSchema = createInsertSchema(userToDoItems).omit({
   id: true,
   createdAt: true,
 });
@@ -206,6 +307,14 @@ export type InsertCustomWordList = z.infer<typeof insertCustomWordListSchema>;
 export type CustomWordList = typeof customWordLists.$inferSelect;
 export type InsertWordIllustration = z.infer<typeof insertWordIllustrationSchema>;
 export type WordIllustration = typeof wordIllustrations.$inferSelect;
+export type InsertUserGroup = z.infer<typeof insertUserGroupSchema>;
+export type UserGroup = typeof userGroups.$inferSelect;
+export type InsertUserGroupMembership = z.infer<typeof insertUserGroupMembershipSchema>;
+export type UserGroupMembership = typeof userGroupMembership.$inferSelect;
+export type InsertWordListUserGroup = z.infer<typeof insertWordListUserGroupSchema>;
+export type WordListUserGroup = typeof wordListUserGroups.$inferSelect;
+export type InsertUserToDoItem = z.infer<typeof insertUserToDoItemSchema>;
+export type UserToDoItem = typeof userToDoItems.$inferSelect;
 
 export type DifficultyLevel = "easy" | "medium" | "hard" | "custom";
 export type GameMode = "standard" | "timed" | "quiz" | "scramble" | "mistake" | "crossword";
