@@ -713,8 +713,20 @@ export default function Game() {
     }
   }, [gameMode, currentWord, currentWordIndex]);
 
-  // Helper to create realistic spelling mistakes
-  const misspellWord = (word: string, otherWords: string[]): string => {
+  // Helper to check if a word exists in the dictionary
+  const checkWordExists = async (word: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word.toLowerCase())}`);
+      // If the word exists, API returns 200; if not, it returns 404
+      return response.ok;
+    } catch (error) {
+      // If there's a network error, assume word doesn't exist (safer for misspellings)
+      return false;
+    }
+  };
+
+  // Helper to create realistic spelling mistakes (async to check dictionary)
+  const misspellWordAsync = async (word: string, otherWords: string[]): Promise<string> => {
     const wordLower = word.toLowerCase();
     const otherWordsLower = otherWords.map(w => w.toLowerCase());
     
@@ -728,10 +740,13 @@ export default function Game() {
       return misspelled;
     };
     
-    const tryMisspelling = (misspelled: string): string | null => {
-      if (misspelled !== wordLower && 
-          !otherWordsLower.includes(misspelled)) {
-        return preserveCapitalization(misspelled);
+    const tryMisspelling = async (misspelled: string): Promise<string | null> => {
+      if (misspelled !== wordLower && !otherWordsLower.includes(misspelled)) {
+        // Check if the misspelling is actually a real word in the dictionary
+        const isRealWord = await checkWordExists(misspelled);
+        if (!isRealWord) {
+          return preserveCapitalization(misspelled);
+        }
       }
       return null;
     };
@@ -958,7 +973,7 @@ export default function Game() {
     for (const strategy of shuffledRealistic) {
       const result = strategy();
       if (result) {
-        const validated = tryMisspelling(result);
+        const validated = await tryMisspelling(result);
         if (validated) return validated;
       }
     }
@@ -1016,7 +1031,7 @@ export default function Game() {
     for (const strategy of shuffledPhonetic) {
       const result = strategy();
       if (result) {
-        const validated = tryMisspelling(result);
+        const validated = await tryMisspelling(result);
         if (validated) return validated;
       }
     }
@@ -1032,29 +1047,41 @@ export default function Game() {
   // Mistake mode: Initialize 4 word choices when word changes
   useEffect(() => {
     if (gameMode === "mistake" && words && words.length >= 4) {
-      // Get 4 random words from the word list (not just current word)
-      const availableWords = [...words];
-      const selectedWords: string[] = [];
+      const initializeMistakeChoices = async () => {
+        // Get 4 random words from the word list (not just current word)
+        const availableWords = [...words];
+        const selectedWords: string[] = [];
+        
+        for (let i = 0; i < 4 && availableWords.length > 0; i++) {
+          const randomIdx = Math.floor(Math.random() * availableWords.length);
+          selectedWords.push(availableWords[randomIdx].word);
+          availableWords.splice(randomIdx, 1);
+        }
+        
+        // Choose one to misspell
+        const misspellIdx = Math.floor(Math.random() * selectedWords.length);
+        const correctWord = selectedWords[misspellIdx]; // Store correct spelling
+        
+        // Generate misspelling asynchronously (checks dictionary API)
+        const misspelledWord = await misspellWordAsync(
+          selectedWords[misspellIdx], 
+          selectedWords.filter((_, i) => i !== misspellIdx)
+        );
+        
+        // Create choices array with the misspelled word
+        const choices = selectedWords.map((word, idx) => 
+          idx === misspellIdx ? misspelledWord : word
+        );
+        
+        console.log(`🎯 Mistake mode: Selected words:`, selectedWords);
+        console.log(`❌ Misspelled word at index ${misspellIdx}:`, choices[misspellIdx], `(correct: ${correctWord})`);
+        
+        setMistakeChoices(choices);
+        setMisspelledIndex(misspellIdx);
+        setCorrectSpelling(correctWord);
+      };
       
-      for (let i = 0; i < 4 && availableWords.length > 0; i++) {
-        const randomIdx = Math.floor(Math.random() * availableWords.length);
-        selectedWords.push(availableWords[randomIdx].word);
-        availableWords.splice(randomIdx, 1);
-      }
-      
-      // Choose one to misspell
-      const misspellIdx = Math.floor(Math.random() * selectedWords.length);
-      const correctWord = selectedWords[misspellIdx]; // Store correct spelling
-      const choices = selectedWords.map((word, idx) => 
-        idx === misspellIdx ? misspellWord(word, selectedWords.filter((_, i) => i !== idx)) : word
-      );
-      
-      console.log(`🎯 Mistake mode: Selected words:`, selectedWords);
-      console.log(`❌ Misspelled word at index ${misspellIdx}:`, choices[misspellIdx], `(correct: ${correctWord})`);
-      
-      setMistakeChoices(choices);
-      setMisspelledIndex(misspellIdx);
-      setCorrectSpelling(correctWord);
+      initializeMistakeChoices();
     }
   }, [gameMode, currentWordIndex, words]);
 
