@@ -93,6 +93,7 @@ export default function Game() {
   const [selectedChoiceIndex, setSelectedChoiceIndex] = useState<number>(-1);
   
   // Crossword mode states
+  const [loadingCrossword, setLoadingCrossword] = useState(false);
   const [crosswordGrid, setCrosswordGrid] = useState<CrosswordGrid | null>(null);
   const [crosswordInputs, setCrosswordInputs] = useState<{[key: string]: string}>({});
   const [activeEntry, setActiveEntry] = useState<number | null>(null);
@@ -871,9 +872,22 @@ export default function Game() {
     }
   }, [gameMode, currentWordIndex, words]);
 
+  // Set loading state immediately when entering crossword mode
+  useEffect(() => {
+    if (gameMode === "crossword") {
+      setLoadingCrossword(true);
+      setCrosswordGrid(null);
+    }
+  }, [gameMode]);
+
   // Crossword mode: Initialize grid and fetch clues
   useEffect(() => {
     if (gameMode === "crossword" && words && words.length >= 5) {
+      if (!loadingCrossword) {
+        setLoadingCrossword(true);
+      }
+      setCrosswordGrid(null); // Clear any previous grid
+      
       const wordList = words.map(w => w.word);
       const limitedWords = wordList.slice(0, Math.min(15, wordList.length));
       
@@ -934,6 +948,8 @@ export default function Game() {
         if (grid.entries.length > 0) {
           setActiveEntry(grid.entries[0].number);
         }
+        
+        setLoadingCrossword(false);
       };
       
       fetchClues();
@@ -1482,28 +1498,22 @@ export default function Game() {
           className="w-full max-w-4xl"
         >
           <Card className="p-8 md:p-12 space-y-8">
-            <motion.div
-              initial={{ y: -20 }}
-              animate={{ y: 0 }}
-              transition={{ delay: 0.2, type: "spring" }}
-              className="text-center"
-            >
-              {gameMode === "crossword" ? (
-                <h1 className="text-3xl font-bold text-gray-800 mb-2 font-crayon" data-testid="text-game-complete">
-                  Amazing Work!
+            {gameMode !== "crossword" && (
+              <motion.div
+                initial={{ y: -20 }}
+                animate={{ y: 0 }}
+                transition={{ delay: 0.2, type: "spring" }}
+                className="text-center"
+              >
+                <Sparkles className="w-20 h-20 md:w-24 md:h-24 text-purple-600 mx-auto mb-4" />
+                <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-2 font-crayon" data-testid="text-game-complete">
+                  {gameMode === "quiz" ? "Quiz Complete!" : "Amazing Work!"}
                 </h1>
-              ) : (
-                <>
-                  <Sparkles className="w-20 h-20 md:w-24 md:h-24 text-purple-600 mx-auto mb-4" />
-                  <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-2 font-crayon" data-testid="text-game-complete">
-                    {gameMode === "quiz" ? "Quiz Complete!" : "Amazing Work!"}
-                  </h1>
-                  <p className="text-lg text-gray-600 capitalize">
-                    {difficulty} Mode - {gameMode === "standard" ? "Practice" : gameMode === "timed" ? "Timed Challenge" : gameMode === "quiz" ? "Quiz Mode" : "Word Scramble"}
-                  </p>
-                </>
-              )}
-            </motion.div>
+                <p className="text-lg text-gray-600 capitalize">
+                  {difficulty} Mode - {gameMode === "standard" ? "Practice" : gameMode === "timed" ? "Timed Challenge" : gameMode === "quiz" ? "Quiz Mode" : "Word Scramble"}
+                </p>
+              </motion.div>
+            )}
 
             {gameMode === "crossword" ? (
               <div className="flex justify-center">
@@ -1820,7 +1830,14 @@ export default function Game() {
       </header>
 
       <main className="flex-1 flex items-center justify-center p-4 md:p-6 relative z-10">
-        {gameMode === "crossword" && crosswordGrid ? (
+        {loadingCrossword ? (
+          <div className="w-full max-w-3xl">
+            <Card className="p-12 text-center space-y-4" data-testid="card-crossword-loading">
+              <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto"></div>
+              <p className="text-xl text-gray-600">Generating crossword puzzle...</p>
+            </Card>
+          </div>
+        ) : gameMode === "crossword" && crosswordGrid ? (
           <div className="w-full max-w-6xl">
             <Card className="p-6 md:p-8 space-y-6 bg-white">
               <div className="text-center">
@@ -2162,9 +2179,22 @@ export default function Game() {
                         <h2 className="text-3xl md:text-5xl font-bold text-green-600" data-testid="text-correct">
                           Correct!
                         </h2>
-                        <div className="text-4xl md:text-5xl font-bold text-gray-800" data-testid="text-correct-word">
-                          {gameMode === "mistake" ? correctSpelling : currentWord?.word}
-                        </div>
+                        {gameMode === "mistake" ? (
+                          <div className="space-y-3">
+                            <p className="text-xl md:text-2xl text-gray-600">The misspelled word was:</p>
+                            <div className="text-3xl md:text-4xl font-semibold text-gray-700 line-through" data-testid="text-misspelled-word">
+                              {mistakeChoices[misspelledIndex]?.toUpperCase()}
+                            </div>
+                            <p className="text-xl md:text-2xl text-gray-600">Correct spelling:</p>
+                            <div className="text-4xl md:text-5xl font-bold text-gray-800" data-testid="text-correct-word">
+                              {correctSpelling.toUpperCase()}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-4xl md:text-5xl font-bold text-gray-800" data-testid="text-correct-word">
+                            {currentWord?.word}
+                          </div>
+                        )}
                       </>
                     ) : (
                       <>
