@@ -1,0 +1,24 @@
+
+Ignore my previous request.  Make the following changes:
+
+When creating or editing a word list, add an "Assign Images" toggle (default to True) at the bottom below the "Make this list public (others can use it)" toggle. If this is set to False, don't search for or assign images to the words in the list. And persist this boolean setting in the custom_word_lists database table.
+
+Add the following fields to users (both in the database and the 'Sign Up' page): First Name, Last Name, Email
+
+Add a 'To Do List' for each user and store via a new user_to_do_items mapping database table. This would include things such as approving user group access requests and would be communicated to a user via a notification icon in the "Logged in as ..." box in the upper right corner. If there are any open to do's for a user, show a notification icon next to the user name in the upper right with the number of open items.  Allow the user to click on this notification to open a list of 'To Do' items.
+
+Add functionality for user groups to the app. This should be stored in the following new database tables:
+   user_groups - stores metadata about a user group (id, name, owner_user_id, is_public)
+   user_group_membership - maps users to a user groups
+   word_list_user_groups - maps word lists to user groups
+
+Add a 'User Groups' button next to the 'Custom Word Lists' button on the main screen. This should lead to a page where you can:
+    1) view existing user groups - only public groups or groups owned by the current user should be visible
+    2) create a new user group
+    3) delete an existing user group
+    4) request access to a user group - This sends an email for approval to the user group owner's email address and also creates a 'To Do' item for the user group owner in the app.  The email that is sent should contain buttons to either 'Approve' or 'Deny' the request for the specified user's request to join the user group.  If the user group owner clicks one of these buttons, it should update the user group membership accordingly and also clear the user group owner's 'To Do' related to this request.
+    5) Invite one or more users to join a user group that the current user owns.  Recipient users can be searched for and identified by either First & Last Name or Email and the invitations should be sent via email (containing a button to 'Join' the user group) as well as 'To Do' items for the invited users
+    6) Delete members from a user group that the current user owns
+
+When creating or editing a custom word list, the owner must specify whether the list is Public (any user can see it), Private (only the owner can see it), or viewable by specific user groups.  If the latter, the word list owner can select one or more user group from the groups he/she owns, and only these groups can see the word list.
+
