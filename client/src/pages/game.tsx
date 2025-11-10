@@ -90,6 +90,7 @@ export default function Game() {
   const [mistakeChoices, setMistakeChoices] = useState<string[]>([]);
   const [misspelledIndex, setMisspelledIndex] = useState<number>(-1);
   const [correctSpelling, setCorrectSpelling] = useState<string>("");
+  const [selectedChoiceIndex, setSelectedChoiceIndex] = useState<number>(-1);
   
   // Crossword mode states
   const [crosswordGrid, setCrosswordGrid] = useState<CrosswordGrid | null>(null);
@@ -1134,6 +1135,7 @@ export default function Game() {
   const handleMistakeChoice = (choiceIndex: number) => {
     const correct = choiceIndex === misspelledIndex;
     
+    setSelectedChoiceIndex(choiceIndex);
     setIsCorrect(correct);
     setShowFeedback(true);
 
@@ -2171,18 +2173,42 @@ export default function Game() {
                           {gameMode === "timed" && timeLeft === 0 ? "Time's Up!" : "Not quite!"}
                         </h2>
                         <div className="space-y-3">
-                          {userInput && (
+                          {gameMode === "mistake" ? (
+                            <>
+                              <p className="text-xl md:text-2xl text-gray-600">You selected:</p>
+                              <div className="text-3xl md:text-4xl font-semibold text-green-600" data-testid="text-user-selected-word">
+                                {mistakeChoices[selectedChoiceIndex]?.toUpperCase()}
+                              </div>
+                              <p className="text-lg md:text-xl text-gray-600">That word is spelled correctly!</p>
+                              <div className="border-t border-gray-300 my-4"></div>
+                              <p className="text-xl md:text-2xl text-gray-600">The misspelled word was:</p>
+                              <div className="text-3xl md:text-4xl font-semibold text-gray-700 line-through" data-testid="text-misspelled-word">
+                                {mistakeChoices[misspelledIndex]?.toUpperCase()}
+                              </div>
+                              <p className="text-xl md:text-2xl text-gray-600">Correct spelling:</p>
+                              <div className="text-4xl md:text-5xl font-bold text-gray-800" data-testid="text-correct-spelling">
+                                {correctSpelling.toUpperCase()}
+                              </div>
+                            </>
+                          ) : userInput ? (
                             <>
                               <p className="text-xl md:text-2xl text-gray-600">You wrote:</p>
                               <div className="text-3xl md:text-4xl font-semibold text-gray-700 line-through" data-testid="text-user-answer">
                                 {userInput}
                               </div>
+                              <p className="text-xl md:text-2xl text-gray-600">Correct spelling:</p>
+                              <div className="text-4xl md:text-5xl font-bold text-gray-800" data-testid="text-correct-spelling">
+                                {currentWord?.word}
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-xl md:text-2xl text-gray-600">Correct spelling:</p>
+                              <div className="text-4xl md:text-5xl font-bold text-gray-800" data-testid="text-correct-spelling">
+                                {currentWord?.word}
+                              </div>
                             </>
                           )}
-                          <p className="text-xl md:text-2xl text-gray-600">Correct spelling:</p>
-                          <div className="text-4xl md:text-5xl font-bold text-gray-800" data-testid="text-correct-spelling">
-                            {currentWord?.word}
-                          </div>
                         </div>
                       </>
                     )}

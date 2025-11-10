@@ -34,11 +34,15 @@ Complete implementation of interactive crossword puzzle game mode with TTS-only 
 - **Support**: Works with custom word lists containing 5-15 words (increased from 12)
 - **Status**: Production-ready, verified via automated testing
 
-### Find the Mistake - Capitalization Fix
-Fixed capitalization inconsistency in Find the Mistake mode:
-- **Issue**: Misspelled words appeared in mixed case (e.g., "Appl") while correct choices were uppercase
-- **Solution**: Updated misspellWord function to preserve full uppercase capitalization
-- **Result**: All 4 word choices now display with consistent formatting
+### Find the Mistake - Improved Feedback (November 2025)
+Enhanced educational feedback when users make incorrect selections:
+- **Capitalization Fix**: All 4 word choices display with consistent uppercase formatting
+- **Improved Incorrect Feedback**: When user selects a correctly-spelled word instead of the misspelled one:
+  - Shows the selected word in green with "That word is spelled correctly!" message
+  - Displays the actual misspelled word with strikethrough
+  - Shows the correct spelling of the misspelled word
+  - Provides clear, educational feedback explaining the mistake
+- **Implementation**: Added `selectedChoiceIndex` state tracking and enhanced feedback UI in game.tsx
 - **Status**: Production-ready, verified via automated testing
 
 ### Content Moderation for Children's Safety (November 2025)
