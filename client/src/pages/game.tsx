@@ -595,7 +595,7 @@ export default function Game() {
   }, [currentWordIndex, showFeedback]);
 
   useEffect(() => {
-    if (currentWord && !showFeedback && gameMode !== "quiz" && gameMode !== "mistake") {
+    if (currentWord && !showFeedback && gameMode !== "quiz" && gameMode !== "mistake" && gameMode !== "crossword") {
       speakWord(currentWord.word, () => {
         // Re-focus after TTS completes
         setTimeout(() => {
