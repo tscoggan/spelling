@@ -13,7 +13,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload, Filter, Camera, X } from "lucide-react";
+import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload, Filter, Camera, X, Users } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import type { CustomWordList, WordIllustration } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +45,7 @@ export default function WordListsPage() {
     visibility: "private" as "public" | "private" | "groups",
     assignImages: true,
     gradeLevel: "",
+    selectedGroupIds: [] as number[],
   });
 
   const { data: userLists = [], isLoading: loadingUserLists } = useQuery<CustomWordList[]>({
@@ -52,6 +55,11 @@ export default function WordListsPage() {
 
   const { data: publicLists = [], isLoading: loadingPublicLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists/public"],
+  });
+
+  const { data: userGroups = [] } = useQuery<any[]>({
+    queryKey: ["/api/user-groups"],
+    enabled: !!user && dialogOpen,
   });
 
   const { data: jobStatus } = useQuery({
@@ -73,14 +81,18 @@ export default function WordListsPage() {
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       const words = data.words.split('\n').map(w => w.trim()).filter(w => w.length > 0);
-      const response = await apiRequest("POST", "/api/word-lists", {
+      const payload: any = {
         name: data.name,
         difficulty: data.difficulty,
         words,
         visibility: data.visibility,
         assignImages: data.assignImages,
         gradeLevel: data.gradeLevel || undefined,
-      });
+      };
+      if (data.visibility === "groups" && data.selectedGroupIds.length > 0) {
+        payload.groupIds = data.selectedGroupIds;
+      }
+      const response = await apiRequest("POST", "/api/word-lists", payload);
       return await response.json();
     },
     onSuccess: (data: any) => {
@@ -121,6 +133,9 @@ export default function WordListsPage() {
         assignImages: data.assignImages,
         gradeLevel: data.gradeLevel || undefined,
       };
+      if (data.visibility === "groups" && data.selectedGroupIds && data.selectedGroupIds.length > 0) {
+        updates.groupIds = data.selectedGroupIds;
+      }
       if (data.words) {
         updates.words = data.words.split('\n').map(w => w.trim()).filter(w => w.length > 0);
       }
@@ -197,6 +212,7 @@ export default function WordListsPage() {
       visibility: "private",
       assignImages: true,
       gradeLevel: "",
+      selectedGroupIds: [],
     });
   };
 
@@ -210,6 +226,7 @@ export default function WordListsPage() {
       visibility,
       assignImages: (list as any).assignImages !== false,
       gradeLevel: list.gradeLevel || "",
+      selectedGroupIds: (list as any).groupIds || [],
     });
     setDialogOpen(true);
   };
@@ -606,6 +623,70 @@ export default function WordListsPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  {formData.visibility === "groups" && (
+                    <div>
+                      <Label>Share with Groups</Label>
+                      <div className="border rounded-md p-4 space-y-3 max-h-[200px] overflow-y-auto">
+                        {userGroups.length === 0 ? (
+                          <p className="text-sm text-gray-500 text-center py-4">
+                            No groups available. Create a group first!
+                          </p>
+                        ) : (
+                          userGroups.map((group: any) => {
+                            const isOwned = group.ownerId === user?.id;
+                            return (
+                              <div key={group.id} className="flex items-start gap-3" data-testid={`group-checkbox-${group.id}`}>
+                                <Checkbox
+                                  id={`group-${group.id}`}
+                                  checked={formData.selectedGroupIds.includes(group.id)}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setFormData({
+                                        ...formData,
+                                        selectedGroupIds: [...formData.selectedGroupIds, group.id],
+                                      });
+                                    } else {
+                                      setFormData({
+                                        ...formData,
+                                        selectedGroupIds: formData.selectedGroupIds.filter(id => id !== group.id),
+                                      });
+                                    }
+                                  }}
+                                  data-testid={`checkbox-group-${group.id}`}
+                                />
+                                <div className="flex-1">
+                                  <label htmlFor={`group-${group.id}`} className="text-sm font-medium cursor-pointer">
+                                    {group.name}
+                                  </label>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    {isOwned ? (
+                                      <Badge variant="secondary" className="text-xs">
+                                        <Users className="w-3 h-3 mr-1" />
+                                        Owner
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="outline" className="text-xs">
+                                        <Users className="w-3 h-3 mr-1" />
+                                        Member
+                                      </Badge>
+                                    )}
+                                    <span className="text-xs text-gray-500">
+                                      {group.description}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                      {formData.selectedGroupIds.length > 0 && (
+                        <p className="text-sm text-gray-600 mt-2">
+                          {formData.selectedGroupIds.length} group{formData.selectedGroupIds.length > 1 ? 's' : ''} selected
+                        </p>
+                      )}
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <Switch
                       id="assignImages"

@@ -62,6 +62,22 @@ export default function Home() {
     mutationFn: async (todoId: number) => {
       await apiRequest("POST", `/api/user-to-dos/${todoId}/complete`, {});
     },
+    onMutate: async (todoId: number) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/user-to-dos"] });
+      await queryClient.cancelQueries({ queryKey: ["/api/user-to-dos/count"] });
+
+      const previousTodos = queryClient.getQueryData<any[]>(["/api/user-to-dos"]);
+      const previousCount = queryClient.getQueryData<number>(["/api/user-to-dos/count"]);
+
+      queryClient.setQueryData<any[]>(["/api/user-to-dos"], (old) => 
+        old ? old.filter(todo => todo.id !== todoId) : []
+      );
+      queryClient.setQueryData<number>(["/api/user-to-dos/count"], (old) => 
+        Math.max(0, (old || 1) - 1)
+      );
+
+      return { previousTodos, previousCount };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos/count"] });
@@ -70,7 +86,13 @@ export default function Home() {
         description: "To-do completed",
       });
     },
-    onError: (error: any) => {
+    onError: (error: any, _todoId, context) => {
+      if (context?.previousTodos) {
+        queryClient.setQueryData(["/api/user-to-dos"], context.previousTodos);
+      }
+      if (context?.previousCount !== undefined) {
+        queryClient.setQueryData(["/api/user-to-dos/count"], context.previousCount);
+      }
       toast({
         title: "Error",
         description: error.message || "Failed to complete to-do",
