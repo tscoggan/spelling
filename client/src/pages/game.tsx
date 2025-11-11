@@ -47,7 +47,7 @@ export default function Game() {
   const difficulty = params.get("difficulty") as DifficultyLevel;
   const gameMode = (params.get("mode") || "standard") as GameMode;
   const listId = params.get("listId");
-  const quizCount = params.get("quizCount") || "10";
+  const quizCount = params.get("quizCount") || "all";
   
   const [userInput, setUserInput] = useState("");
   const [showFeedback, setShowFeedback] = useState(false);

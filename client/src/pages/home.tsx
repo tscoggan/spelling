@@ -43,7 +43,7 @@ export default function Home() {
   const [wordListDialogOpen, setWordListDialogOpen] = useState(false);
   const [filterDifficulty, setFilterDifficulty] = useState<string>("all");
   const [filterGradeLevel, setFilterGradeLevel] = useState<string>("all");
-  const [quizWordCount, setQuizWordCount] = useState<"10" | "all">("10");
+  const [quizWordCount, setQuizWordCount] = useState<"10" | "all">("all");
   const [todoModalOpen, setTodoModalOpen] = useState(false);
 
   const { toast } = useToast();
