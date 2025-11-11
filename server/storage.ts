@@ -30,9 +30,10 @@ import {
   userGroups,
   userGroupMembership,
   userToDoItems,
+  wordListUserGroups,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, inArray } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -87,6 +88,10 @@ export interface IStorage {
   deleteToDoItem(todoId: number): Promise<boolean>;
   
   searchUsers(query: string): Promise<any[]>;
+  
+  getWordListSharedGroupIds(wordListId: number): Promise<number[]>;
+  isUserMemberOfWordListGroups(userId: number, wordListId: number): Promise<boolean>;
+  isUserGroupMember(userId: number, groupId: number): Promise<boolean>;
   
   sessionStore: session.Store;
 }
@@ -611,6 +616,51 @@ export class DatabaseStorage implements IStorage {
       .limit(10);
     
     return results;
+  }
+
+  async getWordListSharedGroupIds(wordListId: number): Promise<number[]> {
+    const sharedGroups = await db
+      .select({ groupId: wordListUserGroups.groupId })
+      .from(wordListUserGroups)
+      .where(eq(wordListUserGroups.wordListId, wordListId));
+    
+    return sharedGroups.map(sg => sg.groupId);
+  }
+
+  async isUserMemberOfWordListGroups(userId: number, wordListId: number): Promise<boolean> {
+    const groupIds = await this.getWordListSharedGroupIds(wordListId);
+    
+    if (groupIds.length === 0) {
+      return false;
+    }
+    
+    const membership = await db
+      .select()
+      .from(userGroupMembership)
+      .where(
+        and(
+          eq(userGroupMembership.userId, userId),
+          inArray(userGroupMembership.groupId, groupIds)
+        )
+      )
+      .limit(1);
+    
+    return membership.length > 0;
+  }
+
+  async isUserGroupMember(userId: number, groupId: number): Promise<boolean> {
+    const [membership] = await db
+      .select()
+      .from(userGroupMembership)
+      .where(
+        and(
+          eq(userGroupMembership.userId, userId),
+          eq(userGroupMembership.groupId, groupId)
+        )
+      )
+      .limit(1);
+    
+    return !!membership;
   }
 }
 

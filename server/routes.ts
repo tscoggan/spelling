@@ -232,9 +232,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (wordList.visibility === 'private' && req.user!.id !== wordList.userId) {
         return res.status(403).json({ error: "Access denied" });
       } else if (wordList.visibility === 'groups') {
-        // TODO: Check if user is member of any groups this list is shared with
-        // For now, allow owner and deny others until groups UI is implemented
-        if (req.user!.id !== wordList.userId) {
+        // Check if user is owner or member of any groups this list is shared with
+        const isOwner = req.user!.id === wordList.userId;
+        const isMember = await storage.isUserMemberOfWordListGroups(req.user!.id, id);
+        
+        if (!isOwner && !isMember) {
           return res.status(403).json({ error: "Access denied - group membership required" });
         }
       }
@@ -652,6 +654,149 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error removing group member:", error);
       res.status(500).json({ error: "Failed to remove group member" });
+    }
+  });
+
+  app.post("/api/user-groups/:id/invite", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const groupId = parseInt(req.params.id);
+      const { userId: targetUserId } = req.body;
+      const currentUser = req.user as any;
+
+      if (isNaN(groupId)) {
+        return res.status(400).json({ error: "Invalid group ID" });
+      }
+
+      if (!targetUserId || isNaN(parseInt(targetUserId))) {
+        return res.status(400).json({ error: "Valid user ID is required" });
+      }
+
+      const targetUserIdNum = parseInt(targetUserId);
+
+      const group = await storage.getUserGroup(groupId);
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+
+      if (group.ownerUserId !== currentUser.id) {
+        return res.status(403).json({ error: "Only group owner can invite members" });
+      }
+
+      const targetUser = await storage.getUser(targetUserIdNum);
+      if (!targetUser) {
+        return res.status(404).json({ error: "Target user not found" });
+      }
+
+      // Check if user is already a member
+      const isAlreadyMember = await storage.isUserGroupMember(targetUserIdNum, groupId);
+      if (isAlreadyMember) {
+        return res.status(400).json({ error: "User is already a member of this group" });
+      }
+
+      // Check if user is the owner
+      if (group.ownerUserId === targetUserIdNum) {
+        return res.status(400).json({ error: "User is the owner of this group" });
+      }
+
+      // Check for existing pending invite to prevent duplicates
+      const existingInvites = await storage.getUserToDoItems(targetUserIdNum);
+      const hasPendingInvite = existingInvites.some(
+        todo => todo.type === 'group_invite' && 
+        todo.metadata && 
+        JSON.parse(todo.metadata).groupId === groupId
+      );
+
+      if (hasPendingInvite) {
+        return res.status(400).json({ error: "An invite to this group is already pending" });
+      }
+
+      // Create to-do notification for the invited user
+      const metadata = JSON.stringify({
+        groupId,
+        groupName: group.name,
+        inviterUsername: currentUser.username,
+        inviterId: currentUser.id,
+      });
+
+      await storage.createToDoItem({
+        userId: targetUserIdNum,
+        type: 'group_invite',
+        message: `${currentUser.username} invited you to join the group "${group.name}"`,
+        metadata,
+      });
+
+      res.status(201).json({ message: "Invitation sent successfully" });
+    } catch (error) {
+      console.error("Error inviting user to group:", error);
+      res.status(500).json({ error: "Failed to send invitation" });
+    }
+  });
+
+  app.post("/api/user-groups/:id/request-access", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const groupId = parseInt(req.params.id);
+      const currentUser = req.user as any;
+
+      if (isNaN(groupId)) {
+        return res.status(400).json({ error: "Invalid group ID" });
+      }
+
+      const group = await storage.getUserGroup(groupId);
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+
+      // Check if user is already a member
+      const isAlreadyMember = await storage.isUserGroupMember(currentUser.id, groupId);
+      if (isAlreadyMember) {
+        return res.status(400).json({ error: "You are already a member of this group" });
+      }
+
+      // Check if user is the owner
+      if (group.ownerUserId === currentUser.id) {
+        return res.status(400).json({ error: "You are the owner of this group" });
+      }
+
+      // Check for existing pending request to prevent duplicates
+      const ownerTodos = await storage.getUserToDoItems(group.ownerUserId);
+      const hasPendingRequest = ownerTodos.some(
+        todo => todo.type === 'group_access_request' && 
+        todo.metadata && 
+        JSON.parse(todo.metadata).requesterId === currentUser.id &&
+        JSON.parse(todo.metadata).groupId === groupId
+      );
+
+      if (hasPendingRequest) {
+        return res.status(400).json({ error: "You already have a pending access request for this group" });
+      }
+
+      // Create to-do notification for the group owner
+      const metadata = JSON.stringify({
+        groupId,
+        groupName: group.name,
+        requesterUsername: currentUser.username,
+        requesterId: currentUser.id,
+      });
+
+      await storage.createToDoItem({
+        userId: group.ownerUserId,
+        type: 'group_access_request',
+        message: `${currentUser.username} requested to join the group "${group.name}"`,
+        metadata,
+      });
+
+      res.status(201).json({ message: "Access request sent successfully" });
+    } catch (error) {
+      console.error("Error requesting group access:", error);
+      res.status(500).json({ error: "Failed to send access request" });
     }
   });
 
