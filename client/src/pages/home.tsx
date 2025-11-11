@@ -119,7 +119,7 @@ export default function Home() {
     setSelectedMode(mode);
     setFilterDifficulty("all");
     setFilterGradeLevel("all");
-    setQuizWordCount("10");
+    setQuizWordCount("all");
     setWordListDialogOpen(true);
   };
 
