@@ -61,3 +61,16 @@ The backend uses **Express.js** with **TypeScript**. **PostgreSQL** serves as th
 - **Pixabay API**: Provides kid-friendly cartoon illustrations.
 - **Replit Object Storage**: Cloud storage for permanent image hosting.
 - **bad-words**: Profanity filter library for content moderation.
+
+## Email Notifications
+
+**Note**: Email integration (SendGrid/Resend) was explored but not implemented at user's request. The to-do notification system serves as the primary notification mechanism for:
+- Group invitations
+- Access requests
+- Other user notifications
+
+To add email notifications in the future:
+1. Set up SendGrid or Resend connector integration via Replit Integrations
+2. Implement email templates for invitation/notification types
+3. Add email sending logic to backend routes (POST /api/user-groups/:id/invite, POST /api/user-groups/:id/request-access)
+4. Consider adding email preference settings to user profiles
