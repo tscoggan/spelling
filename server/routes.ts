@@ -40,7 +40,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid difficulty level" });
       }
 
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      // Use limit from query param, defaulting to undefined (all words) if not specified
+      // If limit=0 is explicitly passed, treat as unlimited
+      const limitParam = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const limit = limitParam === 0 ? undefined : limitParam;
       const words = await storage.getWordsByDifficulty(difficulty, limit);
       res.json(words);
     } catch (error) {

@@ -119,8 +119,20 @@ export default function Game() {
     },
   });
 
+  // Durstenfeld shuffle algorithm for randomizing word order
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
   const { data: words, isLoading } = useQuery<Word[]>({
-    queryKey: listId ? ['/api/word-lists', listId, { quizCount }] : ['/api/words', difficulty, { limit: 10 }],
+    queryKey: listId 
+      ? ['/api/word-lists', listId, gameMode, quizCount] 
+      : ['/api/words', difficulty, gameMode, quizCount],
     queryFn: async () => {
       if (listId) {
         const response = await fetch(`/api/word-lists/${listId}`);
@@ -132,6 +144,9 @@ export default function Game() {
           difficulty: 'custom' as DifficultyLevel,
         }));
         
+        // Randomize word order
+        wordsArray = shuffleArray(wordsArray);
+        
         // For quiz mode, limit to 10 words if quizCount is "10"
         if (gameMode === "quiz" && quizCount === "10") {
           wordsArray = wordsArray.slice(0, 10);
@@ -139,9 +154,20 @@ export default function Game() {
         
         return wordsArray;
       } else {
-        const response = await fetch(`/api/words/${difficulty}?limit=10`);
+        // Fetch all words for the difficulty level (no limit)
+        const response = await fetch(`/api/words/${difficulty}`);
         if (!response.ok) throw new Error('Failed to fetch words');
-        return response.json();
+        let wordsArray = await response.json();
+        
+        // Randomize word order
+        wordsArray = shuffleArray(wordsArray);
+        
+        // For quiz mode, limit to 10 words if quizCount is "10"
+        if (gameMode === "quiz" && quizCount === "10") {
+          wordsArray = wordsArray.slice(0, 10);
+        }
+        
+        return wordsArray;
       }
     },
     enabled: !!difficulty || !!listId,
