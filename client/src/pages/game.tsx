@@ -147,11 +147,6 @@ export default function Game() {
         // Randomize word order
         wordsArray = shuffleArray(wordsArray);
         
-        // For quiz mode, limit to 10 words if quizCount is "10"
-        if (gameMode === "quiz" && quizCount === "10") {
-          wordsArray = wordsArray.slice(0, 10);
-        }
-        
         return wordsArray;
       } else {
         // Fetch all words for the difficulty level (no limit)
@@ -161,11 +156,6 @@ export default function Game() {
         
         // Randomize word order
         wordsArray = shuffleArray(wordsArray);
-        
-        // For quiz mode, limit to 10 words if quizCount is "10"
-        if (gameMode === "quiz" && quizCount === "10") {
-          wordsArray = wordsArray.slice(0, 10);
-        }
         
         return wordsArray;
       }
