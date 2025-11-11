@@ -2,13 +2,10 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Sparkles, Trophy, Clock, Target, LogOut, List, ChevronRight, Lock, Globe, Shuffle, AlertCircle, Grid3x3, Users, Bell } from "lucide-react";
+import { BookOpen, Sparkles, Trophy, Clock, Target, List, ChevronRight, Lock, Globe, Shuffle, AlertCircle, Grid3x3, Users } from "lucide-react";
 import type { DifficultyLevel, GameMode } from "@shared/schema";
 import { useState, useMemo } from "react";
-import { useAuth } from "@/hooks/use-auth";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { UserHeader } from "@/components/user-header";
 import titleBanner from "@assets/generated_images/Hand-drawn_crayon_Spelling_Champions_text_fc50a8a9.png";
 import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
 
@@ -38,68 +36,11 @@ interface CustomWordList {
 
 export default function Home() {
   const [, setLocation] = useLocation();
-  const { user, logoutMutation } = useAuth();
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [wordListDialogOpen, setWordListDialogOpen] = useState(false);
   const [filterDifficulty, setFilterDifficulty] = useState<string>("all");
   const [filterGradeLevel, setFilterGradeLevel] = useState<string>("all");
   const [quizWordCount, setQuizWordCount] = useState<"10" | "all">("all");
-  const [todoModalOpen, setTodoModalOpen] = useState(false);
-
-  const { toast } = useToast();
-
-  const { data: todoCount = 0 } = useQuery<number>({
-    queryKey: ["/api/user-to-dos/count"],
-    enabled: !!user,
-  });
-
-  const { data: todos = [] } = useQuery<any[]>({
-    queryKey: ["/api/user-to-dos"],
-    enabled: !!user && todoModalOpen,
-  });
-
-  const completeTodoMutation = useMutation({
-    mutationFn: async (todoId: number) => {
-      await apiRequest("POST", `/api/user-to-dos/${todoId}/complete`, {});
-    },
-    onMutate: async (todoId: number) => {
-      await queryClient.cancelQueries({ queryKey: ["/api/user-to-dos"] });
-      await queryClient.cancelQueries({ queryKey: ["/api/user-to-dos/count"] });
-
-      const previousTodos = queryClient.getQueryData<any[]>(["/api/user-to-dos"]);
-      const previousCount = queryClient.getQueryData<number>(["/api/user-to-dos/count"]);
-
-      queryClient.setQueryData<any[]>(["/api/user-to-dos"], (old) => 
-        old ? old.filter(todo => todo.id !== todoId) : []
-      );
-      queryClient.setQueryData<number>(["/api/user-to-dos/count"], (old) => 
-        Math.max(0, (old || 1) - 1)
-      );
-
-      return { previousTodos, previousCount };
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos/count"] });
-      toast({
-        title: "Success!",
-        description: "To-do completed",
-      });
-    },
-    onError: (error: any, _todoId, context) => {
-      if (context?.previousTodos) {
-        queryClient.setQueryData(["/api/user-to-dos"], context.previousTodos);
-      }
-      if (context?.previousCount !== undefined) {
-        queryClient.setQueryData(["/api/user-to-dos/count"], context.previousCount);
-      }
-      toast({
-        title: "Error",
-        description: error.message || "Failed to complete to-do",
-        variant: "destructive",
-      });
-    },
-  });
 
   const { data: customLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists"],
@@ -110,10 +51,6 @@ export default function Home() {
     queryKey: ["/api/word-lists/public"],
     enabled: wordListDialogOpen,
   });
-
-  const handleLogout = () => {
-    logoutMutation.mutate();
-  };
 
   const handleModeClick = (mode: GameMode) => {
     setSelectedMode(mode);
@@ -232,49 +169,7 @@ export default function Home() {
         transition={{ duration: 0.5 }}
         className="max-w-6xl mx-auto relative z-10"
       >
-        <div className="flex justify-end mb-6">
-          <Card className="px-6 py-3">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3">
-                {user?.selectedAvatar && (
-                  <div className="text-3xl" data-testid="text-user-avatar">{user.selectedAvatar}</div>
-                )}
-                <div>
-                  <div className="text-sm text-gray-600">Logged in as</div>
-                  <div className="text-lg font-bold text-gray-800" data-testid="text-username">
-                    {user?.username}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setTodoModalOpen(true)}
-                  className="relative"
-                  data-testid="button-todos"
-                >
-                  <Bell className="w-4 h-4" />
-                  {todoCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold" data-testid="badge-todo-count">
-                      {todoCount}
-                    </span>
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleLogout}
-                  disabled={logoutMutation.isPending}
-                  data-testid="button-logout"
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  {logoutMutation.isPending ? "Logging out..." : "Logout"}
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </div>
+        <UserHeader />
 
         <div className="flex justify-center flex-wrap gap-4 mb-6">
           <Button
@@ -493,46 +388,6 @@ export default function Home() {
                   </div>
                 </div>
               ))
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={todoModalOpen} onOpenChange={setTodoModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Your To-Do Items</DialogTitle>
-            <DialogDescription>
-              Pending notifications and tasks
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            {todos.length === 0 ? (
-              <p className="text-gray-600 text-center py-4">No pending to-dos</p>
-            ) : (
-              <div className="space-y-2">
-                {todos.map((todo: any) => (
-                  <Card key={todo.id} className="p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        <p className="font-semibold">{todo.type === "group_invite" ? "Group Invitation" : todo.type === "group_access_request" ? "Access Request" : "Notification"}</p>
-                        <p className="text-sm text-gray-600 mt-1">{todo.message}</p>
-                        <p className="text-xs text-gray-500 mt-2">
-                          {new Date(todo.createdAt).toLocaleString()}
-                        </p>
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => completeTodoMutation.mutate(todo.id)}
-                        disabled={completeTodoMutation.isPending}
-                        data-testid={`button-complete-todo-${todo.id}`}
-                      >
-                        {completeTodoMutation.isPending ? "..." : "Complete"}
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
             )}
           </div>
         </DialogContent>

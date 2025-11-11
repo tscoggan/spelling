@@ -800,7 +800,159 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/user-groups/:id/accept-invite", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const groupId = parseInt(req.params.id);
+      const currentUser = req.user as any;
+
+      if (isNaN(groupId)) {
+        return res.status(400).json({ error: "Invalid group ID" });
+      }
+
+      const group = await storage.getUserGroup(groupId);
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+
+      // Verify user has a pending invitation
+      const userTodos = await storage.getUserToDoItems(currentUser.id);
+      const hasInvite = userTodos.some(
+        todo => todo.type === 'group_invite' && 
+        todo.metadata && 
+        JSON.parse(todo.metadata).groupId === groupId
+      );
+
+      if (!hasInvite) {
+        return res.status(403).json({ error: "You do not have a pending invitation for this group" });
+      }
+
+      // Check if user is already a member
+      const isAlreadyMember = await storage.isUserGroupMember(currentUser.id, groupId);
+      if (isAlreadyMember) {
+        return res.status(400).json({ error: "You are already a member of this group" });
+      }
+
+      // Add user to group
+      await storage.addUserGroupMember({ userGroupId: groupId, userId: currentUser.id });
+
+      res.status(200).json({ message: "Successfully joined the group" });
+    } catch (error) {
+      console.error("Error accepting invite:", error);
+      res.status(500).json({ error: "Failed to accept invite" });
+    }
+  });
+
+  app.post("/api/user-groups/:id/approve-request", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const groupId = parseInt(req.params.id);
+      const { userId } = req.body;
+      const currentUser = req.user as any;
+
+      if (isNaN(groupId)) {
+        return res.status(400).json({ error: "Invalid group ID" });
+      }
+
+      if (!userId || isNaN(parseInt(userId))) {
+        return res.status(400).json({ error: "Valid user ID is required" });
+      }
+
+      const userIdNum = parseInt(userId);
+
+      const group = await storage.getUserGroup(groupId);
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+
+      // Only group owner can approve requests
+      if (group.ownerUserId !== currentUser.id) {
+        return res.status(403).json({ error: "Only group owner can approve requests" });
+      }
+
+      // Check if user is already a member
+      const isAlreadyMember = await storage.isUserGroupMember(userIdNum, groupId);
+      if (isAlreadyMember) {
+        return res.status(400).json({ error: "User is already a member of this group" });
+      }
+
+      // Add user to group
+      await storage.addUserGroupMember({ userGroupId: groupId, userId: userIdNum });
+
+      res.status(200).json({ message: "User added to group successfully" });
+    } catch (error) {
+      console.error("Error approving request:", error);
+      res.status(500).json({ error: "Failed to approve request" });
+    }
+  });
+
   // To-Do Items endpoints
+  app.get("/api/user-to-dos", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const user = req.user as any;
+      const todos = await storage.getUserToDoItems(user.id);
+      res.json(todos);
+    } catch (error) {
+      console.error("Error fetching todos:", error);
+      res.status(500).json({ error: "Failed to fetch todos" });
+    }
+  });
+
+  app.get("/api/user-to-dos/count", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const user = req.user as any;
+      const todos = await storage.getUserToDoItems(user.id);
+      res.json(todos.length);
+    } catch (error) {
+      console.error("Error fetching todos count:", error);
+      res.status(500).json({ error: "Failed to fetch todos count" });
+    }
+  });
+
+  app.post("/api/user-to-dos/:id/complete", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const todoId = parseInt(req.params.id);
+      const user = req.user as any;
+
+      if (isNaN(todoId)) {
+        return res.status(400).json({ error: "Invalid todo ID" });
+      }
+
+      const todo = await storage.getToDoItem(todoId);
+      if (!todo) {
+        return res.status(404).json({ error: "Todo not found" });
+      }
+
+      if (todo.userId !== user.id) {
+        return res.status(403).json({ error: "Not authorized to complete this todo" });
+      }
+
+      await storage.deleteToDoItem(todoId);
+      res.json({ message: "Todo completed" });
+    } catch (error) {
+      console.error("Error completing todo:", error);
+      res.status(500).json({ error: "Failed to complete todo" });
+    }
+  });
+
   app.get("/api/todos", async (req, res) => {
     try {
       if (!req.isAuthenticated()) {

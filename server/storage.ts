@@ -497,7 +497,7 @@ export class DatabaseStorage implements IStorage {
     return group || undefined;
   }
 
-  async getUserAccessibleGroups(userId: number): Promise<UserGroup[]> {
+  async getUserAccessibleGroups(userId: number): Promise<any[]> {
     const ownedGroups = await db.select().from(userGroups).where(eq(userGroups.ownerUserId, userId));
     
     const memberGroups = await db
@@ -514,10 +514,17 @@ export class DatabaseStorage implements IStorage {
     
     const publicGroups = await db.select().from(userGroups).where(eq(userGroups.isPublic, true));
     
+    // Create a set of member group IDs for quick lookup
+    const memberGroupIds = new Set(memberGroups.map(g => g.id));
+    
     const allGroups = [...ownedGroups, ...memberGroups, ...publicGroups];
     const uniqueGroups = Array.from(new Map(allGroups.map(g => [g.id, g])).values());
     
-    return uniqueGroups;
+    // Add isMember flag to each group
+    return uniqueGroups.map(group => ({
+      ...group,
+      isMember: memberGroupIds.has(group.id),
+    }));
   }
 
   async deleteUserGroup(groupId: number): Promise<boolean> {
