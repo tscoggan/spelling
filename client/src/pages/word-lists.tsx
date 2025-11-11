@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import type { CustomWordList, WordIllustration } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { UserHeader } from "@/components/user-header";
 import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
 
 const GRADE_LEVELS = ["K", "1", "2", "3", "4", "5", "6", "7", "8", "9-12"];
@@ -457,6 +458,8 @@ export default function WordListsPage() {
         animate={{ opacity: 1, y: 0 }}
         className="max-w-6xl mx-auto relative z-10"
       >
+        <UserHeader />
+        
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <div>
             <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 font-crayon">

@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Plus, Trash2, Users, Globe, Lock, Home, UserPlus, Settings, Search, Mail } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import { UserHeader } from "@/components/user-header";
 import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
 
 export default function UserGroupsPage() {
@@ -89,6 +90,7 @@ export default function UserGroupsPage() {
       return await response.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos"] });
       toast({
         title: "Success!",
         description: "Your request to join this group has been sent to the group owner",
@@ -225,9 +227,29 @@ export default function UserGroupsPage() {
     removeMemberMutation.mutate({ groupId: selectedGroup.id, userId: memberToRemove.id });
   };
 
+  const { data: todos = [] } = useQuery<any[]>({
+    queryKey: ["/api/user-to-dos"],
+    enabled: !!user,
+  });
+
+  // Create set of group IDs with pending join requests
+  const pendingRequestGroupIds = new Set(
+    todos
+      .filter(todo => todo.type === 'group_access_request')
+      .map(todo => {
+        try {
+          const metadata = JSON.parse(todo.metadata);
+          return metadata.groupId;
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean)
+  );
+
   const ownedGroups = groups.filter(g => g.ownerUserId === user?.id);
-  const memberGroups = groups.filter(g => g.ownerUserId !== user?.id && !g.isPublic);
-  const publicGroups = groups.filter(g => g.isPublic && g.ownerUserId !== user?.id);
+  const memberGroups = groups.filter(g => g.ownerUserId !== user?.id && g.isMember);
+  const publicGroups = groups.filter(g => g.isPublic && g.ownerUserId !== user?.id && !g.isMember);
 
   if (!user) {
     return (
@@ -263,6 +285,8 @@ export default function UserGroupsPage() {
       ></div>
 
       <div className="max-w-6xl mx-auto relative z-10">
+        <UserHeader />
+        
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-4xl font-bold text-gray-800 mb-2 font-crayon">User Groups</h1>
@@ -362,32 +386,29 @@ export default function UserGroupsPage() {
                   </Button>
                 </Card>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {ownedGroups.map((group) => (
-                    <Card key={group.id} className="hover-elevate" data-testid={`card-group-${group.id}`}>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          {group.name}
-                          {group.isPublic ? (
-                            <Globe className="w-4 h-4 text-green-600" data-testid="icon-public-group" />
-                          ) : (
-                            <Lock className="w-4 h-4 text-gray-600" data-testid="icon-private-group" />
-                          )}
-                        </CardTitle>
-                        <CardDescription>Owner</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          <div className="flex gap-2">
+                    <Card key={group.id} className="hover-elevate p-4" data-testid={`card-group-${group.id}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold text-gray-800 truncate">{group.name}</h3>
+                            {group.isPublic ? (
+                              <Globe className="w-3 h-3 text-green-600 flex-shrink-0" data-testid="icon-public-group" />
+                            ) : (
+                              <Lock className="w-3 h-3 text-gray-600 flex-shrink-0" data-testid="icon-private-group" />
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-600 mb-2">Owner</p>
+                          <div className="flex gap-1">
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => viewMembers(group)}
-                              className="flex-1"
-                              data-testid={`button-view-members-${group.id}`}
+                              onClick={() => openInviteDialog(group)}
+                              data-testid={`button-invite-${group.id}`}
                             >
-                              <Users className="w-4 h-4 mr-2" />
-                              Members
+                              <UserPlus className="w-3 h-3 mr-1" />
+                              Invite
                             </Button>
                             <Button
                               variant="outline"
@@ -395,21 +416,19 @@ export default function UserGroupsPage() {
                               onClick={() => handleDelete(group.id)}
                               data-testid={`button-delete-${group.id}`}
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3 h-3" />
                             </Button>
                           </div>
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => openInviteDialog(group)}
-                            className="w-full"
-                            data-testid={`button-invite-${group.id}`}
-                          >
-                            <UserPlus className="w-4 h-4 mr-2" />
-                            Invite Members
-                          </Button>
                         </div>
-                      </CardContent>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => viewMembers(group)}
+                          data-testid={`button-view-members-${group.id}`}
+                        >
+                          <Users className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </Card>
                   ))}
                 </div>
@@ -422,32 +441,30 @@ export default function UserGroupsPage() {
                   <UserPlus className="w-6 h-6 text-blue-600" />
                   Groups I'm In
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {memberGroups.map((group) => (
-                    <Card key={group.id} className="hover-elevate" data-testid={`card-member-group-${group.id}`}>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          {group.name}
-                          {group.isPublic ? (
-                            <Globe className="w-4 h-4 text-green-600" />
-                          ) : (
-                            <Lock className="w-4 h-4 text-gray-600" />
-                          )}
-                        </CardTitle>
-                        <CardDescription>Member</CardDescription>
-                      </CardHeader>
-                      <CardContent>
+                    <Card key={group.id} className="hover-elevate p-4" data-testid={`card-member-group-${group.id}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold text-gray-800 truncate">{group.name}</h3>
+                            {group.isPublic ? (
+                              <Globe className="w-3 h-3 text-green-600 flex-shrink-0" />
+                            ) : (
+                              <Lock className="w-3 h-3 text-gray-600 flex-shrink-0" />
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-600">Member</p>
+                        </div>
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
                           onClick={() => viewMembers(group)}
-                          className="w-full"
                           data-testid={`button-view-members-${group.id}`}
                         >
-                          <Users className="w-4 h-4 mr-2" />
-                          View Members
+                          <Users className="w-4 h-4" />
                         </Button>
-                      </CardContent>
+                      </div>
                     </Card>
                   ))}
                 </div>
@@ -460,44 +477,43 @@ export default function UserGroupsPage() {
                   <Globe className="w-6 h-6 text-green-600" />
                   Public Groups
                 </h2>
-                <p className="text-gray-600 mb-4">
+                <p className="text-gray-600 mb-4 text-sm">
                   Join public groups to share and access word lists
                 </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {publicGroups.map((group) => (
-                    <Card key={group.id} className="hover-elevate" data-testid={`card-public-group-${group.id}`}>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          {group.name}
-                          <Globe className="w-4 h-4 text-green-600" />
-                        </CardTitle>
-                        <CardDescription>Public Group</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {publicGroups.map((group) => {
+                    const hasPendingRequest = pendingRequestGroupIds.has(group.id);
+                    return (
+                      <Card key={group.id} className="hover-elevate p-4" data-testid={`card-public-group-${group.id}`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-semibold text-gray-800 truncate">{group.name}</h3>
+                              <Globe className="w-3 h-3 text-green-600 flex-shrink-0" />
+                            </div>
+                            <p className="text-xs text-gray-600 mb-2">Public Group</p>
+                            <Button
+                              size="sm"
+                              onClick={() => requestAccessMutation.mutate(group.id)}
+                              disabled={hasPendingRequest || requestAccessMutation.isPending}
+                              variant={hasPendingRequest ? "outline" : "default"}
+                              data-testid={`button-request-access-${group.id}`}
+                            >
+                              {hasPendingRequest ? "Request Pending" : requestAccessMutation.isPending ? "Sending..." : "Join"}
+                            </Button>
+                          </div>
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={() => viewMembers(group)}
-                            className="flex-1"
                             data-testid={`button-view-members-${group.id}`}
                           >
-                            <Users className="w-4 h-4 mr-2" />
-                            Members
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => requestAccessMutation.mutate(group.id)}
-                            disabled={requestAccessMutation.isPending}
-                            data-testid={`button-request-access-${group.id}`}
-                          >
-                            <UserPlus className="w-4 h-4 mr-2" />
-                            {requestAccessMutation.isPending ? "Sending..." : "Join"}
+                            <Users className="w-4 h-4" />
                           </Button>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                      </Card>
+                    );
+                  })}
                 </div>
               </div>
             )}

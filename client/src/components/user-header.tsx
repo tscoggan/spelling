@@ -77,11 +77,13 @@ export function UserHeader() {
   });
 
   const acceptInviteMutation = useMutation({
-    mutationFn: async ({ groupId }: { groupId: number }) => {
+    mutationFn: async ({ groupId, todoId }: { groupId: number; todoId: number }) => {
       const response = await apiRequest("POST", `/api/user-groups/${groupId}/accept-invite`, {});
-      return await response.json();
+      return { data: await response.json(), todoId };
     },
-    onSuccess: () => {
+    onSuccess: async (result) => {
+      // Complete the todo only after successful acceptance
+      await apiRequest("POST", `/api/user-to-dos/${result.todoId}/complete`, {});
       queryClient.invalidateQueries({ queryKey: ["/api/user-groups"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos/count"] });
@@ -100,11 +102,13 @@ export function UserHeader() {
   });
 
   const approveAccessRequestMutation = useMutation({
-    mutationFn: async ({ groupId, userId }: { groupId: number; userId: number }) => {
+    mutationFn: async ({ groupId, userId, todoId }: { groupId: number; userId: number; todoId: number }) => {
       const response = await apiRequest("POST", `/api/user-groups/${groupId}/approve-request`, { userId });
-      return await response.json();
+      return { data: await response.json(), todoId };
     },
-    onSuccess: () => {
+    onSuccess: async (result) => {
+      // Complete the todo only after successful approval
+      await apiRequest("POST", `/api/user-to-dos/${result.todoId}/complete`, {});
       queryClient.invalidateQueries({ queryKey: ["/api/user-groups"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos/count"] });
@@ -128,14 +132,12 @@ export function UserHeader() {
 
   const handleAcceptInvite = (todo: any) => {
     const metadata = JSON.parse(todo.metadata);
-    acceptInviteMutation.mutate({ groupId: metadata.groupId });
-    completeTodoMutation.mutate(todo.id);
+    acceptInviteMutation.mutate({ groupId: metadata.groupId, todoId: todo.id });
   };
 
   const handleApproveRequest = (todo: any) => {
     const metadata = JSON.parse(todo.metadata);
-    approveAccessRequestMutation.mutate({ groupId: metadata.groupId, userId: metadata.requesterId });
-    completeTodoMutation.mutate(todo.id);
+    approveAccessRequestMutation.mutate({ groupId: metadata.groupId, userId: metadata.requesterId, todoId: todo.id });
   };
 
   const handleDecline = (todoId: number) => {
