@@ -89,7 +89,7 @@ export default function WordListsPage() {
         assignImages: data.assignImages,
         gradeLevel: data.gradeLevel || undefined,
       };
-      if (data.visibility === "groups" && data.selectedGroupIds.length > 0) {
+      if (data.visibility === "groups") {
         payload.groupIds = data.selectedGroupIds;
       }
       const response = await apiRequest("POST", "/api/word-lists", payload);
@@ -133,7 +133,7 @@ export default function WordListsPage() {
         assignImages: data.assignImages,
         gradeLevel: data.gradeLevel || undefined,
       };
-      if (data.visibility === "groups" && data.selectedGroupIds && data.selectedGroupIds.length > 0) {
+      if (data.visibility === "groups" && data.selectedGroupIds !== undefined) {
         updates.groupIds = data.selectedGroupIds;
       }
       if (data.words) {
@@ -681,7 +681,7 @@ export default function WordListsPage() {
                         )}
                       </div>
                       {formData.selectedGroupIds.length > 0 && (
-                        <p className="text-sm text-gray-600 mt-2">
+                        <p className="text-sm text-gray-600 mt-2" data-testid="text-selected-groups-count">
                           {formData.selectedGroupIds.length} group{formData.selectedGroupIds.length > 1 ? 's' : ''} selected
                         </p>
                       )}
