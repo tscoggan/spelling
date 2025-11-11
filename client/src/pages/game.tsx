@@ -119,11 +119,21 @@ export default function Game() {
     },
   });
 
-  // Durstenfeld shuffle algorithm for randomizing word order
+  // Seeded random number generator using current timestamp
+  const createSeededRandom = (seed: number) => {
+    let state = seed;
+    return () => {
+      state = (state * 1664525 + 1013904223) % 4294967296;
+      return state / 4294967296;
+    };
+  };
+
+  // Durstenfeld shuffle algorithm for randomizing word order with timestamp seed
   const shuffleArray = <T,>(array: T[]): T[] => {
     const shuffled = [...array];
+    const random = createSeededRandom(Date.now());
     for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(random() * (i + 1));
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
     return shuffled;
