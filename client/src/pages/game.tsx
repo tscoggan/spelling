@@ -101,6 +101,9 @@ export default function Game() {
   const [highlightedMistakes, setHighlightedMistakes] = useState<Set<string>>(new Set());
   const [completedGrid, setCompletedGrid] = useState<{inputs: {[key: string]: string}, grid: CrosswordGrid} | null>(null);
   const [finalAccuracy, setFinalAccuracy] = useState<number>(0);
+  
+  // Generate a unique session timestamp for each game to ensure fresh word shuffling
+  const [sessionTimestamp] = useState(() => Date.now());
 
   const createSessionMutation = useMutation({
     mutationFn: async (sessionData: { difficulty: string; gameMode: string; userId: number | null; customListId?: number }) => {
@@ -141,8 +144,8 @@ export default function Game() {
 
   const { data: words, isLoading } = useQuery<Word[]>({
     queryKey: listId 
-      ? ['/api/word-lists', listId, gameMode, quizCount] 
-      : ['/api/words', difficulty, gameMode, quizCount],
+      ? ['/api/word-lists', listId, gameMode, quizCount, sessionTimestamp] 
+      : ['/api/words', difficulty, gameMode, quizCount, sessionTimestamp],
     queryFn: async () => {
       if (listId) {
         const response = await fetch(`/api/word-lists/${listId}`);
