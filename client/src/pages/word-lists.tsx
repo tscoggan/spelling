@@ -458,7 +458,13 @@ export default function WordListsPage() {
         animate={{ opacity: 1, y: 0 }}
         className="max-w-6xl mx-auto relative z-10"
       >
-        <UserHeader />
+        <div className="flex items-start justify-between mb-6">
+          <Button variant="outline" onClick={() => setLocation("/")} data-testid="button-home">
+            <Home className="w-4 h-4 mr-2" />
+            Home
+          </Button>
+          <UserHeader />
+        </div>
         
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <div>
@@ -725,10 +731,6 @@ export default function WordListsPage() {
                 </form>
               </DialogContent>
             </Dialog>
-            <Button variant="outline" onClick={() => setLocation("/")} data-testid="button-home">
-              <Home className="w-4 h-4 mr-2" />
-              Home
-            </Button>
           </div>
         </div>
 

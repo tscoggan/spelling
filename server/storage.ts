@@ -515,6 +515,17 @@ export class DatabaseStorage implements IStorage {
     
     const publicGroups = await db.select().from(userGroups).where(eq(userGroups.isPublic, true));
     
+    // Get member counts for all groups in one query
+    const memberCounts = await db
+      .select({
+        groupId: userGroupMembership.groupId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(userGroupMembership)
+      .groupBy(userGroupMembership.groupId);
+    
+    const memberCountMap = new Map(memberCounts.map(mc => [mc.groupId, mc.count]));
+    
     // Create sets for owned and member group IDs
     const ownedGroupIds = new Set(ownedGroups.map(g => g.id));
     const memberGroupIds = new Set(memberGroups.map(g => g.id));
@@ -543,11 +554,12 @@ export class DatabaseStorage implements IStorage {
     
     const uniqueGroups = Array.from(groupMap.values());
     
-    // Add isMember and isOwner flags to each group
+    // Add isMember, isOwner flags, and memberCount to each group
     return uniqueGroups.map(group => ({
       ...group,
       isOwner: ownedGroupIds.has(group.id),
       isMember: ownedGroupIds.has(group.id) || memberGroupIds.has(group.id),
+      memberCount: memberCountMap.get(group.id) || 0,
     }));
   }
 

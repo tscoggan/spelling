@@ -283,7 +283,13 @@ export default function UserGroupsPage() {
       ></div>
 
       <div className="max-w-6xl mx-auto relative z-10">
-        <UserHeader />
+        <div className="flex items-start justify-between mb-6">
+          <Button variant="outline" onClick={() => setLocation("/")} data-testid="button-home">
+            <Home className="w-4 h-4 mr-2" />
+            Home
+          </Button>
+          <UserHeader />
+        </div>
         
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -348,10 +354,6 @@ export default function UserGroupsPage() {
                 </form>
               </DialogContent>
             </Dialog>
-            <Button variant="outline" onClick={() => setLocation("/")} data-testid="button-home">
-              <Home className="w-4 h-4 mr-2" />
-              Home
-            </Button>
           </div>
         </div>
 
@@ -408,14 +410,17 @@ export default function UserGroupsPage() {
                             </Button>
                           </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => viewMembers(group)}
-                          data-testid={`button-view-members-${group.id}`}
-                        >
-                          <Users className="w-4 h-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-600" data-testid={`text-member-count-${group.id}`}>{group.memberCount || 0}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => viewMembers(group)}
+                            data-testid={`button-view-members-${group.id}`}
+                          >
+                            <Users className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                     </Card>
                   ))}
@@ -444,14 +449,17 @@ export default function UserGroupsPage() {
                           </div>
                           <p className="text-xs text-gray-600">Member</p>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => viewMembers(group)}
-                          data-testid={`button-view-members-${group.id}`}
-                        >
-                          <Users className="w-4 h-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-600" data-testid={`text-member-count-${group.id}`}>{group.memberCount || 0}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => viewMembers(group)}
+                            data-testid={`button-view-members-${group.id}`}
+                          >
+                            <Users className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                     </Card>
                   ))}
@@ -490,14 +498,17 @@ export default function UserGroupsPage() {
                               {hasPendingRequest ? "Request Pending" : requestAccessMutation.isPending ? "Sending..." : "Join"}
                             </Button>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => viewMembers(group)}
-                            data-testid={`button-view-members-${group.id}`}
-                          >
-                            <Users className="w-4 h-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-gray-600" data-testid={`text-member-count-${group.id}`}>{group.memberCount || 0}</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => viewMembers(group)}
+                              data-testid={`button-view-members-${group.id}`}
+                            >
+                              <Users className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
                       </Card>
                     );
