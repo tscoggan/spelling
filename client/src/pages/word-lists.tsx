@@ -312,10 +312,12 @@ export default function WordListsPage() {
   };
 
   const filteredUserLists = useMemo(() => {
-    if (gradeFilter === "all") return userLists;
-    if (gradeFilter === "none") return userLists.filter(list => !list.gradeLevel);
-    return userLists.filter(list => list.gradeLevel === gradeFilter);
-  }, [userLists, gradeFilter]);
+    // Only show lists owned by the current user
+    const ownedLists = userLists.filter(list => list.userId === user?.id);
+    if (gradeFilter === "all") return ownedLists;
+    if (gradeFilter === "none") return ownedLists.filter(list => !list.gradeLevel);
+    return ownedLists.filter(list => list.gradeLevel === gradeFilter);
+  }, [userLists, gradeFilter, user?.id]);
 
   const filteredPublicLists = useMemo(() => {
     if (gradeFilter === "all") return publicLists;
