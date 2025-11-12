@@ -228,7 +228,12 @@ export default function UserGroupsPage() {
   };
 
   const { data: todos = [] } = useQuery<any[]>({
-    queryKey: ["/api/user-to-dos"],
+    queryKey: ["/api/user-to-dos", user?.id],
+    queryFn: async () => {
+      const res = await fetch("/api/user-to-dos", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch todos");
+      return await res.json();
+    },
     enabled: !!user,
   });
 
@@ -374,17 +379,7 @@ export default function UserGroupsPage() {
                 My Groups
               </h2>
               {ownedGroups.length === 0 ? (
-                <Card className="p-8 text-center">
-                  <p className="text-gray-600">You haven't created any groups yet</p>
-                  <Button
-                    onClick={() => setCreateDialogOpen(true)}
-                    className="mt-4"
-                    data-testid="button-create-first-group"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Your First Group
-                  </Button>
-                </Card>
+                <p className="text-gray-600 text-sm">None</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {ownedGroups.map((group) => (

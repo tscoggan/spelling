@@ -24,12 +24,22 @@ export function UserHeader() {
   const { toast } = useToast();
 
   const { data: todoCount = 0 } = useQuery<number>({
-    queryKey: ["/api/user-to-dos/count"],
+    queryKey: ["/api/user-to-dos/count", user?.id],
+    queryFn: async () => {
+      const res = await fetch("/api/user-to-dos/count", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch todo count");
+      return await res.json();
+    },
     enabled: !!user,
   });
 
   const { data: todos = [] } = useQuery<any[]>({
-    queryKey: ["/api/user-to-dos"],
+    queryKey: ["/api/user-to-dos", user?.id],
+    queryFn: async () => {
+      const res = await fetch("/api/user-to-dos", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch todos");
+      return await res.json();
+    },
     enabled: !!user && todoModalOpen,
   });
 
@@ -38,20 +48,22 @@ export function UserHeader() {
       await apiRequest("POST", `/api/user-to-dos/${todoId}/complete`, {});
     },
     onMutate: async (todoId: number) => {
-      await queryClient.cancelQueries({ queryKey: ["/api/user-to-dos"] });
-      await queryClient.cancelQueries({ queryKey: ["/api/user-to-dos/count"] });
+      if (!user?.id) return;
+      
+      await queryClient.cancelQueries({ queryKey: ["/api/user-to-dos", user.id] });
+      await queryClient.cancelQueries({ queryKey: ["/api/user-to-dos/count", user.id] });
 
-      const previousTodos = queryClient.getQueryData<any[]>(["/api/user-to-dos"]);
-      const previousCount = queryClient.getQueryData<number>(["/api/user-to-dos/count"]);
+      const previousTodos = queryClient.getQueryData<any[]>(["/api/user-to-dos", user.id]);
+      const previousCount = queryClient.getQueryData<number>(["/api/user-to-dos/count", user.id]);
 
-      queryClient.setQueryData<any[]>(["/api/user-to-dos"], (old) => 
+      queryClient.setQueryData<any[]>(["/api/user-to-dos", user.id], (old) => 
         old ? old.filter(todo => todo.id !== todoId) : []
       );
-      queryClient.setQueryData<number>(["/api/user-to-dos/count"], (old) => 
+      queryClient.setQueryData<number>(["/api/user-to-dos/count", user.id], (old) => 
         Math.max(0, (old || 1) - 1)
       );
 
-      return { previousTodos, previousCount };
+      return { previousTodos, previousCount, userId: user.id };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos"] });
@@ -62,11 +74,13 @@ export function UserHeader() {
       });
     },
     onError: (error: any, _todoId, context) => {
-      if (context?.previousTodos) {
-        queryClient.setQueryData(["/api/user-to-dos"], context.previousTodos);
-      }
-      if (context?.previousCount !== undefined) {
-        queryClient.setQueryData(["/api/user-to-dos/count"], context.previousCount);
+      if (context?.userId) {
+        if (context.previousTodos) {
+          queryClient.setQueryData(["/api/user-to-dos", context.userId], context.previousTodos);
+        }
+        if (context.previousCount !== undefined) {
+          queryClient.setQueryData(["/api/user-to-dos/count", context.userId], context.previousCount);
+        }
       }
       toast({
         title: "Error",
