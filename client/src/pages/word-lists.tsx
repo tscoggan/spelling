@@ -677,20 +677,13 @@ export default function WordListsPage() {
                                   <label htmlFor={`group-${group.id}`} className="text-sm font-medium cursor-pointer">
                                     {group.name} ({group.memberCount || 0} {(group.memberCount || 0) === 1 ? 'member' : 'members'})
                                   </label>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    {isOwned ? (
-                                      <Badge variant="secondary" className="text-xs">
-                                        Owner
-                                      </Badge>
-                                    ) : (
-                                      <Badge variant="outline" className="text-xs">
-                                        Member
-                                      </Badge>
-                                    )}
-                                    <span className="text-xs text-gray-500">
-                                      {group.description}
-                                    </span>
-                                  </div>
+                                  {group.description && (
+                                    <div className="mt-1">
+                                      <span className="text-xs text-gray-500">
+                                        {group.description}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             );
