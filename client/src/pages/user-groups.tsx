@@ -90,7 +90,8 @@ export default function UserGroupsPage() {
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-pending-requests"] });
       toast({
         title: "Success!",
         description: "Your request to join this group has been sent to the group owner",
@@ -156,7 +157,7 @@ export default function UserGroupsPage() {
     queryKey: ["/api/users/search", searchQuery],
     queryFn: async () => {
       if (!searchQuery || searchQuery.length < 2) return [];
-      const response = await fetch(`/api/users/search?q=${encodeURIComponent(searchQuery)}`);
+      const response = await fetch(`/api/users/search?query=${encodeURIComponent(searchQuery)}`, { credentials: "include" });
       if (!response.ok) throw new Error("Failed to search users");
       return await response.json();
     },
@@ -227,11 +228,11 @@ export default function UserGroupsPage() {
     removeMemberMutation.mutate({ groupId: selectedGroup.id, userId: memberToRemove.id });
   };
 
-  const { data: todos = [] } = useQuery<any[]>({
-    queryKey: ["/api/user-to-dos", user?.id],
+  const { data: pendingRequests = [] } = useQuery<any[]>({
+    queryKey: ["/api/user-pending-requests", user?.id],
     queryFn: async () => {
-      const res = await fetch("/api/user-to-dos", { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch todos");
+      const res = await fetch("/api/user-pending-requests", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch pending requests");
       return await res.json();
     },
     enabled: !!user,
@@ -239,16 +240,8 @@ export default function UserGroupsPage() {
 
   // Create set of group IDs with pending join requests
   const pendingRequestGroupIds = new Set(
-    todos
-      .filter(todo => todo.type === 'group_access_request')
-      .map(todo => {
-        try {
-          const metadata = JSON.parse(todo.metadata);
-          return metadata.groupId;
-        } catch {
-          return null;
-        }
-      })
+    pendingRequests
+      .map(request => request.groupId)
       .filter(Boolean)
   );
 

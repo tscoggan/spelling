@@ -83,6 +83,7 @@ export interface IStorage {
   
   createToDoItem(todo: any): Promise<any>;
   getUserToDoItems(userId: number): Promise<any[]>;
+  getUserPendingRequests(userId: number): Promise<any[]>;
   getToDoItem(todoId: number): Promise<any>;
   updateToDoItem(todoId: number, updates: any): Promise<any>;
   deleteToDoItem(todoId: number): Promise<boolean>;
@@ -578,6 +579,18 @@ export class DatabaseStorage implements IStorage {
       .from(userToDoItems)
       .where(and(
         eq(userToDoItems.userId, userId),
+        eq(userToDoItems.completed, false)
+      ))
+      .orderBy(desc(userToDoItems.createdAt));
+  }
+
+  async getUserPendingRequests(userId: number): Promise<UserToDoItem[]> {
+    return await db
+      .select()
+      .from(userToDoItems)
+      .where(and(
+        eq(userToDoItems.requesterId, userId),
+        eq(userToDoItems.type, 'group_access_request'),
         eq(userToDoItems.completed, false)
       ))
       .orderBy(desc(userToDoItems.createdAt));

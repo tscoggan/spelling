@@ -706,8 +706,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingInvites = await storage.getUserToDoItems(targetUserIdNum);
       const hasPendingInvite = existingInvites.some(
         todo => todo.type === 'group_invite' && 
-        todo.metadata && 
-        JSON.parse(todo.metadata).groupId === groupId
+        todo.groupId === groupId
       );
 
       if (hasPendingInvite) {
@@ -715,18 +714,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create to-do notification for the invited user
-      const metadata = JSON.stringify({
-        groupId,
-        groupName: group.name,
-        inviterUsername: currentUser.username,
-        inviterId: currentUser.id,
-      });
-
       await storage.createToDoItem({
         userId: targetUserIdNum,
         type: 'group_invite',
         message: `${currentUser.username} invited you to join the group "${group.name}"`,
-        metadata,
+        groupId,
+        groupName: group.name,
+        requesterUsername: currentUser.username,
+        requesterId: currentUser.id,
       });
 
       res.status(201).json({ message: "Invitation sent successfully" });
@@ -769,9 +764,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ownerTodos = await storage.getUserToDoItems(group.ownerUserId);
       const hasPendingRequest = ownerTodos.some(
         todo => todo.type === 'group_access_request' && 
-        todo.metadata && 
-        JSON.parse(todo.metadata).requesterId === currentUser.id &&
-        JSON.parse(todo.metadata).groupId === groupId
+        todo.requesterId === currentUser.id &&
+        todo.groupId === groupId
       );
 
       if (hasPendingRequest) {
@@ -779,18 +773,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create to-do notification for the group owner
-      const metadata = JSON.stringify({
-        groupId,
-        groupName: group.name,
-        requesterUsername: currentUser.username,
-        requesterId: currentUser.id,
-      });
-
       await storage.createToDoItem({
         userId: group.ownerUserId,
         type: 'group_access_request',
         message: `${currentUser.username} requested to join the group "${group.name}"`,
-        metadata,
+        groupId,
+        groupName: group.name,
+        requesterUsername: currentUser.username,
+        requesterId: currentUser.id,
       });
 
       res.status(201).json({ message: "Access request sent successfully" });
@@ -822,8 +812,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userTodos = await storage.getUserToDoItems(currentUser.id);
       const hasInvite = userTodos.some(
         todo => todo.type === 'group_invite' && 
-        todo.metadata && 
-        JSON.parse(todo.metadata).groupId === groupId
+        todo.groupId === groupId
       );
 
       if (!hasInvite) {
@@ -920,6 +909,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching todos count:", error);
       res.status(500).json({ error: "Failed to fetch todos count" });
+    }
+  });
+
+  // Get pending access requests for the current user (as requester)
+  app.get("/api/user-pending-requests", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const user = req.user as any;
+      const pendingRequests = await storage.getUserPendingRequests(user.id);
+      res.json(pendingRequests);
+    } catch (error) {
+      console.error("Error fetching pending requests:", error);
+      res.status(500).json({ error: "Failed to fetch pending requests" });
     }
   });
 
