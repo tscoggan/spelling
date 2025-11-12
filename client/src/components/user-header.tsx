@@ -145,13 +145,11 @@ export function UserHeader() {
   };
 
   const handleAcceptInvite = (todo: any) => {
-    const metadata = JSON.parse(todo.metadata);
-    acceptInviteMutation.mutate({ groupId: metadata.groupId, todoId: todo.id });
+    acceptInviteMutation.mutate({ groupId: todo.groupId, todoId: todo.id });
   };
 
   const handleApproveRequest = (todo: any) => {
-    const metadata = JSON.parse(todo.metadata);
-    approveAccessRequestMutation.mutate({ groupId: metadata.groupId, userId: metadata.requesterId, todoId: todo.id });
+    approveAccessRequestMutation.mutate({ groupId: todo.groupId, userId: todo.requesterId, todoId: todo.id });
   };
 
   const handleDecline = (todoId: number) => {

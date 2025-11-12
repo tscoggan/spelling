@@ -664,18 +664,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const groupId = parseInt(req.params.id);
-      const { userId: targetUserId } = req.body;
+      const { userIds } = req.body;
       const currentUser = req.user as any;
 
       if (isNaN(groupId)) {
         return res.status(400).json({ error: "Invalid group ID" });
       }
 
-      if (!targetUserId || isNaN(parseInt(targetUserId))) {
-        return res.status(400).json({ error: "Valid user ID is required" });
+      if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+        return res.status(400).json({ error: "Valid user IDs array is required" });
       }
-
-      const targetUserIdNum = parseInt(targetUserId);
 
       const group = await storage.getUserGroup(groupId);
       if (!group) {
@@ -686,48 +684,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Only group owner can invite members" });
       }
 
-      const targetUser = await storage.getUser(targetUserIdNum);
-      if (!targetUser) {
-        return res.status(404).json({ error: "Target user not found" });
+      const results = {
+        success: [] as number[],
+        errors: [] as { userId: number; error: string }[]
+      };
+
+      for (const userId of userIds) {
+        const targetUserIdNum = parseInt(String(userId));
+        
+        if (isNaN(targetUserIdNum)) {
+          results.errors.push({ userId, error: "Invalid user ID" });
+          continue;
+        }
+
+        const targetUser = await storage.getUser(targetUserIdNum);
+        if (!targetUser) {
+          results.errors.push({ userId: targetUserIdNum, error: "User not found" });
+          continue;
+        }
+
+        const isAlreadyMember = await storage.isUserGroupMember(targetUserIdNum, groupId);
+        if (isAlreadyMember) {
+          results.errors.push({ userId: targetUserIdNum, error: "Already a member" });
+          continue;
+        }
+
+        if (group.ownerUserId === targetUserIdNum) {
+          results.errors.push({ userId: targetUserIdNum, error: "User is the owner" });
+          continue;
+        }
+
+        const existingInvites = await storage.getUserToDoItems(targetUserIdNum);
+        const hasPendingInvite = existingInvites.some(
+          todo => todo.type === 'group_invite' && todo.groupId === groupId
+        );
+
+        if (hasPendingInvite) {
+          results.errors.push({ userId: targetUserIdNum, error: "Invite already pending" });
+          continue;
+        }
+
+        await storage.createToDoItem({
+          userId: targetUserIdNum,
+          type: 'group_invite',
+          message: `${currentUser.username} invited you to join the group "${group.name}"`,
+          groupId,
+          groupName: group.name,
+          requesterUsername: currentUser.username,
+          requesterId: currentUser.id,
+        });
+
+        results.success.push(targetUserIdNum);
       }
 
-      // Check if user is already a member
-      const isAlreadyMember = await storage.isUserGroupMember(targetUserIdNum, groupId);
-      if (isAlreadyMember) {
-        return res.status(400).json({ error: "User is already a member of this group" });
+      if (results.success.length === 0) {
+        return res.status(400).json({ error: "No invitations were sent", details: results.errors });
       }
 
-      // Check if user is the owner
-      if (group.ownerUserId === targetUserIdNum) {
-        return res.status(400).json({ error: "User is the owner of this group" });
-      }
-
-      // Check for existing pending invite to prevent duplicates
-      const existingInvites = await storage.getUserToDoItems(targetUserIdNum);
-      const hasPendingInvite = existingInvites.some(
-        todo => todo.type === 'group_invite' && 
-        todo.groupId === groupId
-      );
-
-      if (hasPendingInvite) {
-        return res.status(400).json({ error: "An invite to this group is already pending" });
-      }
-
-      // Create to-do notification for the invited user
-      await storage.createToDoItem({
-        userId: targetUserIdNum,
-        type: 'group_invite',
-        message: `${currentUser.username} invited you to join the group "${group.name}"`,
-        groupId,
-        groupName: group.name,
-        requesterUsername: currentUser.username,
-        requesterId: currentUser.id,
+      res.status(201).json({ 
+        message: `Successfully invited ${results.success.length} user(s)`,
+        results
       });
-
-      res.status(201).json({ message: "Invitation sent successfully" });
     } catch (error) {
-      console.error("Error inviting user to group:", error);
-      res.status(500).json({ error: "Failed to send invitation" });
+      console.error("Error inviting users to group:", error);
+      res.status(500).json({ error: "Failed to send invitations" });
     }
   });
 
