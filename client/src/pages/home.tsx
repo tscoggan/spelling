@@ -52,6 +52,11 @@ export default function Home() {
     enabled: wordListDialogOpen,
   });
 
+  const { data: sharedLists } = useQuery<CustomWordList[]>({
+    queryKey: ["/api/word-lists/shared-with-me"],
+    enabled: wordListDialogOpen,
+  });
+
   const handleModeClick = (mode: GameMode) => {
     setSelectedMode(mode);
     setFilterDifficulty("all");
@@ -70,7 +75,8 @@ export default function Home() {
   const allLists = useMemo(() => {
     const myLists = (customLists || []).map(list => ({ ...list, isMine: true }));
     const pubLists = (publicLists || []).map(list => ({ ...list, isMine: false }));
-    const combined = [...myLists, ...pubLists];
+    const shared = (sharedLists || []).map(list => ({ ...list, isMine: false, isShared: true }));
+    const combined = [...myLists, ...pubLists, ...shared];
     
     // Remove duplicates (user's own public lists)
     const uniqueLists = combined.filter((list, index, self) => 
@@ -88,19 +94,20 @@ export default function Home() {
     
     // Sort by name
     return filtered.sort((a, b) => a.name.localeCompare(b.name));
-  }, [customLists, publicLists, filterDifficulty, filterGradeLevel]);
+  }, [customLists, publicLists, sharedLists, filterDifficulty, filterGradeLevel]);
 
   const availableGradeLevels = useMemo(() => {
     const myLists = customLists || [];
     const pubLists = publicLists || [];
-    const combined = [...myLists, ...pubLists];
+    const shared = sharedLists || [];
+    const combined = [...myLists, ...pubLists, ...shared];
     const grades = new Set(combined.map(list => list.gradeLevel).filter(Boolean));
     return Array.from(grades).sort((a, b) => {
       const numA = parseInt(a || "0");
       const numB = parseInt(b || "0");
       return numA - numB;
     });
-  }, [customLists, publicLists]);
+  }, [customLists, publicLists, sharedLists]);
 
   const gameModes = [
     {
