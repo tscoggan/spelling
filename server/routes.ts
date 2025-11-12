@@ -236,6 +236,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/word-lists/shared-with-me", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const wordLists = await storage.getGroupSharedWordLists(req.user!.id);
+      res.json(wordLists);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch shared word lists" });
+    }
+  });
+
   app.get("/api/word-lists/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);

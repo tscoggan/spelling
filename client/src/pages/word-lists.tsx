@@ -63,6 +63,16 @@ export default function WordListsPage() {
     queryKey: ["/api/word-lists/public"],
   });
 
+  const { data: sharedLists = [], isLoading: loadingSharedLists } = useQuery<CustomWordList[]>({
+    queryKey: ["/api/word-lists/shared-with-me", user?.id],
+    queryFn: async () => {
+      const response = await fetch("/api/word-lists/shared-with-me", { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch shared word lists");
+      return await response.json();
+    },
+    enabled: !!user,
+  });
+
   const { data: userGroups = [] } = useQuery<any[]>({
     queryKey: ["/api/user-groups", user?.id],
     queryFn: async () => {
@@ -323,6 +333,12 @@ export default function WordListsPage() {
     return userLists.filter(list => list.gradeLevel === gradeFilter);
   }, [userLists, gradeFilter]);
 
+  const filteredSharedLists = useMemo(() => {
+    if (gradeFilter === "all") return sharedLists;
+    if (gradeFilter === "none") return sharedLists.filter(list => !list.gradeLevel);
+    return sharedLists.filter(list => list.gradeLevel === gradeFilter);
+  }, [sharedLists, gradeFilter]);
+
   const filteredPublicLists = useMemo(() => {
     if (gradeFilter === "all") return publicLists;
     if (gradeFilter === "none") return publicLists.filter(list => !list.gradeLevel);
@@ -331,7 +347,7 @@ export default function WordListsPage() {
 
   const availableGradeLevels = useMemo(() => {
     const grades = new Set<string>();
-    [...userLists, ...publicLists].forEach(list => {
+    [...userLists, ...sharedLists, ...publicLists].forEach(list => {
       if (list.gradeLevel) grades.add(list.gradeLevel);
     });
     return Array.from(grades).sort((a, b) => {
@@ -772,8 +788,9 @@ export default function WordListsPage() {
         )}
 
         <Tabs defaultValue="my-lists" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-2xl grid-cols-3">
             <TabsTrigger value="my-lists" data-testid="tab-my-lists">My Lists</TabsTrigger>
+            <TabsTrigger value="shared" data-testid="tab-shared">Shared With Me</TabsTrigger>
             <TabsTrigger value="public" data-testid="tab-public">Public Lists</TabsTrigger>
           </TabsList>
 
@@ -802,6 +819,28 @@ export default function WordListsPage() {
               </Card>
             ) : (
               filteredUserLists.map((list) => renderWordList(list, true))
+            )}
+          </TabsContent>
+
+          <TabsContent value="shared" className="space-y-4">
+            {loadingSharedLists ? (
+              <div className="text-center py-12">
+                <div className="text-gray-600">Loading shared word lists...</div>
+              </div>
+            ) : sharedLists.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-gray-600">No word lists have been shared with you yet</p>
+                </CardContent>
+              </Card>
+            ) : filteredSharedLists.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-gray-600">No word lists found for the selected grade level</p>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredSharedLists.map((list) => renderWordList(list, false))
             )}
           </TabsContent>
 

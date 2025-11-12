@@ -74,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.setQueryData(["/api/user"], null);
       // Clear all user-specific caches on logout
       queryClient.removeQueries({ queryKey: ["/api/word-lists"] });
+      queryClient.removeQueries({ queryKey: ["/api/word-lists/shared-with-me"] });
       queryClient.removeQueries({ queryKey: ["/api/user-groups"] });
       queryClient.removeQueries({ queryKey: ["/api/user-to-dos"] });
     },

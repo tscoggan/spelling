@@ -33,7 +33,7 @@ import {
   wordListUserGroups,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql, inArray } from "drizzle-orm";
+import { eq, desc, and, sql, inArray, not } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -65,6 +65,7 @@ export interface IStorage {
   getCustomWordList(id: number): Promise<CustomWordList | undefined>;
   getUserCustomWordLists(userId: number): Promise<CustomWordList[]>;
   getPublicCustomWordLists(): Promise<CustomWordList[]>;
+  getGroupSharedWordLists(userId: number): Promise<CustomWordList[]>;
   updateCustomWordList(id: number, updates: Partial<InsertCustomWordList>): Promise<CustomWordList | undefined>;
   deleteCustomWordList(id: number): Promise<boolean>;
   
@@ -453,6 +454,93 @@ export class DatabaseStorage implements IStorage {
     return wordLists.map(list => ({
       ...list,
       sharedGroups: [],
+    }));
+  }
+
+  async getGroupSharedWordLists(userId: number): Promise<any[]> {
+    // First, get all groups the user is a member of or owns
+    const userGroupIds = await db
+      .select({ groupId: userGroupMembership.groupId })
+      .from(userGroupMembership)
+      .where(eq(userGroupMembership.userId, userId));
+    
+    const ownedGroups = await db
+      .select({ groupId: userGroups.id })
+      .from(userGroups)
+      .where(eq(userGroups.ownerUserId, userId));
+    
+    const allGroupIds = [
+      ...userGroupIds.map(g => g.groupId),
+      ...ownedGroups.map(g => g.groupId)
+    ];
+    
+    if (allGroupIds.length === 0) {
+      return [];
+    }
+    
+    // Get word lists shared with these groups
+    const sharedListIds = await db
+      .select({ wordListId: wordListUserGroups.wordListId })
+      .from(wordListUserGroups)
+      .where(inArray(wordListUserGroups.groupId, allGroupIds));
+    
+    if (sharedListIds.length === 0) {
+      return [];
+    }
+    
+    const uniqueListIds = Array.from(new Set(sharedListIds.map(s => s.wordListId)));
+    
+    // Fetch the actual word lists (excluding ones owned by the user to avoid duplicates)
+    const wordLists = await db
+      .select({
+        id: customWordLists.id,
+        userId: customWordLists.userId,
+        name: customWordLists.name,
+        difficulty: customWordLists.difficulty,
+        words: customWordLists.words,
+        visibility: customWordLists.visibility,
+        assignImages: customWordLists.assignImages,
+        gradeLevel: customWordLists.gradeLevel,
+        createdAt: customWordLists.createdAt,
+        authorUsername: users.username,
+      })
+      .from(customWordLists)
+      .leftJoin(users, eq(customWordLists.userId, users.id))
+      .where(
+        and(
+          inArray(customWordLists.id, uniqueListIds),
+          not(eq(customWordLists.userId, userId))
+        )
+      )
+      .orderBy(desc(customWordLists.createdAt));
+    
+    // Fetch group information for these lists
+    const groupMappings = await db
+      .select({
+        wordListId: wordListUserGroups.wordListId,
+        groupId: wordListUserGroups.groupId,
+        groupName: userGroups.name,
+      })
+      .from(wordListUserGroups)
+      .leftJoin(userGroups, eq(wordListUserGroups.groupId, userGroups.id))
+      .where(inArray(wordListUserGroups.wordListId, uniqueListIds));
+    
+    // Create a map of word list ID to groups
+    const groupsByWordList = new Map<number, any[]>();
+    for (const mapping of groupMappings) {
+      if (!groupsByWordList.has(mapping.wordListId)) {
+        groupsByWordList.set(mapping.wordListId, []);
+      }
+      groupsByWordList.get(mapping.wordListId)!.push({
+        id: mapping.groupId,
+        name: mapping.groupName,
+      });
+    }
+    
+    // Add group information to word lists
+    return wordLists.map(list => ({
+      ...list,
+      sharedGroups: groupsByWordList.get(list.id) || [],
     }));
   }
 
