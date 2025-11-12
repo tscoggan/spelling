@@ -39,6 +39,11 @@ export default function WordListsPage() {
   const [jobId, setJobId] = useState<number | null>(null);
   const [editImagesDialogOpen, setEditImagesDialogOpen] = useState(false);
   const [editingImagesList, setEditingImagesList] = useState<CustomWordList | null>(null);
+  const [validationFeedbackOpen, setValidationFeedbackOpen] = useState(false);
+  const [validationFeedback, setValidationFeedback] = useState<{
+    removedWords: string[];
+    skippedWords: string[];
+  }>({ removedWords: [], skippedWords: [] });
   const [formData, setFormData] = useState({
     name: "",
     difficulty: "medium" as "easy" | "medium" | "hard",
@@ -122,20 +127,13 @@ export default function WordListsPage() {
       setDialogOpen(false);
       resetForm();
       
-      // Show validation feedback if any words were removed or skipped
-      if (data.removedWords && data.removedWords.length > 0) {
-        toast({
-          title: "Some words were removed",
-          description: `The following words were not found in the dictionary and have been removed: ${data.removedWords.join(", ")}`,
-          variant: "destructive",
+      // Show validation feedback dialog if any words were removed or skipped
+      if ((data.removedWords && data.removedWords.length > 0) || (data.skippedWords && data.skippedWords.length > 0)) {
+        setValidationFeedback({
+          removedWords: data.removedWords || [],
+          skippedWords: data.skippedWords || [],
         });
-      }
-      
-      if (data.skippedWords && data.skippedWords.length > 0) {
-        toast({
-          title: "Word validation incomplete",
-          description: `Could not validate ${data.skippedWords.length} word(s) due to dictionary service issues. These words were kept in the list.`,
-        });
+        setValidationFeedbackOpen(true);
       }
       
       // Show success message
@@ -187,20 +185,13 @@ export default function WordListsPage() {
       setEditingList(null);
       resetForm();
       
-      // Show validation feedback if any words were removed or skipped
-      if (data.removedWords && data.removedWords.length > 0) {
-        toast({
-          title: "Some words were removed",
-          description: `The following words were not found in the dictionary and have been removed: ${data.removedWords.join(", ")}`,
-          variant: "destructive",
+      // Show validation feedback dialog if any words were removed or skipped
+      if ((data.removedWords && data.removedWords.length > 0) || (data.skippedWords && data.skippedWords.length > 0)) {
+        setValidationFeedback({
+          removedWords: data.removedWords || [],
+          skippedWords: data.skippedWords || [],
         });
-      }
-      
-      if (data.skippedWords && data.skippedWords.length > 0) {
-        toast({
-          title: "Word validation incomplete",
-          description: `Could not validate ${data.skippedWords.length} word(s) due to dictionary service issues. These words were kept in the list.`,
-        });
+        setValidationFeedbackOpen(true);
       }
       
       // Show success message
@@ -909,6 +900,64 @@ export default function WordListsPage() {
             onOpenChange={setEditImagesDialogOpen}
           />
         )}
+
+        {/* Validation Feedback Dialog */}
+        <Dialog open={validationFeedbackOpen} onOpenChange={setValidationFeedbackOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Word Validation Results</DialogTitle>
+              <DialogDescription>
+                Some words could not be added to your list
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+              {validationFeedback.removedWords.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-destructive"></div>
+                    <h3 className="font-semibold text-destructive">Invalid Words Removed</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    The following words were not found in the dictionary and have been removed:
+                  </p>
+                  <div className="flex flex-wrap gap-2 p-3 bg-destructive/10 rounded-md">
+                    {validationFeedback.removedWords.map((word, index) => (
+                      <Badge key={index} variant="destructive" data-testid={`removed-word-${index}`}>
+                        {word}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {validationFeedback.skippedWords.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                    <h3 className="font-semibold text-yellow-700">Validation Incomplete</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Could not validate {validationFeedback.skippedWords.length} word(s) due to dictionary service issues. These words were kept in the list:
+                  </p>
+                  <div className="flex flex-wrap gap-2 p-3 bg-yellow-50 rounded-md">
+                    {validationFeedback.skippedWords.map((word, index) => (
+                      <Badge key={index} className="bg-yellow-200 text-yellow-900 hover:bg-yellow-300" data-testid={`skipped-word-${index}`}>
+                        {word}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex justify-end">
+              <Button onClick={() => setValidationFeedbackOpen(false)} data-testid="button-close-validation">
+                Close
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </motion.div>
     </div>
   );
