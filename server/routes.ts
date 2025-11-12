@@ -837,7 +837,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Add user to group
-      await storage.addUserGroupMember({ userGroupId: groupId, userId: currentUser.id });
+      await storage.addGroupMember(groupId, currentUser.id);
 
       res.status(200).json({ message: "Successfully joined the group" });
     } catch (error) {
@@ -883,7 +883,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Add user to group
-      await storage.addUserGroupMember({ userGroupId: groupId, userId: userIdNum });
+      await storage.addGroupMember(groupId, userIdNum);
 
       res.status(200).json({ message: "User added to group successfully" });
     } catch (error) {
