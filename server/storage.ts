@@ -91,6 +91,7 @@ export interface IStorage {
   searchUsers(query: string): Promise<any[]>;
   
   getWordListSharedGroupIds(wordListId: number): Promise<number[]>;
+  setWordListSharedGroups(wordListId: number, groupIds: number[]): Promise<void>;
   isUserMemberOfWordListGroups(userId: number, wordListId: number): Promise<boolean>;
   isUserGroupMember(userId: number, groupId: number): Promise<boolean>;
   
@@ -375,7 +376,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserCustomWordLists(userId: number): Promise<any[]> {
-    return await db
+    const wordLists = await db
       .select({
         id: customWordLists.id,
         userId: customWordLists.userId,
@@ -392,10 +393,45 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(customWordLists.userId, users.id))
       .where(eq(customWordLists.userId, userId))
       .orderBy(desc(customWordLists.createdAt));
+    
+    // Fetch group information for lists with 'groups' visibility
+    const wordListIds = wordLists.filter(list => list.visibility === 'groups').map(list => list.id);
+    if (wordListIds.length === 0) {
+      return wordLists;
+    }
+    
+    // Fetch all group mappings for these word lists
+    const groupMappings = await db
+      .select({
+        wordListId: wordListUserGroups.wordListId,
+        groupId: wordListUserGroups.groupId,
+        groupName: userGroups.name,
+      })
+      .from(wordListUserGroups)
+      .leftJoin(userGroups, eq(wordListUserGroups.groupId, userGroups.id))
+      .where(inArray(wordListUserGroups.wordListId, wordListIds));
+    
+    // Create a map of word list ID to groups
+    const groupsByWordList = new Map<number, any[]>();
+    for (const mapping of groupMappings) {
+      if (!groupsByWordList.has(mapping.wordListId)) {
+        groupsByWordList.set(mapping.wordListId, []);
+      }
+      groupsByWordList.get(mapping.wordListId)!.push({
+        id: mapping.groupId,
+        name: mapping.groupName,
+      });
+    }
+    
+    // Add group information to word lists (always return an array, never undefined)
+    return wordLists.map(list => ({
+      ...list,
+      sharedGroups: list.visibility === 'groups' ? (groupsByWordList.get(list.id) || []) : [],
+    }));
   }
 
   async getPublicCustomWordLists(): Promise<any[]> {
-    return await db
+    const wordLists = await db
       .select({
         id: customWordLists.id,
         userId: customWordLists.userId,
@@ -412,6 +448,12 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(customWordLists.userId, users.id))
       .where(eq(customWordLists.visibility, 'public'))
       .orderBy(desc(customWordLists.createdAt));
+    
+    // Public lists don't need group information, but return in consistent format
+    return wordLists.map(list => ({
+      ...list,
+      sharedGroups: [],
+    }));
   }
 
   async updateCustomWordList(id: number, updates: Partial<InsertCustomWordList>): Promise<CustomWordList | undefined> {
@@ -680,6 +722,26 @@ export class DatabaseStorage implements IStorage {
       .where(eq(wordListUserGroups.wordListId, wordListId));
     
     return sharedGroups.map(sg => sg.groupId);
+  }
+
+  async setWordListSharedGroups(wordListId: number, groupIds: number[]): Promise<void> {
+    // Use transaction to ensure atomic delete+insert
+    await db.transaction(async (tx) => {
+      // Delete existing mappings
+      await tx
+        .delete(wordListUserGroups)
+        .where(eq(wordListUserGroups.wordListId, wordListId));
+      
+      // Insert new mappings if any groups are specified
+      if (groupIds.length > 0) {
+        await tx.insert(wordListUserGroups).values(
+          groupIds.map(groupId => ({
+            wordListId,
+            groupId,
+          }))
+        );
+      }
+    });
   }
 
   async isUserMemberOfWordListGroups(userId: number, wordListId: number): Promise<boolean> {

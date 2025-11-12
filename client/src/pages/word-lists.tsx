@@ -230,6 +230,7 @@ export default function WordListsPage() {
   const handleEdit = (list: CustomWordList) => {
     setEditingList(list);
     const visibility = getVisibility(list);
+    const sharedGroups = (list as any).sharedGroups || [];
     setFormData({
       name: list.name,
       difficulty: list.difficulty as "easy" | "medium" | "hard",
@@ -237,7 +238,7 @@ export default function WordListsPage() {
       visibility,
       assignImages: (list as any).assignImages !== false,
       gradeLevel: list.gradeLevel || "",
-      selectedGroupIds: (list as any).groupIds || [],
+      selectedGroupIds: sharedGroups.map((g: any) => g.id),
     });
     setDialogOpen(true);
   };
@@ -354,7 +355,7 @@ export default function WordListsPage() {
                 <Globe className="w-4 h-4 text-green-600" data-testid="icon-public" />
               ) : getVisibility(list) === 'groups' ? (
                 <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded" data-testid="badge-groups">
-                  Groups
+                  Groups{list.sharedGroups && list.sharedGroups.length > 0 ? ` - ${list.sharedGroups.filter((g: any) => g.name).map((g: any) => g.name).join(', ')}` : ''}
                 </span>
               ) : (
                 <Lock className="w-4 h-4 text-gray-600" data-testid="icon-private" />

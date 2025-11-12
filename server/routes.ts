@@ -168,7 +168,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: req.user!.id,
       });
       
+      // Validate group requirements BEFORE creating the word list
+      if (listData.visibility === 'groups') {
+        if (!req.body.groupIds || !Array.isArray(req.body.groupIds) || req.body.groupIds.length === 0) {
+          return res.status(400).json({ error: "Groups visibility requires at least one group to be selected" });
+        }
+        // Validate that user owns or is a member of all specified groups
+        for (const groupId of req.body.groupIds) {
+          const group = await storage.getUserGroup(groupId);
+          if (!group) {
+            return res.status(400).json({ error: `Group ${groupId} not found` });
+          }
+          const isOwner = group.ownerUserId === req.user!.id;
+          const isMember = await storage.isUserGroupMember(req.user!.id, groupId);
+          if (!isOwner && !isMember) {
+            return res.status(403).json({ error: `You do not have access to group: ${group.name}` });
+          }
+        }
+      }
+      
       const wordList = await storage.createCustomWordList(listData);
+      
+      // Persist group mappings if visibility is 'groups'
+      if (listData.visibility === 'groups' && req.body.groupIds && Array.isArray(req.body.groupIds)) {
+        await storage.setWordListSharedGroups(wordList.id, req.body.groupIds);
+      }
       
       let illustrationJobId: number | undefined;
       if (listData.assignImages !== false) {
@@ -296,11 +320,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : req.body;
 
       const updates = insertCustomWordListSchema.partial().parse(bodyData);
+      
+      // Determine final visibility after this update
+      const finalVisibility = updates.visibility !== undefined ? updates.visibility : existingList.visibility;
+      const isChangingToGroups = updates.visibility === 'groups';
+      const isChangingFromGroups = existingList.visibility === 'groups' && updates.visibility !== undefined && updates.visibility !== 'groups';
+      const hasGroupsVisibility = existingList.visibility === 'groups';
+      
+      // If explicitly changing to 'groups', groupIds must be provided
+      if (isChangingToGroups) {
+        if (!req.body.groupIds || !Array.isArray(req.body.groupIds) || req.body.groupIds.length === 0) {
+          return res.status(400).json({ error: "Groups visibility requires at least one group to be selected" });
+        }
+      }
+      
+      // If groupIds are provided, validate them (whether changing visibility or not)
+      if (req.body.groupIds !== undefined && Array.isArray(req.body.groupIds)) {
+        if (req.body.groupIds.length === 0 && (isChangingToGroups || hasGroupsVisibility)) {
+          return res.status(400).json({ error: "Groups visibility requires at least one group to be selected" });
+        }
+        // Validate that user owns or is a member of all specified groups
+        for (const groupId of req.body.groupIds) {
+          const group = await storage.getUserGroup(groupId);
+          if (!group) {
+            return res.status(400).json({ error: `Group ${groupId} not found` });
+          }
+          const isOwner = group.ownerUserId === req.user!.id;
+          const isMember = await storage.isUserGroupMember(req.user!.id, groupId);
+          if (!isOwner && !isMember) {
+            return res.status(403).json({ error: `You do not have access to group: ${group.name}` });
+          }
+        }
+      }
+      
       const updatedList = await storage.updateCustomWordList(id, updates);
       
       if (!updatedList) {
         return res.status(500).json({ error: "Failed to update word list" });
       }
+      
+      // Handle group mappings based on visibility changes
+      if (isChangingFromGroups) {
+        // Changing FROM 'groups' to 'private' or 'public' - remove all group mappings
+        await storage.setWordListSharedGroups(id, []);
+      } else if (finalVisibility === 'groups' && req.body.groupIds !== undefined && Array.isArray(req.body.groupIds)) {
+        // Visibility is or remains 'groups' and groupIds are provided - update mappings
+        await storage.setWordListSharedGroups(id, req.body.groupIds);
+      }
+      // If visibility is 'groups' but groupIds not provided, keep existing mappings (no action needed)
       
       // If words were updated, check for new words and trigger image enrichment (if assignImages is enabled)
       let illustrationJobId: number | undefined;
