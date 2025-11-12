@@ -411,7 +411,7 @@ export default function UserGroupsPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="text-xs text-gray-600" data-testid={`text-member-count-${group.id}`}>{group.memberCount || 0} members</span>
+                          <span className="text-xs text-gray-600" data-testid={`text-member-count-${group.id}`}>{group.memberCount || 0} {(group.memberCount || 0) === 1 ? 'member' : 'members'}</span>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -450,7 +450,7 @@ export default function UserGroupsPage() {
                           <p className="text-xs text-gray-600">Member</p>
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="text-xs text-gray-600" data-testid={`text-member-count-${group.id}`}>{group.memberCount || 0} members</span>
+                          <span className="text-xs text-gray-600" data-testid={`text-member-count-${group.id}`}>{group.memberCount || 0} {(group.memberCount || 0) === 1 ? 'member' : 'members'}</span>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -499,7 +499,7 @@ export default function UserGroupsPage() {
                             </Button>
                           </div>
                           <div className="flex items-center gap-1">
-                            <span className="text-xs text-gray-600" data-testid={`text-member-count-${group.id}`}>{group.memberCount || 0} members</span>
+                            <span className="text-xs text-gray-600" data-testid={`text-member-count-${group.id}`}>{group.memberCount || 0} {(group.memberCount || 0) === 1 ? 'member' : 'members'}</span>
                             <Button
                               variant="ghost"
                               size="sm"
