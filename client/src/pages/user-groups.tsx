@@ -657,6 +657,7 @@ export default function UserGroupsPage() {
                               <Checkbox
                                 checked={isSelected}
                                 onCheckedChange={() => toggleUserSelection(result.id)}
+                                onClick={(e) => e.stopPropagation()}
                                 data-testid={`checkbox-user-${result.id}`}
                               />
                             </div>

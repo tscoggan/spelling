@@ -848,7 +848,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add user to group
       await storage.addGroupMember(groupId, currentUser.id);
 
-      res.status(200).json({ message: "Successfully joined the group" });
+      res.status(200).json({ message: "Successfully joined the group", groupId });
     } catch (error) {
       console.error("Error accepting invite:", error);
       res.status(500).json({ error: "Failed to accept invite" });
@@ -894,7 +894,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add user to group
       await storage.addGroupMember(groupId, userIdNum);
 
-      res.status(200).json({ message: "User added to group successfully" });
+      res.status(200).json({ message: "User added to group successfully", groupId });
     } catch (error) {
       console.error("Error approving request:", error);
       res.status(500).json({ error: "Failed to approve request" });

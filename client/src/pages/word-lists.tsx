@@ -670,17 +670,15 @@ export default function WordListsPage() {
                                 />
                                 <div className="flex-1">
                                   <label htmlFor={`group-${group.id}`} className="text-sm font-medium cursor-pointer">
-                                    {group.name}
+                                    {group.name} ({group.memberCount || 0} {(group.memberCount || 0) === 1 ? 'member' : 'members'})
                                   </label>
                                   <div className="flex items-center gap-2 mt-1">
                                     {isOwned ? (
                                       <Badge variant="secondary" className="text-xs">
-                                        <Users className="w-3 h-3 mr-1" />
                                         Owner
                                       </Badge>
                                     ) : (
                                       <Badge variant="outline" className="text-xs">
-                                        <Users className="w-3 h-3 mr-1" />
                                         Member
                                       </Badge>
                                     )}

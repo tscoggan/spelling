@@ -99,6 +99,9 @@ export function UserHeader() {
       // Complete the todo only after successful acceptance
       await apiRequest("POST", `/api/user-to-dos/${result.todoId}/complete`, {});
       queryClient.invalidateQueries({ queryKey: ["/api/user-groups", user?.id] });
+      if (result.data?.groupId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/user-groups", result.data.groupId, "members"] });
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos/count"] });
       toast({
@@ -124,6 +127,9 @@ export function UserHeader() {
       // Complete the todo only after successful approval
       await apiRequest("POST", `/api/user-to-dos/${result.todoId}/complete`, {});
       queryClient.invalidateQueries({ queryKey: ["/api/user-groups", user?.id] });
+      if (result.data?.groupId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/user-groups", result.data.groupId, "members"] });
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos/count"] });
       toast({
