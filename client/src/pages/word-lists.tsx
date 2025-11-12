@@ -122,6 +122,23 @@ export default function WordListsPage() {
       setDialogOpen(false);
       resetForm();
       
+      // Show validation feedback if any words were removed or skipped
+      if (data.removedWords && data.removedWords.length > 0) {
+        toast({
+          title: "Some words were removed",
+          description: `The following words were not found in the dictionary and have been removed: ${data.removedWords.join(", ")}`,
+          variant: "destructive",
+        });
+      }
+      
+      if (data.skippedWords && data.skippedWords.length > 0) {
+        toast({
+          title: "Word validation incomplete",
+          description: `Could not validate ${data.skippedWords.length} word(s) due to dictionary service issues. These words were kept in the list.`,
+        });
+      }
+      
+      // Show success message
       if (data.illustrationJobId) {
         setJobId(data.illustrationJobId);
         toast({
@@ -170,6 +187,23 @@ export default function WordListsPage() {
       setEditingList(null);
       resetForm();
       
+      // Show validation feedback if any words were removed or skipped
+      if (data.removedWords && data.removedWords.length > 0) {
+        toast({
+          title: "Some words were removed",
+          description: `The following words were not found in the dictionary and have been removed: ${data.removedWords.join(", ")}`,
+          variant: "destructive",
+        });
+      }
+      
+      if (data.skippedWords && data.skippedWords.length > 0) {
+        toast({
+          title: "Word validation incomplete",
+          description: `Could not validate ${data.skippedWords.length} word(s) due to dictionary service issues. These words were kept in the list.`,
+        });
+      }
+      
+      // Show success message
       if (data.illustrationJobId) {
         setJobId(data.illustrationJobId);
         toast({

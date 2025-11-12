@@ -162,9 +162,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? req.body.words.map((word: string) => word.toUpperCase())
         : req.body.words;
 
+      // Validate words against dictionaries
+      const { validateWords: validateDictionary } = await import("./services/dictionaryValidation");
+      const validationResult = await validateDictionary(wordsArray);
+      
+      // Check if all words were skipped due to API failures
+      if (validationResult.skipped.length === wordsArray.length) {
+        return res.status(503).json({ 
+          error: "Dictionary validation temporarily unavailable",
+          details: "Please try again in a moment"
+        });
+      }
+      
+      // Use only valid words for the list
+      const finalWords = validationResult.valid;
+      
+      // If no valid words remain, reject the request
+      if (finalWords.length === 0) {
+        return res.status(400).json({
+          error: "No valid words found",
+          details: "All words were either invalid or not found in the dictionary",
+          removedWords: validationResult.invalid,
+          skippedWords: validationResult.skipped
+        });
+      }
+
       const listData = insertCustomWordListSchema.parse({
         ...req.body,
-        words: wordsArray,
+        words: finalWords,
         userId: req.user!.id,
       });
       
@@ -200,10 +225,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         illustrationJobId = await jobService.createJob(wordList.id);
       }
       
-      res.json({ 
-        ...wordList, 
-        ...(illustrationJobId && { illustrationJobId }) 
-      });
+      // Build response with validation feedback
+      const response: any = {
+        ...wordList,
+        ...(illustrationJobId && { illustrationJobId }),
+      };
+      
+      // Include removed and skipped words if any
+      if (validationResult.invalid.length > 0 || validationResult.skipped.length > 0) {
+        response.removedWords = validationResult.invalid;
+        response.skippedWords = validationResult.skipped;
+      }
+      
+      res.json(response);
     } catch (error) {
       if (error instanceof z.ZodError) {
         console.error("Validation error creating word list:", error.errors);
@@ -328,8 +362,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Capitalize all words before validation if words array is being updated
-      const bodyData = req.body.words && Array.isArray(req.body.words)
-        ? { ...req.body, words: req.body.words.map((word: string) => word.toUpperCase()) }
+      let wordsArray = req.body.words && Array.isArray(req.body.words)
+        ? req.body.words.map((word: string) => word.toUpperCase())
+        : undefined;
+
+      // Validate words against dictionaries if words are being updated
+      let validationResult: { valid: string[]; invalid: string[]; skipped: string[] } | undefined;
+      if (wordsArray) {
+        const { validateWords: validateDictionary } = await import("./services/dictionaryValidation");
+        validationResult = await validateDictionary(wordsArray);
+        
+        // Check if all words were skipped due to API failures
+        if (validationResult.skipped.length === wordsArray.length) {
+          return res.status(503).json({ 
+            error: "Dictionary validation temporarily unavailable",
+            details: "Please try again in a moment"
+          });
+        }
+        
+        // Use only valid words
+        wordsArray = validationResult.valid;
+        
+        // If no valid words remain, reject the request
+        if (wordsArray.length === 0) {
+          return res.status(400).json({
+            error: "No valid words found",
+            details: "All words were either invalid or not found in the dictionary",
+            removedWords: validationResult.invalid,
+            skippedWords: validationResult.skipped
+          });
+        }
+      }
+
+      const bodyData = wordsArray 
+        ? { ...req.body, words: wordsArray }
         : req.body;
 
       const updates = insertCustomWordListSchema.partial().parse(bodyData);
@@ -396,7 +462,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      res.json(illustrationJobId ? { ...updatedList, illustrationJobId } : updatedList);
+      // Build response with validation feedback
+      const response: any = {
+        ...updatedList,
+        ...(illustrationJobId && { illustrationJobId }),
+      };
+      
+      // Include removed and skipped words if any (only if words were updated)
+      if (validationResult && (validationResult.invalid.length > 0 || validationResult.skipped.length > 0)) {
+        response.removedWords = validationResult.invalid;
+        response.skippedWords = validationResult.skipped;
+      }
+      
+      res.json(response);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid word list data", details: error.errors });
