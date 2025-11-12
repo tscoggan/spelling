@@ -37,7 +37,7 @@ export default function UserGroupsPage() {
   });
 
   const { data: groups = [], isLoading } = useQuery<any[]>({
-    queryKey: ["/api/user-groups"],
+    queryKey: ["/api/user-groups", user?.id],
     enabled: !!user,
   });
 
@@ -47,7 +47,7 @@ export default function UserGroupsPage() {
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/user-groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-groups", user?.id] });
       setCreateDialogOpen(false);
       resetForm();
       toast({
@@ -69,7 +69,7 @@ export default function UserGroupsPage() {
       await apiRequest("DELETE", `/api/user-groups/${groupId}`, {});
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/user-groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-groups", user?.id] });
       toast({
         title: "Success!",
         description: "Group deleted successfully",
@@ -90,8 +90,8 @@ export default function UserGroupsPage() {
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/user-groups"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user-pending-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-groups", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-pending-requests", user?.id] });
       toast({
         title: "Success!",
         description: "Your request to join this group has been sent to the group owner",
@@ -112,7 +112,7 @@ export default function UserGroupsPage() {
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/user-groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-groups", user?.id] });
       setInviteDialogOpen(false);
       setSearchQuery("");
       setSelectedUsers([]);
@@ -135,7 +135,7 @@ export default function UserGroupsPage() {
       await apiRequest("DELETE", `/api/user-groups/${groupId}/members/${userId}`, {});
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/user-groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-groups", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-groups", selectedGroup?.id, "members"] });
       setRemoveMemberConfirmOpen(false);
       setMemberToRemove(null);
@@ -411,7 +411,7 @@ export default function UserGroupsPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="text-xs text-gray-600" data-testid={`text-member-count-${group.id}`}>{group.memberCount || 0}</span>
+                          <span className="text-xs text-gray-600" data-testid={`text-member-count-${group.id}`}>{group.memberCount || 0} members</span>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -450,7 +450,7 @@ export default function UserGroupsPage() {
                           <p className="text-xs text-gray-600">Member</p>
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="text-xs text-gray-600" data-testid={`text-member-count-${group.id}`}>{group.memberCount || 0}</span>
+                          <span className="text-xs text-gray-600" data-testid={`text-member-count-${group.id}`}>{group.memberCount || 0} members</span>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -499,7 +499,7 @@ export default function UserGroupsPage() {
                             </Button>
                           </div>
                           <div className="flex items-center gap-1">
-                            <span className="text-xs text-gray-600" data-testid={`text-member-count-${group.id}`}>{group.memberCount || 0}</span>
+                            <span className="text-xs text-gray-600" data-testid={`text-member-count-${group.id}`}>{group.memberCount || 0} members</span>
                             <Button
                               variant="ghost"
                               size="sm"

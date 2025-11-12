@@ -53,9 +53,19 @@ export default function Leaderboard() {
         }}
       ></div>
       <div className="max-w-6xl mx-auto relative z-10">
-        <UserHeader />
+        <div className="flex items-start justify-between mb-6">
+          <Button
+            variant="outline"
+            onClick={() => setLocation("/")}
+            data-testid="button-home"
+          >
+            <Home className="w-4 h-4 mr-2" />
+            Home
+          </Button>
+          <UserHeader />
+        </div>
         
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center mb-8">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -69,15 +79,6 @@ export default function Leaderboard() {
               <p className="text-lg text-gray-600 mt-1">Top 10 Champions</p>
             </div>
           </motion.div>
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={() => setLocation("/")}
-            data-testid="button-home"
-          >
-            <Home className="w-5 h-5 mr-2" />
-            Home
-          </Button>
         </div>
 
         <Card className="p-6 md:p-8">

@@ -541,7 +541,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = req.user as any;
       const groups = await storage.getUserAccessibleGroups(user.id);
-      console.log(`[DEBUG] User ${user.id} groups:`, groups.map(g => ({ id: g.id, name: g.name, isOwner: g.isOwner, isMember: g.isMember })));
       res.json(groups);
     } catch (error) {
       console.error("Error fetching user groups:", error);
