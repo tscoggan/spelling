@@ -98,7 +98,7 @@ export function UserHeader() {
     onSuccess: async (result) => {
       // Complete the todo only after successful acceptance
       await apiRequest("POST", `/api/user-to-dos/${result.todoId}/complete`, {});
-      queryClient.invalidateQueries({ queryKey: ["/api/user-groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-groups", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos/count"] });
       toast({
@@ -123,7 +123,7 @@ export function UserHeader() {
     onSuccess: async (result) => {
       // Complete the todo only after successful approval
       await apiRequest("POST", `/api/user-to-dos/${result.todoId}/complete`, {});
-      queryClient.invalidateQueries({ queryKey: ["/api/user-groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-groups", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos/count"] });
       toast({

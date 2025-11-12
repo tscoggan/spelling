@@ -38,6 +38,11 @@ export default function UserGroupsPage() {
 
   const { data: groups = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/user-groups", user?.id],
+    queryFn: async () => {
+      const response = await fetch("/api/user-groups", { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch groups");
+      return await response.json();
+    },
     enabled: !!user,
   });
 

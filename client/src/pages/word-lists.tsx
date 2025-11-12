@@ -59,7 +59,12 @@ export default function WordListsPage() {
   });
 
   const { data: userGroups = [] } = useQuery<any[]>({
-    queryKey: ["/api/user-groups"],
+    queryKey: ["/api/user-groups", user?.id],
+    queryFn: async () => {
+      const response = await fetch("/api/user-groups", { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch groups");
+      return await response.json();
+    },
     enabled: !!user && dialogOpen,
   });
 
