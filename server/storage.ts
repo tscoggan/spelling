@@ -515,16 +515,39 @@ export class DatabaseStorage implements IStorage {
     
     const publicGroups = await db.select().from(userGroups).where(eq(userGroups.isPublic, true));
     
-    // Create a set of member group IDs for quick lookup
+    // Create sets for owned and member group IDs
+    const ownedGroupIds = new Set(ownedGroups.map(g => g.id));
     const memberGroupIds = new Set(memberGroups.map(g => g.id));
     
-    const allGroups = [...ownedGroups, ...memberGroups, ...publicGroups];
-    const uniqueGroups = Array.from(new Map(allGroups.map(g => [g.id, g])).values());
+    // Deduplicate by ID, prioritizing owned/member groups over public groups
+    const groupMap = new Map();
     
-    // Add isMember flag to each group
+    // Add owned groups first
+    for (const group of ownedGroups) {
+      groupMap.set(group.id, group);
+    }
+    
+    // Add member groups (may overlap with owned)
+    for (const group of memberGroups) {
+      if (!groupMap.has(group.id)) {
+        groupMap.set(group.id, group);
+      }
+    }
+    
+    // Add public groups only if not already added
+    for (const group of publicGroups) {
+      if (!groupMap.has(group.id)) {
+        groupMap.set(group.id, group);
+      }
+    }
+    
+    const uniqueGroups = Array.from(groupMap.values());
+    
+    // Add isMember and isOwner flags to each group
     return uniqueGroups.map(group => ({
       ...group,
-      isMember: memberGroupIds.has(group.id),
+      isOwner: ownedGroupIds.has(group.id),
+      isMember: ownedGroupIds.has(group.id) || memberGroupIds.has(group.id),
     }));
   }
 
