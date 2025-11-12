@@ -72,6 +72,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/user"], null);
+      // Clear all user-specific caches on logout
+      queryClient.removeQueries({ queryKey: ["/api/word-lists"] });
+      queryClient.removeQueries({ queryKey: ["/api/user-groups"] });
+      queryClient.removeQueries({ queryKey: ["/api/user-to-dos"] });
     },
     onError: (error: Error) => {
       toast({

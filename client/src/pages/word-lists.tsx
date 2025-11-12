@@ -50,7 +50,12 @@ export default function WordListsPage() {
   });
 
   const { data: userLists = [], isLoading: loadingUserLists } = useQuery<CustomWordList[]>({
-    queryKey: ["/api/word-lists"],
+    queryKey: ["/api/word-lists", user?.id],
+    queryFn: async () => {
+      const response = await fetch("/api/word-lists", { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch word lists");
+      return await response.json();
+    },
     enabled: !!user,
   });
 
@@ -312,12 +317,10 @@ export default function WordListsPage() {
   };
 
   const filteredUserLists = useMemo(() => {
-    // Only show lists owned by the current user
-    const ownedLists = userLists.filter(list => list.userId === user?.id);
-    if (gradeFilter === "all") return ownedLists;
-    if (gradeFilter === "none") return ownedLists.filter(list => !list.gradeLevel);
-    return ownedLists.filter(list => list.gradeLevel === gradeFilter);
-  }, [userLists, gradeFilter, user?.id]);
+    if (gradeFilter === "all") return userLists;
+    if (gradeFilter === "none") return userLists.filter(list => !list.gradeLevel);
+    return userLists.filter(list => list.gradeLevel === gradeFilter);
+  }, [userLists, gradeFilter]);
 
   const filteredPublicLists = useMemo(() => {
     if (gradeFilter === "all") return publicLists;
