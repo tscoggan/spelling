@@ -67,6 +67,8 @@ function stripFormatting(text: string): string {
     .replace(/\{rdquo\}/g, '"')       // right double quote
     .replace(/\{phrase\}/g, '')       // phrase start
     .replace(/\{\/phrase\}/g, '')     // phrase end
+    .replace(/\[.*?\]/g, '')          // square brackets (e.g., [=leaped])
+    .replace(/\s+/g, ' ')             // collapse multiple spaces
     .trim();
 }
 
@@ -103,7 +105,16 @@ function extractExamples(dt: any[]): string[] {
       if (Array.isArray(visArray)) {
         for (const vis of visArray) {
           if (vis && vis.t) {
-            const example = stripFormatting(vis.t);
+            let example = stripFormatting(vis.t);
+            
+            // Truncate at first period if followed by variant markers
+            // Patterns: ". =", ". (US)", ". (chiefly", etc.
+            // This removes alternative phrasings: "They arrived on June first. = (US) They arrived..."
+            const variantMarkerMatch = example.match(/\.\s+[=(]/);
+            if (variantMarkerMatch && variantMarkerMatch.index !== undefined) {
+              example = example.substring(0, variantMarkerMatch.index + 1).trim();
+            }
+            
             if (example.length > 0) {
               examples.push(example);
             }

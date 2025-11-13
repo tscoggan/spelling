@@ -1141,17 +1141,6 @@ export default function Game() {
           }
         }
         return null;
-      },
-      
-      // Swap adjacent letters (friend -> freind, form -> from)
-      () => {
-        if (wordLower.length > 2) {
-          const idx = Math.floor(Math.random() * (wordLower.length - 1));
-          const letters = wordLower.split('');
-          [letters[idx], letters[idx + 1]] = [letters[idx + 1], letters[idx]];
-          return letters.join('');
-        }
-        return null;
       }
     ];
     
