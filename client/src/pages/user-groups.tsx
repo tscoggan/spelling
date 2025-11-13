@@ -142,6 +142,9 @@ export default function UserGroupsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user-groups", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-groups", selectedGroup?.id, "members"] });
+      // Invalidate shared word lists for the current user (owner)
+      // Note: The removed member's cache won't update until they navigate or refresh
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/shared-with-me"] });
       setRemoveMemberConfirmOpen(false);
       setMemberToRemove(null);
       toast({

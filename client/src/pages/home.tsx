@@ -44,17 +44,14 @@ export default function Home() {
 
   const { data: customLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists"],
-    enabled: wordListDialogOpen,
   });
 
   const { data: publicLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists/public"],
-    enabled: wordListDialogOpen,
   });
 
   const { data: sharedLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists/shared-with-me"],
-    enabled: wordListDialogOpen,
   });
 
   const handleModeClick = (mode: GameMode) => {

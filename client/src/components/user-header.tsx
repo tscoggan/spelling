@@ -104,6 +104,8 @@ export function UserHeader() {
       }
       queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos/count"] });
+      // Invalidate shared word lists since joining a group may grant access to new lists
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/shared-with-me"] });
       toast({
         title: "Success!",
         description: "You have joined the group",
@@ -132,6 +134,9 @@ export function UserHeader() {
       }
       queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos/count"] });
+      // Invalidate shared word lists for the current user (approver)
+      // Note: The newly approved member's cache won't update until they navigate or refresh
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/shared-with-me"] });
       toast({
         title: "Success!",
         description: "User has been added to the group",
