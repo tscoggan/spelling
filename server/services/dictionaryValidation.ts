@@ -41,104 +41,25 @@ function cleanCache() {
   }
 }
 
-// Parse Simple English Wiktionary extract to get metadata
-function parseWiktionaryExtract(extract: string): WordMetadata {
-  const metadata: WordMetadata = {};
-  
+// Parse Simple English Wiktionary extract to get part of speech ONLY
+// Simple Wiktionary is now used for validation and POS gap-filling only
+function parseWiktionaryPartOfSpeech(extract: string): string | undefined {
   if (!extract || extract.trim().length === 0) {
-    return metadata;
+    return undefined;
   }
   
   // Extract part of speech (look for headers like "== Noun ==", "== Verb ==", etc.)
-  const posMatch = extract.match(/==\s*(Noun|Verb|Adjective|Adverb|Pronoun|Preposition|Conjunction|Interjection|Proper noun)\s*==/i);
+  // Case-insensitive to handle variations
+  const posMatch = extract.match(/==\s*(Noun|Verb|Adjective|Adverb|Pronoun|Preposition|Conjunction|Interjection|Proper\s*noun)\s*==/i);
   if (posMatch) {
-    metadata.partOfSpeech = posMatch[1].toLowerCase();
+    return posMatch[1].replace(/\s+/g, ' ').trim().toLowerCase();
   }
   
-  // Split into lines and filter out empty ones
-  const lines = extract.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-  
-  let inTargetPOSSection = false;
-  const definitions: string[] = [];
-  const examples: string[] = [];
-  
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    
-    // Check for part of speech headers
-    if (line.startsWith('==') && line.match(/==\s*[A-Z]/)) {
-      // If we found our target POS and now hit a new section, stop parsing
-      if (inTargetPOSSection) {
-        break;
-      }
-      // Check if this is the POS section we extracted earlier
-      if (metadata.partOfSpeech && line.match(new RegExp(`==\\s*${metadata.partOfSpeech}\\s*==`, 'i'))) {
-        inTargetPOSSection = true;
-      }
-      continue;
-    }
-    
-    // Skip pronunciation and other metadata
-    if (line.includes('IPA') || line.includes('SAMPA') || line.includes('Pronunciation') || line.includes('Hyphenation') || line.includes('enPR')) {
-      continue;
-    }
-    
-    if (inTargetPOSSection) {
-      // Skip headword/lemma lines that contain inflection information in parentheses
-      // Examples: "monkey (plural monkeys)", "happy (comparative happier, superlative happiest)"
-      if (line.match(/\([^)]*(?:plural|comparative|superlative|third-person|present participle|past tense|past participle)[^)]*\)/i)) {
-        continue;
-      }
-      
-      // Wiktionary uses wiki markup: "#" for definitions, "#:" or "#*" for examples
-      // If we see these markers, parse accordingly
-      if (line.startsWith('#:') || line.startsWith('#*')) {
-        // This is an example - strip the marker
-        const cleanExample = line.replace(/^#[:\*]\s*/, '').trim();
-        if (cleanExample.length > 5) {
-          examples.push(cleanExample);
-        }
-      } else if (line.startsWith('#')) {
-        // This is a definition - strip the marker
-        const cleanDef = line.replace(/^#\s*/, '').trim();
-        if (cleanDef.length > 5) {
-          definitions.push(cleanDef);
-        }
-      }
-      // If there are no wiki markers, use the simple heuristic:
-      // First non-metadata line is definition, subsequent lines are examples
-      else if (line.length > 5 && !line.startsWith('-')) {
-        if (definitions.length === 0) {
-          // First content line is the definition
-          const cleanLine = line.replace(/^\d+\.\s*/, '').trim();
-          if (cleanLine.length > 0) {
-            definitions.push(cleanLine);
-          }
-        } else {
-          // Subsequent lines are examples
-          examples.push(line);
-        }
-      }
-    }
-  }
-  
-  // Set definition (combine multiple if present)
-  if (definitions.length > 0) {
-    metadata.definition = definitions.length === 1
-      ? definitions[0]
-      : definitions.map((d, i) => `${i + 1}. ${d}`).join(' ');
-  }
-  
-  // Set example (use first one)
-  if (examples.length > 0) {
-    metadata.example = examples[0];
-  }
-  
-  return metadata;
+  return undefined;
 }
 
-// Check Simple English Wiktionary and extract metadata
-async function checkSimpleWiktionary(word: string): Promise<{ valid: boolean; skipped: boolean; metadata?: WordMetadata }> {
+// Check Simple English Wiktionary for existence and part of speech only
+async function checkSimpleWiktionary(word: string): Promise<{ valid: boolean; skipped: boolean; partOfSpeech?: string }> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
@@ -186,9 +107,9 @@ async function checkSimpleWiktionary(word: string): Promise<{ valid: boolean; sk
       
       // Check if page exists and has content (not missing)
       if (pageData && pageData.extract && !pageData.missing && pageData.extract.trim().length > 0) {
-        // Parse the extract to get metadata
-        const metadata = parseWiktionaryExtract(pageData.extract);
-        return { valid: true, skipped: false, metadata };
+        // Parse extract to get part of speech only
+        const partOfSpeech = parseWiktionaryPartOfSpeech(pageData.extract);
+        return { valid: true, skipped: false, partOfSpeech };
       }
     }
     
@@ -199,7 +120,7 @@ async function checkSimpleWiktionary(word: string): Promise<{ valid: boolean; sk
   }
 }
 
-// Check Free Dictionary API and fetch metadata
+// Check Free Dictionary API and fetch full metadata (PRIMARY source)
 async function checkFreeDictionary(word: string): Promise<{ valid: boolean; skipped: boolean; metadata?: WordMetadata }> {
   try {
     const controller = new AbortController();
@@ -233,9 +154,14 @@ async function checkFreeDictionary(word: string): Promise<{ valid: boolean; skip
           metadata.origin = entry.origin;
         }
         
-        // Extract definitions and examples
+        // Extract definitions, examples, and part of speech from meanings
         if (entry.meanings && Array.isArray(entry.meanings)) {
           const allDefinitions: string[] = [];
+          
+          // Get part of speech from first meaning
+          if (entry.meanings[0].partOfSpeech) {
+            metadata.partOfSpeech = entry.meanings[0].partOfSpeech.toLowerCase();
+          }
           
           for (const meaning of entry.meanings) {
             if (meaning.definitions && Array.isArray(meaning.definitions)) {
@@ -253,11 +179,9 @@ async function checkFreeDictionary(word: string): Promise<{ valid: boolean; skip
             }
           }
           
-          // Format definition(s)
+          // Format definition(s) - use first definition as primary
           if (allDefinitions.length > 0) {
-            metadata.definition = allDefinitions.length === 1
-              ? allDefinitions[0]
-              : allDefinitions.map((d, i) => `${i + 1}. ${d}`).join(' ');
+            metadata.definition = allDefinitions[0];
           }
         }
       }
@@ -272,7 +196,7 @@ async function checkFreeDictionary(word: string): Promise<{ valid: boolean; skip
   }
 }
 
-// Validate a single word against both dictionaries (Simple Wiktionary PRIMARY, Free Dictionary BACKUP)
+// Validate a single word (Free Dictionary PRIMARY, Simple Wiktionary for existence + POS gap-filling)
 async function validateSingleWord(word: string, difficulty: string, storage?: IStorage): Promise<{ word: string; isValid: boolean; skipped: boolean }> {
   const normalized = normalizeWord(word);
   
@@ -282,125 +206,86 @@ async function validateSingleWord(word: string, difficulty: string, storage?: IS
     return { word, isValid: cached.isValid, skipped: false };
   }
   
-  // Try Simple Wiktionary FIRST (PRIMARY source)
+  // Step 1: Check Simple Wiktionary for existence and part of speech
   const wiktionaryResult = await checkSimpleWiktionary(word);
   
-  // If Wiktionary service failed (network error), try Free Dictionary as fallback
-  if (wiktionaryResult.skipped) {
-    const freeDictResult = await checkFreeDictionary(word);
-    
-    // If both services failed, mark as skipped
-    if (freeDictResult.skipped) {
-      return { word, isValid: false, skipped: true };
-    }
-    
-    // Free Dictionary worked, use its metadata
-    if (freeDictResult.valid) {
-      validationCache.set(normalized, {
-        isValid: true,
-        timestamp: Date.now(),
-      });
-      
-      if (storage && freeDictResult.metadata) {
-        try {
-          await storage.upsertWord(
-            word,
-            difficulty,
-            freeDictResult.metadata.definition,
-            freeDictResult.metadata.example,
-            freeDictResult.metadata.origin,
-            freeDictResult.metadata.partOfSpeech
-          );
-        } catch (error) {
-          console.error(`Failed to save word metadata for "${word}":`, error);
-        }
-      }
-    }
-    
-    return { word, isValid: freeDictResult.valid, skipped: false };
-  }
+  // If Wiktionary service failed, continue anyway - Free Dictionary is primary
+  const wordExists = wiktionaryResult.valid;
+  const wiktionaryPOS = wiktionaryResult.partOfSpeech;
   
-  // Wiktionary validation succeeded
-  if (wiktionaryResult.valid) {
-    // Cache the positive result
-    validationCache.set(normalized, {
-      isValid: true,
-      timestamp: Date.now(),
-    });
-    
-    // Use Simple Wiktionary metadata as PRIMARY, fill gaps with Free Dictionary as BACKUP
-    if (storage) {
-      const combinedMetadata: WordMetadata = wiktionaryResult.metadata || {};
-      
-      // Only fetch from Free Dictionary if we're missing critical fields
-      const needsBackup = !combinedMetadata.definition || !combinedMetadata.example || !combinedMetadata.origin;
-      
-      if (needsBackup) {
-        const freeDictResult = await checkFreeDictionary(word);
-        if (freeDictResult.valid && freeDictResult.metadata) {
-          // Fill in ONLY missing fields - Simple Wiktionary takes priority
-          if (!combinedMetadata.definition && freeDictResult.metadata.definition) {
-            combinedMetadata.definition = freeDictResult.metadata.definition;
-          }
-          if (!combinedMetadata.example && freeDictResult.metadata.example) {
-            combinedMetadata.example = freeDictResult.metadata.example;
-          }
-          if (!combinedMetadata.origin && freeDictResult.metadata.origin) {
-            combinedMetadata.origin = freeDictResult.metadata.origin;
-          }
-          // Note: partOfSpeech from Simple Wiktionary is preferred
-        }
-      }
-      
-      // Save combined metadata to database
-      try {
-        await storage.upsertWord(
-          word,
-          difficulty,
-          combinedMetadata.definition,
-          combinedMetadata.example,
-          combinedMetadata.origin,
-          combinedMetadata.partOfSpeech
-        );
-      } catch (error) {
-        console.error(`Failed to save word metadata for "${word}":`, error);
-      }
-    }
-    
-    return { word, isValid: true, skipped: false };
-  }
-  
-  // Word not found in Simple Wiktionary, try Free Dictionary as fallback
+  // Step 2: Fetch metadata from Free Dictionary (AUTHORITATIVE when available)
   const freeDictResult = await checkFreeDictionary(word);
   
-  // If Free Dictionary service failed, mark as skipped
-  if (freeDictResult.skipped) {
+  // If both services failed, propagate skipped status
+  if (freeDictResult.skipped && wiktionaryResult.skipped) {
     return { word, isValid: false, skipped: true };
   }
   
-  // Cache the result (valid or invalid)
+  // Decision tree for validation:
+  // 1. If Free Dictionary validates → word is valid (use its metadata)
+  // 2. If Free Dictionary misses but Wiktionary finds it:
+  //    - Accept if POS is NOT "proper noun" (keeps real words like "feline")
+  //    - Reject if POS is "proper noun" (filters "thursday", "october")
+  
+  let isValid = false;
+  let finalMetadata: WordMetadata = {};
+  
+  if (freeDictResult.valid) {
+    // Free Dictionary is authoritative - word is valid
+    isValid = true;
+    
+    // Use Free Dictionary metadata (PRIMARY source)
+    if (freeDictResult.metadata) {
+      finalMetadata.definition = freeDictResult.metadata.definition;
+      finalMetadata.example = freeDictResult.metadata.example;
+      finalMetadata.origin = freeDictResult.metadata.origin;
+      finalMetadata.partOfSpeech = freeDictResult.metadata.partOfSpeech;
+    }
+    
+    // Fill POS gap with Wiktionary if needed
+    if (!finalMetadata.partOfSpeech && wiktionaryPOS) {
+      finalMetadata.partOfSpeech = wiktionaryPOS;
+    }
+  } else if (wordExists) {
+    // Free Dictionary missed, but Wiktionary found it
+    // Accept ONLY if it's not a proper noun
+    if (wiktionaryPOS && wiktionaryPOS !== 'proper noun') {
+      isValid = true;
+      // Use Wiktionary POS since Free Dictionary didn't provide metadata
+      finalMetadata.partOfSpeech = wiktionaryPOS;
+    } else {
+      // Reject proper nouns and words without POS
+      isValid = false;
+    }
+  }
+  
+  // Cache the result
   validationCache.set(normalized, {
-    isValid: freeDictResult.valid,
+    isValid,
     timestamp: Date.now(),
   });
   
-  // Save Free Dictionary metadata if word is valid
-  if (freeDictResult.valid && storage && freeDictResult.metadata) {
+  if (!isValid) {
+    return { word, isValid: false, skipped: false };
+  }
+  
+  // Save valid word metadata to database
+  if (storage) {
     try {
       await storage.upsertWord(
         word,
         difficulty,
-        freeDictResult.metadata.definition,
-        freeDictResult.metadata.example,
-        freeDictResult.metadata.origin,
-        freeDictResult.metadata.partOfSpeech
+        finalMetadata.definition,
+        finalMetadata.example,
+        finalMetadata.origin,
+        finalMetadata.partOfSpeech
       );
     } catch (error) {
       console.error(`Failed to save word metadata for "${word}":`, error);
     }
   }
   
-  return { word, isValid: freeDictResult.valid, skipped: false };
+  return { word, isValid: true, skipped: false };
 }
 
 // Validate multiple words with concurrency control
