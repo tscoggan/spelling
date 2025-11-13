@@ -32,6 +32,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/words/by-text/:word", async (req, res) => {
+    try {
+      // Normalize to lowercase for case-insensitive lookup
+      const wordText = req.params.word.toLowerCase();
+      const word = await storage.getWordByText(wordText);
+      
+      if (!word) {
+        return res.status(404).json({ error: "Word not found" });
+      }
+      
+      res.json(word);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch word" });
+    }
+  });
+
   app.get("/api/words/:difficulty", async (req, res) => {
     try {
       const difficulty = req.params.difficulty as DifficultyLevel;

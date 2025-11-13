@@ -8,6 +8,7 @@ interface ValidationResult {
 }
 
 interface WordMetadata {
+  definition?: string;
   example?: string;
   origin?: string;
 }
@@ -45,36 +46,49 @@ async function checkSimpleWiktionary(word: string): Promise<{ valid: boolean; sk
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
     
-    const response = await fetch(
-      `https://simple.wiktionary.org/w/api.php?action=query&titles=${encodeURIComponent(word)}&prop=extracts&explaintext=1&format=json&origin=*`,
-      { signal: controller.signal }
-    );
+    // Capitalize first letter for proper nouns (days, months, etc.)
+    const capitalizedWord = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
     
-    clearTimeout(timeout);
+    // Try both lowercase and capitalized versions
+    const wordsToTry = word.toLowerCase() === capitalizedWord.toLowerCase() 
+      ? [word] 
+      : [word.toLowerCase(), capitalizedWord];
     
-    // Server error - mark as skipped
-    if (!response.ok && response.status >= 500) {
-      return { valid: false, skipped: true };
+    for (const tryWord of wordsToTry) {
+      const response = await fetch(
+        `https://simple.wiktionary.org/w/api.php?action=query&titles=${encodeURIComponent(tryWord)}&prop=extracts&explaintext=1&format=json&origin=*`,
+        { signal: controller.signal }
+      );
+      
+      clearTimeout(timeout);
+      
+      // Server error - mark as skipped
+      if (!response.ok && response.status >= 500) {
+        return { valid: false, skipped: true };
+      }
+      
+      if (!response.ok) {
+        continue; // Try next variation
+      }
+      
+      const data: any = await response.json();
+      const pages = data?.query?.pages;
+      
+      if (!pages) {
+        continue; // Try next variation
+      }
+      
+      const pageId = Object.keys(pages)[0];
+      const pageData = pages[pageId];
+      
+      // Check if page exists and has content (not missing)
+      // Simple Wiktionary returns 200 with "missing" flag for non-existent words
+      if (pageData && pageData.extract && !pageData.missing) {
+        return { valid: true, skipped: false };
+      }
     }
     
-    if (!response.ok) {
-      return { valid: false, skipped: false };
-    }
-    
-    const data: any = await response.json();
-    const pages = data?.query?.pages;
-    
-    if (!pages) {
-      return { valid: false, skipped: false };
-    }
-    
-    const pageId = Object.keys(pages)[0];
-    const pageData = pages[pageId];
-    
-    // Check if page exists and has content (not missing)
-    // Simple Wiktionary returns 200 with "missing" flag for non-existent words
-    const valid = pageData && pageData.extract && !pageData.missing;
-    return { valid, skipped: false };
+    return { valid: false, skipped: false };
   } catch (error) {
     // Timeout or network error - mark as skipped
     return { valid: false, skipped: true };
@@ -110,21 +124,36 @@ async function checkFreeDictionary(word: string): Promise<{ valid: boolean; skip
       if (data && data.length > 0) {
         const entry = data[0];
         
+        // Extract origin
         if (entry.origin) {
           metadata.origin = entry.origin;
         }
         
+        // Extract definitions and examples
         if (entry.meanings && Array.isArray(entry.meanings)) {
+          const allDefinitions: string[] = [];
+          
           for (const meaning of entry.meanings) {
             if (meaning.definitions && Array.isArray(meaning.definitions)) {
               for (const def of meaning.definitions) {
-                if (def.example) {
+                // Collect definition
+                if (def.definition && !allDefinitions.includes(def.definition)) {
+                  allDefinitions.push(def.definition);
+                }
+                
+                // Get first example found
+                if (def.example && !metadata.example) {
                   metadata.example = def.example;
-                  break;
                 }
               }
-              if (metadata.example) break;
             }
+          }
+          
+          // Format definition(s)
+          if (allDefinitions.length > 0) {
+            metadata.definition = allDefinitions.length === 1
+              ? allDefinitions[0]
+              : allDefinitions.map((d, i) => `${i + 1}. ${d}`).join(' ');
           }
         }
       }
@@ -173,6 +202,7 @@ async function validateSingleWord(word: string, difficulty: string, storage?: IS
           await storage.upsertWord(
             word,
             difficulty,
+            freeDictResult.metadata.definition,
             freeDictResult.metadata.example,
             freeDictResult.metadata.origin
           );
@@ -200,6 +230,7 @@ async function validateSingleWord(word: string, difficulty: string, storage?: IS
           await storage.upsertWord(
             word,
             difficulty,
+            freeDictResult.metadata.definition,
             freeDictResult.metadata.example,
             freeDictResult.metadata.origin
           );
@@ -231,6 +262,7 @@ async function validateSingleWord(word: string, difficulty: string, storage?: IS
       await storage.upsertWord(
         word,
         difficulty,
+        freeDictResult.metadata.definition,
         freeDictResult.metadata.example,
         freeDictResult.metadata.origin
       );

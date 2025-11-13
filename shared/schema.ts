@@ -20,6 +20,7 @@ export const words = pgTable("words", {
   id: serial("id").primaryKey(),
   word: text("word").notNull().unique(),
   difficulty: text("difficulty").notNull(),
+  definition: text("definition"),
   sentenceExample: text("sentence_example"),
   wordOrigin: text("word_origin"),
 });

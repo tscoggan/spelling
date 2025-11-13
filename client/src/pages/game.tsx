@@ -334,7 +334,58 @@ export default function Game() {
     }
     
     try {
-      // First, try Simple English Wiktionary using MediaWiki API
+      // First, check if we have this word in the database
+      console.log(`🔍 Checking database for "${fetchWord}"...`);
+      try {
+        const dbResponse = await fetch(`/api/words/by-text/${encodeURIComponent(fetchWord)}`);
+        if (dbResponse.ok) {
+          const dbWord = await dbResponse.json();
+          console.log(`✅ Found word in database with metadata:`, {
+            hasDefinition: !!dbWord.definition,
+            hasExample: !!dbWord.sentenceExample,
+            hasOrigin: !!dbWord.wordOrigin
+          });
+          
+          // Check if we're still on the same word before updating state
+          if (currentWordRef.current?.toLowerCase() !== fetchWord) {
+            return;
+          }
+          
+          // Use database data if available
+          let hasCompleteData = false;
+          if (dbWord.definition) {
+            setWordDefinition(dbWord.definition);
+            console.log(`✅ Using definition from database`);
+            hasCompleteData = true;
+          }
+          if (dbWord.sentenceExample) {
+            setWordExample(dbWord.sentenceExample);
+            console.log(`✅ Using example from database`);
+          } else if (hasCompleteData) {
+            // Generate fallback example if we have definition but no example
+            const fallbackExample = generateFallbackExample(fetchWord);
+            setWordExample(fallbackExample);
+            console.log(`✨ Generated fallback example: "${fallbackExample}"`);
+          }
+          if (dbWord.wordOrigin) {
+            setWordOrigin(dbWord.wordOrigin);
+            console.log(`✅ Using origin from database`);
+          }
+          
+          // If we have definition from DB, we're done (example either from DB or fallback)
+          if (hasCompleteData) {
+            setLoadingDictionary(false);
+            console.log(`✅ Using complete data from database, skipping dictionary APIs`);
+            return;
+          }
+        } else if (dbResponse.status !== 404) {
+          console.log(`⚠️ Database error (${dbResponse.status}), falling back to dictionary APIs`);
+        }
+      } catch (dbError) {
+        console.log(`⚠️ Database lookup failed for "${fetchWord}", falling back to dictionary APIs:`, dbError);
+      }
+      
+      // If we don't have complete data from database, try Simple English Wiktionary using MediaWiki API
       console.log(`🔍 Trying Simple English Wiktionary for "${fetchWord}"...`);
       const wiktionaryResponse = await fetch(
         `https://simple.wiktionary.org/w/api.php?action=query&titles=${fetchWord}&prop=extracts&explaintext=1&format=json&origin=*`
