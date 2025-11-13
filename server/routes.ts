@@ -377,9 +377,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Capitalize all words before validation if words array is being updated
+      // Normalize words to lowercase for validation if words array is being updated
       let wordsArray = req.body.words && Array.isArray(req.body.words)
-        ? req.body.words.map((word: string) => word.toUpperCase())
+        ? req.body.words.map((word: string) => word.toLowerCase().trim())
         : undefined;
 
       // Validate words against dictionaries if words are being updated

@@ -46,13 +46,19 @@ async function checkSimpleWiktionary(word: string): Promise<{ valid: boolean; sk
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
     
-    // Capitalize first letter for proper nouns (days, months, etc.)
-    const capitalizedWord = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    // Build unique list of word variations to try (lowercase, capitalized, original)
+    const lowercase = word.toLowerCase().trim();
+    const capitalized = lowercase.charAt(0).toUpperCase() + lowercase.slice(1);
     
-    // Try both lowercase and capitalized versions
-    const wordsToTry = word.toLowerCase() === capitalizedWord.toLowerCase() 
-      ? [word] 
-      : [word.toLowerCase(), capitalizedWord];
+    // Create unique set: always try lowercase first, then capitalized if different
+    const wordsToTry = [lowercase];
+    if (capitalized !== lowercase) {
+      wordsToTry.push(capitalized);
+    }
+    // Also try original input if different from both
+    if (word !== lowercase && word !== capitalized) {
+      wordsToTry.push(word);
+    }
     
     for (const tryWord of wordsToTry) {
       const response = await fetch(
