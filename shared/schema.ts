@@ -13,6 +13,7 @@ export const users = pgTable("users", {
   email: text("email"),
   selectedAvatar: text("selected_avatar"),
   selectedTheme: text("selected_theme").default("default"),
+  preferredVoice: text("preferred_voice"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

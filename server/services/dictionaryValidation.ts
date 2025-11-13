@@ -114,44 +114,63 @@ function parseLearnerResponse(data: any): WordMetadata {
     return metadata;
   }
   
-  const entry = data[0];
+  // Collect ALL parts of speech from all entries
+  const partsOfSpeechSet = new Set<string>();
+  const definitionsArray: string[] = [];
   
-  // Check if we got string suggestions instead of actual entry
-  if (typeof entry === 'string') {
-    return metadata; // Word not found, got suggestions instead
-  }
-  
-  // Part of speech (functional label)
-  if (entry.fl) {
-    metadata.partOfSpeech = entry.fl.toLowerCase();
-  }
-  
-  // Short definition (simplified)
-  if (entry.shortdef && Array.isArray(entry.shortdef) && entry.shortdef.length > 0) {
-    metadata.definition = stripFormatting(entry.shortdef[0]);
-  }
-  
-  // Extract example from detailed definitions
-  if (entry.def && Array.isArray(entry.def)) {
-    for (const def of entry.def) {
-      if (def.sseq && Array.isArray(def.sseq)) {
-        for (const sseq of def.sseq) {
-          if (Array.isArray(sseq)) {
-            for (const sense of sseq) {
-              if (Array.isArray(sense) && sense[0] === 'sense' && sense[1]?.dt) {
-                const examples = extractExamples(sense[1].dt);
-                if (examples.length > 0 && !metadata.example) {
-                  metadata.example = examples[0];
-                  break;
+  for (const entry of data) {
+    // Check if we got string suggestions instead of actual entry
+    if (typeof entry === 'string') {
+      continue;
+    }
+    
+    // Part of speech (functional label)
+    if (entry.fl) {
+      partsOfSpeechSet.add(entry.fl.toLowerCase());
+    }
+    
+    // Short definitions (collect ALL)
+    if (entry.shortdef && Array.isArray(entry.shortdef)) {
+      for (const def of entry.shortdef) {
+        const cleaned = stripFormatting(def);
+        if (cleaned.length > 0) {
+          definitionsArray.push(cleaned);
+        }
+      }
+    }
+    
+    // Extract example from detailed definitions (only first one)
+    if (!metadata.example && entry.def && Array.isArray(entry.def)) {
+      for (const def of entry.def) {
+        if (def.sseq && Array.isArray(def.sseq)) {
+          for (const sseq of def.sseq) {
+            if (Array.isArray(sseq)) {
+              for (const sense of sseq) {
+                if (Array.isArray(sense) && sense[0] === 'sense' && sense[1]?.dt) {
+                  const examples = extractExamples(sense[1].dt);
+                  if (examples.length > 0 && !metadata.example) {
+                    metadata.example = examples[0];
+                    break;
+                  }
                 }
               }
             }
+            if (metadata.example) break;
           }
-          if (metadata.example) break;
         }
+        if (metadata.example) break;
       }
-      if (metadata.example) break;
     }
+  }
+  
+  // Join all parts of speech with "or"
+  if (partsOfSpeechSet.size > 0) {
+    metadata.partOfSpeech = Array.from(partsOfSpeechSet).join(' or ');
+  }
+  
+  // Join all definitions with pause separator for TTS
+  if (definitionsArray.length > 0) {
+    metadata.definition = definitionsArray.join('. ... ');
   }
   
   return metadata;
@@ -165,54 +184,73 @@ function parseCollegiateResponse(data: any): WordMetadata {
     return metadata;
   }
   
-  const entry = data[0];
+  // Collect ALL parts of speech from all entries
+  const partsOfSpeechSet = new Set<string>();
+  const definitionsArray: string[] = [];
   
-  // Check if we got string suggestions instead of actual entry
-  if (typeof entry === 'string') {
-    return metadata; // Word not found, got suggestions instead
-  }
-  
-  // Part of speech (functional label)
-  if (entry.fl) {
-    metadata.partOfSpeech = entry.fl.toLowerCase();
-  }
-  
-  // Short definition
-  if (entry.shortdef && Array.isArray(entry.shortdef) && entry.shortdef.length > 0) {
-    metadata.definition = stripFormatting(entry.shortdef[0]);
-  }
-  
-  // Etymology (word origin) - unique to Collegiate
-  if (entry.et && Array.isArray(entry.et)) {
-    for (const et of entry.et) {
-      if (Array.isArray(et) && et[0] === 'text') {
-        metadata.origin = stripFormatting(et[1]);
-        break;
+  for (const entry of data) {
+    // Check if we got string suggestions instead of actual entry
+    if (typeof entry === 'string') {
+      continue;
+    }
+    
+    // Part of speech (functional label)
+    if (entry.fl) {
+      partsOfSpeechSet.add(entry.fl.toLowerCase());
+    }
+    
+    // Short definitions (collect ALL)
+    if (entry.shortdef && Array.isArray(entry.shortdef)) {
+      for (const def of entry.shortdef) {
+        const cleaned = stripFormatting(def);
+        if (cleaned.length > 0) {
+          definitionsArray.push(cleaned);
+        }
       }
     }
-  }
-  
-  // Extract example from detailed definitions
-  if (entry.def && Array.isArray(entry.def)) {
-    for (const def of entry.def) {
-      if (def.sseq && Array.isArray(def.sseq)) {
-        for (const sseq of def.sseq) {
-          if (Array.isArray(sseq)) {
-            for (const sense of sseq) {
-              if (Array.isArray(sense) && sense[0] === 'sense' && sense[1]?.dt) {
-                const examples = extractExamples(sense[1].dt);
-                if (examples.length > 0 && !metadata.example) {
-                  metadata.example = examples[0];
-                  break;
+    
+    // Etymology (word origin) - unique to Collegiate (only from first entry)
+    if (!metadata.origin && entry.et && Array.isArray(entry.et)) {
+      for (const et of entry.et) {
+        if (Array.isArray(et) && et[0] === 'text') {
+          metadata.origin = stripFormatting(et[1]);
+          break;
+        }
+      }
+    }
+    
+    // Extract example from detailed definitions (only first one)
+    if (!metadata.example && entry.def && Array.isArray(entry.def)) {
+      for (const def of entry.def) {
+        if (def.sseq && Array.isArray(def.sseq)) {
+          for (const sseq of def.sseq) {
+            if (Array.isArray(sseq)) {
+              for (const sense of sseq) {
+                if (Array.isArray(sense) && sense[0] === 'sense' && sense[1]?.dt) {
+                  const examples = extractExamples(sense[1].dt);
+                  if (examples.length > 0 && !metadata.example) {
+                    metadata.example = examples[0];
+                    break;
+                  }
                 }
               }
             }
+            if (metadata.example) break;
           }
-          if (metadata.example) break;
         }
+        if (metadata.example) break;
       }
-      if (metadata.example) break;
     }
+  }
+  
+  // Join all parts of speech with "or"
+  if (partsOfSpeechSet.size > 0) {
+    metadata.partOfSpeech = Array.from(partsOfSpeechSet).join(' or ');
+  }
+  
+  // Join all definitions with pause separator for TTS
+  if (definitionsArray.length > 0) {
+    metadata.definition = definitionsArray.join('. ... ');
   }
   
   return metadata;

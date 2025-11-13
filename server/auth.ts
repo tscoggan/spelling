@@ -93,4 +93,29 @@ export function setupAuth(app: Express) {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     res.json(req.user);
   });
+
+  app.patch("/api/user", async (req, res, next) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const user = req.user as SelectUser;
+      const { preferredVoice } = req.body;
+      
+      // Validate that only preferredVoice is being updated
+      if (typeof preferredVoice !== 'string' && preferredVoice !== null) {
+        return res.status(400).json({ error: "Invalid preferredVoice value" });
+      }
+      
+      const updatedUser = await storage.updateUserPreferences(user.id, { preferredVoice });
+      
+      // Update session with new user data
+      req.login(updatedUser, (err) => {
+        if (err) return next(err);
+        res.json(updatedUser);
+      });
+    } catch (error) {
+      console.error("Error updating user preferences:", error);
+      res.status(500).json({ error: "Failed to update user preferences" });
+    }
+  });
 }

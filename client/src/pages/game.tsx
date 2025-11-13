@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Volume2, Home, ArrowRight, CheckCircle2, XCircle, Sparkles, Flame, Clock, SkipForward, Trophy, Settings, BookOpen, MessageSquare, Globe } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Word, DifficultyLevel, GameMode } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
@@ -220,8 +220,11 @@ export default function Game() {
         
         setAvailableVoices(englishVoices);
         
-        // Load saved preference or use first available
-        const savedVoice = localStorage.getItem('preferredVoice');
+        // Load voice preference from user profile first, then localStorage as fallback
+        const userPreference = user?.preferredVoice;
+        const localStoragePreference = localStorage.getItem('preferredVoice');
+        const savedVoice = userPreference || localStoragePreference;
+        
         if (savedVoice && englishVoices.find(v => v.name === savedVoice)) {
           setSelectedVoice(savedVoice);
         } else if (englishVoices.length > 0) {
@@ -238,12 +241,32 @@ export default function Game() {
     if (window.speechSynthesis.onvoiceschanged !== undefined) {
       window.speechSynthesis.onvoiceschanged = loadVoices;
     }
-  }, []);
+  }, [user]);
 
-  // Save voice preference
+  // Mutation to update voice preference in user profile
+  const updateVoicePreferenceMutation = useMutation({
+    mutationFn: async (voiceName: string) => {
+      return await apiRequest("PATCH", "/api/user", { preferredVoice: voiceName });
+    },
+    onSuccess: () => {
+      // Invalidate user query to refresh user data
+      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+    },
+    onError: (error) => {
+      console.error("Failed to save voice preference:", error);
+      // Silently fail - localStorage fallback will be used on next load
+    }
+  });
+
+  // Save voice preference to user profile and localStorage
   const handleVoiceChange = (voiceName: string) => {
     setSelectedVoice(voiceName);
+    // Save to localStorage as immediate fallback
     localStorage.setItem('preferredVoice', voiceName);
+    // Save to user profile via API
+    if (user) {
+      updateVoicePreferenceMutation.mutate(voiceName);
+    }
   };
 
   const currentWord = words?.[currentWordIndex];
@@ -331,6 +354,11 @@ export default function Game() {
       setWordOrigin(currentWord.wordOrigin);
     } else {
       setWordOrigin(null);
+    }
+    
+    // Set part of speech from currentWord if available
+    if (currentWord?.partOfSpeech) {
+      setWordPartsOfSpeech(currentWord.partOfSpeech);
     }
     
     try {

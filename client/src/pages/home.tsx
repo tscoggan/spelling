@@ -145,7 +145,7 @@ export default function Home() {
     {
       id: "crossword" as GameMode,
       name: "Crossword Puzzle",
-      description: "Solve a crossword using spelling words and their definitions",
+      description: "Solve a crossword using spelling words and their pronunciations",
       icon: Grid3x3,
       color: "text-indigo-600",
     },

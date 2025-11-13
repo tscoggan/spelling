@@ -54,6 +54,7 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUserPreferences(userId: number, preferences: { preferredVoice?: string | null }): Promise<User>;
   
   createWordAttempt(attempt: InsertWordAttempt): Promise<WordAttempt>;
   getMissedWordsByUser(userId: number): Promise<Word[]>;
@@ -326,6 +327,15 @@ export class DatabaseStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
+  }
+
+  async updateUserPreferences(userId: number, preferences: { preferredVoice?: string | null }): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set(preferences)
+      .where(eq(users.id, userId))
+      .returning();
     return user;
   }
 
