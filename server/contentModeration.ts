@@ -22,11 +22,9 @@ const KID_INAPPROPRIATE_PATTERNS = [
   /\bpornograph/i,
   
   // Violence - broad matches OK
-  /\bviolent(?:ly)?\b/i,
   /\bgraphic violence\b/i,
   /\bkilling\b/i,
   /\bkilled\b/i,
-  /\bblood(?:y|ied)?\b/i,
   
   // Alcohol & drugs - only abuse/intoxication contexts, not objects or processes
   /\bdrunk(?:en)?\b/i,  // Catches "drunk", "drunken"
@@ -35,11 +33,6 @@ const KID_INAPPROPRIATE_PATTERNS = [
   /\balcohol(?:ic)?\s+(?:abuse|addiction|beverage|consumption)/i,  // "alcoholic beverage" but not "alcoholic fermentation"
   /\bdrug\s+(?:abuse|addiction|dealer|dealing)/i,  // "drug abuse" but not "drugstore"
   /\billegal\s+drug/i,
-  
-  // Tobacco - broad matches OK
-  /\btobacco\b/i,
-  /\bcigarette(?:s)?\b/i,
-  /\bsmoking\s+(?:cigarettes|tobacco)/i,  // "smoking cigarettes" but not "smoking meat"
 ];
 
 /**
