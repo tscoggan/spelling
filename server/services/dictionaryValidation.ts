@@ -107,6 +107,10 @@ function extractExamples(dt: any[]): string[] {
           if (vis && vis.t) {
             let example = stripFormatting(vis.t);
             
+            // Remove slash alternatives from words (e.g., "took/rode" → "took")
+            // Only matches alphabetic alternatives, preserving fractions like "3/4"
+            example = example.replace(/\b([A-Za-z]+)\/[A-Za-z]+\b/g, '$1');
+            
             // Truncate at first period if followed by variant markers
             // Patterns: ". =", ". (US)", ". (chiefly", etc.
             // This removes alternative phrasings: "They arrived on June first. = (US) They arrived..."
