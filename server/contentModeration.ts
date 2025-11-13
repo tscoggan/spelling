@@ -9,10 +9,69 @@ filter.removeWords('hell', 'hells', 'ass', 'tit', 'sadist', 'god');
 
 // This prevents blocking: hello, shell, class, pass, title, etc.
 
+// Kid-inappropriate content patterns beyond profanity
+// These filter out definitions/examples with mature themes
+// Very specific patterns to avoid breaking dictionary definitions for innocent words
+const KID_INAPPROPRIATE_PATTERNS = [
+  // Sexual content - only explicit contexts
+  /\bsexual(?:ly)?\s+(?:attractive|appeal(?:ing)?|desire|arousal|intercourse|act)/i,
+  /\berotic\b/i,
+  /\bsexy\b/i,
+  /\bnude\b/i,
+  /\bnudity\b/i,
+  /\bpornograph/i,
+  
+  // Violence - broad matches OK
+  /\bviolent(?:ly)?\b/i,
+  /\bgraphic violence\b/i,
+  /\bkilling\b/i,
+  /\bkilled\b/i,
+  /\bblood(?:y|ied)?\b/i,
+  
+  // Alcohol & drugs - only abuse/intoxication contexts, not objects or processes
+  /\bdrunk(?:en)?\b/i,  // Catches "drunk", "drunken"
+  /\bintoxicated\b/i,
+  /\bget(?:ting)?\s+drunk/i,  // "getting drunk"
+  /\balcohol(?:ic)?\s+(?:abuse|addiction|beverage|consumption)/i,  // "alcoholic beverage" but not "alcoholic fermentation"
+  /\bdrug\s+(?:abuse|addiction|dealer|dealing)/i,  // "drug abuse" but not "drugstore"
+  /\billegal\s+drug/i,
+  
+  // Tobacco - broad matches OK
+  /\btobacco\b/i,
+  /\bcigarette(?:s)?\b/i,
+  /\bsmoking\s+(?:cigarettes|tobacco)/i,  // "smoking cigarettes" but not "smoking meat"
+];
+
+/**
+ * Checks if text contains kid-inappropriate content
+ * Combines profanity filtering with mature theme detection
+ * @param text - Text to check
+ * @returns true if inappropriate content is detected, false otherwise
+ */
+export function containsKidInappropriateContent(text: string): boolean {
+  if (!text) return false;
+  
+  // Check profanity filter first
+  if (filter.isProfane(text)) {
+    return true;
+  }
+  
+  // Check for mature themes
+  const lowerText = text.toLowerCase();
+  for (const pattern of KID_INAPPROPRIATE_PATTERNS) {
+    if (pattern.test(lowerText)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
 /**
  * Checks if text contains inappropriate words for children
  * @param text - Text to check
  * @returns true if inappropriate content is detected, false otherwise
+ * @deprecated Use containsKidInappropriateContent instead
  */
 export function containsInappropriateContent(text: string): boolean {
   return filter.isProfane(text);

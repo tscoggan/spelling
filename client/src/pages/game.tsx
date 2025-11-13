@@ -399,12 +399,25 @@ export default function Game() {
             setWordOrigin(dbWord.wordOrigin);
             console.log(`✅ Using origin from database`);
           }
+          if (dbWord.partOfSpeech) {
+            setWordPartsOfSpeech(dbWord.partOfSpeech);
+            console.log(`✅ Using partOfSpeech from database`);
+          }
           
-          // If we have definition from DB, we're done (example either from DB or fallback)
-          if (hasCompleteData) {
+          // Check if we have all critical metadata (definition AND partOfSpeech)
+          // Check both dbWord and currentWord for partOfSpeech
+          const hasPartOfSpeech = dbWord.partOfSpeech || currentWord?.partOfSpeech;
+          
+          // If we have definition and partOfSpeech from DB, we're done
+          if (hasCompleteData && hasPartOfSpeech) {
             setLoadingDictionary(false);
             console.log(`✅ Using complete data from database, skipping dictionary APIs`);
             return;
+          }
+          
+          // If we have definition but missing partOfSpeech, continue to API fallback
+          if (hasCompleteData && !hasPartOfSpeech) {
+            console.log(`⚠️ Definition found but partOfSpeech missing, fetching from dictionary APIs`);
           }
         } else if (dbResponse.status !== 404) {
           console.log(`⚠️ Database error (${dbResponse.status}), falling back to dictionary APIs`);
@@ -1067,13 +1080,38 @@ export default function Game() {
         return null;
       },
       
-      // "able" / "ible" swaps (dispensable -> dispensible, visible -> visable)
+      // "able" / "ible" / "eable" / "abel" / "uble" swaps (desirable -> desirible/desireable/desirabel/desiruble)
       () => {
-        if (wordLower.endsWith('able')) {
-          return wordLower.slice(0, -4) + 'ible';
+        const endings = ['able', 'ible', 'eable', 'abel', 'uble'];
+        for (const ending of endings) {
+          if (wordLower.endsWith(ending)) {
+            // Pick a different random ending
+            const otherEndings = endings.filter(e => e !== ending);
+            const newEnding = otherEndings[Math.floor(Math.random() * otherEndings.length)];
+            return wordLower.slice(0, -ending.length) + newEnding;
+          }
         }
-        if (wordLower.endsWith('ible')) {
-          return wordLower.slice(0, -4) + 'able';
+        return null;
+      },
+      
+      // "oble" / "obel" swaps (noble -> nobel, problem -> priblem if it had oble)
+      () => {
+        if (wordLower.endsWith('oble')) {
+          return wordLower.slice(0, -4) + 'obel';
+        }
+        if (wordLower.endsWith('obel')) {
+          return wordLower.slice(0, -4) + 'oble';
+        }
+        return null;
+      },
+      
+      // "sh" / "sch" swaps (fish -> fisch, wash -> wasch, school -> shool)
+      () => {
+        if (wordLower.includes('sh') && !wordLower.includes('sch')) {
+          return wordLower.replaceAll('sh', 'sch');
+        }
+        if (wordLower.includes('sch')) {
+          return wordLower.replaceAll('sch', 'sh');
         }
         return null;
       },
@@ -2472,25 +2510,23 @@ export default function Game() {
                     <div className="space-y-3">
                       {gameMode !== "mistake" && (
                         <div className="flex flex-col sm:flex-row gap-3">
-                          {gameMode !== "scramble" && (
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="lg"
-                              className="flex-1 text-lg h-12 md:h-14"
-                              onClick={speakPartsOfSpeech}
-                              disabled={!wordPartsOfSpeech || loadingDictionary}
-                              data-testid="button-parts-of-speech"
-                            >
-                              <Sparkles className="w-5 h-5 mr-2" />
-                              {loadingDictionary ? "Loading..." : "Part of Speech"}
-                            </Button>
-                          )}
                           <Button
                             type="button"
                             variant="secondary"
                             size="lg"
-                            className={`${gameMode === "scramble" ? "w-full" : "flex-1"} text-lg h-12 md:h-14`}
+                            className="flex-1 text-lg h-12 md:h-14"
+                            onClick={speakPartsOfSpeech}
+                            disabled={!wordPartsOfSpeech || loadingDictionary}
+                            data-testid="button-parts-of-speech"
+                          >
+                            <Sparkles className="w-5 h-5 mr-2" />
+                            {loadingDictionary ? "Loading..." : "Part of Speech"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="lg"
+                            className="flex-1 text-lg h-12 md:h-14"
                             onClick={speakOrigin}
                             disabled={!wordOrigin}
                             data-testid="button-origin"

@@ -1,5 +1,6 @@
 import fetch from 'node-fetch';
 import type { IStorage } from '../storage';
+import { containsKidInappropriateContent } from '../contentModeration';
 
 interface ValidationResult {
   valid: string[];
@@ -69,6 +70,28 @@ function stripFormatting(text: string): string {
     .trim();
 }
 
+// Check if text is a complete sentence suitable for kids
+function isCompleteSentence(text: string): boolean {
+  if (!text) return false;
+  
+  // Trim whitespace before validation
+  const trimmed = text.trim();
+  if (trimmed.length < 10) return false;
+  
+  // Must start with uppercase letter
+  if (!/^[A-Z]/.test(trimmed)) return false;
+  
+  // Must end with terminal punctuation
+  if (!/[.!?]$/.test(trimmed)) return false;
+  
+  // Avoid fragments with ellipses or incomplete patterns
+  if (trimmed.includes('...') || trimmed.includes('…')) return false;
+  if (/^\(/.test(trimmed)) return false; // Avoid starting with parenthesis
+  if (trimmed.startsWith('in ') || trimmed.startsWith('for ')) return false; // Fragments like "in June"
+  
+  return true;
+}
+
 // Extract examples from definition text (dt) array
 function extractExamples(dt: any[]): string[] {
   const examples: string[] = [];
@@ -107,14 +130,16 @@ function extractDefinitionText(dt: any[]): string {
 }
 
 // Parse Merriam-Webster Learner's Dictionary response
-function parseLearnerResponse(data: any): WordMetadata {
+function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
   const metadata: WordMetadata = {};
   
   if (!data || !Array.isArray(data) || data.length === 0) {
     return metadata;
   }
   
-  // Collect ALL parts of speech from all entries
+  const normalizedRequest = normalizeWord(requestedWord);
+  
+  // Collect parts of speech ONLY from entries matching the requested word
   const partsOfSpeechSet = new Set<string>();
   const definitionsArray: string[] = [];
   
@@ -124,23 +149,32 @@ function parseLearnerResponse(data: any): WordMetadata {
       continue;
     }
     
-    // Part of speech (functional label)
-    if (entry.fl) {
+    // Get headword from entry (meta.id is the normalized headword)
+    const headword = entry.meta?.id || entry.hwi?.hw;
+    // Strip MW formatting: asterisks, sense markers (:1, :2), parentheticals, digits
+    const cleanedHeadword = headword ? headword.replace(/\*/g, '').replace(/:\d+/g, '').replace(/\(.*?\)/g, '').replace(/\d+/g, '') : '';
+    const normalizedHeadword = normalizeWord(cleanedHeadword);
+    
+    // Only collect part of speech from entries whose headword matches requested word
+    if (entry.fl && normalizedHeadword === normalizedRequest) {
       partsOfSpeechSet.add(entry.fl.toLowerCase());
     }
     
-    // Short definitions (collect ALL)
+    // Short definitions (collect ALL, filter inappropriate)
     if (entry.shortdef && Array.isArray(entry.shortdef)) {
       for (const def of entry.shortdef) {
         const cleaned = stripFormatting(def);
-        if (cleaned.length > 0) {
+        if (cleaned.length > 0 && !containsKidInappropriateContent(cleaned)) {
           definitionsArray.push(cleaned);
         }
       }
     }
     
-    // Extract example from detailed definitions (only first one)
+    // Extract example from detailed definitions (prioritize complete sentences)
     if (!metadata.example && entry.def && Array.isArray(entry.def)) {
+      const allExamples: string[] = [];
+      
+      // Collect all examples first
       for (const def of entry.def) {
         if (def.sseq && Array.isArray(def.sseq)) {
           for (const sseq of def.sseq) {
@@ -148,17 +182,30 @@ function parseLearnerResponse(data: any): WordMetadata {
               for (const sense of sseq) {
                 if (Array.isArray(sense) && sense[0] === 'sense' && sense[1]?.dt) {
                   const examples = extractExamples(sense[1].dt);
-                  if (examples.length > 0 && !metadata.example) {
-                    metadata.example = examples[0];
-                    break;
-                  }
+                  allExamples.push(...examples);
                 }
               }
             }
-            if (metadata.example) break;
           }
         }
-        if (metadata.example) break;
+      }
+      
+      // First, try to find a complete sentence that's kid-appropriate
+      for (const example of allExamples) {
+        if (!containsKidInappropriateContent(example) && isCompleteSentence(example)) {
+          metadata.example = example;
+          break;
+        }
+      }
+      
+      // Fallback: use any kid-appropriate example (even if not a complete sentence)
+      if (!metadata.example) {
+        for (const example of allExamples) {
+          if (!containsKidInappropriateContent(example)) {
+            metadata.example = example;
+            break;
+          }
+        }
       }
     }
   }
@@ -177,14 +224,16 @@ function parseLearnerResponse(data: any): WordMetadata {
 }
 
 // Parse Merriam-Webster Collegiate Dictionary response
-function parseCollegiateResponse(data: any): WordMetadata {
+function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata {
   const metadata: WordMetadata = {};
   
   if (!data || !Array.isArray(data) || data.length === 0) {
     return metadata;
   }
   
-  // Collect ALL parts of speech from all entries
+  const normalizedRequest = normalizeWord(requestedWord);
+  
+  // Collect parts of speech ONLY from entries matching the requested word
   const partsOfSpeechSet = new Set<string>();
   const definitionsArray: string[] = [];
   
@@ -194,16 +243,22 @@ function parseCollegiateResponse(data: any): WordMetadata {
       continue;
     }
     
-    // Part of speech (functional label)
-    if (entry.fl) {
+    // Get headword from entry (meta.id is the normalized headword)
+    const headword = entry.meta?.id || entry.hwi?.hw;
+    // Strip MW formatting: asterisks, sense markers (:1, :2), parentheticals, digits
+    const cleanedHeadword = headword ? headword.replace(/\*/g, '').replace(/:\d+/g, '').replace(/\(.*?\)/g, '').replace(/\d+/g, '') : '';
+    const normalizedHeadword = normalizeWord(cleanedHeadword);
+    
+    // Only collect part of speech from entries whose headword matches requested word
+    if (entry.fl && normalizedHeadword === normalizedRequest) {
       partsOfSpeechSet.add(entry.fl.toLowerCase());
     }
     
-    // Short definitions (collect ALL)
+    // Short definitions (collect ALL, filter inappropriate)
     if (entry.shortdef && Array.isArray(entry.shortdef)) {
       for (const def of entry.shortdef) {
         const cleaned = stripFormatting(def);
-        if (cleaned.length > 0) {
+        if (cleaned.length > 0 && !containsKidInappropriateContent(cleaned)) {
           definitionsArray.push(cleaned);
         }
       }
@@ -219,8 +274,11 @@ function parseCollegiateResponse(data: any): WordMetadata {
       }
     }
     
-    // Extract example from detailed definitions (only first one)
+    // Extract example from detailed definitions (prioritize complete sentences)
     if (!metadata.example && entry.def && Array.isArray(entry.def)) {
+      const allExamples: string[] = [];
+      
+      // Collect all examples first
       for (const def of entry.def) {
         if (def.sseq && Array.isArray(def.sseq)) {
           for (const sseq of def.sseq) {
@@ -228,17 +286,30 @@ function parseCollegiateResponse(data: any): WordMetadata {
               for (const sense of sseq) {
                 if (Array.isArray(sense) && sense[0] === 'sense' && sense[1]?.dt) {
                   const examples = extractExamples(sense[1].dt);
-                  if (examples.length > 0 && !metadata.example) {
-                    metadata.example = examples[0];
-                    break;
-                  }
+                  allExamples.push(...examples);
                 }
               }
             }
-            if (metadata.example) break;
           }
         }
-        if (metadata.example) break;
+      }
+      
+      // First, try to find a complete sentence that's kid-appropriate
+      for (const example of allExamples) {
+        if (!containsKidInappropriateContent(example) && isCompleteSentence(example)) {
+          metadata.example = example;
+          break;
+        }
+      }
+      
+      // Fallback: use any kid-appropriate example (even if not a complete sentence)
+      if (!metadata.example) {
+        for (const example of allExamples) {
+          if (!containsKidInappropriateContent(example)) {
+            metadata.example = example;
+            break;
+          }
+        }
       }
     }
   }
@@ -294,7 +365,7 @@ async function checkMerriamWebsterLearners(word: string): Promise<{ valid: boole
       return { valid: false, skipped: false };
     }
     
-    const metadata = parseLearnerResponse(data);
+    const metadata = parseLearnerResponse(data, word);
     
     // Word is valid if we got at least a definition
     const valid = !!metadata.definition;
@@ -344,7 +415,7 @@ async function checkMerriamWebsterCollegiate(word: string): Promise<{ valid: boo
       return { valid: false, skipped: false };
     }
     
-    const metadata = parseCollegiateResponse(data);
+    const metadata = parseCollegiateResponse(data, word);
     
     // Word is valid if we got at least a definition
     const valid = !!metadata.definition;
