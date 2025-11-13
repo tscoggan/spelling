@@ -23,6 +23,7 @@ export const words = pgTable("words", {
   definition: text("definition"),
   sentenceExample: text("sentence_example"),
   wordOrigin: text("word_origin"),
+  partOfSpeech: text("part_of_speech"),
 });
 
 export const gameSessions = pgTable("game_sessions", {

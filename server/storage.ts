@@ -44,7 +44,7 @@ export interface IStorage {
   getWord(id: number): Promise<Word | undefined>;
   getWordByText(word: string): Promise<Word | undefined>;
   createWord(word: InsertWord): Promise<Word>;
-  upsertWord(word: string, difficulty: string, definition?: string, sentenceExample?: string, wordOrigin?: string): Promise<Word>;
+  upsertWord(word: string, difficulty: string, definition?: string, sentenceExample?: string, wordOrigin?: string, partOfSpeech?: string): Promise<Word>;
   seedWords(): Promise<void>;
   
   getGameSession(id: number): Promise<GameSession | undefined>;
@@ -138,7 +138,7 @@ export class DatabaseStorage implements IStorage {
     return word;
   }
 
-  async upsertWord(wordText: string, difficulty: string, definition?: string, sentenceExample?: string, wordOrigin?: string): Promise<Word> {
+  async upsertWord(wordText: string, difficulty: string, definition?: string, sentenceExample?: string, wordOrigin?: string, partOfSpeech?: string): Promise<Word> {
     const normalized = wordText.toLowerCase().trim();
     
     const existing = await this.getWordByText(normalized);
@@ -156,6 +156,10 @@ export class DatabaseStorage implements IStorage {
       
       if (wordOrigin && !existing.wordOrigin) {
         updates.wordOrigin = wordOrigin;
+      }
+      
+      if (partOfSpeech && !existing.partOfSpeech) {
+        updates.partOfSpeech = partOfSpeech;
       }
       
       if (Object.keys(updates).length > 0) {
@@ -178,6 +182,7 @@ export class DatabaseStorage implements IStorage {
         definition: definition || null,
         sentenceExample: sentenceExample || null,
         wordOrigin: wordOrigin || null,
+        partOfSpeech: partOfSpeech || null,
       })
       .returning();
     

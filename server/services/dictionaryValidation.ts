@@ -11,6 +11,7 @@ interface WordMetadata {
   definition?: string;
   example?: string;
   origin?: string;
+  partOfSpeech?: string;
 }
 
 interface CacheEntry {
@@ -40,8 +41,104 @@ function cleanCache() {
   }
 }
 
-// Check Simple English Wiktionary
-async function checkSimpleWiktionary(word: string): Promise<{ valid: boolean; skipped: boolean }> {
+// Parse Simple English Wiktionary extract to get metadata
+function parseWiktionaryExtract(extract: string): WordMetadata {
+  const metadata: WordMetadata = {};
+  
+  if (!extract || extract.trim().length === 0) {
+    return metadata;
+  }
+  
+  // Extract part of speech (look for headers like "== Noun ==", "== Verb ==", etc.)
+  const posMatch = extract.match(/==\s*(Noun|Verb|Adjective|Adverb|Pronoun|Preposition|Conjunction|Interjection|Proper noun)\s*==/i);
+  if (posMatch) {
+    metadata.partOfSpeech = posMatch[1].toLowerCase();
+  }
+  
+  // Split into lines and filter out empty ones
+  const lines = extract.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+  
+  let inTargetPOSSection = false;
+  const definitions: string[] = [];
+  const examples: string[] = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
+    // Check for part of speech headers
+    if (line.startsWith('==') && line.match(/==\s*[A-Z]/)) {
+      // If we found our target POS and now hit a new section, stop parsing
+      if (inTargetPOSSection) {
+        break;
+      }
+      // Check if this is the POS section we extracted earlier
+      if (metadata.partOfSpeech && line.match(new RegExp(`==\\s*${metadata.partOfSpeech}\\s*==`, 'i'))) {
+        inTargetPOSSection = true;
+      }
+      continue;
+    }
+    
+    // Skip pronunciation and other metadata
+    if (line.includes('IPA') || line.includes('SAMPA') || line.includes('Pronunciation') || line.includes('Hyphenation') || line.includes('enPR')) {
+      continue;
+    }
+    
+    if (inTargetPOSSection) {
+      // Skip headword/lemma lines that contain inflection information in parentheses
+      // Examples: "monkey (plural monkeys)", "happy (comparative happier, superlative happiest)"
+      if (line.match(/\([^)]*(?:plural|comparative|superlative|third-person|present participle|past tense|past participle)[^)]*\)/i)) {
+        continue;
+      }
+      
+      // Wiktionary uses wiki markup: "#" for definitions, "#:" or "#*" for examples
+      // If we see these markers, parse accordingly
+      if (line.startsWith('#:') || line.startsWith('#*')) {
+        // This is an example - strip the marker
+        const cleanExample = line.replace(/^#[:\*]\s*/, '').trim();
+        if (cleanExample.length > 5) {
+          examples.push(cleanExample);
+        }
+      } else if (line.startsWith('#')) {
+        // This is a definition - strip the marker
+        const cleanDef = line.replace(/^#\s*/, '').trim();
+        if (cleanDef.length > 5) {
+          definitions.push(cleanDef);
+        }
+      }
+      // If there are no wiki markers, use the simple heuristic:
+      // First non-metadata line is definition, subsequent lines are examples
+      else if (line.length > 5 && !line.startsWith('-')) {
+        if (definitions.length === 0) {
+          // First content line is the definition
+          const cleanLine = line.replace(/^\d+\.\s*/, '').trim();
+          if (cleanLine.length > 0) {
+            definitions.push(cleanLine);
+          }
+        } else {
+          // Subsequent lines are examples
+          examples.push(line);
+        }
+      }
+    }
+  }
+  
+  // Set definition (combine multiple if present)
+  if (definitions.length > 0) {
+    metadata.definition = definitions.length === 1
+      ? definitions[0]
+      : definitions.map((d, i) => `${i + 1}. ${d}`).join(' ');
+  }
+  
+  // Set example (use first one)
+  if (examples.length > 0) {
+    metadata.example = examples[0];
+  }
+  
+  return metadata;
+}
+
+// Check Simple English Wiktionary and extract metadata
+async function checkSimpleWiktionary(word: string): Promise<{ valid: boolean; skipped: boolean; metadata?: WordMetadata }> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
@@ -88,9 +185,10 @@ async function checkSimpleWiktionary(word: string): Promise<{ valid: boolean; sk
       const pageData = pages[pageId];
       
       // Check if page exists and has content (not missing)
-      // Simple Wiktionary returns 200 with "missing" flag for non-existent words
-      if (pageData && pageData.extract && !pageData.missing) {
-        return { valid: true, skipped: false };
+      if (pageData && pageData.extract && !pageData.missing && pageData.extract.trim().length > 0) {
+        // Parse the extract to get metadata
+        const metadata = parseWiktionaryExtract(pageData.extract);
+        return { valid: true, skipped: false, metadata };
       }
     }
     
@@ -174,7 +272,7 @@ async function checkFreeDictionary(word: string): Promise<{ valid: boolean; skip
   }
 }
 
-// Validate a single word against both dictionaries
+// Validate a single word against both dictionaries (Simple Wiktionary PRIMARY, Free Dictionary BACKUP)
 async function validateSingleWord(word: string, difficulty: string, storage?: IStorage): Promise<{ word: string; isValid: boolean; skipped: boolean }> {
   const normalized = normalizeWord(word);
   
@@ -184,10 +282,10 @@ async function validateSingleWord(word: string, difficulty: string, storage?: IS
     return { word, isValid: cached.isValid, skipped: false };
   }
   
-  // Try Simple Wiktionary first
+  // Try Simple Wiktionary FIRST (PRIMARY source)
   const wiktionaryResult = await checkSimpleWiktionary(word);
   
-  // If Wiktionary service failed (skipped), try Free Dictionary
+  // If Wiktionary service failed (network error), try Free Dictionary as fallback
   if (wiktionaryResult.skipped) {
     const freeDictResult = await checkFreeDictionary(word);
     
@@ -196,7 +294,7 @@ async function validateSingleWord(word: string, difficulty: string, storage?: IS
       return { word, isValid: false, skipped: true };
     }
     
-    // Free Dictionary worked, use its result and save metadata
+    // Free Dictionary worked, use its metadata
     if (freeDictResult.valid) {
       validationCache.set(normalized, {
         isValid: true,
@@ -210,7 +308,8 @@ async function validateSingleWord(word: string, difficulty: string, storage?: IS
             difficulty,
             freeDictResult.metadata.definition,
             freeDictResult.metadata.example,
-            freeDictResult.metadata.origin
+            freeDictResult.metadata.origin,
+            freeDictResult.metadata.partOfSpeech
           );
         } catch (error) {
           console.error(`Failed to save word metadata for "${word}":`, error);
@@ -221,7 +320,7 @@ async function validateSingleWord(word: string, difficulty: string, storage?: IS
     return { word, isValid: freeDictResult.valid, skipped: false };
   }
   
-  // Wiktionary worked
+  // Wiktionary validation succeeded
   if (wiktionaryResult.valid) {
     // Cache the positive result
     validationCache.set(normalized, {
@@ -229,27 +328,49 @@ async function validateSingleWord(word: string, difficulty: string, storage?: IS
       timestamp: Date.now(),
     });
     
+    // Use Simple Wiktionary metadata as PRIMARY, fill gaps with Free Dictionary as BACKUP
     if (storage) {
-      const freeDictResult = await checkFreeDictionary(word);
-      if (freeDictResult.valid && freeDictResult.metadata) {
-        try {
-          await storage.upsertWord(
-            word,
-            difficulty,
-            freeDictResult.metadata.definition,
-            freeDictResult.metadata.example,
-            freeDictResult.metadata.origin
-          );
-        } catch (error) {
-          console.error(`Failed to save word metadata for "${word}":`, error);
+      const combinedMetadata: WordMetadata = wiktionaryResult.metadata || {};
+      
+      // Only fetch from Free Dictionary if we're missing critical fields
+      const needsBackup = !combinedMetadata.definition || !combinedMetadata.example || !combinedMetadata.origin;
+      
+      if (needsBackup) {
+        const freeDictResult = await checkFreeDictionary(word);
+        if (freeDictResult.valid && freeDictResult.metadata) {
+          // Fill in ONLY missing fields - Simple Wiktionary takes priority
+          if (!combinedMetadata.definition && freeDictResult.metadata.definition) {
+            combinedMetadata.definition = freeDictResult.metadata.definition;
+          }
+          if (!combinedMetadata.example && freeDictResult.metadata.example) {
+            combinedMetadata.example = freeDictResult.metadata.example;
+          }
+          if (!combinedMetadata.origin && freeDictResult.metadata.origin) {
+            combinedMetadata.origin = freeDictResult.metadata.origin;
+          }
+          // Note: partOfSpeech from Simple Wiktionary is preferred
         }
+      }
+      
+      // Save combined metadata to database
+      try {
+        await storage.upsertWord(
+          word,
+          difficulty,
+          combinedMetadata.definition,
+          combinedMetadata.example,
+          combinedMetadata.origin,
+          combinedMetadata.partOfSpeech
+        );
+      } catch (error) {
+        console.error(`Failed to save word metadata for "${word}":`, error);
       }
     }
     
     return { word, isValid: true, skipped: false };
   }
   
-  // Word not found in Wiktionary, try Free Dictionary
+  // Word not found in Simple Wiktionary, try Free Dictionary as fallback
   const freeDictResult = await checkFreeDictionary(word);
   
   // If Free Dictionary service failed, mark as skipped
@@ -263,6 +384,7 @@ async function validateSingleWord(word: string, difficulty: string, storage?: IS
     timestamp: Date.now(),
   });
   
+  // Save Free Dictionary metadata if word is valid
   if (freeDictResult.valid && storage && freeDictResult.metadata) {
     try {
       await storage.upsertWord(
@@ -270,7 +392,8 @@ async function validateSingleWord(word: string, difficulty: string, storage?: IS
         difficulty,
         freeDictResult.metadata.definition,
         freeDictResult.metadata.example,
-        freeDictResult.metadata.origin
+        freeDictResult.metadata.origin,
+        freeDictResult.metadata.partOfSpeech
       );
     } catch (error) {
       console.error(`Failed to save word metadata for "${word}":`, error);
