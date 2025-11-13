@@ -41,16 +41,6 @@ export const gameSessions = pgTable("game_sessions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const wordAttempts = pgTable("word_attempts", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id"),
-  sessionId: integer("session_id"),
-  wordId: integer("word_id").notNull(),
-  userAnswer: text("user_answer").notNull(),
-  isCorrect: boolean("is_correct").notNull(),
-  attemptedAt: timestamp("attempted_at").defaultNow().notNull(),
-});
-
 export const leaderboardScores = pgTable("leaderboard_scores", {
   id: serial("id").primaryKey(),
   userId: integer("user_id"),
@@ -144,7 +134,6 @@ export const userToDoItems = pgTable("user_to_do_items", {
 
 export const usersRelations = relations(users, ({ many }) => ({
   gameSessions: many(gameSessions),
-  wordAttempts: many(wordAttempts),
   leaderboardScores: many(leaderboardScores),
   customWordLists: many(customWordLists),
   ownedGroups: many(userGroups),
@@ -152,28 +141,12 @@ export const usersRelations = relations(users, ({ many }) => ({
   toDoItems: many(userToDoItems),
 }));
 
-export const gameSessionsRelations = relations(gameSessions, ({ one, many }) => ({
+export const gameSessionsRelations = relations(gameSessions, ({ one }) => ({
   user: one(users, {
     fields: [gameSessions.userId],
     references: [users.id],
   }),
-  wordAttempts: many(wordAttempts),
   leaderboardScore: one(leaderboardScores),
-}));
-
-export const wordAttemptsRelations = relations(wordAttempts, ({ one }) => ({
-  user: one(users, {
-    fields: [wordAttempts.userId],
-    references: [users.id],
-  }),
-  session: one(gameSessions, {
-    fields: [wordAttempts.sessionId],
-    references: [gameSessions.id],
-  }),
-  word: one(words, {
-    fields: [wordAttempts.wordId],
-    references: [words.id],
-  }),
 }));
 
 export const leaderboardScoresRelations = relations(leaderboardScores, ({ one }) => ({
@@ -187,9 +160,7 @@ export const leaderboardScoresRelations = relations(leaderboardScores, ({ one })
   }),
 }));
 
-export const wordsRelations = relations(words, ({ many }) => ({
-  wordAttempts: many(wordAttempts),
-}));
+export const wordsRelations = relations(words, ({ }) => ({}));
 
 export const customWordListsRelations = relations(customWordLists, ({ one, many }) => ({
   user: one(users, {
@@ -252,11 +223,6 @@ export const insertGameSessionSchema = createInsertSchema(gameSessions).omit({
   completedAt: true,
 });
 
-export const insertWordAttemptSchema = createInsertSchema(wordAttempts).omit({
-  id: true,
-  attemptedAt: true,
-});
-
 export const insertLeaderboardScoreSchema = createInsertSchema(leaderboardScores).omit({
   id: true,
   createdAt: true,
@@ -305,8 +271,6 @@ export type InsertWord = z.infer<typeof insertWordSchema>;
 export type Word = typeof words.$inferSelect;
 export type InsertGameSession = z.infer<typeof insertGameSessionSchema>;
 export type GameSession = typeof gameSessions.$inferSelect;
-export type InsertWordAttempt = z.infer<typeof insertWordAttemptSchema>;
-export type WordAttempt = typeof wordAttempts.$inferSelect;
 export type InsertLeaderboardScore = z.infer<typeof insertLeaderboardScoreSchema>;
 export type LeaderboardScore = typeof leaderboardScores.$inferSelect;
 export type InsertCustomWordList = z.infer<typeof insertCustomWordListSchema>;

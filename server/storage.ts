@@ -6,8 +6,6 @@ import {
   type DifficultyLevel,
   type User,
   type InsertUser,
-  type WordAttempt,
-  type InsertWordAttempt,
   type LeaderboardScore,
   type InsertLeaderboardScore,
   type CustomWordList,
@@ -23,7 +21,6 @@ import {
   words,
   gameSessions,
   users,
-  wordAttempts,
   leaderboardScores,
   customWordLists,
   wordIllustrations,
@@ -55,10 +52,6 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserPreferences(userId: number, preferences: { preferredVoice?: string | null }): Promise<User>;
-  
-  createWordAttempt(attempt: InsertWordAttempt): Promise<WordAttempt>;
-  getMissedWordsByUser(userId: number): Promise<Word[]>;
-  getUserAttemptHistory(userId: number, limit?: number): Promise<WordAttempt[]>;
   
   createLeaderboardScore(score: InsertLeaderboardScore): Promise<LeaderboardScore>;
   getTopScores(difficulty?: DifficultyLevel, gameMode?: string, limit?: number): Promise<LeaderboardScore[]>;
@@ -337,33 +330,6 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return user;
-  }
-
-  async createWordAttempt(insertAttempt: InsertWordAttempt): Promise<WordAttempt> {
-    const [attempt] = await db.insert(wordAttempts).values(insertAttempt).returning();
-    return attempt;
-  }
-
-  async getMissedWordsByUser(userId: number): Promise<Word[]> {
-    const missedAttempts = await db
-      .select({ wordId: wordAttempts.wordId })
-      .from(wordAttempts)
-      .where(and(eq(wordAttempts.userId, userId), eq(wordAttempts.isCorrect, false)))
-      .groupBy(wordAttempts.wordId);
-
-    if (missedAttempts.length === 0) return [];
-
-    const wordIds = missedAttempts.map(a => a.wordId);
-    return await db.select().from(words).where(sql`${words.id} = ANY(${wordIds})`);
-  }
-
-  async getUserAttemptHistory(userId: number, limit: number = 50): Promise<WordAttempt[]> {
-    return await db
-      .select()
-      .from(wordAttempts)
-      .where(eq(wordAttempts.userId, userId))
-      .orderBy(desc(wordAttempts.attemptedAt))
-      .limit(limit);
   }
 
   async createLeaderboardScore(insertScore: InsertLeaderboardScore): Promise<LeaderboardScore> {
