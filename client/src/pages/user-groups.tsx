@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { Plus, Trash2, Users, Globe, Lock, Home, UserPlus, Settings, Search, Mail } from "lucide-react";
+import { Plus, Trash2, Users, Globe, Lock, Home, UserPlus, Settings, Search, Mail, LogOut } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { UserHeader } from "@/components/user-header";
@@ -156,6 +156,27 @@ export default function UserGroupsPage() {
       toast({
         title: "Error",
         description: error.message || "Failed to remove member",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const leaveGroupMutation = useMutation({
+    mutationFn: async (groupId: number) => {
+      await apiRequest("POST", `/api/user-groups/${groupId}/leave`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user-groups", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/shared-with-me"] });
+      toast({
+        title: "Success!",
+        description: "You have left the group",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to leave group",
         variant: "destructive",
       });
     },
@@ -455,7 +476,16 @@ export default function UserGroupsPage() {
                               <Lock className="w-3 h-3 text-gray-600 flex-shrink-0" />
                             )}
                           </div>
-                          <p className="text-xs text-gray-600">Member</p>
+                          <p className="text-xs text-gray-600 mb-2">Member</p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => leaveGroupMutation.mutate(group.id)}
+                            data-testid={`button-leave-${group.id}`}
+                          >
+                            <LogOut className="w-3 h-3 mr-1" />
+                            Leave
+                          </Button>
                         </div>
                         <div className="flex items-center gap-1">
                           <span className="text-xs text-gray-600" data-testid={`text-member-count-${group.id}`}>{group.memberCount || 0} {(group.memberCount || 0) === 1 ? 'member' : 'members'}</span>
