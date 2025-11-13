@@ -42,7 +42,9 @@ export interface IStorage {
   getAllWords(): Promise<Word[]>;
   getWordsByDifficulty(difficulty: DifficultyLevel, limit?: number): Promise<Word[]>;
   getWord(id: number): Promise<Word | undefined>;
+  getWordByText(word: string): Promise<Word | undefined>;
   createWord(word: InsertWord): Promise<Word>;
+  upsertWord(word: string, difficulty: string, sentenceExample?: string, wordOrigin?: string): Promise<Word>;
   seedWords(): Promise<void>;
   
   getGameSession(id: number): Promise<GameSession | undefined>;
@@ -125,9 +127,56 @@ export class DatabaseStorage implements IStorage {
     return word || undefined;
   }
 
+  async getWordByText(wordText: string): Promise<Word | undefined> {
+    const normalized = wordText.toLowerCase().trim();
+    const [word] = await db.select().from(words).where(eq(words.word, normalized));
+    return word || undefined;
+  }
+
   async createWord(insertWord: InsertWord): Promise<Word> {
     const [word] = await db.insert(words).values(insertWord).returning();
     return word;
+  }
+
+  async upsertWord(wordText: string, difficulty: string, sentenceExample?: string, wordOrigin?: string): Promise<Word> {
+    const normalized = wordText.toLowerCase().trim();
+    
+    const existing = await this.getWordByText(normalized);
+    
+    if (existing) {
+      const updates: Partial<InsertWord> = {};
+      
+      if (sentenceExample && !existing.sentenceExample) {
+        updates.sentenceExample = sentenceExample;
+      }
+      
+      if (wordOrigin && !existing.wordOrigin) {
+        updates.wordOrigin = wordOrigin;
+      }
+      
+      if (Object.keys(updates).length > 0) {
+        const [updated] = await db
+          .update(words)
+          .set(updates)
+          .where(eq(words.id, existing.id))
+          .returning();
+        return updated;
+      }
+      
+      return existing;
+    }
+    
+    const [newWord] = await db
+      .insert(words)
+      .values({
+        word: normalized,
+        difficulty,
+        sentenceExample: sentenceExample || null,
+        wordOrigin: wordOrigin || null,
+      })
+      .returning();
+    
+    return newWord;
   }
 
   async seedWords(): Promise<void> {

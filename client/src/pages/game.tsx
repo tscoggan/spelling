@@ -485,38 +485,61 @@ export default function Game() {
             savePartsOfSpeech(fetchWord, partsString);
           }
           
-          // Get first definition
-          const firstMeaning = entry.meanings?.[0];
-          const firstDefinition = firstMeaning?.definitions?.[0];
-          if (firstDefinition?.definition) {
-            setWordDefinition(firstDefinition.definition);
-            console.log(`✅ Found definition in standard dictionary for "${fetchWord}"`);
+          // Extract word origin if available
+          if (entry.origin) {
+            setWordOrigin(entry.origin);
+            console.log(`✅ Found word origin in standard dictionary for "${fetchWord}"`);
           }
           
-          // Get first example sentence
-          if (firstDefinition?.example) {
-            setWordExample(firstDefinition.example);
-            console.log(`✅ Found example in first definition for "${fetchWord}":`, firstDefinition.example);
-          } else {
-            // Try to find an example in any definition
-            let foundExample = false;
-            for (const meaning of entry.meanings || []) {
-              if (foundExample) break;
-              for (const def of meaning.definitions || []) {
-                if (def.example) {
-                  setWordExample(def.example);
-                  foundExample = true;
-                  console.log(`✅ Found example in other definition for "${fetchWord}":`, def.example);
-                  break;
-                }
+          // Collect ALL definitions grouped by part of speech
+          const allDefinitions: string[] = [];
+          const definitionSet = new Set<string>();
+          
+          if (entry.meanings && Array.isArray(entry.meanings)) {
+            entry.meanings.forEach((meaning: any) => {
+              const partOfSpeech = meaning.partOfSpeech || '';
+              if (meaning.definitions && Array.isArray(meaning.definitions)) {
+                meaning.definitions.forEach((def: any, index: number) => {
+                  if (def.definition && !definitionSet.has(def.definition)) {
+                    definitionSet.add(def.definition);
+                    // Format: "noun: definition" or just "definition" if no part of speech
+                    const prefix = partOfSpeech && index === 0 ? `${partOfSpeech}: ` : '';
+                    allDefinitions.push(prefix + def.definition);
+                  }
+                });
+              }
+            });
+          }
+          
+          if (allDefinitions.length > 0) {
+            // Join multiple definitions with bullet points
+            const formattedDefinitions = allDefinitions.length === 1 
+              ? allDefinitions[0]
+              : allDefinitions.map((def, i) => `${i + 1}. ${def}`).join('\n');
+            setWordDefinition(formattedDefinitions);
+            console.log(`✅ Found ${allDefinitions.length} definition(s) in standard dictionary for "${fetchWord}"`);
+          }
+          
+          // Get example sentence from any definition
+          let foundExample = false;
+          for (const meaning of entry.meanings || []) {
+            if (foundExample) break;
+            for (const def of meaning.definitions || []) {
+              if (def.example) {
+                setWordExample(def.example);
+                foundExample = true;
+                console.log(`✅ Found example in dictionary for "${fetchWord}":`, def.example);
+                break;
               }
             }
-            if (!foundExample) {
-              console.log(`❌ No example found for "${fetchWord}" (checked ${entry.meanings?.length || 0} meanings) - generating fallback`);
-              const fallbackExample = generateFallbackExample(fetchWord);
-              setWordExample(fallbackExample);
-              console.log(`✨ Generated fallback example: "${fallbackExample}"`);
-            }
+          }
+          
+          // Generate fallback if no example found
+          if (!foundExample) {
+            console.log(`❌ No example found for "${fetchWord}" (checked ${entry.meanings?.length || 0} meanings) - generating fallback`);
+            const fallbackExample = generateFallbackExample(fetchWord);
+            setWordExample(fallbackExample);
+            console.log(`✨ Generated fallback example: "${fallbackExample}"`);
           }
         }
       } else {

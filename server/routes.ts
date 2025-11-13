@@ -164,7 +164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validate words against dictionaries
       const { validateWords: validateDictionary } = await import("./services/dictionaryValidation");
-      const validationResult = await validateDictionary(wordsArray);
+      const validationResult = await validateDictionary(wordsArray, req.body.difficulty || 'medium', storage);
       
       // Check if all words were skipped due to API failures
       if (validationResult.skipped.length === wordsArray.length) {
@@ -370,7 +370,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let validationResult: { valid: string[]; invalid: string[]; skipped: string[] } | undefined;
       if (wordsArray) {
         const { validateWords: validateDictionary } = await import("./services/dictionaryValidation");
-        validationResult = await validateDictionary(wordsArray);
+        validationResult = await validateDictionary(wordsArray, req.body.difficulty || existingList.difficulty, storage);
         
         // Check if all words were skipped due to API failures
         if (validationResult.skipped.length === wordsArray.length) {

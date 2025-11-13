@@ -1,9 +1,15 @@
 import fetch from 'node-fetch';
+import type { IStorage } from '../storage';
 
 interface ValidationResult {
   valid: string[];
   invalid: string[];
   skipped: string[];
+}
+
+interface WordMetadata {
+  example?: string;
+  origin?: string;
 }
 
 interface CacheEntry {
@@ -75,8 +81,8 @@ async function checkSimpleWiktionary(word: string): Promise<{ valid: boolean; sk
   }
 }
 
-// Check Free Dictionary API
-async function checkFreeDictionary(word: string): Promise<{ valid: boolean; skipped: boolean }> {
+// Check Free Dictionary API and fetch metadata
+async function checkFreeDictionary(word: string): Promise<{ valid: boolean; skipped: boolean; metadata?: WordMetadata }> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
@@ -93,9 +99,40 @@ async function checkFreeDictionary(word: string): Promise<{ valid: boolean; skip
       return { valid: false, skipped: true };
     }
     
-    // Free Dictionary returns 404 for words not found (this is expected, not a service failure)
-    // 200 means word found, 404 means word not found, both are valid responses
-    return { valid: response.ok, skipped: false };
+    if (!response.ok) {
+      return { valid: false, skipped: false };
+    }
+    
+    try {
+      const data: any = await response.json();
+      const metadata: WordMetadata = {};
+      
+      if (data && data.length > 0) {
+        const entry = data[0];
+        
+        if (entry.origin) {
+          metadata.origin = entry.origin;
+        }
+        
+        if (entry.meanings && Array.isArray(entry.meanings)) {
+          for (const meaning of entry.meanings) {
+            if (meaning.definitions && Array.isArray(meaning.definitions)) {
+              for (const def of meaning.definitions) {
+                if (def.example) {
+                  metadata.example = def.example;
+                  break;
+                }
+              }
+              if (metadata.example) break;
+            }
+          }
+        }
+      }
+      
+      return { valid: true, skipped: false, metadata };
+    } catch (error) {
+      return { valid: true, skipped: false };
+    }
   } catch (error) {
     // Timeout or network error - mark as skipped
     return { valid: false, skipped: true };
@@ -103,7 +140,7 @@ async function checkFreeDictionary(word: string): Promise<{ valid: boolean; skip
 }
 
 // Validate a single word against both dictionaries
-async function validateSingleWord(word: string): Promise<{ word: string; isValid: boolean; skipped: boolean }> {
+async function validateSingleWord(word: string, difficulty: string, storage?: IStorage): Promise<{ word: string; isValid: boolean; skipped: boolean }> {
   const normalized = normalizeWord(word);
   
   // Check cache first
@@ -124,12 +161,25 @@ async function validateSingleWord(word: string): Promise<{ word: string; isValid
       return { word, isValid: false, skipped: true };
     }
     
-    // Free Dictionary worked, use its result
+    // Free Dictionary worked, use its result and save metadata
     if (freeDictResult.valid) {
       validationCache.set(normalized, {
         isValid: true,
         timestamp: Date.now(),
       });
+      
+      if (storage && freeDictResult.metadata) {
+        try {
+          await storage.upsertWord(
+            word,
+            difficulty,
+            freeDictResult.metadata.example,
+            freeDictResult.metadata.origin
+          );
+        } catch (error) {
+          console.error(`Failed to save word metadata for "${word}":`, error);
+        }
+      }
     }
     
     return { word, isValid: freeDictResult.valid, skipped: false };
@@ -142,6 +192,23 @@ async function validateSingleWord(word: string): Promise<{ word: string; isValid
       isValid: true,
       timestamp: Date.now(),
     });
+    
+    if (storage) {
+      const freeDictResult = await checkFreeDictionary(word);
+      if (freeDictResult.valid && freeDictResult.metadata) {
+        try {
+          await storage.upsertWord(
+            word,
+            difficulty,
+            freeDictResult.metadata.example,
+            freeDictResult.metadata.origin
+          );
+        } catch (error) {
+          console.error(`Failed to save word metadata for "${word}":`, error);
+        }
+      }
+    }
+    
     return { word, isValid: true, skipped: false };
   }
   
@@ -159,11 +226,24 @@ async function validateSingleWord(word: string): Promise<{ word: string; isValid
     timestamp: Date.now(),
   });
   
+  if (freeDictResult.valid && storage && freeDictResult.metadata) {
+    try {
+      await storage.upsertWord(
+        word,
+        difficulty,
+        freeDictResult.metadata.example,
+        freeDictResult.metadata.origin
+      );
+    } catch (error) {
+      console.error(`Failed to save word metadata for "${word}":`, error);
+    }
+  }
+  
   return { word, isValid: freeDictResult.valid, skipped: false };
 }
 
 // Validate multiple words with concurrency control
-async function validateWordsInBatches(words: string[]): Promise<ValidationResult> {
+async function validateWordsInBatches(words: string[], difficulty: string, storage?: IStorage): Promise<ValidationResult> {
   const result: ValidationResult = {
     valid: [],
     invalid: [],
@@ -177,7 +257,7 @@ async function validateWordsInBatches(words: string[]): Promise<ValidationResult
   for (let i = 0; i < words.length; i += MAX_CONCURRENT) {
     const batch = words.slice(i, i + MAX_CONCURRENT);
     const results = await Promise.all(
-      batch.map(word => validateSingleWord(word))
+      batch.map(word => validateSingleWord(word, difficulty, storage))
     );
     
     for (const { word, isValid, skipped } of results) {
@@ -195,7 +275,7 @@ async function validateWordsInBatches(words: string[]): Promise<ValidationResult
 }
 
 // Main validation function
-export async function validateWords(words: string[]): Promise<ValidationResult> {
+export async function validateWords(words: string[], difficulty: string = 'medium', storage?: IStorage): Promise<ValidationResult> {
   // Filter out empty words
   const filteredWords = words.filter(w => w && w.trim().length > 0);
   
@@ -203,7 +283,7 @@ export async function validateWords(words: string[]): Promise<ValidationResult> 
     return { valid: [], invalid: [], skipped: [] };
   }
   
-  return await validateWordsInBatches(filteredWords);
+  return await validateWordsInBatches(filteredWords, difficulty, storage);
 }
 
 // Function to clear cache (for testing or admin purposes)
