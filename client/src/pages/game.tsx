@@ -3,7 +3,7 @@ import { useLocation, useSearch } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Volume2, Home, ArrowRight, CheckCircle2, XCircle, Sparkles, Flame, Clock, SkipForward, Trophy, Settings, BookOpen, MessageSquare } from "lucide-react";
+import { Volume2, Home, ArrowRight, CheckCircle2, XCircle, Sparkles, Flame, Clock, SkipForward, Trophy, Settings, BookOpen, MessageSquare, Globe } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { Word, DifficultyLevel, GameMode } from "@shared/schema";
@@ -70,6 +70,7 @@ export default function Game() {
   const [wordDefinition, setWordDefinition] = useState<string | null>(null);
   const [wordExample, setWordExample] = useState<string | null>(null);
   const [wordPartsOfSpeech, setWordPartsOfSpeech] = useState<string | null>(null);
+  const [wordOrigin, setWordOrigin] = useState<string | null>(null);
   const [loadingDictionary, setLoadingDictionary] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const currentWordRef = useRef<string | null>(null);
@@ -324,6 +325,13 @@ export default function Game() {
     setWordDefinition(null);
     setWordExample(null);
     setWordPartsOfSpeech(null);
+    
+    // Set word origin from currentWord if available
+    if (currentWord?.wordOrigin) {
+      setWordOrigin(currentWord.wordOrigin);
+    } else {
+      setWordOrigin(null);
+    }
     
     try {
       // First, try Simple English Wiktionary using MediaWiki API
@@ -594,6 +602,12 @@ export default function Game() {
   const speakPartsOfSpeech = (e?: React.MouseEvent<HTMLButtonElement>) => {
     if (wordPartsOfSpeech && currentWord) {
       speakWithRefocus(wordPartsOfSpeech, e?.currentTarget);
+    }
+  };
+
+  const speakOrigin = (e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (wordOrigin && currentWord) {
+      speakWithRefocus(wordOrigin, e?.currentTarget);
     }
   };
 
@@ -2371,14 +2385,16 @@ export default function Game() {
                             </Button>
                           )}
                           <Button
-                            type="submit"
+                            type="button"
+                            variant="secondary"
                             size="lg"
                             className={`${gameMode === "scramble" ? "w-full" : "flex-1"} text-lg h-12 md:h-14`}
-                            disabled={gameMode === "scramble" ? placedLetters.some(l => l === null) : !userInput.trim()}
-                            data-testid="button-submit"
+                            onClick={speakOrigin}
+                            disabled={!wordOrigin}
+                            data-testid="button-origin"
                           >
-                            {gameMode === "quiz" ? "Submit" : "Check"}
-                            <ArrowRight className="w-5 h-5 ml-2" />
+                            <Globe className="w-5 h-5 mr-2" />
+                            Word Origin
                           </Button>
                         </div>
                       )}
@@ -2411,6 +2427,19 @@ export default function Game() {
                             {loadingDictionary ? "Loading..." : "Use in Sentence"}
                           </Button>
                         </div>
+                      )}
+
+                      {gameMode !== "mistake" && (
+                        <Button
+                          type="submit"
+                          size="lg"
+                          className="w-full text-lg h-12 md:h-14"
+                          disabled={gameMode === "scramble" ? placedLetters.some(l => l === null) : !userInput.trim()}
+                          data-testid="button-submit"
+                        >
+                          {gameMode === "quiz" ? "Submit" : "Check"}
+                          <ArrowRight className="w-5 h-5 ml-2" />
+                        </Button>
                       )}
                     </div>
                   </form>
