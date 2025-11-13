@@ -31,7 +31,7 @@ The backend uses **Express.js** with **TypeScript**. **PostgreSQL** serves as th
     - **Crossword Puzzle**: Interactive, audio-only crossword puzzles with client-side grid generation, prioritizing word connectivity. Limited to 15 words for grid generation (mode-specific).
 - **Word Randomization**: All game modes use the Durstenfeld shuffle algorithm to randomize word order, ensuring every playthrough offers a fresh experience with different word sequences from the full available list.
 - **Text-to-Speech**: Pronounces words, definitions, and sentences; includes dedicated button for parts of speech.
-- **Dictionary Integration**: Uses Simple English Wiktionary and Free Dictionary API for age-appropriate definitions and sentences.
+- **Dictionary Integration**: Uses Merriam-Webster APIs (Learner's Dictionary as primary source, Collegiate Dictionary as fallback) for child-friendly definitions, examples, word origins, and parts of speech. Implements robust error handling to distinguish word-not-found (404) from service failures (auth errors, rate limits).
 - **Cartoon Illustrations**: Automated enrichment of custom word lists with kid-friendly cartoon images via Pixabay API, stored permanently in Replit Object Storage.
 - **Scoring System & Leaderboard**: Points based on list difficulty with streak bonuses, displayed on filterable leaderboards.
 - **Progress Tracking**: Session-based tracking of words, accuracy, and streaks.
@@ -44,6 +44,12 @@ The backend uses **Express.js** with **TypeScript**. **PostgreSQL** serves as th
 - **API Endpoints**: RESTful APIs for authentication, game management, leaderboards, CRUD operations for word lists, user groups, to-do items, illustration job status, and image retrieval. Backend supports unlimited word fetching by treating missing or zero `limit` parameters as "no cap."
 - **Background Job System**: Asynchronously processes Pixabay image enrichment for custom word lists, providing real-time UI updates.
 - **React Query Caching**: Uses stable tuple-based query keys including game mode and quiz count parameters to prevent cache collisions when switching between different game modes or quiz settings.
+- **Dictionary Validation System** (server/services/dictionaryValidation.ts):
+  - **Precedence Hierarchy**: Learner's Dictionary (primary) → Collegiate Dictionary (fallback for missing fields like etymology)
+  - **Error Handling**: Distinguishes word-not-found (404 = invalid) from service failures (401/403/429/5xx = skipped)
+  - **Metadata Extraction**: Parses complex Merriam-Webster JSON format with formatting codes ({bc}, {it}, {vis}, etc.)
+  - **Caching**: In-memory cache with 24-hour TTL to minimize API calls
+  - **Concurrency Control**: Maximum 5 concurrent API requests with 5-second timeout per word
 
 ## External Dependencies
 
@@ -63,6 +69,11 @@ The backend uses **Express.js** with **TypeScript**. **PostgreSQL** serves as th
 - **Pixabay API**: Provides kid-friendly cartoon illustrations.
 - **Replit Object Storage**: Cloud storage for permanent image hosting.
 - **bad-words**: Profanity filter library for content moderation.
+- **Merriam-Webster APIs**: 
+  - **Learner's Dictionary** (PRIMARY): Child-friendly definitions and examples with simplified language.
+  - **Collegiate Dictionary** (FALLBACK): Comprehensive dictionary with etymology/word origins, fills gaps from Learner's Dictionary.
+  - **API Keys**: Stored securely in Replit Secrets (MERRIAM_WEBSTER_LEARNERS_API_KEY, MERRIAM_WEBSTER_COLLEGIATE_API_KEY).
+  - **Free Tier**: 1,000 queries/day per key, non-commercial use only.
 
 ## Email Notifications
 
