@@ -1059,6 +1059,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/user-groups/:id/leave", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const groupId = parseInt(req.params.id);
+      const currentUser = req.user as any;
+
+      if (isNaN(groupId)) {
+        return res.status(400).json({ error: "Invalid group ID" });
+      }
+
+      const group = await storage.getUserGroup(groupId);
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+
+      // Owner cannot leave their own group
+      if (group.ownerUserId === currentUser.id) {
+        return res.status(403).json({ error: "Owner cannot leave their own group. Delete the group instead." });
+      }
+
+      // Check if user is a member
+      const isMember = await storage.isUserGroupMember(currentUser.id, groupId);
+      if (!isMember) {
+        return res.status(400).json({ error: "You are not a member of this group" });
+      }
+
+      // Remove user from group
+      await storage.removeGroupMember(groupId, currentUser.id);
+
+      res.status(200).json({ message: "Successfully left the group" });
+    } catch (error) {
+      console.error("Error leaving group:", error);
+      res.status(500).json({ error: "Failed to leave group" });
+    }
+  });
+
   // To-Do Items endpoints
   app.get("/api/user-to-dos", async (req, res) => {
     try {
