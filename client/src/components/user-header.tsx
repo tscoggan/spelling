@@ -36,6 +36,8 @@ export function UserHeader() {
       return await res.json();
     },
     enabled: !!user,
+    refetchInterval: 30000, // Poll every 30 seconds for new notifications
+    refetchOnWindowFocus: true, // Also check when user returns to tab
   });
 
   const { data: todos = [] } = useQuery<any[]>({
