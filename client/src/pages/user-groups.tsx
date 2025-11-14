@@ -599,7 +599,7 @@ export default function UserGroupsPage() {
                                 data-testid={`button-pending-requests-${group.id}`}
                               >
                                 <Bell className="w-3 h-3 mr-1" />
-                                Requests
+                                Pending Join Requests
                                 <Badge className="ml-1 h-4 px-1 text-xs" data-testid={`badge-pending-count-${group.id}`}>
                                   {pendingRequests.filter(r => r.groupId === group.id).length}
                                 </Badge>
