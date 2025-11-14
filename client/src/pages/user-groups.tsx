@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { Plus, Trash2, Users, Globe, Lock, Home, UserPlus, Settings, Search, Mail, LogOut, Edit, Bell, Check, X } from "lucide-react";
+import { Plus, Trash2, Users, Globe, Lock, Home, UserPlus, Settings, Search, Mail, LogOut, Edit, Bell, Check, X, Eye, EyeOff, Copy } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { UserHeader } from "@/components/user-header";
@@ -34,13 +34,14 @@ export default function UserGroupsPage() {
   const [formData, setFormData] = useState({
     name: "",
     isPublic: false,
-    password: "",
+    plaintextPassword: "",
   });
   const [editingGroup, setEditingGroup] = useState<any>(null);
   const [pendingRequestsDialogOpen, setPendingRequestsDialogOpen] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [selectedGroupForPassword, setSelectedGroupForPassword] = useState<any>(null);
   const [passwordInput, setPasswordInput] = useState("");
+  const [viewingPasswordForGroup, setViewingPasswordForGroup] = useState<number | null>(null);
 
   const { data: groups = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/user-groups", user?.id],
@@ -303,7 +304,7 @@ export default function UserGroupsPage() {
     setFormData({
       name: "",
       isPublic: false,
-      password: "",
+      plaintextPassword: "",
     });
     setEditingGroup(null);
   };
@@ -322,7 +323,7 @@ export default function UserGroupsPage() {
     setFormData({
       name: group.name,
       isPublic: group.isPublic,
-      password: group.password || "",
+      plaintextPassword: group.plaintextPassword || "",
     });
     setCreateDialogOpen(true);
   };
@@ -373,6 +374,26 @@ export default function UserGroupsPage() {
   const handleRemoveMember = () => {
     if (!selectedGroup || !memberToRemove) return;
     removeMemberMutation.mutate({ groupId: selectedGroup.id, userId: memberToRemove.id });
+  };
+
+  const togglePasswordView = (groupId: number) => {
+    setViewingPasswordForGroup(prev => prev === groupId ? null : groupId);
+  };
+
+  const copyPassword = async (password: string, groupName: string) => {
+    try {
+      await navigator.clipboard.writeText(password);
+      toast({
+        title: "Password Copied!",
+        description: `Password for "${groupName}" copied to clipboard`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to copy password to clipboard",
+        variant: "destructive",
+      });
+    }
   };
 
   const { data: pendingRequests = [] } = useQuery<any[]>({
@@ -483,12 +504,12 @@ export default function UserGroupsPage() {
                   </div>
                   {formData.isPublic && (
                     <div>
-                      <Label htmlFor="password">Password (Optional)</Label>
+                      <Label htmlFor="plaintextPassword">Password (Optional)</Label>
                       <Input
-                        id="password"
+                        id="plaintextPassword"
                         type="password"
-                        value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        value={formData.plaintextPassword}
+                        onChange={(e) => setFormData({ ...formData, plaintextPassword: e.target.value })}
                         placeholder="Leave blank for no password"
                         data-testid="input-group-password"
                       />
@@ -550,7 +571,7 @@ export default function UserGroupsPage() {
                               <Lock className="w-3 h-3 text-gray-600 flex-shrink-0" data-testid="icon-private-group" />
                             )}
                           </div>
-                          <p className="text-xs text-gray-600 mb-2">Owner</p>
+                          <p className="text-xs text-gray-600 mb-2">Owner{group.isPublic && group.plaintextPassword ? ' • Password Protected' : ''}</p>
                           <div className="flex flex-wrap gap-1">
                             <Button
                               variant="outline"
@@ -584,6 +605,37 @@ export default function UserGroupsPage() {
                                 </Badge>
                               </Button>
                             )}
+                            {group.isPublic && group.plaintextPassword && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => togglePasswordView(group.id)}
+                                  data-testid={`button-view-password-${group.id}`}
+                                >
+                                  {viewingPasswordForGroup === group.id ? (
+                                    <>
+                                      <EyeOff className="w-3 h-3 mr-1" />
+                                      Hide
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Eye className="w-3 h-3 mr-1" />
+                                      View
+                                    </>
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => copyPassword(group.plaintextPassword, group.name)}
+                                  data-testid={`button-copy-password-${group.id}`}
+                                >
+                                  <Copy className="w-3 h-3 mr-1" />
+                                  Copy
+                                </Button>
+                              </>
+                            )}
                             <Button
                               variant="outline"
                               size="sm"
@@ -593,6 +645,11 @@ export default function UserGroupsPage() {
                               <Trash2 className="w-3 h-3" />
                             </Button>
                           </div>
+                          {group.isPublic && group.plaintextPassword && viewingPasswordForGroup === group.id && (
+                            <div className="mt-2 p-2 bg-gray-100 rounded text-sm font-mono" data-testid={`text-password-${group.id}`}>
+                              Password: {group.plaintextPassword}
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-center gap-1">
                           <span className="text-xs text-gray-600" data-testid={`text-member-count-${group.id}`}>{group.memberCount || 0} {(group.memberCount || 0) === 1 ? 'member' : 'members'}</span>
@@ -680,7 +737,7 @@ export default function UserGroupsPage() {
                               <h3 className="font-semibold text-gray-800 truncate">{group.name}</h3>
                               <Globe className="w-3 h-3 text-green-600 flex-shrink-0" />
                             </div>
-                            <p className="text-xs text-gray-600 mb-2">Public Group{group.password ? ' • Password Protected' : ''}</p>
+                            <p className="text-xs text-gray-600 mb-2">Public Group{group.plaintextPassword ? ' • Password Protected' : ''}</p>
                             <div className="flex gap-2 flex-wrap">
                               <Button
                                 size="sm"
@@ -691,7 +748,7 @@ export default function UserGroupsPage() {
                               >
                                 {hasPendingRequest ? "Request Pending" : requestAccessMutation.isPending ? "Sending..." : "Request to Join"}
                               </Button>
-                              {group.password && (
+                              {group.plaintextPassword && (
                                 <Button
                                   size="sm"
                                   variant="secondary"
