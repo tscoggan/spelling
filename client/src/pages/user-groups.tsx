@@ -616,12 +616,12 @@ export default function UserGroupsPage() {
                                   {viewingPasswordForGroup === group.id ? (
                                     <>
                                       <EyeOff className="w-3 h-3 mr-1" />
-                                      Hide
+                                      Hide Password
                                     </>
                                   ) : (
                                     <>
                                       <Eye className="w-3 h-3 mr-1" />
-                                      View
+                                      View Password
                                     </>
                                   )}
                                 </Button>
@@ -632,7 +632,7 @@ export default function UserGroupsPage() {
                                   data-testid={`button-copy-password-${group.id}`}
                                 >
                                   <Copy className="w-3 h-3 mr-1" />
-                                  Copy
+                                  Copy Password
                                 </Button>
                               </>
                             )}
