@@ -224,6 +224,8 @@ export default function UserGroupsPage() {
 
   const viewMembers = (group: any) => {
     setSelectedGroup(group);
+    // Invalidate members cache to fetch fresh data
+    queryClient.invalidateQueries({ queryKey: ["/api/user-groups", group.id, "members"] });
     setMembersDialogOpen(true);
   };
 

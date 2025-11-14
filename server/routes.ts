@@ -967,10 +967,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create to-do notification for the group owner
+      // Build display name with first/last name if available
+      let displayName = currentUser.username;
+      if (currentUser.firstName || currentUser.lastName) {
+        const fullName = [currentUser.firstName, currentUser.lastName].filter(Boolean).join(' ');
+        displayName = `${fullName} (${currentUser.username})`;
+      }
+      
       await storage.createToDoItem({
         userId: group.ownerUserId,
         type: 'group_access_request',
-        message: `${currentUser.username} requested to join the group "${group.name}"`,
+        message: `${displayName} requested to join the group "${group.name}"`,
         groupId,
         groupName: group.name,
         requesterUsername: currentUser.username,
