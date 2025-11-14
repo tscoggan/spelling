@@ -69,6 +69,15 @@ export class IllustrationJobService {
       .set({ status: 'processing' })
       .where(eq(illustrationJobs.id, jobId));
 
+    const [job] = await db
+      .select()
+      .from(illustrationJobs)
+      .where(eq(illustrationJobs.id, jobId));
+
+    if (!job) {
+      throw new Error(`Job ${jobId} not found`);
+    }
+
     const items = await db
       .select()
       .from(illustrationJobItems)
@@ -81,13 +90,19 @@ export class IllustrationJobService {
 
     for (const item of items) {
       try {
+        const { and } = await import('drizzle-orm');
         const existingIllustration = await db
           .select()
           .from(wordIllustrations)
-          .where(eq(wordIllustrations.word, item.word));
+          .where(
+            and(
+              eq(wordIllustrations.word, item.word),
+              eq(wordIllustrations.wordListId, job.wordListId)
+            )
+          );
 
         if (existingIllustration.length > 0) {
-          console.log(`⏭️  Skipping "${item.word}" - already has illustration`);
+          console.log(`⏭️  Skipping "${item.word}" - already has illustration for this word list`);
           await db
             .update(illustrationJobItems)
             .set({
@@ -111,6 +126,7 @@ export class IllustrationJobService {
             
             await db.insert(wordIllustrations).values({
               word: item.word,
+              wordListId: job.wordListId,
               imagePath: result.imagePath,
               source: 'pixabay',
             });
@@ -125,7 +141,7 @@ export class IllustrationJobService {
               .where(eq(illustrationJobItems.id, item.id));
 
             successCount++;
-            console.log(`✅ Found and saved image for "${item.word}"`);
+            console.log(`✅ Found and saved image for "${item.word}" in word list ${job.wordListId}`);
           } else {
             await db
               .update(illustrationJobItems)

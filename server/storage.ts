@@ -66,9 +66,11 @@ export interface IStorage {
   deleteCustomWordList(id: number): Promise<boolean>;
   
   createWordIllustration(illustration: InsertWordIllustration): Promise<WordIllustration>;
-  getWordIllustration(word: string): Promise<WordIllustration | undefined>;
+  getWordIllustration(word: string, wordListId: number): Promise<WordIllustration | undefined>;
+  getWordIllustrationsForWordList(wordListId: number): Promise<WordIllustration[]>;
   getAllWordIllustrations(): Promise<WordIllustration[]>;
   updateWordIllustration(id: number, updates: Partial<InsertWordIllustration>): Promise<WordIllustration | undefined>;
+  deleteWordIllustrationForWordList(word: string, wordListId: number): Promise<boolean>;
   
   createUserGroup(group: any): Promise<any>;
   getUserGroup(groupId: number): Promise<any>;
@@ -599,17 +601,21 @@ export class DatabaseStorage implements IStorage {
     const [existingIllustration] = await db
       .select()
       .from(wordIllustrations)
-      .where(eq(wordIllustrations.word, illustration.word.toLowerCase()));
+      .where(
+        and(
+          eq(wordIllustrations.word, illustration.word.toLowerCase()),
+          eq(wordIllustrations.wordListId, illustration.wordListId)
+        )
+      );
     
     if (existingIllustration) {
-      // Update existing illustration with new image path
       const [updatedIllustration] = await db
         .update(wordIllustrations)
         .set({
           imagePath: illustration.imagePath,
           source: illustration.source || 'pixabay',
         })
-        .where(eq(wordIllustrations.word, illustration.word.toLowerCase()))
+        .where(eq(wordIllustrations.id, existingIllustration.id))
         .returning();
       
       return updatedIllustration;
@@ -619,6 +625,7 @@ export class DatabaseStorage implements IStorage {
       .insert(wordIllustrations)
       .values({
         word: illustration.word.toLowerCase(),
+        wordListId: illustration.wordListId,
         imagePath: illustration.imagePath,
         source: illustration.source || 'pixabay',
       })
@@ -627,13 +634,25 @@ export class DatabaseStorage implements IStorage {
     return newIllustration;
   }
 
-  async getWordIllustration(word: string): Promise<WordIllustration | undefined> {
+  async getWordIllustration(word: string, wordListId: number): Promise<WordIllustration | undefined> {
     const [illustration] = await db
       .select()
       .from(wordIllustrations)
-      .where(eq(wordIllustrations.word, word.toLowerCase()));
+      .where(
+        and(
+          eq(wordIllustrations.word, word.toLowerCase()),
+          eq(wordIllustrations.wordListId, wordListId)
+        )
+      );
     
     return illustration || undefined;
+  }
+
+  async getWordIllustrationsForWordList(wordListId: number): Promise<WordIllustration[]> {
+    return await db
+      .select()
+      .from(wordIllustrations)
+      .where(eq(wordIllustrations.wordListId, wordListId));
   }
 
   async getAllWordIllustrations(): Promise<WordIllustration[]> {
@@ -649,10 +668,15 @@ export class DatabaseStorage implements IStorage {
     return updated || undefined;
   }
 
-  async deleteWordIllustration(word: string): Promise<boolean> {
+  async deleteWordIllustrationForWordList(word: string, wordListId: number): Promise<boolean> {
     const result = await db
       .delete(wordIllustrations)
-      .where(eq(wordIllustrations.word, word.toLowerCase()));
+      .where(
+        and(
+          eq(wordIllustrations.word, word.toLowerCase()),
+          eq(wordIllustrations.wordListId, wordListId)
+        )
+      );
     return result.rowCount ? result.rowCount > 0 : false;
   }
 

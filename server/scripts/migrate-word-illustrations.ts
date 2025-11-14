@@ -108,16 +108,14 @@ async function migrateWordIllustrations() {
   }
 }
 
-if (require.main === module) {
-  migrateWordIllustrations()
-    .then(() => {
-      console.log('Migration script finished');
-      process.exit(0);
-    })
-    .catch((error) => {
-      console.error('Migration script failed:', error);
-      process.exit(1);
-    });
-}
+migrateWordIllustrations()
+  .then(() => {
+    console.log('Migration script finished');
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error('Migration script failed:', error);
+    process.exit(1);
+  });
 
 export { migrateWordIllustrations };
