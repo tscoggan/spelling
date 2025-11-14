@@ -39,6 +39,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
+      // Refresh notification count on login
+      queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos/count"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos"] });
     },
     onError: (error: Error) => {
       toast({
