@@ -1012,19 +1012,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "You are the owner of this group" });
       }
 
-      // Validate password if group has one
-      if (group.password) {
-        const providedPassword = req.body.password;
-        if (!providedPassword) {
-          return res.status(400).json({ error: "This group requires a password" });
-        }
-        
-        const isPasswordValid = await comparePasswords(providedPassword, group.password);
-        if (!isPasswordValid) {
-          return res.status(401).json({ error: "Incorrect password" });
-        }
-      }
-
       // Check for existing pending request to prevent duplicates
       const ownerTodos = await storage.getUserToDoItems(group.ownerUserId);
       const hasPendingRequest = ownerTodos.some(
@@ -1059,6 +1046,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error requesting group access:", error);
       res.status(500).json({ error: "Failed to send access request" });
+    }
+  });
+
+  app.post("/api/user-groups/:id/join-with-password", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const groupId = parseInt(req.params.id);
+      const currentUser = req.user as any;
+      const { password } = req.body;
+
+      if (isNaN(groupId)) {
+        return res.status(400).json({ error: "Invalid group ID" });
+      }
+
+      if (!password) {
+        return res.status(400).json({ error: "Password is required" });
+      }
+
+      const group = await storage.getUserGroup(groupId);
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+
+      // Only public groups can be joined with password
+      if (!group.isPublic) {
+        return res.status(403).json({ error: "Private groups cannot be joined with a password" });
+      }
+
+      // Group must have a password set
+      if (!group.password) {
+        return res.status(400).json({ error: "This group does not have a password set" });
+      }
+
+      // Check if user is already a member
+      const isAlreadyMember = await storage.isUserGroupMember(currentUser.id, groupId);
+      if (isAlreadyMember) {
+        return res.status(400).json({ error: "You are already a member of this group" });
+      }
+
+      // Check if user is the owner
+      if (group.ownerUserId === currentUser.id) {
+        return res.status(400).json({ error: "You are the owner of this group" });
+      }
+
+      // Validate password
+      const isPasswordValid = await comparePasswords(password, group.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ error: "Incorrect password" });
+      }
+
+      // Add user to group immediately
+      await storage.addGroupMember(groupId, currentUser.id);
+
+      res.status(200).json({ message: "Successfully joined the group", groupId });
+    } catch (error) {
+      console.error("Error joining group with password:", error);
+      res.status(500).json({ error: "Failed to join group" });
     }
   });
 
