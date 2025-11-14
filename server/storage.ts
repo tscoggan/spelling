@@ -416,6 +416,19 @@ export class DatabaseStorage implements IStorage {
     return wordList || undefined;
   }
 
+  async getSystemWordListId(): Promise<number | null> {
+    const [systemList] = await db
+      .select({ id: customWordLists.id })
+      .from(customWordLists)
+      .where(
+        and(
+          eq(customWordLists.name, 'System Illustrations'),
+          eq(customWordLists.gradeLevel, 'System')
+        )
+      );
+    return systemList?.id || null;
+  }
+
   async getUserCustomWordLists(userId: number): Promise<any[]> {
     const wordLists = await db
       .select({

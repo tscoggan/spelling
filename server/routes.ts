@@ -625,6 +625,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/word-lists/system/id", async (req, res) => {
+    try {
+      const systemListId = await storage.getSystemWordListId();
+      if (!systemListId) {
+        return res.status(404).json({ error: "System word list not found" });
+      }
+      res.json({ id: systemListId });
+    } catch (error) {
+      console.error("Error fetching system word list ID:", error);
+      res.status(500).json({ error: "Failed to fetch system word list ID" });
+    }
+  });
+
   app.get("/api/word-lists/:id/illustrations", async (req, res) => {
     try {
       const wordListId = parseInt(req.params.id);

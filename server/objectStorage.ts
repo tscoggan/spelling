@@ -1,6 +1,6 @@
 import { Storage, File } from "@google-cloud/storage";
 import { Response } from "express";
-import { randomUUID } from "crypto";
+import { randomUUID, createHash } from "crypto";
 import {
   ObjectAclPolicy,
   ObjectPermission,
@@ -222,27 +222,63 @@ export class ObjectStorageService {
     imageBuffer: Buffer,
     contentType: string = "image/jpeg"
   ): Promise<string> {
+    // Compute SHA-256 hash of the image content for deduplication
+    const hash = createHash('sha256').update(imageBuffer).digest('hex');
+    
+    // Derive file extension from content type (normalize to lowercase)
+    const normalizedContentType = contentType.toLowerCase().trim();
+    const extensionMap: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/jpg': 'jpg',
+      'image/png': 'png',
+      'image/gif': 'gif',
+      'image/webp': 'webp',
+    };
+    const extension = extensionMap[normalizedContentType] || 'jpg';
+    
+    // Use content hash as the object key for deduplication
     const privateObjectDir = this.getPrivateObjectDir();
-    const objectId = randomUUID();
-    const fullPath = `${privateObjectDir}/images/${objectId}`;
+    const fullPath = `${privateObjectDir}/images/${hash}.${extension}`;
 
     const { bucketName, objectName } = parseObjectPath(fullPath);
     const bucket = objectStorageClient.bucket(bucketName);
     const file = bucket.file(objectName);
 
-    await file.save(imageBuffer, {
-      contentType,
-      metadata: {
-        metadata: {
-          [ACL_POLICY_METADATA_KEY]: JSON.stringify({
-            owner: "system",
-            visibility: "public",
-          } as ObjectAclPolicy),
-        },
-      },
-    });
+    // Check if the file already exists to avoid duplicate uploads
+    const [exists] = await file.exists();
+    
+    if (!exists) {
+      // Upload with precondition to handle race conditions
+      // ifGenerationMatch: 0 ensures we only write if the object doesn't exist
+      try {
+        await file.save(imageBuffer, {
+          contentType,
+          resumable: false,
+          ifGenerationMatch: 0,
+          metadata: {
+            metadata: {
+              [ACL_POLICY_METADATA_KEY]: JSON.stringify({
+                owner: "system",
+                visibility: "public",
+              } as ObjectAclPolicy),
+            },
+          },
+        });
+        console.log(`✓ Uploaded new image to Object Storage: ${hash}.${extension}`);
+      } catch (error: any) {
+        // If we get a 412 (Precondition Failed), another worker already uploaded it
+        if (error.code === 412) {
+          console.log(`⏭️  Image already exists (race condition): ${hash}.${extension}`);
+        } else {
+          throw error;
+        }
+      }
+    } else {
+      console.log(`♻️  Reusing existing image: ${hash}.${extension}`);
+    }
 
-    return `/objects/images/${objectId}`;
+    // Always return the same path for identical content
+    return `/objects/images/${hash}.${extension}`;
   }
 }
 

@@ -187,20 +187,29 @@ export default function Game() {
     enabled: !!difficulty || !!listId,
   });
 
+  // Fetch system word list ID for standard difficulties
+  const { data: systemWordList } = useQuery<{ id: number }>({
+    queryKey: ['/api/word-lists/system/id'],
+    enabled: !listId && !!difficulty, // Only fetch when playing with standard difficulty
+  });
+
+  // Use custom list ID if provided, otherwise use system list ID
+  const effectiveWordListId = listId ? parseInt(listId) : systemWordList?.id;
+
   const { data: wordIllustrations } = useQuery<WordIllustration[]>({
-    queryKey: listId ? ['/api/word-lists', listId, 'illustrations'] : ['/api/word-illustrations'],
+    queryKey: ['/api/word-lists', effectiveWordListId, 'illustrations'],
     queryFn: async () => {
-      if (listId) {
-        const response = await fetch(`/api/word-lists/${listId}/illustrations`);
-        if (!response.ok) throw new Error('Failed to fetch word illustrations for list');
-        return response.json();
-      } else {
-        const response = await fetch('/api/word-illustrations');
-        if (!response.ok) throw new Error('Failed to fetch word illustrations');
-        return response.json();
+      const response = await fetch(`/api/word-lists/${effectiveWordListId}/illustrations`);
+      if (!response.ok) {
+        console.warn('Failed to fetch word illustrations, using empty array');
+        return [];
       }
+      return response.json();
     },
-    enabled: !!listId || !!difficulty,
+    // Only enable query when we have a valid word list ID
+    enabled: !!effectiveWordListId,
+    // Provide a default value to prevent errors during initial load
+    placeholderData: [],
   });
 
   useEffect(() => {
