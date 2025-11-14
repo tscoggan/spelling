@@ -278,6 +278,54 @@ export default function UserGroupsPage() {
     },
   });
 
+  const approveAccessRequestMutation = useMutation({
+    mutationFn: async ({ groupId, userId, todoId }: { groupId: number; userId: number; todoId: number }) => {
+      const response = await apiRequest("POST", `/api/user-groups/${groupId}/approve-request`, { userId });
+      return { data: await response.json(), todoId };
+    },
+    onSuccess: async (result) => {
+      // Complete the todo only after successful approval
+      await apiRequest("POST", `/api/user-to-dos/${result.todoId}/complete`, {});
+      queryClient.invalidateQueries({ queryKey: ["/api/user-groups", user?.id] });
+      if (result.data?.groupId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/user-groups", result.data.groupId, "members"] });
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/shared-with-me"] });
+      toast({
+        title: "Success!",
+        description: "User has been added to the group",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to approve request",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const completeTodoMutation = useMutation({
+    mutationFn: async (todoId: number) => {
+      await apiRequest("POST", `/api/user-to-dos/${todoId}/complete`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos"] });
+      toast({
+        title: "Success!",
+        description: "Request declined",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to decline request",
+        variant: "destructive",
+      });
+    },
+  });
+
   const { data: searchResults = [] } = useQuery<any[]>({
     queryKey: ["/api/users/search", searchQuery],
     queryFn: async () => {
@@ -396,20 +444,24 @@ export default function UserGroupsPage() {
     }
   };
 
-  const { data: pendingRequests = [] } = useQuery<any[]>({
-    queryKey: ["/api/user-pending-requests", user?.id],
+  // Fetch user to-dos to check for pending join requests
+  const { data: userToDos = [] } = useQuery<any[]>({
+    queryKey: ["/api/user-to-dos", user?.id],
     queryFn: async () => {
-      const res = await fetch("/api/user-pending-requests", { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch pending requests");
+      const res = await fetch("/api/user-to-dos", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch user to-dos");
       return await res.json();
     },
     enabled: !!user,
   });
 
+  // Filter for join requests only
+  const joinRequestToDos = userToDos.filter(todo => todo.type === 'join_request');
+
   // Create set of group IDs with pending join requests
   const pendingRequestGroupIds = new Set(
-    pendingRequests
-      .map(request => request.groupId)
+    joinRequestToDos
+      .map(todo => todo.groupId)
       .filter(Boolean)
   );
 
@@ -601,7 +653,7 @@ export default function UserGroupsPage() {
                                 <Bell className="w-3 h-3 mr-1" />
                                 Pending Join Requests
                                 <Badge className="ml-1 h-4 px-1 text-xs" data-testid={`badge-pending-count-${group.id}`}>
-                                  {pendingRequests.filter(r => r.groupId === group.id).length}
+                                  {joinRequestToDos.filter(todo => todo.groupId === group.id).length}
                                 </Badge>
                               </Button>
                             )}
@@ -983,60 +1035,58 @@ export default function UserGroupsPage() {
                 {selectedGroup?.name}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              {pendingRequests.filter(r => r.groupId === selectedGroup?.id).length === 0 ? (
-                <p className="text-gray-600 text-center py-4">No pending requests</p>
-              ) : (
-                <div className="space-y-2">
-                  {pendingRequests
-                    .filter(r => r.groupId === selectedGroup?.id)
-                    .map((request: any) => (
-                      <Card key={request.id} className="p-4" data-testid={`card-pending-request-${request.id}`}>
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 flex-1">
-                            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl">
-                              {request.userAvatar || '👤'}
-                            </div>
-                            <div>
-                              <p className="font-semibold">{request.username}</p>
-                              {(request.firstName || request.lastName) && (
-                                <p className="text-sm text-gray-600">
-                                  {request.firstName} {request.lastName}
+            <ScrollArea className="max-h-[400px] pr-4">
+              <div className="space-y-3">
+                {joinRequestToDos.filter(todo => todo.groupId === selectedGroup?.id).length === 0 ? (
+                  <p className="text-gray-600 text-center py-8">No pending requests</p>
+                ) : (
+                  joinRequestToDos
+                    .filter(todo => todo.groupId === selectedGroup?.id)
+                    .map((todo: any) => {
+                      const metadata = todo.metadata ? JSON.parse(todo.metadata) : null;
+                      return (
+                        <Card key={todo.id} className="p-4" data-testid={`card-pending-request-${todo.id}`}>
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">{todo.message}</p>
+                              {metadata && metadata.requesterUsername && (
+                                <p className="text-xs text-gray-600 mt-1">
+                                  User: {metadata.requesterUsername}
                                 </p>
                               )}
-                              <p className="text-xs text-gray-500 mt-1">
-                                Requested {new Date(request.createdAt).toLocaleDateString()}
-                              </p>
+                            </div>
+                            <div className="flex gap-2 flex-shrink-0">
+                              <Button
+                                size="sm"
+                                onClick={() => approveAccessRequestMutation.mutate({ 
+                                  groupId: todo.groupId, 
+                                  userId: todo.requesterId, 
+                                  todoId: todo.id 
+                                })}
+                                disabled={approveAccessRequestMutation.isPending}
+                                data-testid={`button-approve-request-${todo.id}`}
+                              >
+                                <Check className="w-4 h-4 mr-1" />
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => completeTodoMutation.mutate(todo.id)}
+                                disabled={completeTodoMutation.isPending}
+                                data-testid={`button-decline-request-${todo.id}`}
+                              >
+                                <X className="w-4 h-4 mr-1" />
+                                Decline
+                              </Button>
                             </div>
                           </div>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() => approveRequestMutation.mutate({ groupId: selectedGroup.id, requestId: request.id })}
-                              disabled={approveRequestMutation.isPending || denyRequestMutation.isPending}
-                              data-testid={`button-approve-request-${request.id}`}
-                            >
-                              <Check className="w-4 h-4 mr-1" />
-                              Approve
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => denyRequestMutation.mutate({ groupId: selectedGroup.id, requestId: request.id })}
-                              disabled={approveRequestMutation.isPending || denyRequestMutation.isPending}
-                              data-testid={`button-deny-request-${request.id}`}
-                            >
-                              <X className="w-4 h-4 mr-1" />
-                              Deny
-                            </Button>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                </div>
-              )}
-            </div>
+                        </Card>
+                      );
+                    })
+                )}
+              </div>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
 
