@@ -67,10 +67,10 @@ export const customWordLists = pgTable("custom_word_lists", {
 
 export const wordIllustrations = pgTable("word_illustrations", {
   id: serial("id").primaryKey(),
-  word: text("word").notNull().unique(),
+  word: text("word").notNull(),
+  wordListId: integer("word_list_id").notNull(),
   imagePath: text("image_path"),
   source: text("source").default("manual"),
-  partsOfSpeech: text("parts_of_speech"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -169,6 +169,14 @@ export const customWordListsRelations = relations(customWordLists, ({ one, many 
     references: [users.id],
   }),
   wordListUserGroups: many(wordListUserGroups),
+  wordIllustrations: many(wordIllustrations),
+}));
+
+export const wordIllustrationsRelations = relations(wordIllustrations, ({ one }) => ({
+  wordList: one(customWordLists, {
+    fields: [wordIllustrations.wordListId],
+    references: [customWordLists.id],
+  }),
 }));
 
 export const userGroupsRelations = relations(userGroups, ({ one, many }) => ({
