@@ -21,7 +21,7 @@ The backend uses **Express.js** with **TypeScript**. **PostgreSQL** serves as th
 
 ### Feature Specifications
 - **User Management**: Secure authentication, enhanced user profiles, and support for user groups with membership management and to-do notifications.
-- **Custom Word Lists**: Users create, share, and manage custom word lists with assignable difficulty and grade levels. Lists can control image assignment and visibility (public, private, groups). Profanity filtering is applied to all user-submitted content.
+- **Custom Word Lists**: Users create, share, and manage custom word lists with assignable difficulty and grade levels. Lists can control image assignment and visibility (public, private, groups). Supports importing words from .txt, .csv, and .pdf files with automatic text extraction. Profanity filtering is applied to all user-submitted content.
 - **Game Modes**:
     - **Practice**: Classic mode with immediate feedback. Uses full word lists with randomized order.
     - **Timed Challenge**: 60-second countdown. Uses full word lists with randomized order.
@@ -74,6 +74,7 @@ The backend uses **Express.js** with **TypeScript**. **PostgreSQL** serves as th
   - **Collegiate Dictionary** (FALLBACK): Comprehensive dictionary with etymology/word origins, fills gaps from Learner's Dictionary.
   - **API Keys**: Stored securely in Replit Secrets (MERRIAM_WEBSTER_LEARNERS_API_KEY, MERRIAM_WEBSTER_COLLEGIATE_API_KEY).
   - **Free Tier**: 1,000 queries/day per key, non-commercial use only.
+- **pdfjs-dist**: Client-side PDF text extraction library for importing word lists from PDF files. Uses Vite-compatible worker configuration with import.meta.url.
 
 ## Email Notifications
 
