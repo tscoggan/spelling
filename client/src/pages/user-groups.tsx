@@ -481,18 +481,20 @@ export default function UserGroupsPage() {
                       Make this group public (anyone can request to join)
                     </Label>
                   </div>
-                  <div>
-                    <Label htmlFor="password">Password (Optional)</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      placeholder="Leave blank for no password"
-                      data-testid="input-group-password"
-                    />
-                    <p className="text-xs text-gray-600 mt-1">Add an optional password for additional security when joining</p>
-                  </div>
+                  {formData.isPublic && (
+                    <div>
+                      <Label htmlFor="password">Password (Optional)</Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        placeholder="Leave blank for no password"
+                        data-testid="input-group-password"
+                      />
+                      <p className="text-xs text-gray-600 mt-1">Add an optional password for users to join immediately without approval</p>
+                    </div>
+                  )}
                   <div className="flex gap-2 justify-end pt-4">
                     <Button
                       type="button"
