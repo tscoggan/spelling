@@ -243,7 +243,7 @@ export function UserHeader() {
                 todos.map((todo: any) => {
                   const metadata = todo.metadata ? JSON.parse(todo.metadata) : null;
                   const isInvite = todo.type === 'group_invite';
-                  const isAccessRequest = todo.type === 'group_access_request';
+                  const isAccessRequest = todo.type === 'join_request';
 
                   return (
                     <Card key={todo.id} className="p-4" data-testid={`todo-item-${todo.id}`}>

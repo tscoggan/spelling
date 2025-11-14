@@ -73,10 +73,13 @@ export interface IStorage {
   createUserGroup(group: any): Promise<any>;
   getUserGroup(groupId: number): Promise<any>;
   getUserAccessibleGroups(userId: number): Promise<any[]>;
+  updateUserGroup(groupId: number, updates: Partial<InsertUserGroup>): Promise<any>;
   deleteUserGroup(groupId: number): Promise<boolean>;
   addGroupMember(groupId: number, userId: number): Promise<any>;
   removeGroupMember(groupId: number, userId: number): Promise<boolean>;
   getGroupMembers(groupId: number): Promise<any[]>;
+  approveGroupJoinRequest(groupId: number, requestId: number): Promise<any>;
+  denyGroupJoinRequest(groupId: number, requestId: number): Promise<boolean>;
   
   createToDoItem(todo: any): Promise<any>;
   getUserToDoItems(userId: number): Promise<any[]>;
@@ -768,6 +771,55 @@ export class DatabaseStorage implements IStorage {
     return members;
   }
 
+  async updateUserGroup(groupId: number, updates: Partial<InsertUserGroup>): Promise<UserGroup> {
+    const [updated] = await db
+      .update(userGroups)
+      .set(updates)
+      .where(eq(userGroups.id, groupId))
+      .returning();
+    return updated;
+  }
+
+  async approveGroupJoinRequest(groupId: number, requestId: number): Promise<any> {
+    const [request] = await db
+      .select()
+      .from(userToDoItems)
+      .where(eq(userToDoItems.id, requestId));
+    
+    if (!request) {
+      throw new Error("Request not found");
+    }
+
+    if (request.type !== 'join_request' || request.groupId !== groupId) {
+      throw new Error("Invalid request");
+    }
+
+    // Add user to group
+    await this.addGroupMember(groupId, request.userId);
+
+    // Delete the to-do item
+    await this.deleteToDoItem(requestId);
+
+    return { success: true };
+  }
+
+  async denyGroupJoinRequest(groupId: number, requestId: number): Promise<boolean> {
+    const [request] = await db
+      .select()
+      .from(userToDoItems)
+      .where(eq(userToDoItems.id, requestId));
+    
+    if (!request) {
+      return false;
+    }
+
+    if (request.type !== 'join_request' || request.groupId !== groupId) {
+      return false;
+    }
+
+    return await this.deleteToDoItem(requestId);
+  }
+
   async createToDoItem(todo: InsertUserToDoItem): Promise<UserToDoItem> {
     const [newTodo] = await db.insert(userToDoItems).values(todo).returning();
     return newTodo;
@@ -790,7 +842,7 @@ export class DatabaseStorage implements IStorage {
       .from(userToDoItems)
       .where(and(
         eq(userToDoItems.requesterId, userId),
-        eq(userToDoItems.type, 'group_access_request'),
+        eq(userToDoItems.type, 'join_request'),
         eq(userToDoItems.completed, false)
       ))
       .orderBy(desc(userToDoItems.createdAt));

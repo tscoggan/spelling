@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertGameSessionSchema, insertWordSchema, insertCustomWordListSchema, type DifficultyLevel } from "@shared/schema";
 import { z } from "zod";
-import { setupAuth } from "./auth";
+import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import { IllustrationJobService } from "./services/illustrationJobService";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 
@@ -715,7 +715,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = req.user as any;
       const groups = await storage.getUserAccessibleGroups(user.id);
-      res.json(groups);
+      // Strip passwords from all groups
+      const groupsWithoutPasswords = groups.map(({ password, ...group }) => group);
+      res.json(groupsWithoutPasswords);
     } catch (error) {
       console.error("Error fetching user groups:", error);
       res.status(500).json({ error: "Failed to fetch user groups" });
@@ -730,19 +732,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = req.user as any;
       const { insertUserGroupSchema } = await import("@shared/schema");
+      
+      // Hash password if provided
+      let hashedPassword = null;
+      if (req.body.password && req.body.password.trim()) {
+        hashedPassword = await hashPassword(req.body.password);
+      }
+      
       const groupData = insertUserGroupSchema.parse({
         ...req.body,
+        password: hashedPassword,
         ownerUserId: user.id,
       });
       
       const group = await storage.createUserGroup(groupData);
-      res.json(group);
+      // Don't send password back to client
+      const { password, ...groupWithoutPassword } = group;
+      res.json(groupWithoutPassword);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid group data", details: error.errors });
       }
       console.error("Error creating user group:", error);
       res.status(500).json({ error: "Failed to create user group" });
+    }
+  });
+
+  app.patch("/api/user-groups/:id", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const user = req.user as any;
+      const groupId = parseInt(req.params.id);
+      const group = await storage.getUserGroup(groupId);
+
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+
+      if (group.ownerUserId !== user.id) {
+        return res.status(403).json({ error: "Only the group owner can update the group" });
+      }
+
+      // Hash password if provided
+      let hashedPassword = undefined;
+      if (req.body.password !== undefined) {
+        if (req.body.password && req.body.password.trim()) {
+          hashedPassword = await hashPassword(req.body.password);
+        } else {
+          hashedPassword = null; // Clear password if empty string
+        }
+      }
+
+      const updates = {
+        ...req.body,
+        ...(hashedPassword !== undefined && { password: hashedPassword }),
+      };
+
+      const updatedGroup = await storage.updateUserGroup(groupId, updates);
+      // Don't send password back to client
+      const { password, ...groupWithoutPassword } = updatedGroup;
+      res.json(groupWithoutPassword);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid group data", details: error.errors });
+      }
+      console.error("Error updating user group:", error);
+      res.status(500).json({ error: "Failed to update user group" });
     }
   });
 
@@ -954,10 +1012,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "You are the owner of this group" });
       }
 
+      // Validate password if group has one
+      if (group.password) {
+        const providedPassword = req.body.password;
+        if (!providedPassword) {
+          return res.status(400).json({ error: "This group requires a password" });
+        }
+        
+        const isPasswordValid = await comparePasswords(providedPassword, group.password);
+        if (!isPasswordValid) {
+          return res.status(401).json({ error: "Incorrect password" });
+        }
+      }
+
       // Check for existing pending request to prevent duplicates
       const ownerTodos = await storage.getUserToDoItems(group.ownerUserId);
       const hasPendingRequest = ownerTodos.some(
-        todo => todo.type === 'group_access_request' && 
+        todo => todo.type === 'join_request' && 
         todo.requesterId === currentUser.id &&
         todo.groupId === groupId
       );
@@ -966,7 +1037,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "You already have a pending access request for this group" });
       }
 
-      // Create to-do notification for the group owner
+      // Create to-do notification for the group owner (stored as join_request type)
       // Build display name with first/last name if available
       let displayName = currentUser.username;
       if (currentUser.firstName || currentUser.lastName) {
@@ -976,7 +1047,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.createToDoItem({
         userId: group.ownerUserId,
-        type: 'group_access_request',
+        type: 'join_request',
         message: `${displayName} requested to join the group "${group.name}"`,
         groupId,
         groupName: group.name,
@@ -1079,6 +1150,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error approving request:", error);
       res.status(500).json({ error: "Failed to approve request" });
+    }
+  });
+
+  app.post("/api/user-groups/:id/requests/:requestId/approve", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const groupId = parseInt(req.params.id);
+      const requestId = parseInt(req.params.requestId);
+      const currentUser = req.user as any;
+
+      if (isNaN(groupId) || isNaN(requestId)) {
+        return res.status(400).json({ error: "Invalid group ID or request ID" });
+      }
+
+      const group = await storage.getUserGroup(groupId);
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+
+      // Only group owner can approve requests
+      if (group.ownerUserId !== currentUser.id) {
+        return res.status(403).json({ error: "Only group owner can approve requests" });
+      }
+
+      await storage.approveGroupJoinRequest(groupId, requestId);
+      res.status(200).json({ message: "Request approved successfully" });
+    } catch (error: any) {
+      console.error("Error approving request:", error);
+      res.status(500).json({ error: error.message || "Failed to approve request" });
+    }
+  });
+
+  app.delete("/api/user-groups/:id/requests/:requestId", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const groupId = parseInt(req.params.id);
+      const requestId = parseInt(req.params.requestId);
+      const currentUser = req.user as any;
+
+      if (isNaN(groupId) || isNaN(requestId)) {
+        return res.status(400).json({ error: "Invalid group ID or request ID" });
+      }
+
+      const group = await storage.getUserGroup(groupId);
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+
+      // Only group owner can deny requests
+      if (group.ownerUserId !== currentUser.id) {
+        return res.status(403).json({ error: "Only group owner can deny requests" });
+      }
+
+      const success = await storage.denyGroupJoinRequest(groupId, requestId);
+      if (!success) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      res.status(200).json({ message: "Request denied successfully" });
+    } catch (error) {
+      console.error("Error denying request:", error);
+      res.status(500).json({ error: "Failed to deny request" });
     }
   });
 

@@ -208,6 +208,48 @@ export default function UserGroupsPage() {
     },
   });
 
+  const approveRequestMutation = useMutation({
+    mutationFn: async ({ groupId, requestId }: { groupId: number; requestId: number }) => {
+      await apiRequest("POST", `/api/user-groups/${groupId}/requests/${requestId}/approve`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user-groups", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-pending-requests", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-groups", selectedGroup?.id, "members"] });
+      toast({
+        title: "Success!",
+        description: "Request approved",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to approve request",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const denyRequestMutation = useMutation({
+    mutationFn: async ({ groupId, requestId }: { groupId: number; requestId: number }) => {
+      await apiRequest("DELETE", `/api/user-groups/${groupId}/requests/${requestId}`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user-pending-requests", user?.id] });
+      toast({
+        title: "Success!",
+        description: "Request denied",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to deny request",
+        variant: "destructive",
+      });
+    },
+  });
+
   const { data: searchResults = [] } = useQuery<any[]>({
     queryKey: ["/api/users/search", searchQuery],
     queryFn: async () => {
@@ -384,9 +426,9 @@ export default function UserGroupsPage() {
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Create New Group</DialogTitle>
+                  <DialogTitle>{editingGroup ? 'Edit Group' : 'Create New Group'}</DialogTitle>
                   <DialogDescription>
-                    Create a group to share word lists with other users
+                    {editingGroup ? 'Update group settings' : 'Create a group to share word lists with other users'}
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -412,6 +454,18 @@ export default function UserGroupsPage() {
                       Make this group public (anyone can request to join)
                     </Label>
                   </div>
+                  <div>
+                    <Label htmlFor="password">Password (Optional)</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      placeholder="Leave blank for no password"
+                      data-testid="input-group-password"
+                    />
+                    <p className="text-xs text-gray-600 mt-1">Add an optional password for additional security when joining</p>
+                  </div>
                   <div className="flex gap-2 justify-end pt-4">
                     <Button
                       type="button"
@@ -423,10 +477,10 @@ export default function UserGroupsPage() {
                     </Button>
                     <Button
                       type="submit"
-                      disabled={createMutation.isPending}
+                      disabled={createMutation.isPending || updateMutation.isPending}
                       data-testid="button-save-group"
                     >
-                      Create Group
+                      {editingGroup ? 'Update Group' : 'Create Group'}
                     </Button>
                   </div>
                 </form>
@@ -468,7 +522,16 @@ export default function UserGroupsPage() {
                             )}
                           </div>
                           <p className="text-xs text-gray-600 mb-2">Owner</p>
-                          <div className="flex gap-1">
+                          <div className="flex flex-wrap gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEdit(group)}
+                              data-testid={`button-edit-${group.id}`}
+                            >
+                              <Edit className="w-3 h-3 mr-1" />
+                              Edit
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"
@@ -478,6 +541,20 @@ export default function UserGroupsPage() {
                               <UserPlus className="w-3 h-3 mr-1" />
                               Invite
                             </Button>
+                            {pendingRequestGroupIds.has(group.id) && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openPendingRequests(group)}
+                                data-testid={`button-pending-requests-${group.id}`}
+                              >
+                                <Bell className="w-3 h-3 mr-1" />
+                                Requests
+                                <Badge className="ml-1 h-4 px-1 text-xs" data-testid={`badge-pending-count-${group.id}`}>
+                                  {pendingRequests.filter(r => r.groupId === group.id).length}
+                                </Badge>
+                              </Button>
+                            )}
                             <Button
                               variant="outline"
                               size="sm"
@@ -796,6 +873,71 @@ export default function UserGroupsPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <Dialog open={pendingRequestsDialogOpen} onOpenChange={setPendingRequestsDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Pending Join Requests</DialogTitle>
+              <DialogDescription>
+                {selectedGroup?.name}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              {pendingRequests.filter(r => r.groupId === selectedGroup?.id).length === 0 ? (
+                <p className="text-gray-600 text-center py-4">No pending requests</p>
+              ) : (
+                <div className="space-y-2">
+                  {pendingRequests
+                    .filter(r => r.groupId === selectedGroup?.id)
+                    .map((request: any) => (
+                      <Card key={request.id} className="p-4" data-testid={`card-pending-request-${request.id}`}>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl">
+                              {request.userAvatar || '👤'}
+                            </div>
+                            <div>
+                              <p className="font-semibold">{request.username}</p>
+                              {(request.firstName || request.lastName) && (
+                                <p className="text-sm text-gray-600">
+                                  {request.firstName} {request.lastName}
+                                </p>
+                              )}
+                              <p className="text-xs text-gray-500 mt-1">
+                                Requested {new Date(request.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => approveRequestMutation.mutate({ groupId: selectedGroup.id, requestId: request.id })}
+                              disabled={approveRequestMutation.isPending || denyRequestMutation.isPending}
+                              data-testid={`button-approve-request-${request.id}`}
+                            >
+                              <Check className="w-4 h-4 mr-1" />
+                              Approve
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => denyRequestMutation.mutate({ groupId: selectedGroup.id, requestId: request.id })}
+                              disabled={approveRequestMutation.isPending || denyRequestMutation.isPending}
+                              data-testid={`button-deny-request-${request.id}`}
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Deny
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
