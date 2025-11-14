@@ -102,7 +102,7 @@ export const userGroups = pgTable("user_groups", {
   name: text("name").notNull(),
   ownerUserId: integer("owner_user_id").notNull(),
   isPublic: boolean("is_public").notNull().default(false),
-  password: text("password"),
+  plaintextPassword: text("plaintext_password"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

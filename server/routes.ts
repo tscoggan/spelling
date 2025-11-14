@@ -715,9 +715,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = req.user as any;
       const groups = await storage.getUserAccessibleGroups(user.id);
-      // Strip passwords from all groups
-      const groupsWithoutPasswords = groups.map(({ password, ...group }) => group);
-      res.json(groupsWithoutPasswords);
+      // Only include password for groups owned by the current user
+      const processedGroups = groups.map((group) => {
+        if (group.ownerUserId === user.id) {
+          return group; // Return with password for owned groups
+        } else {
+          const { plaintextPassword, ...groupWithoutPassword } = group;
+          return groupWithoutPassword; // Strip password for non-owned groups
+        }
+      });
+      res.json(processedGroups);
     } catch (error) {
       console.error("Error fetching user groups:", error);
       res.status(500).json({ error: "Failed to fetch user groups" });
@@ -733,22 +740,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user as any;
       const { insertUserGroupSchema } = await import("@shared/schema");
       
-      // Hash password if provided
-      let hashedPassword = null;
-      if (req.body.password && req.body.password.trim()) {
-        hashedPassword = await hashPassword(req.body.password);
-      }
-      
       const groupData = insertUserGroupSchema.parse({
         ...req.body,
-        password: hashedPassword,
         ownerUserId: user.id,
       });
       
       const group = await storage.createUserGroup(groupData);
-      // Don't send password back to client
-      const { password, ...groupWithoutPassword } = group;
-      res.json(groupWithoutPassword);
+      res.json(group);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid group data", details: error.errors });
@@ -776,25 +774,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Only the group owner can update the group" });
       }
 
-      // Hash password if provided
-      let hashedPassword = undefined;
-      if (req.body.password !== undefined) {
-        if (req.body.password && req.body.password.trim()) {
-          hashedPassword = await hashPassword(req.body.password);
-        } else {
-          hashedPassword = null; // Clear password if empty string
-        }
-      }
-
-      const updates = {
-        ...req.body,
-        ...(hashedPassword !== undefined && { password: hashedPassword }),
-      };
-
-      const updatedGroup = await storage.updateUserGroup(groupId, updates);
-      // Don't send password back to client
-      const { password, ...groupWithoutPassword } = updatedGroup;
-      res.json(groupWithoutPassword);
+      const updatedGroup = await storage.updateUserGroup(groupId, req.body);
+      res.json(updatedGroup);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid group data", details: error.errors });
@@ -1078,7 +1059,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Group must have a password set
-      if (!group.password) {
+      if (!group.plaintextPassword) {
         return res.status(400).json({ error: "This group does not have a password set" });
       }
 
@@ -1093,9 +1074,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "You are the owner of this group" });
       }
 
-      // Validate password
-      const isPasswordValid = await comparePasswords(password, group.password);
-      if (!isPasswordValid) {
+      // Validate password (plaintext comparison)
+      if (password !== group.plaintextPassword) {
         return res.status(401).json({ error: "Incorrect password" });
       }
 
