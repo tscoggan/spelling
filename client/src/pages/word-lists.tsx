@@ -327,6 +327,16 @@ export default function WordListsPage() {
           description: "Extracting text from PDF...",
         });
         text = await extractTextFromPDF(file);
+        
+        if (!text.trim()) {
+          toast({
+            title: "Cannot extract text",
+            description: "This PDF may be scanned, encrypted, or contain no text. Please use a text-based PDF or try a different file format.",
+            variant: "destructive",
+          });
+          e.target.value = '';
+          return;
+        }
       } else {
         text = await file.text();
       }
@@ -364,9 +374,13 @@ export default function WordListsPage() {
       });
       e.target.value = '';
     } catch (error) {
+      const errorMessage = fileExtension === '.pdf' 
+        ? "Failed to process PDF. The file may be corrupted or unsupported."
+        : "Failed to read file";
+      
       toast({
         title: "Error",
-        description: "Failed to read file",
+        description: errorMessage,
         variant: "destructive",
       });
       e.target.value = '';
@@ -668,7 +682,7 @@ export default function WordListsPage() {
                       </Button>
                     </div>
                     <p className="text-sm text-gray-600 mt-1">
-                      Upload a .txt (one word per line) or .csv (comma-separated) file
+                      Upload a .txt (one word per line), .csv (comma-separated), or .pdf file
                     </p>
                   </div>
                   <div>
