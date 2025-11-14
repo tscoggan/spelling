@@ -175,7 +175,27 @@ export default function Home() {
       >
         <UserHeader />
 
-        <div className="flex justify-center flex-wrap gap-4 mb-6">
+        <div className="text-center mb-8 md:mb-12">
+          <motion.div
+            className="mb-4 flex justify-center overflow-hidden"
+            initial={{ scale: 0.9 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            <img 
+              src={titleBanner} 
+              alt="Spelling Champions" 
+              className="w-full max-w-2xl h-auto scale-110"
+              style={{ margin: '-2% 0' }}
+              data-testid="img-title-banner"
+            />
+          </motion.div>
+          <p className="text-lg md:text-xl text-gray-700">
+            Master your spelling skills with fun, interactive challenges!
+          </p>
+        </div>
+
+        <div className="flex justify-center flex-wrap gap-4 mb-8">
           <Button
             variant="outline"
             size="lg"
@@ -203,26 +223,6 @@ export default function Home() {
             <Trophy className="w-4 h-4 mr-2" />
             View Leaderboard
           </Button>
-        </div>
-
-        <div className="text-center mb-8 md:mb-12">
-          <motion.div
-            className="mb-4 flex justify-center overflow-hidden"
-            initial={{ scale: 0.9 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.3 }}
-          >
-            <img 
-              src={titleBanner} 
-              alt="Spelling Champions" 
-              className="w-full max-w-2xl h-auto scale-110"
-              style={{ margin: '-2% 0' }}
-              data-testid="img-title-banner"
-            />
-          </motion.div>
-          <p className="text-lg md:text-xl text-gray-700">
-            Master your spelling skills with fun, interactive challenges!
-          </p>
         </div>
 
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-6 text-gray-800 font-crayon">

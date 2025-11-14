@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { Plus, Trash2, Users, Globe, Lock, Home, UserPlus, Settings, Search, Mail, LogOut } from "lucide-react";
+import { Plus, Trash2, Users, Globe, Lock, Home, UserPlus, Settings, Search, Mail, LogOut, Edit, Bell, Check, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { UserHeader } from "@/components/user-header";
@@ -34,7 +34,10 @@ export default function UserGroupsPage() {
   const [formData, setFormData] = useState({
     name: "",
     isPublic: false,
+    password: "",
   });
+  const [editingGroup, setEditingGroup] = useState<any>(null);
+  const [pendingRequestsDialogOpen, setPendingRequestsDialogOpen] = useState(false);
 
   const { data: groups = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/user-groups", user?.id],
@@ -64,6 +67,29 @@ export default function UserGroupsPage() {
       toast({
         title: "Error",
         description: error.message || "Failed to create group",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: typeof formData }) => {
+      const response = await apiRequest("PATCH", `/api/user-groups/${id}`, data);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user-groups", user?.id] });
+      setCreateDialogOpen(false);
+      resetForm();
+      toast({
+        title: "Success!",
+        description: "Group updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update group",
         variant: "destructive",
       });
     },
@@ -208,12 +234,33 @@ export default function UserGroupsPage() {
     setFormData({
       name: "",
       isPublic: false,
+      password: "",
     });
+    setEditingGroup(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createMutation.mutate(formData);
+    if (editingGroup) {
+      updateMutation.mutate({ id: editingGroup.id, data: formData });
+    } else {
+      createMutation.mutate(formData);
+    }
+  };
+
+  const handleEdit = (group: any) => {
+    setEditingGroup(group);
+    setFormData({
+      name: group.name,
+      isPublic: group.isPublic,
+      password: group.password || "",
+    });
+    setCreateDialogOpen(true);
+  };
+
+  const openPendingRequests = (group: any) => {
+    setSelectedGroup(group);
+    setPendingRequestsDialogOpen(true);
   };
 
   const handleDelete = (groupId: number) => {
