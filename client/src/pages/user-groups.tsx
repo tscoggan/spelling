@@ -38,6 +38,9 @@ export default function UserGroupsPage() {
   });
   const [editingGroup, setEditingGroup] = useState<any>(null);
   const [pendingRequestsDialogOpen, setPendingRequestsDialogOpen] = useState(false);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [selectedGroupForPassword, setSelectedGroupForPassword] = useState<any>(null);
+  const [passwordInput, setPasswordInput] = useState("");
 
   const { data: groups = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/user-groups", user?.id],
@@ -132,6 +135,30 @@ export default function UserGroupsPage() {
       toast({
         title: "Error",
         description: error.message || "Failed to send request",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const joinWithPasswordMutation = useMutation({
+    mutationFn: async ({ groupId, password }: { groupId: number; password: string }) => {
+      const response = await apiRequest("POST", `/api/user-groups/${groupId}/join-with-password`, { password });
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user-groups", user?.id] });
+      setPasswordDialogOpen(false);
+      setPasswordInput("");
+      setSelectedGroupForPassword(null);
+      toast({
+        title: "Success!",
+        description: "You have successfully joined the group",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to join group. Please check your password and try again.",
         variant: "destructive",
       });
     },
@@ -651,16 +678,31 @@ export default function UserGroupsPage() {
                               <h3 className="font-semibold text-gray-800 truncate">{group.name}</h3>
                               <Globe className="w-3 h-3 text-green-600 flex-shrink-0" />
                             </div>
-                            <p className="text-xs text-gray-600 mb-2">Public Group</p>
-                            <Button
-                              size="sm"
-                              onClick={() => requestAccessMutation.mutate(group.id)}
-                              disabled={hasPendingRequest || requestAccessMutation.isPending}
-                              variant={hasPendingRequest ? "outline" : "default"}
-                              data-testid={`button-request-access-${group.id}`}
-                            >
-                              {hasPendingRequest ? "Request Pending" : requestAccessMutation.isPending ? "Sending..." : "Join"}
-                            </Button>
+                            <p className="text-xs text-gray-600 mb-2">Public Group{group.password ? ' • Password Protected' : ''}</p>
+                            <div className="flex gap-2 flex-wrap">
+                              <Button
+                                size="sm"
+                                onClick={() => requestAccessMutation.mutate(group.id)}
+                                disabled={hasPendingRequest || requestAccessMutation.isPending}
+                                variant={hasPendingRequest ? "outline" : "default"}
+                                data-testid={`button-request-access-${group.id}`}
+                              >
+                                {hasPendingRequest ? "Request Pending" : requestAccessMutation.isPending ? "Sending..." : "Request to Join"}
+                              </Button>
+                              {group.password && (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => {
+                                    setSelectedGroupForPassword(group);
+                                    setPasswordDialogOpen(true);
+                                  }}
+                                  data-testid={`button-join-with-password-${group.id}`}
+                                >
+                                  Join with Password
+                                </Button>
+                              )}
+                            </div>
                           </div>
                           <div className="flex items-center gap-1">
                             <span className="text-xs text-gray-600" data-testid={`text-member-count-${group.id}`}>{group.memberCount || 0} {(group.memberCount || 0) === 1 ? 'member' : 'members'}</span>
@@ -935,6 +977,66 @@ export default function UserGroupsPage() {
                     ))}
                 </div>
               )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Join with Password</DialogTitle>
+              <DialogDescription>
+                Enter the password to join {selectedGroupForPassword?.name}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="join-password">Password</Label>
+                <Input
+                  id="join-password"
+                  type="password"
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  placeholder="Enter group password"
+                  data-testid="input-join-password"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && passwordInput.trim()) {
+                      joinWithPasswordMutation.mutate({
+                        groupId: selectedGroupForPassword.id,
+                        password: passwordInput
+                      });
+                    }
+                  }}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setPasswordDialogOpen(false);
+                    setPasswordInput("");
+                    setSelectedGroupForPassword(null);
+                  }}
+                  disabled={joinWithPasswordMutation.isPending}
+                  data-testid="button-cancel-join-password"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (selectedGroupForPassword) {
+                      joinWithPasswordMutation.mutate({
+                        groupId: selectedGroupForPassword.id,
+                        password: passwordInput
+                      });
+                    }
+                  }}
+                  disabled={!passwordInput.trim() || joinWithPasswordMutation.isPending}
+                  data-testid="button-submit-join-password"
+                >
+                  {joinWithPasswordMutation.isPending ? "Joining..." : "Join Group"}
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
