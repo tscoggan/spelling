@@ -21,6 +21,7 @@ import type { CustomWordList, WordIllustration } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { UserHeader } from "@/components/user-header";
 import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
+import * as pdfjsLib from "pdfjs-dist";
 
 const GRADE_LEVELS = ["K", "1", "2", "3", "4", "5", "6", "7", "8", "9-12"];
 
@@ -278,17 +279,39 @@ export default function WordListsPage() {
     setDialogOpen(true);
   };
 
+  const extractTextFromPDF = async (file: File): Promise<string> => {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+      'pdfjs-dist/build/pdf.worker.min.mjs',
+      import.meta.url
+    ).toString();
+    
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    
+    let fullText = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .map((item: any) => item.str)
+        .join(' ');
+      fullText += pageText + '\n';
+    }
+    
+    return fullText;
+  };
+
   const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const validExtensions = ['.txt', '.csv'];
+    const validExtensions = ['.txt', '.csv', '.pdf'];
     const fileExtension = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
     
     if (!validExtensions.includes(fileExtension)) {
       toast({
         title: "Invalid file format",
-        description: "Please upload a .txt or .csv file",
+        description: "Please upload a .txt, .csv, or .pdf file",
         variant: "destructive",
       });
       e.target.value = '';
@@ -296,13 +319,24 @@ export default function WordListsPage() {
     }
 
     try {
-      const text = await file.text();
+      let text: string;
+      
+      if (fileExtension === '.pdf') {
+        toast({
+          title: "Processing PDF",
+          description: "Extracting text from PDF...",
+        });
+        text = await extractTextFromPDF(file);
+      } else {
+        text = await file.text();
+      }
+      
       let words: string[];
 
       if (fileExtension === '.csv') {
         words = text.split(/[,\n]/).map(w => w.trim()).filter(w => w.length > 0);
       } else {
-        words = text.split('\n').map(w => w.trim()).filter(w => w.length > 0);
+        words = text.split(/[\s,\n]+/).map(w => w.trim()).filter(w => w.length > 0);
       }
 
       if (words.length < 5) {
@@ -618,7 +652,7 @@ export default function WordListsPage() {
                       <Input
                         id="file-import"
                         type="file"
-                        accept=".txt,.csv"
+                        accept=".txt,.csv,.pdf"
                         onChange={handleFileImport}
                         className="cursor-pointer"
                         data-testid="input-file-import"
