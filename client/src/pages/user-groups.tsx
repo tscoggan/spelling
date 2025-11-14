@@ -737,7 +737,7 @@ export default function UserGroupsPage() {
                               <h3 className="font-semibold text-gray-800 truncate">{group.name}</h3>
                               <Globe className="w-3 h-3 text-green-600 flex-shrink-0" />
                             </div>
-                            <p className="text-xs text-gray-600 mb-2">Public Group{group.plaintextPassword ? ' • Password Protected' : ''}</p>
+                            <p className="text-xs text-gray-600 mb-2">Public Group{group.hasPassword ? ' • Password Protected' : ''}</p>
                             <div className="flex gap-2 flex-wrap">
                               <Button
                                 size="sm"
@@ -748,7 +748,7 @@ export default function UserGroupsPage() {
                               >
                                 {hasPendingRequest ? "Request Pending" : requestAccessMutation.isPending ? "Sending..." : "Request to Join"}
                               </Button>
-                              {group.plaintextPassword && (
+                              {group.hasPassword && (
                                 <Button
                                   size="sm"
                                   variant="secondary"

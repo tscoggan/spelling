@@ -716,12 +716,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user as any;
       const groups = await storage.getUserAccessibleGroups(user.id);
       // Only include password for groups owned by the current user
+      // For non-owned groups, include hasPassword flag but strip actual password
       const processedGroups = groups.map((group) => {
         if (group.ownerUserId === user.id) {
           return group; // Return with password for owned groups
         } else {
           const { plaintextPassword, ...groupWithoutPassword } = group;
-          return groupWithoutPassword; // Strip password for non-owned groups
+          return {
+            ...groupWithoutPassword,
+            hasPassword: !!plaintextPassword, // Boolean flag indicating password exists
+          };
         }
       });
       res.json(processedGroups);
