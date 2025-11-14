@@ -188,12 +188,19 @@ export default function Game() {
   });
 
   const { data: wordIllustrations } = useQuery<WordIllustration[]>({
-    queryKey: ['/api/word-illustrations'],
+    queryKey: listId ? ['/api/word-lists', listId, 'illustrations'] : ['/api/word-illustrations'],
     queryFn: async () => {
-      const response = await fetch('/api/word-illustrations');
-      if (!response.ok) throw new Error('Failed to fetch word illustrations');
-      return response.json();
+      if (listId) {
+        const response = await fetch(`/api/word-lists/${listId}/illustrations`);
+        if (!response.ok) throw new Error('Failed to fetch word illustrations for list');
+        return response.json();
+      } else {
+        const response = await fetch('/api/word-illustrations');
+        if (!response.ok) throw new Error('Failed to fetch word illustrations');
+        return response.json();
+      }
     },
+    enabled: !!listId || !!difficulty,
   });
 
   useEffect(() => {

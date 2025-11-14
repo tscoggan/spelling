@@ -1013,9 +1013,14 @@ export default function WordListsPage() {
 
 // Component to preview words with their images
 function WordListPreview({ words, listId }: { words: string[]; listId: number }) {
-  // Query for all word illustrations
+  // Query for word illustrations for this specific word list
   const { data: illustrations = [] } = useQuery<WordIllustration[]>({
-    queryKey: ["/api/word-illustrations"],
+    queryKey: ["/api/word-lists", listId, "illustrations"],
+    queryFn: async () => {
+      const response = await fetch(`/api/word-lists/${listId}/illustrations`);
+      if (!response.ok) throw new Error("Failed to fetch word illustrations");
+      return await response.json();
+    },
   });
 
   // Get illustration for a word
@@ -1060,9 +1065,14 @@ function EditImagesDialog({ list, open, onOpenChange }: {
   const [loadingPreviews, setLoadingPreviews] = useState(false);
   const [customSearchTerm, setCustomSearchTerm] = useState("");
 
-  // Query for all word illustrations
+  // Query for word illustrations for this specific word list
   const { data: illustrations = [], refetch: refetchIllustrations } = useQuery<WordIllustration[]>({
-    queryKey: ["/api/word-illustrations"],
+    queryKey: ["/api/word-lists", list.id, "illustrations"],
+    queryFn: async () => {
+      const response = await fetch(`/api/word-lists/${list.id}/illustrations`);
+      if (!response.ok) throw new Error("Failed to fetch word illustrations");
+      return await response.json();
+    },
     enabled: open,
   });
 
@@ -1072,11 +1082,13 @@ function EditImagesDialog({ list, open, onOpenChange }: {
       const response = await apiRequest("POST", "/api/word-illustrations/select", {
         word,
         imageUrl,
+        wordListId: list.id,
       });
       return await response.json();
     },
     onSuccess: () => {
-      // Invalidate all queries using word illustrations so thumbnails update everywhere
+      // Invalidate queries for this word list's illustrations
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists", list.id, "illustrations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/word-illustrations"] });
       setSelectedWord(null);
       setPixabayPreviews([]);

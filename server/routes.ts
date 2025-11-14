@@ -558,15 +558,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Authentication required" });
       }
 
-      const { word, imageUrl } = req.body;
+      const { word, imageUrl, wordListId } = req.body;
 
       if (!word) {
         return res.status(400).json({ error: "Word is required" });
       }
 
-      // If imageUrl is null, delete the illustration for this word
+      if (!wordListId) {
+        return res.status(400).json({ error: "Word list ID is required" });
+      }
+
+      // If imageUrl is null, delete the illustration for this word and word list
       if (imageUrl === null) {
-        await storage.deleteWordIllustration(word);
+        await storage.deleteWordIllustrationForWordList(word, wordListId);
         return res.json({ success: true, message: "Image removed" });
       }
 
@@ -600,6 +604,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Save to database
       const illustration = await storage.createWordIllustration({
         word: word.toLowerCase(),
+        wordListId,
         imagePath,
         source: 'pixabay',
       });
@@ -620,48 +625,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update parts of speech for a word illustration
-  app.patch("/api/word-illustrations/:word/parts-of-speech", async (req, res) => {
+  app.get("/api/word-lists/:id/illustrations", async (req, res) => {
     try {
-      const word = req.params.word.toLowerCase();
-      const { partsOfSpeech } = req.body;
-
-      if (!partsOfSpeech && partsOfSpeech !== null) {
-        return res.status(400).json({ error: "partsOfSpeech is required" });
+      const wordListId = parseInt(req.params.id);
+      if (isNaN(wordListId)) {
+        return res.status(400).json({ error: "Invalid word list ID" });
       }
 
-      // Get existing illustration
-      const existing = await storage.getWordIllustration(word);
-      
-      if (existing) {
-        // Update existing illustration
-        const updated = await storage.updateWordIllustration(existing.id, {
-          partsOfSpeech: partsOfSpeech || null,
-        });
-        return res.json(updated);
-      } else {
-        // Create new illustration entry with just parts of speech (no image)
-        const newIllustration = await storage.createWordIllustration({
-          word,
-          imagePath: null,
-          source: 'dictionary',
-          partsOfSpeech: partsOfSpeech || null,
-        });
-        return res.json(newIllustration);
-      }
+      const illustrations = await storage.getWordIllustrationsForWordList(wordListId);
+      res.json(illustrations);
     } catch (error) {
-      console.error("Error updating parts of speech:", error);
-      res.status(500).json({ error: "Failed to update parts of speech" });
+      res.status(500).json({ error: "Failed to fetch word illustrations for word list" });
     }
   });
 
   app.get("/api/word-illustrations/:word", async (req, res) => {
     try {
       const word = req.params.word.toLowerCase();
-      const illustration = await storage.getWordIllustration(word);
+      const wordListId = parseInt(req.query.wordListId as string);
+      
+      if (!wordListId || isNaN(wordListId)) {
+        return res.status(400).json({ error: "Word list ID is required" });
+      }
+
+      const illustration = await storage.getWordIllustration(word, wordListId);
       
       if (!illustration) {
-        return res.status(404).json({ error: "Illustration not found for this word" });
+        return res.status(404).json({ error: "Illustration not found for this word and word list" });
       }
       
       res.json(illustration);
