@@ -1000,7 +1000,7 @@ export default function UserGroupsPage() {
                   placeholder="Enter group password"
                   data-testid="input-join-password"
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && passwordInput.trim()) {
+                    if (e.key === 'Enter' && passwordInput.trim() && selectedGroupForPassword) {
                       joinWithPasswordMutation.mutate({
                         groupId: selectedGroupForPassword.id,
                         password: passwordInput
