@@ -1,7 +1,7 @@
 # Spelling Champions
 
 ## Overview
-Spelling Champions is an interactive educational app designed to improve children's spelling skills through engaging games. It features multiple difficulty levels, text-to-speech, immediate feedback, and a scoring system. The app leverages words inspired by the Scripps "Words of the Champions" list, promotes competitive learning via leaderboards, and allows users to create and share custom word lists. The core vision is to provide a comprehensive and enjoyable platform for children's spelling development, with recent enhancements focusing on user groups, an audio-only crossword puzzle mode, realistic misspelling challenges, and robust content moderation for child safety.
+Spelling Champions is an interactive educational app designed to improve children's spelling skills through engaging games. It features multiple difficulty levels, text-to-speech, immediate feedback, and a scoring system. All words in the application are sourced from custom word lists created by users, promoting collaborative learning via leaderboards and word list sharing. The core vision is to provide a comprehensive and enjoyable platform for children's spelling development, with recent enhancements focusing on user groups, an audio-only crossword puzzle mode, realistic misspelling challenges, and robust content moderation for child safety.
 
 ## User Preferences
 - I prefer simple language.
@@ -38,7 +38,8 @@ The backend uses **Express.js** with **TypeScript**. **PostgreSQL** serves as th
 
 ### System Design Choices
 - **Client-Server Architecture**: React frontend communicates with an Express.js backend.
-- **Database Schema**: PostgreSQL stores user data, game sessions, leaderboards, custom word lists (with new fields for user groups, image assignment, and visibility), word illustrations, and background job tracking.
+- **Database Schema**: PostgreSQL stores user data, game sessions, leaderboards, custom word lists (with new fields for user groups, image assignment, and visibility), word illustrations, and background job tracking. The words table stores metadata for words (definitions, parts of speech, origins, examples) that are populated on-demand through the dictionary validation service when users create custom word lists.
+- **Word Management**: No pre-seeded words exist in the database. All words are added dynamically when users create custom word lists, with metadata (definitions, parts of speech, origins, examples) fetched from Merriam-Webster APIs during list creation/update.
 - **Authentication Flow**: Passport.js manages user registration, login, and session persistence.
 - **Object Storage Architecture**: Replit Object Storage stores all word illustration images permanently with public ACL visibility, served via a dedicated backend route.
 - **API Endpoints**: RESTful APIs for authentication, game management, leaderboards, CRUD operations for word lists, user groups, to-do items, illustration job status, and image retrieval. Backend supports unlimited word fetching by treating missing or zero `limit` parameters as "no cap."
