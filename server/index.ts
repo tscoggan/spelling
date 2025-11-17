@@ -49,9 +49,6 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  await storage.seedWords();
-  log("Database seeded with words");
-
   const server = await registerRoutes(app);
 
   // Serve attached_assets directory for dynamically generated word illustrations
