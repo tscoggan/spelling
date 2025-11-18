@@ -164,6 +164,7 @@ export default function Home() {
           backgroundPosition: 'center',
         }}
       ></div>
+      <div className="absolute inset-0 bg-black/40 dark:bg-black/60"></div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -187,7 +188,7 @@ export default function Home() {
               data-testid="img-title-banner"
             />
           </motion.div>
-          <p className="text-lg md:text-xl text-gray-800 font-semibold bg-white/80 backdrop-blur-sm px-6 py-3 rounded-full inline-block shadow-md">
+          <p className="text-lg md:text-xl text-foreground font-semibold bg-background/80 dark:bg-background/90 backdrop-blur-sm px-6 py-3 rounded-full inline-block shadow-md">
             Master your spelling skills with fun, interactive challenges!
           </p>
         </div>
@@ -222,7 +223,7 @@ export default function Home() {
           </Button>
         </div>
 
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-6 text-gray-800 bg-white/80 backdrop-blur-sm px-8 py-4 rounded-2xl inline-block shadow-md mx-auto block w-fit">
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-6 text-foreground bg-background/80 dark:bg-background/90 backdrop-blur-sm px-8 py-4 rounded-2xl inline-block shadow-md mx-auto block w-fit">
           Choose Your Game Mode
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
