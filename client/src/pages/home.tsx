@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { UserHeader } from "@/components/user-header";
 import titleBanner from "@assets/generated_images/Hand-drawn_crayon_Spelling_Champions_text_fc50a8a9.png";
-import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
+import rainbowBackground from "@assets/Colorful background_1763492167108.png";
 
 interface CustomWordList {
   id: number;
@@ -153,17 +153,14 @@ export default function Home() {
 
   return (
     <div 
-      className="min-h-screen p-4 md:p-8 relative"
-      style={{
-        backgroundColor: 'hsl(var(--page-home-bg))',
-      }}
+      className="min-h-screen p-4 md:p-8 relative overflow-hidden"
     >
       <div 
-        className="absolute inset-0 opacity-50"
+        className="absolute inset-0"
         style={{
-          backgroundImage: `url(${schoolPattern})`,
-          backgroundSize: '240px 240px',
-          backgroundRepeat: 'repeat',
+          backgroundImage: `url(${rainbowBackground})`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center',
         }}
       ></div>
@@ -190,7 +187,7 @@ export default function Home() {
               data-testid="img-title-banner"
             />
           </motion.div>
-          <p className="text-lg md:text-xl text-gray-700">
+          <p className="text-lg md:text-xl text-gray-800 font-semibold bg-white/80 backdrop-blur-sm px-6 py-3 rounded-full inline-block shadow-md">
             Master your spelling skills with fun, interactive challenges!
           </p>
         </div>
@@ -225,7 +222,7 @@ export default function Home() {
           </Button>
         </div>
 
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-6 text-gray-800 font-crayon">
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-6 text-gray-800 bg-white/80 backdrop-blur-sm px-8 py-4 rounded-2xl inline-block shadow-md mx-auto block w-fit">
           Choose Your Game Mode
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
@@ -239,7 +236,7 @@ export default function Home() {
                 transition={{ delay: index * 0.1 }}
               >
                 <Card
-                  className="hover-elevate active-elevate-2 cursor-pointer h-full"
+                  className="hover-elevate active-elevate-2 cursor-pointer h-full shadow-lg border-2"
                   onClick={() => handleModeClick(mode.id)}
                   data-testid={`card-mode-${mode.id}`}
                 >
