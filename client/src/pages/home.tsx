@@ -175,7 +175,7 @@ export default function Home() {
 
         <div className="text-center mb-8 md:mb-12">
           <motion.div
-            className="mb-4 flex justify-center overflow-hidden"
+            className="mb-2 flex justify-center overflow-hidden"
             initial={{ scale: 0.9 }}
             animate={{ scale: 1 }}
             transition={{ duration: 0.3 }}
