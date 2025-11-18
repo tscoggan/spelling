@@ -164,7 +164,7 @@ export default function Home() {
           backgroundPosition: 'center',
         }}
       ></div>
-      <div className="absolute inset-0 bg-black/40 dark:bg-black/60"></div>
+      <div className="absolute inset-0 bg-black/10 dark:bg-black/50"></div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -183,8 +183,7 @@ export default function Home() {
             <img 
               src={titleBanner} 
               alt="Spelling Champions" 
-              className="w-full max-w-2xl h-auto scale-110"
-              style={{ margin: '-2% 0' }}
+              className="w-full max-w-xl h-auto"
               data-testid="img-title-banner"
             />
           </motion.div>
@@ -223,9 +222,11 @@ export default function Home() {
           </Button>
         </div>
 
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-6 text-foreground bg-background/80 dark:bg-background/90 backdrop-blur-sm px-8 py-4 rounded-2xl inline-block shadow-md mx-auto block w-fit">
-          Choose Your Game Mode
-        </h2>
+        <div className="flex justify-center mb-6">
+          <h2 className="text-2xl md:text-3xl font-bold text-center text-foreground bg-background/80 dark:bg-background/90 backdrop-blur-sm px-8 py-4 rounded-2xl shadow-md">
+            Choose Your Game Mode
+          </h2>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           {gameModes.map((mode, index) => {
             const Icon = mode.icon;
