@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { UserHeader } from "@/components/user-header";
-import titleBanner from "@assets/generated_images/Hand-drawn_crayon_Spelling_Champions_text_fc50a8a9.png";
+import titleBanner from "@assets/image_1763494070680.png";
 import rainbowBackground from "@assets/Colorful background_1763492167108.png";
 
 interface CustomWordList {
