@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LIGHT MODE */
+/* LIGHT MODE - Rainbow Theme */
 :root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
@@ -14,74 +14,74 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  --background: 0 0% 100%;
+  --background: 195 100% 85%;
 
-  --foreground: 230 40% 15%;
+  --foreground: 220 40% 20%;
 
-  --border: 220 20% 85%;
+  --border: 195 60% 65%;
 
   --card: 0 0% 100%;
 
-  --card-foreground: 230 40% 15%;
+  --card-foreground: 220 40% 20%;
 
-  --card-border: 220 30% 88%;
+  --card-border: 195 40% 80%;
 
-  --sidebar: 270 100% 97%;
+  --sidebar: 195 100% 95%;
 
-  --sidebar-foreground: 230 40% 15%;
+  --sidebar-foreground: 220 40% 20%;
 
-  --sidebar-border: 270 50% 85%;
+  --sidebar-border: 195 50% 75%;
 
-  --sidebar-primary: 265 95% 60%;
+  --sidebar-primary: 0 85% 60%;
 
   --sidebar-primary-foreground: 0 0% 100%;
 
-  --sidebar-accent: 270 70% 90%;
+  --sidebar-accent: 195 70% 85%;
 
-  --sidebar-accent-foreground: 230 40% 15%;
+  --sidebar-accent-foreground: 220 40% 20%;
 
-  --sidebar-ring: 265 95% 60%;
+  --sidebar-ring: 0 85% 60%;
 
   --popover: 0 0% 100%;
 
-  --popover-foreground: 230 40% 15%;
+  --popover-foreground: 220 40% 20%;
 
-  --popover-border: 220 30% 82%;
+  --popover-border: 195 40% 75%;
 
-  --primary: 265 95% 60%;
+  --primary: 0 85% 60%;
 
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 45 100% 55%;
+  --secondary: 48 100% 50%;
 
-  --secondary-foreground: 230 40% 15%;
+  --secondary-foreground: 220 40% 20%;
 
-  --muted: 220 25% 90%;
+  --muted: 195 50% 85%;
 
-  --muted-foreground: 220 15% 40%;
+  --muted-foreground: 195 20% 40%;
 
-  --accent: 145 80% 45%;
+  --accent: 120 60% 45%;
 
   --accent-foreground: 0 0% 100%;
 
-  --destructive: 0 90% 55%;
+  --destructive: 340 100% 65%;
 
   --destructive-foreground: 0 0% 100%;
 
-  --input: 220 20% 75%;
-  --ring: 265 95% 60%;
-  --chart-1: 265 95% 60%;
-  --chart-2: 145 80% 45%;
-  --chart-3: 45 100% 55%;
-  --chart-4: 200 90% 50%;
-  --chart-5: 10 95% 55%;
+  --input: 195 30% 80%;
+  --ring: 0 85% 60%;
+  --chart-1: 0 85% 60%;
+  --chart-2: 30 95% 55%;
+  --chart-3: 48 100% 50%;
+  --chart-4: 120 60% 45%;
+  --chart-5: 195 100% 50%;
 
-  /* Page-specific white backgrounds with decorative art overlay */
-  --page-home-bg: 0 0% 100%;
-  --page-game-bg: 0 0% 100%;
-  --page-wordlists-bg: 0 0% 100%;
-  --page-leaderboard-bg: 0 0% 100%;
-  --page-auth-bg: 0 0% 100%;
+  /* Page-specific backgrounds with rainbow theme */
+  --page-home-bg: 195 100% 85%;
+  --page-game-bg: 195 100% 85%;
+  --page-wordlists-bg: 195 100% 85%;
+  --page-leaderboard-bg: 195 100% 85%;
+  --page-auth-bg: 195 100% 85%;
 
   --font-sans: Nunito, system-ui, -apple-system, sans-serif;
   --font-serif: Georgia, serif;
