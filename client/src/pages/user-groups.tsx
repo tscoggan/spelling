@@ -17,7 +17,7 @@ import { Plus, Trash2, Users, Globe, Lock, Home, UserPlus, Settings, Search, Mai
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { UserHeader } from "@/components/user-header";
-import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
+import rainbowBackground from "@assets/Colorful background_1763492167108.png";
 
 export default function UserGroupsPage() {
   const { user } = useAuth();
@@ -489,18 +489,18 @@ export default function UserGroupsPage() {
 
   return (
     <div
-      className="min-h-screen p-6 relative"
-      style={{ backgroundColor: '#FFFFFF' }}
+      className="min-h-screen p-6 relative overflow-hidden"
     >
       <div
-        className="absolute inset-0 opacity-50"
+        className="absolute inset-0"
         style={{
-          backgroundImage: `url(${schoolPattern})`,
-          backgroundSize: '240px 240px',
-          backgroundRepeat: 'repeat',
+          backgroundImage: `url(${rainbowBackground})`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center',
         }}
       ></div>
+      <div className="absolute inset-0 bg-white/5 dark:bg-black/50"></div>
 
       <div className="max-w-6xl mx-auto relative z-10">
         <div className="flex items-start justify-between mb-6">
@@ -513,8 +513,8 @@ export default function UserGroupsPage() {
         
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-gray-800 mb-2 font-crayon">User Groups</h1>
-            <p className="text-gray-600">Create and manage groups to share word lists</p>
+            <h1 className="text-4xl font-bold text-foreground mb-2 font-crayon">User Groups</h1>
+            <p className="text-muted-foreground">Create and manage groups to share word lists</p>
           </div>
           <div className="flex gap-2">
             <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>

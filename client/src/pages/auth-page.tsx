@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sparkles, UserCircle } from "lucide-react";
-import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
+import rainbowBackground from "@assets/Colorful background_1763492167108.png";
 
 const avatarOptions = [
   { emoji: "🐶", label: "Dog" },
@@ -56,25 +56,23 @@ export default function AuthPage() {
 
   return (
     <div 
-      className="min-h-screen flex items-center justify-center p-6 relative"
-      style={{
-        backgroundColor: '#FFFFFF',
-      }}
+      className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden"
     >
       <div 
-        className="absolute inset-0 opacity-50"
+        className="absolute inset-0"
         style={{
-          backgroundImage: `url(${schoolPattern})`,
-          backgroundSize: '240px 240px',
-          backgroundRepeat: 'repeat',
+          backgroundImage: `url(${rainbowBackground})`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center',
         }}
       ></div>
+      <div className="absolute inset-0 bg-white/5 dark:bg-black/50"></div>
       <Card className="w-full max-w-md p-8 relative z-10">
         <div className="text-center mb-8">
           <Sparkles className="w-16 h-16 text-purple-600 mx-auto mb-4" />
-          <h1 className="text-3xl font-bold text-gray-800 mb-2 font-crayon">Spelling Champions</h1>
-          <p className="text-gray-600">Create an account or log in to start your spelling adventure!</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2 font-crayon">Spelling Champions</h1>
+          <p className="text-muted-foreground">Create an account or log in to start your spelling adventure!</p>
         </div>
 
         <Tabs defaultValue="login" className="w-full">

@@ -164,7 +164,7 @@ export default function Home() {
           backgroundPosition: 'center',
         }}
       ></div>
-      <div className="absolute inset-0 bg-black/10 dark:bg-black/50"></div>
+      <div className="absolute inset-0 bg-white/5 dark:bg-black/50"></div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

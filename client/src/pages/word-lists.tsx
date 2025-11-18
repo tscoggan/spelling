@@ -20,7 +20,7 @@ import { motion } from "framer-motion";
 import type { CustomWordList, WordIllustration } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { UserHeader } from "@/components/user-header";
-import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
+import rainbowBackground from "@assets/Colorful background_1763492167108.png";
 import * as pdfjsLib from "pdfjs-dist";
 
 const GRADE_LEVELS = ["K", "1", "2", "3", "4", "5", "6", "7", "8", "9-12"];
@@ -543,16 +543,17 @@ export default function WordListsPage() {
   );
 
   return (
-    <div className="min-h-screen p-4 md:p-8 relative" style={{ backgroundColor: 'hsl(var(--page-wordlists-bg))' }}>
+    <div className="min-h-screen p-4 md:p-8 relative overflow-hidden">
       <div 
-        className="absolute inset-0 opacity-50"
+        className="absolute inset-0"
         style={{
-          backgroundImage: `url(${schoolPattern})`,
-          backgroundSize: '240px 240px',
-          backgroundRepeat: 'repeat',
+          backgroundImage: `url(${rainbowBackground})`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center',
         }}
       ></div>
+      <div className="absolute inset-0 bg-white/5 dark:bg-black/50"></div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -571,7 +572,7 @@ export default function WordListsPage() {
             <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 font-crayon">
               Custom Word Lists
             </h1>
-            <p className="text-gray-600 mt-2">
+            <p className="text-muted-foreground mt-2">
               Create your own spelling word lists and share them with others
             </p>
           </div>

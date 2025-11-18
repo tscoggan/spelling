@@ -8,7 +8,7 @@ import { Trophy, Medal, Home, Crown, Award } from "lucide-react";
 import type { LeaderboardScore, DifficultyLevel } from "@shared/schema";
 import { motion } from "framer-motion";
 import { UserHeader } from "@/components/user-header";
-import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
+import rainbowBackground from "@assets/Colorful background_1763492167108.png";
 
 export default function Leaderboard() {
   const [, setLocation] = useLocation();
@@ -42,16 +42,17 @@ export default function Leaderboard() {
   };
 
   return (
-    <div className="min-h-screen p-4 md:p-8 relative" style={{ backgroundColor: 'hsl(var(--page-leaderboard-bg))' }}>
+    <div className="min-h-screen p-4 md:p-8 relative overflow-hidden">
       <div 
-        className="absolute inset-0 opacity-50"
+        className="absolute inset-0"
         style={{
-          backgroundImage: `url(${schoolPattern})`,
-          backgroundSize: '240px 240px',
-          backgroundRepeat: 'repeat',
+          backgroundImage: `url(${rainbowBackground})`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center',
         }}
       ></div>
+      <div className="absolute inset-0 bg-white/5 dark:bg-black/50"></div>
       <div className="max-w-6xl mx-auto relative z-10">
         <div className="flex items-start justify-between mb-6">
           <Button
@@ -73,10 +74,10 @@ export default function Leaderboard() {
           >
             <Trophy className="w-12 h-12 text-purple-600" />
             <div>
-              <h1 className="text-4xl md:text-5xl font-bold text-gray-800 font-crayon">
+              <h1 className="text-4xl md:text-5xl font-bold text-foreground font-crayon">
                 Leaderboard
               </h1>
-              <p className="text-lg text-gray-600 mt-1">Top 10 Champions</p>
+              <p className="text-lg text-muted-foreground mt-1">Top 10 Champions</p>
             </div>
           </motion.div>
         </div>

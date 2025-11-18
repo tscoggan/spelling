@@ -31,7 +31,7 @@ import type { WordIllustration } from "@shared/schema";
 import { generateCrossword, type CrosswordGrid, type CrosswordEntry } from "@/lib/crosswordGenerator";
 
 // Import background pattern
-import schoolPattern from "@assets/generated_images/Cartoon_school_objects_background_pattern_1ab3a6ac.png";
+import rainbowBackground from "@assets/Colorful background_1763492167108.png";
 
 interface QuizAnswer {
   word: Word;
@@ -2117,21 +2117,19 @@ export default function Game() {
 
   return (
     <div 
-      className="min-h-screen flex flex-col relative"
-      style={{
-        backgroundColor: 'hsl(var(--page-game-bg))',
-      }}
+      className="min-h-screen flex flex-col relative overflow-hidden"
     >
       <div 
-        className="absolute inset-0 opacity-50"
+        className="absolute inset-0"
         style={{
-          backgroundImage: `url(${schoolPattern})`,
-          backgroundSize: '240px 240px',
-          backgroundRepeat: 'repeat',
+          backgroundImage: `url(${rainbowBackground})`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center',
         }}
       ></div>
-      <header className="p-4 md:p-6 bg-white/80 backdrop-blur-sm border-b border-gray-200 relative z-10">
+      <div className="absolute inset-0 bg-white/5 dark:bg-black/50"></div>
+      <header className="p-4 md:p-6 bg-white/80 dark:bg-black/70 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 relative z-10">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 flex-wrap">
           <Button
             variant="outline"
