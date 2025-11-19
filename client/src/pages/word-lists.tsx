@@ -435,7 +435,7 @@ export default function WordListsPage() {
   }, [userLists, publicLists]);
 
   const renderWordList = (list: any, canEdit: boolean) => (
-    <Card key={list.id} className="hover-elevate" data-testid={`card-word-list-${list.id}`}>
+    <Card key={list.id} className="hover-elevate bg-white/30 dark:bg-gray-900/60 backdrop-blur-md" data-testid={`card-word-list-${list.id}`}>
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex-1">

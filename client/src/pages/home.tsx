@@ -199,7 +199,7 @@ export default function Home() {
               data-testid="img-title-banner"
             />
           </motion.div>
-          <p className="text-lg md:text-xl text-foreground font-semibold bg-white/60 dark:bg-gray-900/70 backdrop-blur-sm px-6 py-3 rounded-full inline-block shadow-md">
+          <p className="text-lg md:text-xl text-foreground font-semibold bg-white/30 dark:bg-gray-900/60 backdrop-blur-md px-6 py-3 rounded-full inline-block shadow-md">
             Master your spelling skills with fun, interactive challenges!
           </p>
         </div>
@@ -235,7 +235,7 @@ export default function Home() {
         </div>
 
         <div className="flex justify-center mb-6">
-          <h2 className="text-2xl md:text-3xl font-bold text-center text-foreground bg-white/60 dark:bg-gray-900/70 backdrop-blur-sm px-8 py-4 rounded-2xl shadow-md">
+          <h2 className="text-2xl md:text-3xl font-bold text-center text-foreground bg-white/30 dark:bg-gray-900/60 backdrop-blur-md px-8 py-4 rounded-2xl shadow-md">
             Choose Your Game Mode
           </h2>
         </div>
@@ -250,7 +250,7 @@ export default function Home() {
                 transition={{ delay: index * 0.1 }}
               >
                 <Card
-                  className="hover-elevate active-elevate-2 cursor-pointer h-full shadow-lg border-2"
+                  className="hover-elevate active-elevate-2 cursor-pointer h-full shadow-lg border-2 bg-white/30 dark:bg-gray-900/60 backdrop-blur-md"
                   onClick={() => handleModeClick(mode.id)}
                   data-testid={`card-mode-${mode.id}`}
                 >
