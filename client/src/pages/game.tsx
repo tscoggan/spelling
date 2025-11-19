@@ -34,6 +34,9 @@ import { generateCrossword, type CrosswordGrid, type CrosswordEntry } from "@/li
 import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
 import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
 
+// Import sound effects
+import incorrectSoundUrl from "@assets/Incorrect spelling_1763574108566.mp3";
+
 interface QuizAnswer {
   word: Word;
   userAnswer: string;
@@ -109,6 +112,7 @@ export default function Game() {
 
   // Create a single shared AudioContext for all sound effects
   const audioContextRef = useRef<AudioContext | null>(null);
+  const incorrectSoundBufferRef = useRef<AudioBuffer | null>(null);
   
   const getAudioContext = () => {
     if (!audioContextRef.current) {
@@ -116,6 +120,25 @@ export default function Game() {
     }
     return audioContextRef.current;
   };
+
+  // Load and cache the incorrect sound MP3
+  const loadIncorrectSound = async () => {
+    if (incorrectSoundBufferRef.current) return;
+    
+    try {
+      const audioContext = getAudioContext();
+      const response = await fetch(incorrectSoundUrl);
+      const arrayBuffer = await response.arrayBuffer();
+      incorrectSoundBufferRef.current = await audioContext.decodeAudioData(arrayBuffer);
+    } catch (error) {
+      console.error('Error loading incorrect sound:', error);
+    }
+  };
+
+  // Load sound on mount
+  useEffect(() => {
+    loadIncorrectSound();
+  }, []);
 
   // Sound effect functions using Web Audio API
   const playCorrectSound = () => {
@@ -138,21 +161,21 @@ export default function Game() {
   };
 
   const playIncorrectSound = () => {
+    if (!incorrectSoundBufferRef.current) {
+      // Fallback to loading if not yet loaded
+      loadIncorrectSound().then(() => {
+        if (incorrectSoundBufferRef.current) {
+          playIncorrectSound();
+        }
+      });
+      return;
+    }
+    
     const audioContext = getAudioContext();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    oscillator.frequency.setValueAtTime(200, audioContext.currentTime); // Lower tone
-    oscillator.frequency.setValueAtTime(150, audioContext.currentTime + 0.15);
-    
-    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-    
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.3);
+    const source = audioContext.createBufferSource();
+    source.buffer = incorrectSoundBufferRef.current;
+    source.connect(audioContext.destination);
+    source.start(0);
   };
 
   const playCelebrationSound = () => {
