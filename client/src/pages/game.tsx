@@ -38,7 +38,7 @@ import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763
 import incorrectSoundUrl from "@assets/Incorrect spelling_1763574108566.mp3";
 
 // Import custom Play Word button image
-import playWordImage from "@assets/Play word_1763579724406.png";
+import playWordImage from "@assets/Play word icon_1763580897427.png";
 
 interface QuizAnswer {
   word: Word;
@@ -2452,13 +2452,13 @@ export default function Game() {
                                         speakWord(entry.word);
                                         focusFirstCellOfEntry(entry.number);
                                       }}
-                                      className="absolute top-0 left-0 w-4 h-4 flex items-center justify-center hover:bg-gray-100 rounded-sm z-10"
+                                      className="absolute top-0 left-0 w-4 h-4 p-0 flex items-center justify-center hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 z-10"
                                       data-testid={`button-cell-play-${cell.number}`}
                                     >
                                       <img 
                                         src={playWordImage} 
                                         alt="Play" 
-                                        className="w-3 h-3"
+                                        className="w-3.5 h-3.5"
                                       />
                                     </button>
                                   ) : null;
@@ -2555,8 +2555,8 @@ export default function Game() {
                     {gameMode !== "mistake" && (
                       <Button
                         size="lg"
-                        variant="default"
-                        className="w-20 h-20 md:w-24 md:h-24 rounded-full p-0"
+                        variant="ghost"
+                        className="w-20 h-20 md:w-24 md:h-24 p-0 hover:bg-transparent hover:opacity-80 transition-opacity"
                         onClick={(e) => {
                           if (currentWord) {
                             speakWithRefocus(currentWord.word, e.currentTarget);
@@ -2567,7 +2567,7 @@ export default function Game() {
                         <img 
                           src={playWordImage} 
                           alt="Play word" 
-                          className="w-12 h-12 md:w-14 md:h-14"
+                          className="w-full h-full"
                         />
                       </Button>
                     )}
