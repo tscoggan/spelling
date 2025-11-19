@@ -2691,59 +2691,53 @@ export default function Game() {
                     
                     <div className="space-y-3">
                       {gameMode !== "mistake" && (
-                        <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="flex flex-wrap gap-2">
                           <Button
                             type="button"
                             variant="secondary"
                             size="lg"
-                            className="flex-1 text-lg h-12 md:h-14"
+                            className="flex-[0_1_calc(50%_-_0.25rem)] text-sm md:text-base h-12"
                             onClick={speakPartsOfSpeech}
                             disabled={!wordPartsOfSpeech || loadingDictionary}
                             data-testid="button-parts-of-speech"
                           >
-                            <Sparkles className="w-5 h-5 mr-2" />
+                            <Sparkles className="w-4 h-4 mr-1.5" />
                             {loadingDictionary ? "Loading..." : "Part of Speech"}
                           </Button>
                           <Button
                             type="button"
                             variant="secondary"
                             size="lg"
-                            className="flex-1 text-lg h-12 md:h-14"
+                            className="flex-[0_1_calc(50%_-_0.25rem)] text-sm md:text-base h-12"
                             onClick={speakOrigin}
                             disabled={!wordOrigin}
                             data-testid="button-origin"
                           >
-                            <Globe className="w-5 h-5 mr-2" />
+                            <Globe className="w-4 h-4 mr-1.5" />
                             Word Origin
                           </Button>
-                        </div>
-                      )}
-
-                      
-                      {gameMode !== "mistake" && (
-                        <div className="flex flex-col sm:flex-row gap-3">
                           <Button
                             type="button"
                             variant="secondary"
                             size="lg"
-                            className="flex-1 text-base h-12"
+                            className="flex-[0_1_calc(50%_-_0.25rem)] text-sm md:text-base h-12"
                             onClick={speakDefinition}
                             disabled={!wordDefinition || loadingDictionary}
                             data-testid="button-definition"
                           >
-                            <BookOpen className="w-4 h-4 mr-2" />
+                            <BookOpen className="w-4 h-4 mr-1.5" />
                             {loadingDictionary ? "Loading..." : "Definition"}
                           </Button>
                           <Button
                             type="button"
                             variant="secondary"
                             size="lg"
-                            className="flex-1 text-base h-12"
+                            className="flex-[0_1_calc(50%_-_0.25rem)] text-sm md:text-base h-12"
                             onClick={speakExample}
                             disabled={!wordExample || loadingDictionary}
                             data-testid="button-example"
                           >
-                            <MessageSquare className="w-4 h-4 mr-2" />
+                            <MessageSquare className="w-4 h-4 mr-1.5" />
                             {loadingDictionary ? "Loading..." : "Use in Sentence"}
                           </Button>
                         </div>
