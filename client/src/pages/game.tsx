@@ -1881,7 +1881,7 @@ export default function Game() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--page-game-bg))' }}>
-        <Card className="p-12 bg-white/30 dark:bg-gray-900/60 backdrop-blur-md">
+        <Card className="p-12">
           <div className="text-center space-y-4">
             <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
             <p className="text-2xl font-semibold">Loading words...</p>
@@ -1909,7 +1909,7 @@ export default function Game() {
           transition={{ duration: 0.5 }}
           className="w-full max-w-4xl"
         >
-          <Card className="p-8 md:p-12 space-y-8 bg-white/30 dark:bg-gray-900/60 backdrop-blur-md">
+          <Card className="p-8 md:p-12 space-y-8">
             {gameMode !== "crossword" && (
               <motion.div
                 initial={{ y: -20 }}
@@ -2103,7 +2103,7 @@ export default function Game() {
   if (!words || words.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: 'hsl(var(--page-game-bg))' }}>
-        <Card className="p-12 text-center space-y-6 bg-white/30 dark:bg-gray-900/60 backdrop-blur-md">
+        <Card className="p-12 text-center space-y-6">
           <p className="text-2xl">No words available for this difficulty.</p>
           <Button onClick={() => setLocation("/")} size="lg" data-testid="button-back-home">
             <Home className="w-5 h-5 mr-2" />
@@ -2141,7 +2141,7 @@ export default function Game() {
         }}
       ></div>
       <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
-      <header className="p-4 md:p-6 bg-white/30 dark:bg-black/50 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 relative z-10">
+      <header className="p-4 md:p-6 bg-white/60 dark:bg-black/60 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 relative z-10">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 flex-wrap">
           <Button
             variant="outline"
@@ -2253,14 +2253,14 @@ export default function Game() {
       <main className="flex-1 flex items-center justify-center p-4 md:p-6 relative z-10">
         {loadingCrossword ? (
           <div className="w-full max-w-3xl">
-            <Card className="p-12 text-center space-y-4 bg-white/30 dark:bg-gray-900/60 backdrop-blur-md" data-testid="card-crossword-loading">
+            <Card className="p-12 text-center space-y-4" data-testid="card-crossword-loading">
               <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto"></div>
               <p className="text-xl text-gray-600">Generating crossword puzzle...</p>
             </Card>
           </div>
         ) : gameMode === "crossword" && crosswordGrid ? (
           <div className="w-full max-w-6xl">
-            <Card className="p-6 md:p-8 space-y-6 bg-white/30 dark:bg-gray-900/60 backdrop-blur-md">
+            <Card className="p-6 md:p-8 space-y-6 bg-white">
               <div className="text-center">
                 <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2" data-testid="text-instruction">
                   Solve the Crossword Puzzle
@@ -2362,7 +2362,7 @@ export default function Game() {
                   animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
               >
-                <Card className="p-6 md:p-12 space-y-8 bg-white/30 dark:bg-gray-900/60 backdrop-blur-md">
+                <Card className="p-6 md:p-12 space-y-8 bg-white">
                   <div className="text-center space-y-6">
                     <h2 className="text-2xl md:text-3xl font-bold text-gray-800" data-testid="text-instruction">
                       {gameMode === "quiz" ? "Spell the word" : gameMode === "scramble" ? "Unscramble the letters" : gameMode === "mistake" ? "Find the misspelled word" : "Listen and spell the word"}

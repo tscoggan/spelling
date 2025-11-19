@@ -94,7 +94,7 @@ export default function Leaderboard() {
           </motion.div>
         </div>
 
-        <Card className="p-6 md:p-8 bg-white/30 dark:bg-gray-900/60 backdrop-blur-md">
+        <Card className="p-6 md:p-8">
           <Tabs value={selectedDifficulty} onValueChange={(v) => setSelectedDifficulty(v as DifficultyLevel | "all")}>
             <TabsList className="grid grid-cols-4 mb-8 w-full md:w-auto">
               <TabsTrigger value="all" data-testid="tab-all">All</TabsTrigger>

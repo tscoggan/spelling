@@ -80,7 +80,7 @@ export default function AuthPage() {
         }}
       ></div>
       <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
-      <Card className="w-full max-w-md p-8 relative z-10 bg-white/30 dark:bg-gray-900/60 backdrop-blur-md">
+      <Card className="w-full max-w-md p-8 relative z-10">
         <div className="text-center mb-8">
           <Sparkles className="w-16 h-16 text-purple-600 mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-foreground mb-2 font-crayon">Spelling Champions</h1>
@@ -207,7 +207,7 @@ export default function AuthPage() {
                         transition-all hover-elevate active-elevate-2
                         ${registerData.selectedAvatar === avatar.emoji
                           ? "bg-purple-100 border-2 border-purple-600"
-                          : "bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200"
+                          : "bg-white border border-gray-200"
                         }
                       `}
                       data-testid={`button-avatar-${avatar.label.toLowerCase()}`}

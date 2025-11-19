@@ -473,7 +473,7 @@ export default function UserGroupsPage() {
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Card className="w-full max-w-md p-8 bg-white/30 dark:bg-gray-900/60 backdrop-blur-md">
+        <Card className="w-full max-w-md p-8">
           <CardHeader>
             <CardTitle>Authentication Required</CardTitle>
             <CardDescription>Please log in to manage user groups</CardDescription>
@@ -624,7 +624,7 @@ export default function UserGroupsPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {ownedGroups.map((group) => (
-                    <Card key={group.id} className="hover-elevate p-4 bg-white/30 dark:bg-gray-900/60 backdrop-blur-md" data-testid={`card-group-${group.id}`}>
+                    <Card key={group.id} className="hover-elevate p-4" data-testid={`card-group-${group.id}`}>
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
@@ -741,7 +741,7 @@ export default function UserGroupsPage() {
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {memberGroups.map((group) => (
-                    <Card key={group.id} className="hover-elevate p-4 bg-white/30 dark:bg-gray-900/60 backdrop-blur-md" data-testid={`card-member-group-${group.id}`}>
+                    <Card key={group.id} className="hover-elevate p-4" data-testid={`card-member-group-${group.id}`}>
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
@@ -794,7 +794,7 @@ export default function UserGroupsPage() {
                   {publicGroups.map((group) => {
                     const hasPendingRequest = pendingRequestGroupIds.has(group.id);
                     return (
-                      <Card key={group.id} className="hover-elevate p-4 bg-white/30 dark:bg-gray-900/60 backdrop-blur-md" data-testid={`card-public-group-${group.id}`}>
+                      <Card key={group.id} className="hover-elevate p-4" data-testid={`card-public-group-${group.id}`}>
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
