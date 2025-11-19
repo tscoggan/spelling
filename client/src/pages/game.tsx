@@ -1732,12 +1732,15 @@ export default function Game() {
   const handleCrosswordCellInput = (row: number, col: number, value: string) => {
     if (!crosswordGrid) return;
     
-    // Clear mistake highlights on any input
-    if (highlightedMistakes.size > 0) {
-      setHighlightedMistakes(new Set());
+    const key = `${row}-${col}`;
+    
+    // Clear mistake highlight for THIS specific cell if it exists
+    if (highlightedMistakes.has(key)) {
+      const newHighlights = new Set(highlightedMistakes);
+      newHighlights.delete(key);
+      setHighlightedMistakes(newHighlights);
     }
     
-    const key = `${row}-${col}`;
     const newInputs = { ...crosswordInputs };
     
     // Only allow single letters
@@ -2437,7 +2440,7 @@ export default function Game() {
                                   onChange={(e) => handleCrosswordCellInput(rowIndex, colIndex, e.target.value)}
                                   onKeyDown={(e) => handleCrosswordKeyDown(rowIndex, colIndex, e)}
                                   onFocus={(e) => e.target.select()}
-                                  className={`w-full h-full text-center text-xl font-bold border-0 p-0 uppercase focus-visible:ring-1 focus-visible:ring-primary ${isMistake ? 'text-white bg-red-600' : ''}`}
+                                  className={`w-full h-full text-center text-xl font-bold border-0 p-0 uppercase focus-visible:ring-1 focus-visible:ring-primary ${isMistake ? 'text-white bg-red-600' : 'bg-transparent'}`}
                                   data-row={rowIndex}
                                   data-col={colIndex}
                                   data-testid={`cell-${rowIndex}-${colIndex}`}
