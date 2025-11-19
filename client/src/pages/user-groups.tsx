@@ -492,7 +492,7 @@ export default function UserGroupsPage() {
       className="min-h-screen p-6 relative overflow-hidden"
     >
       <div
-        className="absolute inset-0"
+        className="fixed inset-0"
         style={{
           backgroundImage: `url(${rainbowBackground})`,
           backgroundSize: 'cover',
@@ -500,7 +500,7 @@ export default function UserGroupsPage() {
           backgroundPosition: 'center top',
         }}
       ></div>
-      <div className="absolute inset-0 bg-white/5 dark:bg-black/50"></div>
+      <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
 
       <div className="max-w-6xl mx-auto relative z-10">
         <div className="flex items-start justify-between mb-6">

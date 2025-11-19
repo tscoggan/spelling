@@ -156,7 +156,7 @@ export default function Home() {
       className="min-h-screen p-4 md:p-8 relative overflow-hidden"
     >
       <div 
-        className="absolute inset-0"
+        className="fixed inset-0"
         style={{
           backgroundImage: `url(${rainbowBackground})`,
           backgroundSize: 'cover',
@@ -164,7 +164,7 @@ export default function Home() {
           backgroundPosition: 'center top',
         }}
       ></div>
-      <div className="absolute inset-0 bg-white/5 dark:bg-black/50"></div>
+      <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

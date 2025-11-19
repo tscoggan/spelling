@@ -59,7 +59,7 @@ export default function AuthPage() {
       className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden"
     >
       <div 
-        className="absolute inset-0"
+        className="fixed inset-0"
         style={{
           backgroundImage: `url(${rainbowBackground})`,
           backgroundSize: 'cover',
@@ -67,7 +67,7 @@ export default function AuthPage() {
           backgroundPosition: 'center top',
         }}
       ></div>
-      <div className="absolute inset-0 bg-white/5 dark:bg-black/50"></div>
+      <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
       <Card className="w-full max-w-md p-8 relative z-10">
         <div className="text-center mb-8">
           <Sparkles className="w-16 h-16 text-purple-600 mx-auto mb-4" />

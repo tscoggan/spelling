@@ -2120,7 +2120,7 @@ export default function Game() {
       className="min-h-screen flex flex-col relative overflow-hidden"
     >
       <div 
-        className="absolute inset-0"
+        className="fixed inset-0"
         style={{
           backgroundImage: `url(${rainbowBackground})`,
           backgroundSize: 'cover',
@@ -2128,7 +2128,7 @@ export default function Game() {
           backgroundPosition: 'center top',
         }}
       ></div>
-      <div className="absolute inset-0 bg-white/5 dark:bg-black/50"></div>
+      <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
       <header className="p-4 md:p-6 bg-white/80 dark:bg-black/70 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 relative z-10">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 flex-wrap">
           <Button
