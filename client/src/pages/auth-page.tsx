@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sparkles, UserCircle } from "lucide-react";
-import rainbowBackground from "@assets/Colorful background_1763492167108.png";
+import rainbowBackground from "@assets/Colorful_background_mobile_1763554866891.png";
 
 const avatarOptions = [
   { emoji: "🐶", label: "Dog" },
@@ -64,7 +64,7 @@ export default function AuthPage() {
           backgroundImage: `url(${rainbowBackground})`,
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center',
+          backgroundPosition: 'center top',
         }}
       ></div>
       <div className="absolute inset-0 bg-white/5 dark:bg-black/50"></div>

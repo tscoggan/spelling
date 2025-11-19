@@ -20,7 +20,7 @@ import { motion } from "framer-motion";
 import type { CustomWordList, WordIllustration } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { UserHeader } from "@/components/user-header";
-import rainbowBackground from "@assets/Colorful background_1763492167108.png";
+import rainbowBackground from "@assets/Colorful_background_mobile_1763554866891.png";
 import * as pdfjsLib from "pdfjs-dist";
 
 const GRADE_LEVELS = ["K", "1", "2", "3", "4", "5", "6", "7", "8", "9-12"];
@@ -550,7 +550,7 @@ export default function WordListsPage() {
           backgroundImage: `url(${rainbowBackground})`,
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center',
+          backgroundPosition: 'center top',
         }}
       ></div>
       <div className="absolute inset-0 bg-white/5 dark:bg-black/50"></div>

@@ -31,7 +31,7 @@ import type { WordIllustration } from "@shared/schema";
 import { generateCrossword, type CrosswordGrid, type CrosswordEntry } from "@/lib/crosswordGenerator";
 
 // Import background pattern
-import rainbowBackground from "@assets/Colorful background_1763492167108.png";
+import rainbowBackground from "@assets/Colorful_background_mobile_1763554866891.png";
 
 interface QuizAnswer {
   word: Word;
@@ -2125,7 +2125,7 @@ export default function Game() {
           backgroundImage: `url(${rainbowBackground})`,
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center',
+          backgroundPosition: 'center top',
         }}
       ></div>
       <div className="absolute inset-0 bg-white/5 dark:bg-black/50"></div>

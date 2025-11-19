@@ -17,7 +17,7 @@ import { Plus, Trash2, Users, Globe, Lock, Home, UserPlus, Settings, Search, Mai
 import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { UserHeader } from "@/components/user-header";
-import rainbowBackground from "@assets/Colorful background_1763492167108.png";
+import rainbowBackground from "@assets/Colorful_background_mobile_1763554866891.png";
 
 export default function UserGroupsPage() {
   const { user } = useAuth();
@@ -497,7 +497,7 @@ export default function UserGroupsPage() {
           backgroundImage: `url(${rainbowBackground})`,
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center',
+          backgroundPosition: 'center top',
         }}
       ></div>
       <div className="absolute inset-0 bg-white/5 dark:bg-black/50"></div>

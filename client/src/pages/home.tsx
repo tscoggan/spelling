@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { UserHeader } from "@/components/user-header";
 import titleBanner from "@assets/image_1763494070680.png";
-import rainbowBackground from "@assets/Colorful background_1763492167108.png";
+import rainbowBackground from "@assets/Colorful_background_mobile_1763554866891.png";
 
 interface CustomWordList {
   id: number;
@@ -161,7 +161,7 @@ export default function Home() {
           backgroundImage: `url(${rainbowBackground})`,
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center',
+          backgroundPosition: 'center top',
         }}
       ></div>
       <div className="absolute inset-0 bg-white/5 dark:bg-black/50"></div>
@@ -183,7 +183,7 @@ export default function Home() {
             <img 
               src={titleBanner} 
               alt="Spelling Champions" 
-              className="w-full max-w-xl h-auto"
+              className="w-full max-w-sm md:max-w-xl h-auto"
               data-testid="img-title-banner"
             />
           </motion.div>

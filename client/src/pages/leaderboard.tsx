@@ -8,7 +8,7 @@ import { Trophy, Medal, Home, Crown, Award } from "lucide-react";
 import type { LeaderboardScore, DifficultyLevel } from "@shared/schema";
 import { motion } from "framer-motion";
 import { UserHeader } from "@/components/user-header";
-import rainbowBackground from "@assets/Colorful background_1763492167108.png";
+import rainbowBackground from "@assets/Colorful_background_mobile_1763554866891.png";
 
 export default function Leaderboard() {
   const [, setLocation] = useLocation();
@@ -49,7 +49,7 @@ export default function Leaderboard() {
           backgroundImage: `url(${rainbowBackground})`,
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center',
+          backgroundPosition: 'center top',
         }}
       ></div>
       <div className="absolute inset-0 bg-white/5 dark:bg-black/50"></div>
