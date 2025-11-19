@@ -898,6 +898,40 @@ export default function Game() {
     }
   }, [gameMode, currentWord, currentWordIndex]);
 
+  // Mobile: Keep keyboard open for typing game modes
+  useEffect(() => {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isTypingMode = gameMode !== "mistake" && gameMode !== "scramble" && gameMode !== "crossword";
+    
+    if (!isMobile || !isTypingMode || gameComplete || showFeedback) {
+      return;
+    }
+    
+    // Focus the input to keep keyboard open
+    const focusInput = () => {
+      if (inputRef.current && document.activeElement !== inputRef.current) {
+        inputRef.current.focus();
+      }
+    };
+    
+    // Initial focus
+    focusInput();
+    
+    // Re-focus if keyboard closes (user taps away)
+    const handleBlur = () => {
+      setTimeout(focusInput, 100);
+    };
+    
+    const input = inputRef.current;
+    if (input) {
+      input.addEventListener('blur', handleBlur);
+      
+      return () => {
+        input.removeEventListener('blur', handleBlur);
+      };
+    }
+  }, [gameMode, gameComplete, showFeedback]);
+
   // Helper to check if a word exists in the dictionary
   const checkWordExists = async (word: string): Promise<boolean> => {
     try {
@@ -2250,7 +2284,7 @@ export default function Game() {
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center p-4 md:p-6 relative z-10">
+      <main className="flex-1 flex items-center justify-center p-4 md:p-6 relative z-10 overflow-auto">
         {loadingCrossword ? (
           <div className="w-full max-w-3xl">
             <Card className="p-12 text-center space-y-4" data-testid="card-crossword-loading">

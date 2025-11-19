@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload, Filter, Camera, X, Users } from "lucide-react";
+import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload, Filter, Camera, X, Users, Target, Clock, Trophy, Shuffle, AlertCircle, Grid3x3 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
@@ -46,6 +46,8 @@ export default function WordListsPage() {
     removedWords: string[];
     skippedWords: string[];
   }>({ removedWords: [], skippedWords: [] });
+  const [gameModeDialogOpen, setGameModeDialogOpen] = useState(false);
+  const [selectedListForPlay, setSelectedListForPlay] = useState<CustomWordList | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     difficulty: "medium" as "easy" | "medium" | "hard",
@@ -398,7 +400,20 @@ export default function WordListsPage() {
   };
 
   const playWithList = (list: CustomWordList) => {
-    setLocation(`/game?listId=${list.id}&difficulty=custom&mode=standard`);
+    setSelectedListForPlay(list);
+    setGameModeDialogOpen(true);
+  };
+
+  const startGameWithMode = (mode: string) => {
+    if (!selectedListForPlay) return;
+    
+    // For quiz mode, default to "all" words
+    if (mode === "quiz") {
+      setLocation(`/game?listId=${selectedListForPlay.id}&difficulty=custom&mode=${mode}&quizCount=all`);
+    } else {
+      setLocation(`/game?listId=${selectedListForPlay.id}&difficulty=custom&mode=${mode}`);
+    }
+    setGameModeDialogOpen(false);
   };
 
   const filteredUserLists = useMemo(() => {
@@ -437,43 +452,35 @@ export default function WordListsPage() {
   const renderWordList = (list: any, canEdit: boolean) => (
     <Card key={list.id} className="hover-elevate" data-testid={`card-word-list-${list.id}`}>
       <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle className="flex items-center gap-2">
-              {list.name}
-              {getVisibility(list) === 'public' ? (
-                <Globe className="w-4 h-4 text-green-600" data-testid="icon-public" />
-              ) : getVisibility(list) === 'groups' ? (
-                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded" data-testid="badge-groups">
-                  Groups{list.sharedGroups && list.sharedGroups.length > 0 ? ` - ${list.sharedGroups.filter((g: any) => g.name).map((g: any) => g.name).join(', ')}` : ''}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-start justify-between flex-wrap gap-2">
+            <div className="flex-1 min-w-0">
+              <CardTitle className="flex items-center gap-2 flex-wrap">
+                {list.name}
+                {getVisibility(list) === 'public' ? (
+                  <Globe className="w-4 h-4 text-green-600" data-testid="icon-public" />
+                ) : getVisibility(list) === 'groups' ? (
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded" data-testid="badge-groups">
+                    Groups{list.sharedGroups && list.sharedGroups.length > 0 ? ` - ${list.sharedGroups.filter((g: any) => g.name).map((g: any) => g.name).join(', ')}` : ''}
+                  </span>
+                ) : (
+                  <Lock className="w-4 h-4 text-gray-600" data-testid="icon-private" />
+                )}
+              </CardTitle>
+              <div className="mt-2 flex items-center gap-4 text-sm text-gray-600 flex-wrap">
+                <span data-testid={`author-${list.id}`}>
+                  by <span className="font-semibold">{list.authorUsername || 'Unknown'}</span>
                 </span>
-              ) : (
-                <Lock className="w-4 h-4 text-gray-600" data-testid="icon-private" />
-              )}
-            </CardTitle>
-            <div className="mt-2 flex items-center gap-4 text-sm text-gray-600">
-              <span data-testid={`author-${list.id}`}>
-                by <span className="font-semibold">{list.authorUsername || 'Unknown'}</span>
-              </span>
-              <span>{list.words.length} words</span>
-              <span 
-                className={`px-2 py-0.5 rounded-md font-medium ${
-                  list.difficulty === "easy" ? "bg-green-100 text-green-800" :
-                  list.difficulty === "medium" ? "bg-yellow-100 text-yellow-800" :
-                  "bg-red-100 text-red-800"
-                }`}
-                data-testid={`difficulty-${list.id}`}
-              >
-                {list.difficulty.charAt(0).toUpperCase() + list.difficulty.slice(1)}
-              </span>
-              {list.gradeLevel && (
-                <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-md font-medium" data-testid={`grade-${list.id}`}>
-                  Grade {list.gradeLevel}
-                </span>
-              )}
+                <span>{list.words.length} words</span>
+                {list.gradeLevel && (
+                  <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-md font-medium" data-testid={`grade-${list.id}`}>
+                    Grade {list.gradeLevel}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button
               size="sm"
               onClick={() => playWithList(list)}
@@ -1016,6 +1023,127 @@ export default function WordListsPage() {
               <Button onClick={() => setValidationFeedbackOpen(false)} data-testid="button-close-validation">
                 Close
               </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Game Mode Selection Dialog */}
+        <Dialog open={gameModeDialogOpen} onOpenChange={setGameModeDialogOpen}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Choose a Game Mode</DialogTitle>
+              <DialogDescription>
+                Select how you want to practice with "{selectedListForPlay?.name}"
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <Card
+                className="cursor-pointer hover-elevate active-elevate-2 transition-all"
+                onClick={() => startGameWithMode("standard")}
+                data-testid="gamemode-standard"
+              >
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <Target className="w-8 h-8 text-blue-600" />
+                    <div>
+                      <CardTitle className="text-lg">Practice</CardTitle>
+                      <CardDescription className="mt-1">
+                        Classic spelling game with immediate feedback
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+              </Card>
+
+              <Card
+                className="cursor-pointer hover-elevate active-elevate-2 transition-all"
+                onClick={() => startGameWithMode("timed")}
+                data-testid="gamemode-timed"
+              >
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <Clock className="w-8 h-8 text-orange-600" />
+                    <div>
+                      <CardTitle className="text-lg">Timed Challenge</CardTitle>
+                      <CardDescription className="mt-1">
+                        Spell as many words correctly in 60 seconds as you can!
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+              </Card>
+
+              <Card
+                className="cursor-pointer hover-elevate active-elevate-2 transition-all"
+                onClick={() => startGameWithMode("quiz")}
+                data-testid="gamemode-quiz"
+              >
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <Trophy className="w-8 h-8 text-purple-600" />
+                    <div>
+                      <CardTitle className="text-lg">Quiz Mode</CardTitle>
+                      <CardDescription className="mt-1">
+                        Spell all the words in a list, then see your results
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+              </Card>
+
+              <Card
+                className="cursor-pointer hover-elevate active-elevate-2 transition-all"
+                onClick={() => startGameWithMode("scramble")}
+                data-testid="gamemode-scramble"
+              >
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <Shuffle className="w-8 h-8 text-green-600" />
+                    <div>
+                      <CardTitle className="text-lg">Word Scramble</CardTitle>
+                      <CardDescription className="mt-1">
+                        Drag and drop letter tiles to unscramble the word
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+              </Card>
+
+              <Card
+                className="cursor-pointer hover-elevate active-elevate-2 transition-all"
+                onClick={() => startGameWithMode("mistake")}
+                data-testid="gamemode-mistake"
+              >
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <AlertCircle className="w-8 h-8 text-red-600" />
+                    <div>
+                      <CardTitle className="text-lg">Find the Mistake</CardTitle>
+                      <CardDescription className="mt-1">
+                        Identify the one misspelled word from four choices
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+              </Card>
+
+              <Card
+                className="cursor-pointer hover-elevate active-elevate-2 transition-all"
+                onClick={() => startGameWithMode("crossword")}
+                data-testid="gamemode-crossword"
+              >
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <Grid3x3 className="w-8 h-8 text-indigo-600" />
+                    <div>
+                      <CardTitle className="text-lg">Crossword Puzzle</CardTitle>
+                      <CardDescription className="mt-1">
+                        Solve a crossword using spelling words and their pronunciations
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+              </Card>
             </div>
           </DialogContent>
         </Dialog>

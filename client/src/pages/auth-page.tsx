@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sparkles, UserCircle } from "lucide-react";
+import { UserCircle } from "lucide-react";
 import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
 import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
+import titleBanner from "@assets/image_1763494070680.png";
 
 const avatarOptions = [
   { emoji: "🐶", label: "Dog" },
@@ -82,8 +83,14 @@ export default function AuthPage() {
       <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
       <Card className="w-full max-w-md p-8 relative z-10">
         <div className="text-center mb-8">
-          <Sparkles className="w-16 h-16 text-purple-600 mx-auto mb-4" />
-          <h1 className="text-3xl font-bold text-foreground mb-2 font-crayon">Spelling Champions</h1>
+          <div className="mb-4 flex justify-center">
+            <img 
+              src={titleBanner} 
+              alt="Spelling Champions" 
+              className="w-full max-w-xs h-auto"
+              data-testid="img-title-banner"
+            />
+          </div>
           <p className="text-muted-foreground">Create an account or log in to start your spelling adventure!</p>
         </div>
 
