@@ -87,7 +87,7 @@ export default function AuthPage() {
             <img 
               src={titleBanner} 
               alt="Spelling Champions" 
-              className="w-full max-w-xs h-auto"
+              className="w-full max-w-xs h-auto rounded-md"
               data-testid="img-title-banner"
             />
           </div>

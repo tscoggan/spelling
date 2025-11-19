@@ -107,6 +107,75 @@ export default function Game() {
   // Generate a unique session timestamp for each game to ensure fresh word shuffling
   const [sessionTimestamp] = useState(() => Date.now());
 
+  // Create a single shared AudioContext for all sound effects
+  const audioContextRef = useRef<AudioContext | null>(null);
+  
+  const getAudioContext = () => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    return audioContextRef.current;
+  };
+
+  // Sound effect functions using Web Audio API
+  const playCorrectSound = () => {
+    const audioContext = getAudioContext();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+    oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1); // E5
+    oscillator.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.2); // G5
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.4);
+  };
+
+  const playIncorrectSound = () => {
+    const audioContext = getAudioContext();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.setValueAtTime(200, audioContext.currentTime); // Lower tone
+    oscillator.frequency.setValueAtTime(150, audioContext.currentTime + 0.15);
+    
+    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.3);
+  };
+
+  const playCelebrationSound = () => {
+    const audioContext = getAudioContext();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.type = 'sine';
+    const notes = [523.25, 587.33, 659.25, 783.99, 1046.50]; // C, D, E, G, C
+    notes.forEach((freq, i) => {
+      oscillator.frequency.setValueAtTime(freq, audioContext.currentTime + (i * 0.15));
+    });
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.9);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.9);
+  };
+
   const createSessionMutation = useMutation({
     mutationFn: async (sessionData: { difficulty: string; gameMode: string; userId: number | null; customListId?: number }) => {
       const response = await apiRequest("POST", "/api/sessions", sessionData);
@@ -932,6 +1001,16 @@ export default function Game() {
     }
   }, [gameMode, gameComplete, showFeedback]);
 
+  // Play celebration sound when game completes with all words correct (for standard/practice/timed/scramble/mistake modes)
+  useEffect(() => {
+    if (gameComplete && words && gameMode !== "quiz" && gameMode !== "crossword") {
+      // For standard, practice, timed, scramble, and mistake modes
+      if (correctCount === words.length) {
+        playCelebrationSound();
+      }
+    }
+  }, [gameComplete, correctCount, words, gameMode]);
+
   // Helper to check if a word exists in the dictionary
   const checkWordExists = async (word: string): Promise<boolean> => {
     try {
@@ -1423,6 +1502,7 @@ export default function Game() {
       setQuizAnswers([...quizAnswers, newAnswer]);
       
       if (correct) {
+        playCorrectSound();
         setCorrectCount(correctCount + 1);
         const newStreak = streak + 1;
         setStreak(newStreak);
@@ -1430,6 +1510,7 @@ export default function Game() {
           setBestStreak(newStreak);
         }
       } else {
+        playIncorrectSound();
         setStreak(0);
       }
       
@@ -1442,11 +1523,18 @@ export default function Game() {
         const totalCorrect = allAnswers.filter(a => a.isCorrect).length;
         const points = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : difficulty === "custom" ? 20 : 30;
         setScore(totalCorrect * points);
+        
+        // Play celebration sound if all answers correct
+        if (totalCorrect === allAnswers.length) {
+          playCelebrationSound();
+        }
+        
         setGameComplete(true);
       }
     } else if (gameMode === "timed") {
       // Timed mode: No feedback, immediate next word
       if (correct) {
+        playCorrectSound();
         const points = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : difficulty === "custom" ? 20 : 30;
         setScore(score + points + (streak * 5));
         setCorrectCount(correctCount + 1);
@@ -1456,6 +1544,7 @@ export default function Game() {
           setBestStreak(newStreak);
         }
       } else {
+        playIncorrectSound();
         setStreak(0);
       }
       
@@ -1474,6 +1563,7 @@ export default function Game() {
       setShowFeedback(true);
 
       if (correct) {
+        playCorrectSound();
         const points = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : difficulty === "custom" ? 20 : 30;
         setScore(score + points + (streak * 5));
         setCorrectCount(correctCount + 1);
@@ -1483,6 +1573,7 @@ export default function Game() {
           setBestStreak(newStreak);
         }
       } else {
+        playIncorrectSound();
         setStreak(0);
       }
     }
@@ -1581,6 +1672,7 @@ export default function Game() {
     setShowFeedback(true);
 
     if (correct) {
+      playCorrectSound();
       const points = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : difficulty === "custom" ? 20 : 30;
       setScore(score + points + (streak * 5));
       setCorrectCount(correctCount + 1);
@@ -1590,6 +1682,7 @@ export default function Game() {
         setBestStreak(newStreak);
       }
     } else {
+      playIncorrectSound();
       setStreak(0);
     }
   };
@@ -1602,6 +1695,7 @@ export default function Game() {
     setShowFeedback(true);
 
     if (correct) {
+      playCorrectSound();
       const points = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : difficulty === "custom" ? 20 : 30;
       setScore(score + points + (streak * 5));
       setCorrectCount(correctCount + 1);
@@ -1611,6 +1705,7 @@ export default function Game() {
         setBestStreak(newStreak);
       }
     } else {
+      playIncorrectSound();
       setStreak(0);
     }
   };
@@ -1823,6 +1918,7 @@ export default function Game() {
     
     // Add completion bonus if all words correct
     if (correctWords === totalWords) {
+      playCelebrationSound();
       setScore(totalScore + points * 2); // 2x bonus for completing puzzle
       console.log('🎉 Crossword complete! Bonus applied');
     }
@@ -2316,7 +2412,7 @@ export default function Game() {
                             {cell.isBlank ? (
                               <div className="w-10 h-10 bg-gray-900"></div>
                             ) : (
-                              <div className={`w-10 h-10 border-2 ${isMistake ? 'border-red-500 bg-red-50' : 'border-gray-400 bg-white'} relative flex items-center justify-center overflow-visible`}>
+                              <div className={`w-10 h-10 border-2 ${isMistake ? 'border-red-600 bg-red-600' : 'border-gray-400 bg-white'} relative flex items-center justify-center overflow-visible`}>
                                 {cell.number && (() => {
                                   const entry = crosswordGrid.entries.find(e => e.number === cell.number);
                                   return entry ? (
@@ -2341,7 +2437,7 @@ export default function Game() {
                                   onChange={(e) => handleCrosswordCellInput(rowIndex, colIndex, e.target.value)}
                                   onKeyDown={(e) => handleCrosswordKeyDown(rowIndex, colIndex, e)}
                                   onFocus={(e) => e.target.select()}
-                                  className={`w-full h-full text-center text-xl font-bold border-0 p-0 uppercase focus-visible:ring-1 focus-visible:ring-primary ${isMistake ? 'text-red-700' : ''}`}
+                                  className={`w-full h-full text-center text-xl font-bold border-0 p-0 uppercase focus-visible:ring-1 focus-visible:ring-primary ${isMistake ? 'text-white bg-red-600' : ''}`}
                                   data-row={rowIndex}
                                   data-col={colIndex}
                                   data-testid={`cell-${rowIndex}-${colIndex}`}

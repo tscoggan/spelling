@@ -177,17 +177,14 @@ export function UserHeader() {
   return (
     <>
       <div className="flex justify-end mb-6">
-        <Card className="px-6 py-3">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
+        <Card className="px-4 py-2">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {user?.selectedAvatar && (
-                <div className="text-3xl" data-testid="text-user-avatar">{user.selectedAvatar}</div>
+                <div className="text-2xl" data-testid="text-user-avatar">{user.selectedAvatar}</div>
               )}
-              <div>
-                <div className="text-sm text-gray-600">Logged in as</div>
-                <div className="text-lg font-bold text-gray-800" data-testid="text-username">
-                  {user?.username}
-                </div>
+              <div className="font-bold text-gray-800" data-testid="text-username">
+                {user?.username}
               </div>
             </div>
             <div className="flex items-center gap-2">

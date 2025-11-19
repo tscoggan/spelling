@@ -195,7 +195,7 @@ export default function Home() {
             <img 
               src={titleBanner} 
               alt="Spelling Champions" 
-              className="w-full max-w-sm md:max-w-xl h-auto"
+              className="w-full max-w-sm md:max-w-xl h-auto rounded-md"
               data-testid="img-title-banner"
             />
           </motion.div>
