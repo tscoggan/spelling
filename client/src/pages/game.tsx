@@ -37,6 +37,9 @@ import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763
 // Import sound effects
 import incorrectSoundUrl from "@assets/Incorrect spelling_1763574108566.mp3";
 
+// Import custom Play Word button image
+import playWordImage from "@assets/Play word_1763579724406.png";
+
 interface QuizAnswer {
   word: Word;
   userAnswer: string;
@@ -2452,7 +2455,11 @@ export default function Game() {
                                       className="absolute top-0 left-0 w-4 h-4 flex items-center justify-center hover:bg-gray-100 rounded-sm z-10"
                                       data-testid={`button-cell-play-${cell.number}`}
                                     >
-                                      <Volume2 className="w-3 h-3 text-gray-600" />
+                                      <img 
+                                        src={playWordImage} 
+                                        alt="Play" 
+                                        className="w-3 h-3"
+                                      />
                                     </button>
                                   ) : null;
                                 })()}
@@ -2549,7 +2556,7 @@ export default function Game() {
                       <Button
                         size="lg"
                         variant="default"
-                        className="w-20 h-20 md:w-24 md:h-24 rounded-full"
+                        className="w-20 h-20 md:w-24 md:h-24 rounded-full p-0"
                         onClick={(e) => {
                           if (currentWord) {
                             speakWithRefocus(currentWord.word, e.currentTarget);
@@ -2557,7 +2564,11 @@ export default function Game() {
                         }}
                         data-testid="button-play-audio"
                       >
-                        <Volume2 className="w-12 h-12 md:w-14 md:h-14" />
+                        <img 
+                          src={playWordImage} 
+                          alt="Play word" 
+                          className="w-12 h-12 md:w-14 md:h-14"
+                        />
                       </Button>
                     )}
                   </div>
