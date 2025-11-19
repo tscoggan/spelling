@@ -31,7 +31,8 @@ import type { WordIllustration } from "@shared/schema";
 import { generateCrossword, type CrosswordGrid, type CrosswordEntry } from "@/lib/crosswordGenerator";
 
 // Import background pattern
-import rainbowBackground from "@assets/Colorful_background_mobile_1763554866891.png";
+import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
+import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
 
 interface QuizAnswer {
   word: Word;
@@ -2119,17 +2120,28 @@ export default function Game() {
     <div 
       className="min-h-screen flex flex-col relative overflow-hidden"
     >
+      {/* Portrait background */}
       <div 
-        className="fixed inset-0"
+        className="fixed inset-0 portrait:block landscape:hidden"
         style={{
-          backgroundImage: `url(${rainbowBackground})`,
+          backgroundImage: `url(${rainbowBackgroundPortrait})`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center top',
+        }}
+      ></div>
+      {/* Landscape background */}
+      <div 
+        className="fixed inset-0 portrait:hidden landscape:block"
+        style={{
+          backgroundImage: `url(${rainbowBackgroundLandscape})`,
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center top',
         }}
       ></div>
       <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
-      <header className="p-4 md:p-6 bg-white/80 dark:bg-black/70 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 relative z-10">
+      <header className="p-4 md:p-6 bg-white/60 dark:bg-black/60 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 relative z-10">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 flex-wrap">
           <Button
             variant="outline"

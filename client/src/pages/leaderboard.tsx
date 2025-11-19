@@ -8,7 +8,8 @@ import { Trophy, Medal, Home, Crown, Award } from "lucide-react";
 import type { LeaderboardScore, DifficultyLevel } from "@shared/schema";
 import { motion } from "framer-motion";
 import { UserHeader } from "@/components/user-header";
-import rainbowBackground from "@assets/Colorful_background_mobile_1763554866891.png";
+import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
+import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
 
 export default function Leaderboard() {
   const [, setLocation] = useLocation();
@@ -43,10 +44,21 @@ export default function Leaderboard() {
 
   return (
     <div className="min-h-screen p-4 md:p-8 relative overflow-hidden">
+      {/* Portrait background */}
       <div 
-        className="fixed inset-0"
+        className="fixed inset-0 portrait:block landscape:hidden"
         style={{
-          backgroundImage: `url(${rainbowBackground})`,
+          backgroundImage: `url(${rainbowBackgroundPortrait})`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center top',
+        }}
+      ></div>
+      {/* Landscape background */}
+      <div 
+        className="fixed inset-0 portrait:hidden landscape:block"
+        style={{
+          backgroundImage: `url(${rainbowBackgroundLandscape})`,
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center top',

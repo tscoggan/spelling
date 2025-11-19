@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sparkles, UserCircle } from "lucide-react";
-import rainbowBackground from "@assets/Colorful_background_mobile_1763554866891.png";
+import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
+import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
 
 const avatarOptions = [
   { emoji: "🐶", label: "Dog" },
@@ -58,10 +59,21 @@ export default function AuthPage() {
     <div 
       className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden"
     >
+      {/* Portrait background */}
       <div 
-        className="fixed inset-0"
+        className="fixed inset-0 portrait:block landscape:hidden"
         style={{
-          backgroundImage: `url(${rainbowBackground})`,
+          backgroundImage: `url(${rainbowBackgroundPortrait})`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center top',
+        }}
+      ></div>
+      {/* Landscape background */}
+      <div 
+        className="fixed inset-0 portrait:hidden landscape:block"
+        style={{
+          backgroundImage: `url(${rainbowBackgroundLandscape})`,
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center top',

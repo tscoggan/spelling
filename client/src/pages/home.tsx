@@ -23,7 +23,8 @@ import {
 } from "@/components/ui/select";
 import { UserHeader } from "@/components/user-header";
 import titleBanner from "@assets/image_1763494070680.png";
-import rainbowBackground from "@assets/Colorful_background_mobile_1763554866891.png";
+import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
+import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
 
 interface CustomWordList {
   id: number;
@@ -155,10 +156,21 @@ export default function Home() {
     <div 
       className="min-h-screen p-4 md:p-8 relative overflow-hidden"
     >
+      {/* Portrait background */}
       <div 
-        className="fixed inset-0"
+        className="fixed inset-0 portrait:block landscape:hidden"
         style={{
-          backgroundImage: `url(${rainbowBackground})`,
+          backgroundImage: `url(${rainbowBackgroundPortrait})`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center top',
+        }}
+      ></div>
+      {/* Landscape background */}
+      <div 
+        className="fixed inset-0 portrait:hidden landscape:block"
+        style={{
+          backgroundImage: `url(${rainbowBackgroundLandscape})`,
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center top',
@@ -187,7 +199,7 @@ export default function Home() {
               data-testid="img-title-banner"
             />
           </motion.div>
-          <p className="text-lg md:text-xl text-foreground font-semibold bg-background/80 dark:bg-background/90 backdrop-blur-sm px-6 py-3 rounded-full inline-block shadow-md">
+          <p className="text-lg md:text-xl text-foreground font-semibold bg-white/60 dark:bg-gray-900/70 backdrop-blur-sm px-6 py-3 rounded-full inline-block shadow-md">
             Master your spelling skills with fun, interactive challenges!
           </p>
         </div>
@@ -223,7 +235,7 @@ export default function Home() {
         </div>
 
         <div className="flex justify-center mb-6">
-          <h2 className="text-2xl md:text-3xl font-bold text-center text-foreground bg-background/80 dark:bg-background/90 backdrop-blur-sm px-8 py-4 rounded-2xl shadow-md">
+          <h2 className="text-2xl md:text-3xl font-bold text-center text-foreground bg-white/60 dark:bg-gray-900/70 backdrop-blur-sm px-8 py-4 rounded-2xl shadow-md">
             Choose Your Game Mode
           </h2>
         </div>
