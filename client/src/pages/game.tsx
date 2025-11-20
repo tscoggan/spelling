@@ -2526,8 +2526,8 @@ export default function Game() {
                   animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
               >
-                <Card className="p-6 md:p-12 space-y-8 bg-white">
-                  <div className="text-center space-y-6">
+                <Card className="p-6 md:p-12 space-y-4 bg-white">
+                  <div className="text-center space-y-3">
                     <h2 className="text-2xl md:text-3xl font-bold text-gray-800" data-testid="text-instruction">
                       {gameMode === "quiz" ? "Spell the word" : gameMode === "scramble" ? "Unscramble the letters" : gameMode === "mistake" ? "Find the misspelled word" : "Listen and spell the word"}
                     </h2>
@@ -2680,7 +2680,7 @@ export default function Game() {
                               variant="secondary"
                               size="lg"
                               className="text-sm md:text-base h-12 relative z-10"
-                              onClick={speakPartsOfSpeech}
+                              onClick={(e) => speakPartsOfSpeech(e)}
                               disabled={!wordPartsOfSpeech || loadingDictionary}
                               data-testid="button-parts-of-speech"
                             >
@@ -2692,7 +2692,7 @@ export default function Game() {
                               variant="secondary"
                               size="lg"
                               className="text-sm md:text-base h-12 relative z-10"
-                              onClick={speakOrigin}
+                              onClick={(e) => speakOrigin(e)}
                               disabled={!wordOrigin}
                               data-testid="button-origin"
                             >
@@ -2704,7 +2704,7 @@ export default function Game() {
                               variant="secondary"
                               size="lg"
                               className="text-sm md:text-base h-12 relative z-10"
-                              onClick={speakDefinition}
+                              onClick={(e) => speakDefinition(e)}
                               disabled={!wordDefinition || loadingDictionary}
                               data-testid="button-definition"
                             >
@@ -2716,7 +2716,7 @@ export default function Game() {
                               variant="secondary"
                               size="lg"
                               className="text-sm md:text-base h-12 relative z-10"
-                              onClick={speakExample}
+                              onClick={(e) => speakExample(e)}
                               disabled={!wordExample || loadingDictionary}
                               data-testid="button-example"
                             >
