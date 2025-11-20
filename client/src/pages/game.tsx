@@ -2671,80 +2671,96 @@ export default function Game() {
                     
                     <div className="space-y-3">
                       {gameMode !== "mistake" && (
-                        <div className="grid grid-cols-2 gap-2 md:grid-cols-2 md:gap-3">
-                          {/* Play button - row 2 on mobile (between hint rows), row 1 on desktop (above hints) */}
-                          <div className="col-span-2 row-start-2 flex justify-center py-2 md:row-start-1 md:py-0 md:mb-2">
+                        <div className="relative">
+                          {/* Hint buttons 2x2 grid */}
+                          <div className="grid grid-cols-2 gap-2 md:gap-3">
                             <Button
                               type="button"
+                              variant="secondary"
                               size="lg"
-                              variant="ghost"
-                              className="w-20 h-20 md:w-24 md:h-24 p-0 hover:bg-transparent hover:opacity-80 transition-opacity"
-                              onClick={(e) => {
-                                if (currentWord) {
-                                  speakWithRefocus(currentWord.word, e.currentTarget);
-                                }
-                              }}
-                              data-testid="button-play-audio"
+                              className="text-sm md:text-base h-12 relative z-10"
+                              onClick={speakPartsOfSpeech}
+                              disabled={!wordPartsOfSpeech || loadingDictionary}
+                              data-testid="button-parts-of-speech"
                             >
-                              <img 
-                                src={playWordImage} 
-                                alt="Play word" 
-                                className="w-full h-full"
-                              />
+                              <Sparkles className="w-4 h-4 mr-1.5" />
+                              {loadingDictionary ? "Loading..." : "Part of Speech"}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="lg"
+                              className="text-sm md:text-base h-12 relative z-10"
+                              onClick={speakOrigin}
+                              disabled={!wordOrigin}
+                              data-testid="button-origin"
+                            >
+                              <Globe className="w-4 h-4 mr-1.5" />
+                              Word Origin
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="lg"
+                              className="text-sm md:text-base h-12 relative z-10"
+                              onClick={speakDefinition}
+                              disabled={!wordDefinition || loadingDictionary}
+                              data-testid="button-definition"
+                            >
+                              <BookOpen className="w-4 h-4 mr-1.5" />
+                              {loadingDictionary ? "Loading..." : "Definition"}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="lg"
+                              className="text-sm md:text-base h-12 relative z-10"
+                              onClick={speakExample}
+                              disabled={!wordExample || loadingDictionary}
+                              data-testid="button-example"
+                            >
+                              <MessageSquare className="w-4 h-4 mr-1.5" />
+                              {loadingDictionary ? "Loading..." : "Use in Sentence"}
                             </Button>
                           </div>
                           
-                          {/* First row hint buttons on mobile, second row on desktop */}
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="lg"
-                            className="text-sm md:text-base h-12 row-start-1 md:row-start-2"
-                            onClick={speakPartsOfSpeech}
-                            disabled={!wordPartsOfSpeech || loadingDictionary}
-                            data-testid="button-parts-of-speech"
-                          >
-                            <Sparkles className="w-4 h-4 mr-1.5" />
-                            {loadingDictionary ? "Loading..." : "Part of Speech"}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="lg"
-                            className="text-sm md:text-base h-12 row-start-1 md:row-start-2"
-                            onClick={speakOrigin}
-                            disabled={!wordOrigin}
-                            data-testid="button-origin"
-                          >
-                            <Globe className="w-4 h-4 mr-1.5" />
-                            Word Origin
-                          </Button>
-                          
-                          {/* Third row hint buttons on mobile, third row on desktop */}
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="lg"
-                            className="text-sm md:text-base h-12 row-start-3 md:row-start-3"
-                            onClick={speakDefinition}
-                            disabled={!wordDefinition || loadingDictionary}
-                            data-testid="button-definition"
-                          >
-                            <BookOpen className="w-4 h-4 mr-1.5" />
-                            {loadingDictionary ? "Loading..." : "Definition"}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="lg"
-                            className="text-sm md:text-base h-12 row-start-3 md:row-start-3"
-                            onClick={speakExample}
-                            disabled={!wordExample || loadingDictionary}
-                            data-testid="button-example"
-                          >
-                            <MessageSquare className="w-4 h-4 mr-1.5" />
-                            {loadingDictionary ? "Loading..." : "Use in Sentence"}
-                          </Button>
+                          {/* Centered play button overlay with bouncing white circle */}
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <motion.div
+                              className="relative"
+                              animate={{ y: [0, -8, 0] }}
+                              transition={{
+                                duration: 1.5,
+                                repeat: Infinity,
+                                ease: "easeInOut"
+                              }}
+                            >
+                              {/* White bouncing circle background */}
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="w-24 h-24 md:w-28 md:h-28 bg-white rounded-full shadow-lg" />
+                              </div>
+                              
+                              {/* Play button */}
+                              <Button
+                                type="button"
+                                size="lg"
+                                variant="ghost"
+                                className="relative z-20 w-20 h-20 md:w-24 md:h-24 p-0 hover:bg-transparent hover:opacity-80 transition-opacity pointer-events-auto"
+                                onClick={(e) => {
+                                  if (currentWord) {
+                                    speakWithRefocus(currentWord.word, e.currentTarget);
+                                  }
+                                }}
+                                data-testid="button-play-audio"
+                              >
+                                <img 
+                                  src={playWordImage} 
+                                  alt="Play word" 
+                                  className="w-full h-full"
+                                />
+                              </Button>
+                            </motion.div>
+                          </div>
                         </div>
                       )}
 
