@@ -39,6 +39,7 @@ import incorrectSoundUrl from "@assets/Incorrect spelling_1763574108566.mp3";
 
 // Import custom Play Word button image
 import playWordImage from "@assets/Play word icon_1763580897427.png";
+import playWordIconWithBorder from "@assets/Play word icon with border_1763670707710.png";
 
 interface QuizAnswer {
   word: Word;
@@ -2724,42 +2725,24 @@ export default function Game() {
                             </Button>
                           </div>
                           
-                          {/* Centered play button overlay with bouncing white circle */}
+                          {/* Centered play button overlay */}
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <motion.div
-                              className="relative"
-                              animate={{ y: [0, -8, 0] }}
-                              transition={{
-                                duration: 1.5,
-                                repeat: Infinity,
-                                ease: "easeInOut"
+                            <button
+                              type="button"
+                              className="w-20 h-20 md:w-24 md:h-24 p-0 bg-transparent border-0 hover:opacity-80 transition-opacity pointer-events-auto cursor-pointer"
+                              onClick={(e) => {
+                                if (currentWord) {
+                                  speakWithRefocus(currentWord.word, e.currentTarget);
+                                }
                               }}
+                              data-testid="button-play-audio"
                             >
-                              {/* White bouncing circle background */}
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="w-24 h-24 md:w-28 md:h-28 bg-white rounded-full shadow-lg" />
-                              </div>
-                              
-                              {/* Play button */}
-                              <Button
-                                type="button"
-                                size="lg"
-                                variant="ghost"
-                                className="relative z-20 w-20 h-20 md:w-24 md:h-24 p-0 hover:bg-transparent hover:opacity-80 transition-opacity pointer-events-auto"
-                                onClick={(e) => {
-                                  if (currentWord) {
-                                    speakWithRefocus(currentWord.word, e.currentTarget);
-                                  }
-                                }}
-                                data-testid="button-play-audio"
-                              >
-                                <img 
-                                  src={playWordImage} 
-                                  alt="Play word" 
-                                  className="w-full h-full"
-                                />
-                              </Button>
-                            </motion.div>
+                              <img 
+                                src={playWordIconWithBorder} 
+                                alt="Play word" 
+                                className="w-full h-full"
+                              />
+                            </button>
                           </div>
                         </div>
                       )}
