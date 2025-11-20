@@ -2551,26 +2551,6 @@ export default function Game() {
                         </motion.div>
                       ) : null;
                     })()}
-                    
-                    {gameMode !== "mistake" && (
-                      <Button
-                        size="lg"
-                        variant="ghost"
-                        className="w-20 h-20 md:w-24 md:h-24 p-0 hover:bg-transparent hover:opacity-80 transition-opacity"
-                        onClick={(e) => {
-                          if (currentWord) {
-                            speakWithRefocus(currentWord.word, e.currentTarget);
-                          }
-                        }}
-                        data-testid="button-play-audio"
-                      >
-                        <img 
-                          src={playWordImage} 
-                          alt="Play word" 
-                          className="w-full h-full"
-                        />
-                      </Button>
-                    )}
                   </div>
 
                   <form onSubmit={gameMode === "scramble" ? (e) => { e.preventDefault(); handleScrambleSubmit(); } : gameMode === "mistake" ? (e) => { e.preventDefault(); } : handleSubmit} className="space-y-6">
@@ -2691,12 +2671,35 @@ export default function Game() {
                     
                     <div className="space-y-3">
                       {gameMode !== "mistake" && (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="grid grid-cols-2 gap-2 md:grid-cols-2 md:gap-3">
+                          {/* Play button - row 2 on mobile (between hint rows), row 1 on desktop (above hints) */}
+                          <div className="col-span-2 row-start-2 flex justify-center py-2 md:row-start-1 md:py-0 md:mb-2">
+                            <Button
+                              type="button"
+                              size="lg"
+                              variant="ghost"
+                              className="w-20 h-20 md:w-24 md:h-24 p-0 hover:bg-transparent hover:opacity-80 transition-opacity"
+                              onClick={(e) => {
+                                if (currentWord) {
+                                  speakWithRefocus(currentWord.word, e.currentTarget);
+                                }
+                              }}
+                              data-testid="button-play-audio"
+                            >
+                              <img 
+                                src={playWordImage} 
+                                alt="Play word" 
+                                className="w-full h-full"
+                              />
+                            </Button>
+                          </div>
+                          
+                          {/* First row hint buttons on mobile, second row on desktop */}
                           <Button
                             type="button"
                             variant="secondary"
                             size="lg"
-                            className="flex-[0_1_calc(50%_-_0.25rem)] text-sm md:text-base h-12"
+                            className="text-sm md:text-base h-12 row-start-1 md:row-start-2"
                             onClick={speakPartsOfSpeech}
                             disabled={!wordPartsOfSpeech || loadingDictionary}
                             data-testid="button-parts-of-speech"
@@ -2708,7 +2711,7 @@ export default function Game() {
                             type="button"
                             variant="secondary"
                             size="lg"
-                            className="flex-[0_1_calc(50%_-_0.25rem)] text-sm md:text-base h-12"
+                            className="text-sm md:text-base h-12 row-start-1 md:row-start-2"
                             onClick={speakOrigin}
                             disabled={!wordOrigin}
                             data-testid="button-origin"
@@ -2716,11 +2719,13 @@ export default function Game() {
                             <Globe className="w-4 h-4 mr-1.5" />
                             Word Origin
                           </Button>
+                          
+                          {/* Third row hint buttons on mobile, third row on desktop */}
                           <Button
                             type="button"
                             variant="secondary"
                             size="lg"
-                            className="flex-[0_1_calc(50%_-_0.25rem)] text-sm md:text-base h-12"
+                            className="text-sm md:text-base h-12 row-start-3 md:row-start-3"
                             onClick={speakDefinition}
                             disabled={!wordDefinition || loadingDictionary}
                             data-testid="button-definition"
@@ -2732,7 +2737,7 @@ export default function Game() {
                             type="button"
                             variant="secondary"
                             size="lg"
-                            className="flex-[0_1_calc(50%_-_0.25rem)] text-sm md:text-base h-12"
+                            className="text-sm md:text-base h-12 row-start-3 md:row-start-3"
                             onClick={speakExample}
                             disabled={!wordExample || loadingDictionary}
                             data-testid="button-example"
