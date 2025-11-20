@@ -2729,7 +2729,7 @@ export default function Game() {
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                             <button
                               type="button"
-                              className="w-20 h-20 md:w-24 md:h-24 p-0 bg-transparent border-0 hover:opacity-80 transition-opacity pointer-events-auto cursor-pointer"
+                              className="w-20 h-20 md:w-24 md:h-24 p-0 bg-transparent border-0 hover:scale-110 transition-transform pointer-events-auto cursor-pointer"
                               onClick={(e) => {
                                 if (currentWord) {
                                   speakWithRefocus(currentWord.word, e.currentTarget);
