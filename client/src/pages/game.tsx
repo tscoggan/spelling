@@ -111,6 +111,9 @@ export default function Game() {
   const [completedGrid, setCompletedGrid] = useState<{inputs: {[key: string]: string}, grid: CrosswordGrid} | null>(null);
   const [finalAccuracy, setFinalAccuracy] = useState<number>(0);
   
+  // Mobile keyboard management
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  
   // Generate a unique session timestamp for each game to ensure fresh word shuffling
   const [sessionTimestamp] = useState(() => Date.now());
 
@@ -790,6 +793,14 @@ export default function Game() {
     return templates[randomIndex];
   };
 
+  // Helper to keep input focused on mobile when clicking buttons
+  const handleKeepInputFocused = (e: React.PointerEvent | React.TouchEvent) => {
+    e.preventDefault();
+    if (inputRef.current) {
+      inputRef.current.focus({ preventScroll: true });
+    }
+  };
+
   const speakWithRefocus = (text: string, buttonElement?: HTMLElement) => {
     if (!text) return;
     
@@ -994,6 +1005,49 @@ export default function Game() {
     }
   }, [gameMode, currentWord, currentWordIndex]);
 
+  // Monitor visualViewport to detect keyboard and adjust layout (mobile only)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) {
+      return;
+    }
+    
+    // Only apply for mobile devices and typing game modes
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isTypingMode = gameMode !== "mistake" && gameMode !== "scramble" && gameMode !== "crossword";
+    
+    if (!isMobile || !isTypingMode) {
+      setKeyboardHeight(0);
+      return;
+    }
+    
+    const updateKeyboardHeight = () => {
+      const viewport = window.visualViewport;
+      if (!viewport) return;
+      
+      // Only set keyboard height if viewport is actually smaller than window (keyboard is open)
+      const potentialKeyboardHeight = window.innerHeight - viewport.height - viewport.offsetTop;
+      
+      // Only apply if it's a meaningful difference (keyboard likely open)
+      if (viewport.height < window.innerHeight && potentialKeyboardHeight > 50) {
+        setKeyboardHeight(potentialKeyboardHeight);
+      } else {
+        setKeyboardHeight(0);
+      }
+    };
+    
+    // Listen for viewport changes (keyboard open/close)
+    window.visualViewport.addEventListener('resize', updateKeyboardHeight);
+    window.visualViewport.addEventListener('scroll', updateKeyboardHeight);
+    
+    // Initial check
+    updateKeyboardHeight();
+    
+    return () => {
+      window.visualViewport?.removeEventListener('resize', updateKeyboardHeight);
+      window.visualViewport?.removeEventListener('scroll', updateKeyboardHeight);
+    };
+  }, [gameMode]);
+
   // Mobile: Keep keyboard open for typing game modes
   useEffect(() => {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -1006,7 +1060,7 @@ export default function Game() {
     // Focus the input to keep keyboard open
     const focusInput = () => {
       if (inputRef.current && document.activeElement !== inputRef.current) {
-        inputRef.current.focus();
+        inputRef.current.focus({ preventScroll: true });
       }
     };
     
@@ -2410,7 +2464,10 @@ export default function Game() {
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center p-4 md:p-6 relative z-10 overflow-auto">
+      <main 
+        className="flex-1 flex items-center justify-center p-4 md:p-6 relative z-10 overflow-auto"
+        style={{ paddingBottom: keyboardHeight > 0 ? `${keyboardHeight + 16}px` : undefined }}
+      >
         {loadingCrossword ? (
           <div className="w-full max-w-3xl">
             <Card className="p-12 text-center space-y-4" data-testid="card-crossword-loading">
@@ -2679,7 +2736,10 @@ export default function Game() {
                               type="button"
                               variant="secondary"
                               size="lg"
+                              tabIndex={-1}
                               className="text-sm md:text-base h-12 relative z-10"
+                              onPointerDown={handleKeepInputFocused}
+                              onTouchStart={handleKeepInputFocused}
                               onClick={(e) => speakPartsOfSpeech(e)}
                               disabled={!wordPartsOfSpeech || loadingDictionary}
                               data-testid="button-parts-of-speech"
@@ -2691,7 +2751,10 @@ export default function Game() {
                               type="button"
                               variant="secondary"
                               size="lg"
+                              tabIndex={-1}
                               className="text-sm md:text-base h-12 relative z-10"
+                              onPointerDown={handleKeepInputFocused}
+                              onTouchStart={handleKeepInputFocused}
                               onClick={(e) => speakOrigin(e)}
                               disabled={!wordOrigin}
                               data-testid="button-origin"
@@ -2703,7 +2766,10 @@ export default function Game() {
                               type="button"
                               variant="secondary"
                               size="lg"
+                              tabIndex={-1}
                               className="text-sm md:text-base h-12 relative z-10"
+                              onPointerDown={handleKeepInputFocused}
+                              onTouchStart={handleKeepInputFocused}
                               onClick={(e) => speakDefinition(e)}
                               disabled={!wordDefinition || loadingDictionary}
                               data-testid="button-definition"
@@ -2715,7 +2781,10 @@ export default function Game() {
                               type="button"
                               variant="secondary"
                               size="lg"
+                              tabIndex={-1}
                               className="text-sm md:text-base h-12 relative z-10"
+                              onPointerDown={handleKeepInputFocused}
+                              onTouchStart={handleKeepInputFocused}
                               onClick={(e) => speakExample(e)}
                               disabled={!wordExample || loadingDictionary}
                               data-testid="button-example"
@@ -2729,7 +2798,10 @@ export default function Game() {
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                             <button
                               type="button"
+                              tabIndex={-1}
                               className="w-20 h-20 md:w-24 md:h-24 p-0 bg-transparent border-0 hover:scale-110 transition-transform pointer-events-auto cursor-pointer"
+                              onPointerDown={handleKeepInputFocused}
+                              onTouchStart={handleKeepInputFocused}
                               onClick={(e) => {
                                 if (currentWord) {
                                   speakWithRefocus(currentWord.word, e.currentTarget);
