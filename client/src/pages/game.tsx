@@ -145,6 +145,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   const currentWordRef = useRef<string | null>(null);
   const nextButtonRef = useRef<HTMLButtonElement>(null);
   const gameCardRef = useRef<HTMLDivElement>(null);
+  const wordImageRef = useRef<HTMLDivElement>(null);
   const inputContainerRef = useRef<HTMLDivElement>(null);
   
   // Track viewport size for responsive scaling
@@ -1934,12 +1935,15 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     setUserInput("");
     setShowFeedback(false);
     
-    // Scroll game card into view on mobile to ensure next word is centered
+    // Scroll word image into view on mobile to ensure it appears at top
     setTimeout(() => {
-      if (gameCardRef.current) {
+      if (wordImageRef.current) {
+        wordImageRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (gameCardRef.current) {
+        // Fallback if no image exists
         gameCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
-    }, 50);
+    }, 100);
     
     if (words && currentWordIndex < words.length - 1) {
       setCurrentWordIndex(currentWordIndex + 1);
@@ -2522,8 +2526,8 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
             {gameMode === "crossword" && completedGrid && (
               <div className="space-y-4">
                 <h3 className="text-xl font-bold text-gray-800 text-center">Completed Puzzle</h3>
-                <div className="flex justify-center">
-                  <div className="inline-block" style={{ display: 'grid', gridTemplateColumns: `repeat(${completedGrid.grid.cols}, 2.5rem)`, gap: '2px' }}>
+                <div className="overflow-x-auto px-4 md:flex md:justify-center">
+                  <div className="inline-block min-w-fit" style={{ display: 'grid', gridTemplateColumns: `repeat(${completedGrid.grid.cols}, 2.5rem)`, gap: '2px' }}>
                     {completedGrid.grid.cells.map((row, rowIndex) => 
                       row.map((cell, colIndex) => {
                         if (cell.isBlank) {
@@ -2818,7 +2822,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                 <p className="text-gray-600">Click the play icon at the start of each word to hear the word</p>
               </div>
 
-              <div className="overflow-x-auto px-4">
+              <div className="overflow-x-auto px-4 md:flex md:justify-center">
                 {/* Crossword Grid - Scrollable horizontally if too wide */}
                 <div className="inline-block min-w-fit" style={{ display: 'grid', gridTemplateColumns: `repeat(${crosswordGrid.cols}, 2.5rem)`, gap: '2px' }}>
                     {crosswordGrid.cells.map((row, rowIndex) => 
@@ -2926,6 +2930,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                       );
                       return illustration && illustration.imagePath ? (
                         <motion.div
+                          ref={wordImageRef}
                           initial={{ scale: 0.8, opacity: 0 }}
                           animate={{ scale: 1, opacity: 1 }}
                           transition={{ duration: 0.4, type: "spring" }}
