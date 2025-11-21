@@ -145,6 +145,11 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   const currentWordRef = useRef<string | null>(null);
   const nextButtonRef = useRef<HTMLButtonElement>(null);
   const gameCardRef = useRef<HTMLDivElement>(null);
+  const inputContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Track viewport size for responsive scaling
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [inputContainerWidth, setInputContainerWidth] = useState(600); // Default fallback
   
   // Scramble mode states
   const [scrambledLetters, setScrambledLetters] = useState<string[]>([]);
@@ -1125,10 +1130,157 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     }
   };
 
+  // Calculate dynamic font size for input fields based on word length
+  // Returns both class name and inline style for precise scaling
+  const getInputFontSize = (wordLength: number): { className: string; fontSize?: string } => {
+    // Calculate what font size we need to fit the word
+    const charWidth = inputContainerWidth / wordLength;
+    const calculatedFontSize = Math.max(charWidth * 0.85, 10); // 85% of char width, min 10px
+    
+    // Define Tailwind font sizes in px (approximate)
+    const fontSizes = {
+      mobile: { '2xl': 24, 'xl': 20, 'lg': 18, 'base': 16 },
+      desktop: { '4xl': 36, '3xl': 30, '2xl': 24, 'xl': 20 }
+    };
+    
+    // Select appropriate Tailwind class if calculated size is close to a standard size
+    // This gives us better typography when possible, falls back to custom for tight fits
+    if (isMobileViewport) {
+      if (wordLength <= 8 && calculatedFontSize >= fontSizes.mobile['2xl']) {
+        return { className: 'text-2xl uppercase' };
+      } else if (wordLength <= 12 && calculatedFontSize >= fontSizes.mobile.xl) {
+        return { className: 'text-xl uppercase' };
+      } else if (wordLength <= 16 && calculatedFontSize >= fontSizes.mobile.lg) {
+        return { className: 'text-lg uppercase' };
+      } else if (calculatedFontSize >= fontSizes.mobile.base) {
+        return { className: 'text-base uppercase' };
+      }
+    } else {
+      if (wordLength <= 8 && calculatedFontSize >= fontSizes.desktop['4xl']) {
+        return { className: 'text-4xl uppercase' };
+      } else if (wordLength <= 12 && calculatedFontSize >= fontSizes.desktop['3xl']) {
+        return { className: 'text-3xl uppercase' };
+      } else if (wordLength <= 16 && calculatedFontSize >= fontSizes.desktop['2xl']) {
+        return { className: 'text-2xl uppercase' };
+      } else if (calculatedFontSize >= fontSizes.desktop.xl) {
+        return { className: 'text-xl uppercase' };
+      }
+    }
+    
+    // For any word that doesn't fit standard sizes, use calculated font size
+    return { className: 'uppercase', fontSize: `${calculatedFontSize}px` };
+  };
+
+  // Calculate dynamic sizing for word hint letters based on word length and container width
+  // Returns concrete Tailwind classes and CSS values that fit within container
+  const getHintLetterSize = (wordLength: number): { fontClass: string; minWidth: string; gapClass: string; useInline?: boolean; fontSize?: string } => {
+    // Calculate space needed for default sizes
+    const defaultMinWidth = isMobileViewport ? 24 : 32; // px equivalent of 1.5rem / 2rem
+    const defaultGap = isMobileViewport ? 8 : 12; // px equivalent of gap-2 / gap-3
+    const totalSpaceNeeded = (wordLength * defaultMinWidth) + ((wordLength - 1) * defaultGap);
+    
+    // If we need to scale down to fit
+    if (totalSpaceNeeded > inputContainerWidth || wordLength > 20) {
+      // Calculate how much space each letter can have
+      const spacePerLetter = inputContainerWidth / wordLength;
+      const minWidth = Math.max(spacePerLetter * 0.7, 12); // 70% for letter, rest for gap, min 12px
+      const fontSize = Math.max(minWidth * 1.2, 14); // Font slightly larger than minWidth, min 14px
+      
+      return {
+        fontClass: '', // Will use inline fontSize instead
+        minWidth: `${minWidth}px`,
+        gapClass: 'gap-0.5',
+        useInline: true,
+        fontSize: `${fontSize}px`
+      };
+    }
+    
+    // Use Tailwind classes for common word lengths that fit
+    if (wordLength <= 8) {
+      return {
+        fontClass: isMobileViewport ? 'text-2xl' : 'text-4xl',
+        minWidth: isMobileViewport ? '1.5rem' : '2rem',
+        gapClass: isMobileViewport ? 'gap-2' : 'gap-3'
+      };
+    } else if (wordLength <= 12) {
+      return {
+        fontClass: isMobileViewport ? 'text-xl' : 'text-3xl',
+        minWidth: isMobileViewport ? '1.25rem' : '1.75rem',
+        gapClass: isMobileViewport ? 'gap-1.5' : 'gap-2.5'
+      };
+    } else if (wordLength <= 16) {
+      return {
+        fontClass: isMobileViewport ? 'text-lg' : 'text-2xl',
+        minWidth: isMobileViewport ? '1rem' : '1.5rem',
+        gapClass: isMobileViewport ? 'gap-1' : 'gap-2'
+      };
+    } else {
+      return {
+        fontClass: isMobileViewport ? 'text-base' : 'text-xl',
+        minWidth: isMobileViewport ? '0.875rem' : '1.25rem',
+        gapClass: 'gap-1'
+      };
+    }
+  };
+
+  // Track viewport size responsively
+  useEffect(() => {
+    const updateViewport = () => {
+      setIsMobileViewport(window.innerWidth < 768);
+    };
+    
+    // Set initial value
+    updateViewport();
+    
+    // Listen for resize
+    window.addEventListener('resize', updateViewport);
+    window.addEventListener('orientationchange', updateViewport);
+    
+    return () => {
+      window.removeEventListener('resize', updateViewport);
+      window.removeEventListener('orientationchange', updateViewport);
+    };
+  }, []);
+
   // Center game card when currentWordIndex changes (new word displayed)
   useEffect(() => {
     centerGameCard();
   }, [currentWordIndex]);
+
+  // Measure input element's actual available width for dynamic font sizing
+  useLayoutEffect(() => {
+    const measureWidth = () => {
+      // Prioritize measuring from the actual input element to get true editable width
+      const element = inputRef.current || inputContainerRef.current;
+      if (element) {
+        const rect = element.getBoundingClientRect();
+        if (rect.width > 0) {
+          // Get actual computed styles to calculate available width
+          const computedStyle = window.getComputedStyle(element);
+          const paddingLeft = parseFloat(computedStyle.paddingLeft) || 0;
+          const paddingRight = parseFloat(computedStyle.paddingRight) || 0;
+          const borderLeft = parseFloat(computedStyle.borderLeftWidth) || 0;
+          const borderRight = parseFloat(computedStyle.borderRightWidth) || 0;
+          const availableWidth = rect.width - paddingLeft - paddingRight - borderLeft - borderRight;
+          
+          // Set width with reasonable minimum
+          setInputContainerWidth(Math.max(availableWidth, 200));
+        }
+      }
+    };
+
+    // Measure immediately after render (input should exist by now)
+    measureWidth();
+
+    // Listen to window resize and orientation change for responsive updates
+    window.addEventListener('resize', measureWidth);
+    window.addEventListener('orientationchange', measureWidth);
+
+    return () => {
+      window.removeEventListener('resize', measureWidth);
+      window.removeEventListener('orientationchange', measureWidth);
+    };
+  }, [currentWordIndex, gameMode, showWordHints]); // Remeasure on word change, mode change, or hints toggle
 
   // Measure scramble container width for dynamic tile sizing (use useLayoutEffect to measure before render)
   useLayoutEffect(() => {
@@ -2661,9 +2813,9 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                 <p className="text-gray-600">Click the play icon at the start of each word to hear the word</p>
               </div>
 
-              <div className="flex justify-center">
-                {/* Crossword Grid */}
-                <div>
+              <div className="overflow-x-auto">
+                {/* Crossword Grid - Scrollable horizontally if too wide */}
+                <div className="flex justify-center min-w-full">
                   <div className="inline-block" style={{ display: 'grid', gridTemplateColumns: `repeat(${crosswordGrid.cols}, 2.5rem)`, gap: '2px' }}>
                     {crosswordGrid.cells.map((row, rowIndex) => 
                       row.map((cell, colIndex) => {
@@ -2886,46 +3038,68 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                           Drag the yellow tiles to the blank spaces above
                         </div>
                       </div>
-                    ) : showWordHints && currentWord && gameMode !== "quiz" ? (
-                      <div className="relative">
-                        <Input
-                          ref={inputRef}
-                          type="text"
-                          value={userInput}
-                          onChange={(e) => setUserInput(e.target.value)}
-                          onFocus={centerGameCard}
-                          className="text-transparent caret-transparent absolute inset-0 text-center text-2xl md:text-4xl h-16 md:h-20 rounded-2xl bg-transparent border-transparent pointer-events-auto uppercase"
-                          autoComplete="off"
-                          autoFocus
-                          data-testid="input-spelling"
-                          style={{ caretColor: 'transparent' }}
-                        />
-                        <div 
-                          className="h-16 md:h-20 rounded-2xl border-2 border-input bg-background flex items-center justify-center gap-2 md:gap-3 px-4 cursor-text pointer-events-none"
-                        >
-                          {Array.from({ length: Math.max(currentWord.word.length, userInput.length) }).map((_, index) => (
-                            <div key={index} className="flex flex-col items-center gap-1">
-                              <div className="text-2xl md:text-4xl font-semibold text-gray-800 h-8 md:h-10 flex items-center justify-center min-w-[1.5rem] md:min-w-[2rem] uppercase">
-                                {userInput[index] || ""}
-                              </div>
-                              <div className="w-6 md:w-8 h-0.5 bg-gray-400"></div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
                     ) : (
-                      <Input
-                        ref={inputRef}
-                        type="text"
-                        value={userInput}
-                        onChange={(e) => setUserInput(e.target.value)}
-                        onFocus={centerGameCard}
-                        className="text-center text-2xl md:text-4xl h-16 md:h-20 rounded-2xl uppercase"
-                        placeholder="Type your answer..."
-                        autoComplete="off"
-                        autoFocus
-                        data-testid="input-spelling"
-                      />
+                      <div ref={inputContainerRef}>
+                        {showWordHints && currentWord && gameMode !== "quiz" ? (
+                          (() => {
+                            const hintSize = getHintLetterSize(currentWord.word.length);
+                            const inputStyle = getInputFontSize(currentWord.word.length);
+                            return (
+                              <div className="relative">
+                                <Input
+                                  ref={inputRef}
+                                  type="text"
+                                  value={userInput}
+                                  onChange={(e) => setUserInput(e.target.value)}
+                                  onFocus={centerGameCard}
+                                  className={`text-transparent caret-transparent absolute inset-0 text-center ${inputStyle.className} h-16 md:h-20 rounded-2xl bg-transparent border-transparent pointer-events-auto`}
+                                  style={{ fontSize: inputStyle.fontSize, caretColor: 'transparent' }}
+                                  autoComplete="off"
+                                  autoFocus
+                                  data-testid="input-spelling"
+                                />
+                                <div 
+                                  className={`h-16 md:h-20 rounded-2xl border-2 border-input bg-background flex items-center justify-center ${hintSize.gapClass} px-4 cursor-text pointer-events-none`}
+                                >
+                                  {Array.from({ length: Math.max(currentWord.word.length, userInput.length) }).map((_, index) => (
+                                    <div key={index} className="flex flex-col items-center gap-1">
+                                      <div 
+                                        className={`${hintSize.useInline ? '' : hintSize.fontClass} font-semibold text-gray-800 h-8 md:h-10 flex items-center justify-center uppercase`} 
+                                        style={{ 
+                                          minWidth: hintSize.minWidth,
+                                          fontSize: hintSize.useInline ? hintSize.fontSize : undefined
+                                        }}
+                                      >
+                                        {userInput[index] || ""}
+                                      </div>
+                                      <div className="h-0.5 bg-gray-400" style={{ width: hintSize.minWidth }}></div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })()
+                        ) : (
+                          (() => {
+                            const inputStyle = getInputFontSize(currentWord?.word.length || 8);
+                            return (
+                              <Input
+                                ref={inputRef}
+                                type="text"
+                                value={userInput}
+                                onChange={(e) => setUserInput(e.target.value)}
+                                onFocus={centerGameCard}
+                                className={`text-center ${inputStyle.className} h-16 md:h-20 rounded-2xl`}
+                                style={{ fontSize: inputStyle.fontSize }}
+                                placeholder="Type your answer..."
+                                autoComplete="off"
+                                autoFocus
+                                data-testid="input-spelling"
+                              />
+                            );
+                          })()
+                        )}
+                      </div>
                     )}
                     
                     <div className="space-y-3">
