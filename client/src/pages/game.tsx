@@ -2355,37 +2355,38 @@ export default function Game() {
         }}
       ></div>
       <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
-      <header className="p-4 md:p-6 bg-white/60 dark:bg-black/60 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 relative z-10 md:hidden">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 flex-wrap">
+      <header className="p-4 md:p-2 bg-white/60 dark:bg-black/60 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 relative z-10">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 md:gap-2 flex-wrap">
           <Button
             variant="outline"
             size="lg"
+            className="md:h-8 md:text-sm md:px-2"
             onClick={() => setLocation("/")}
             data-testid="button-exit"
           >
-            <Home className="w-5 h-5 mr-2" />
+            <Home className="w-5 h-5 md:w-4 md:h-4 mr-2 md:mr-1" />
             Exit
           </Button>
           
-          <div className="flex items-center gap-4 md:gap-6">
+          <div className="flex items-center gap-4 md:gap-2">
             {gameMode === "timed" && !showFeedback && (
-              <div className={`flex items-center gap-2 ${timeLeft <= 10 ? 'text-red-600' : 'text-gray-700'}`}>
-                <Clock className="w-6 h-6" />
-                <span className="text-xl md:text-2xl font-bold" data-testid="text-timer">{timeLeft}s</span>
+              <div className={`flex items-center gap-2 md:gap-1 ${timeLeft <= 10 ? 'text-red-600' : 'text-gray-700'}`}>
+                <Clock className="w-6 h-6 md:w-4 md:h-4" />
+                <span className="text-xl md:text-sm font-bold" data-testid="text-timer">{timeLeft}s</span>
               </div>
             )}
             {streak > 0 && gameMode !== "quiz" && (
-              <div className="flex items-center gap-2 text-orange-600">
-                <Flame className="w-6 h-6 md:w-7 md:h-7" />
-                <span className="text-xl md:text-2xl font-bold" data-testid="text-streak">{streak}</span>
+              <div className="flex items-center gap-2 md:gap-1 text-orange-600">
+                <Flame className="w-6 h-6 md:w-4 md:h-4" />
+                <span className="text-xl md:text-sm font-bold" data-testid="text-streak">{streak}</span>
               </div>
             )}
             {gameMode !== "quiz" && (
               <div className="text-center">
-                <div className="text-2xl md:text-3xl font-bold text-purple-600" data-testid="text-current-score">
+                <div className="text-2xl md:text-lg font-bold text-purple-600" data-testid="text-current-score">
                   {score}
                 </div>
-                <div className="text-xs md:text-sm text-gray-600">Points</div>
+                <div className="text-xs text-gray-600">Points</div>
               </div>
             )}
             
@@ -2565,13 +2566,13 @@ export default function Game() {
         ) : (
           <div className="w-full max-w-3xl space-y-6">
             {gameMode !== "crossword" && (
-              <div className="space-y-4 md:hidden">
-                <div className="flex items-center justify-between text-base md:text-lg font-semibold">
+              <div className="space-y-4 md:space-y-2">
+                <div className="flex items-center justify-between text-base md:text-sm font-semibold">
                   <span className="text-gray-600" data-testid="text-word-progress">
                     Word {currentWordIndex + 1} of {words.length}
                   </span>
                 </div>
-                <Progress value={progress} className="h-3" data-testid="progress-game" />
+                <Progress value={progress} className="h-3 md:h-2" data-testid="progress-game" />
               </div>
             )}
 
@@ -2583,7 +2584,7 @@ export default function Game() {
                   animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
               >
-                <Card className="p-6 md:p-12 space-y-4 bg-white">
+                <Card className="p-6 md:px-12 md:pt-6 md:pb-12 space-y-4 bg-white">
                   <div className="text-center space-y-3">
                     <h2 className="text-2xl md:text-3xl font-bold text-gray-800" data-testid="text-instruction">
                       {gameMode === "quiz" ? "Spell the word" : gameMode === "scramble" ? "Unscramble the letters" : gameMode === "mistake" ? "Find the misspelled word" : "Listen and spell the word"}
