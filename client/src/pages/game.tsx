@@ -2465,7 +2465,7 @@ export default function Game() {
       </header>
 
       <main 
-        className="flex-1 flex items-center justify-center p-4 md:p-6 relative z-10 overflow-auto"
+        className="flex-1 flex items-center justify-center p-4 md:p-6 relative z-10 overflow-auto md:min-h-screen md:overflow-visible md:pb-0"
         style={{ paddingBottom: keyboardHeight > 0 ? `${keyboardHeight + 16}px` : undefined }}
       >
         {loadingCrossword ? (
