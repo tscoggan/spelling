@@ -168,7 +168,9 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   // The hidden input in App.tsx was focused BEFORE navigation to maintain gesture context
   // Now we transfer focus to the real input element
   const inputCallbackRef = useCallback((node: HTMLInputElement | null) => {
-    inputRef.current = node;
+    // Update the ref for other code to use
+    (inputRef as React.MutableRefObject<HTMLInputElement | null>).current = node;
+    
     if (node && isIOSDevice()) {
       // Transfer focus from hidden input to real input
       // The gesture context was maintained through the hidden input

@@ -76,9 +76,15 @@ export default function Home() {
       iOSKeyboardInput.current.focus();
     }
     
-    setWordListDialogOpen(false);
+    // Navigate FIRST, then close dialog - this keeps focus on hidden input
+    // If we close dialog first, Radix Dialog steals focus back via automatic focus restoration
     const quizParam = selectedMode === "quiz" ? `&quizCount=${quizWordCount}` : "";
     setLocation(`/game?listId=${list.id}&mode=${selectedMode}${quizParam}`);
+    
+    // Small delay before closing dialog to ensure navigation starts first
+    setTimeout(() => {
+      setWordListDialogOpen(false);
+    }, 50);
   };
 
   const allLists = useMemo(() => {
