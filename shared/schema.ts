@@ -20,7 +20,6 @@ export const users = pgTable("users", {
 export const words = pgTable("words", {
   id: serial("id").primaryKey(),
   word: text("word").notNull().unique(),
-  difficulty: text("difficulty").notNull(),
   definition: text("definition"),
   sentenceExample: text("sentence_example"),
   wordOrigin: text("word_origin"),
@@ -30,7 +29,6 @@ export const words = pgTable("words", {
 export const gameSessions = pgTable("game_sessions", {
   id: serial("id").primaryKey(),
   userId: integer("user_id"),
-  difficulty: text("difficulty").notNull(),
   gameMode: text("game_mode").notNull().default("standard"),
   score: integer("score").notNull().default(0),
   totalWords: integer("total_words").notNull().default(0),
@@ -47,7 +45,6 @@ export const leaderboardScores = pgTable("leaderboard_scores", {
   sessionId: integer("session_id").notNull(),
   score: integer("score").notNull(),
   accuracy: integer("accuracy").notNull(),
-  difficulty: text("difficulty").notNull(),
   gameMode: text("game_mode").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -56,7 +53,6 @@ export const customWordLists = pgTable("custom_word_lists", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
   name: text("name").notNull(),
-  difficulty: text("difficulty").notNull(),
   words: text("words").array().notNull(),
   isPublic: boolean("is_public").notNull().default(false),
   visibility: text("visibility").notNull().default("private"),
@@ -243,7 +239,6 @@ export const insertCustomWordListSchema = createInsertSchema(customWordLists).om
 }).extend({
   words: z.array(z.string().min(1).max(100)).min(5).max(500),
   name: z.string().min(1).max(100),
-  difficulty: z.enum(["easy", "medium", "hard"]),
   gradeLevel: z.string().max(50).optional(),
   visibility: z.enum(["public", "private", "groups"]).optional(),
   assignImages: z.boolean().optional(),
@@ -295,7 +290,6 @@ export type WordListUserGroup = typeof wordListUserGroups.$inferSelect;
 export type InsertUserToDoItem = z.infer<typeof insertUserToDoItemSchema>;
 export type UserToDoItem = typeof userToDoItems.$inferSelect;
 
-export type DifficultyLevel = "easy" | "medium" | "hard" | "custom";
 export type GameMode = "standard" | "timed" | "quiz" | "scramble" | "mistake" | "crossword";
 
 export interface GameState {
@@ -305,6 +299,5 @@ export interface GameState {
   score: number;
   correctCount: number;
   streak: number;
-  difficulty: DifficultyLevel;
   gameMode: GameMode;
 }

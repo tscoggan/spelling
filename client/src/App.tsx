@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation, useSearch } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -13,12 +13,42 @@ import UserGroupsPage from "@/pages/user-groups";
 import AdminPage from "@/pages/admin";
 import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
+import { useEffect } from "react";
+
+// Guard component to ensure Game page is only accessed with a listId
+function GamePageGuard() {
+  const searchParams = useSearch();
+  const [, setLocation] = useLocation();
+  const params = new URLSearchParams(searchParams);
+  const listId = params.get("listId");
+
+  useEffect(() => {
+    if (!listId) {
+      // Redirect to home where user can select a word list
+      setLocation("/");
+    }
+  }, [listId, setLocation]);
+
+  // Show loading/redirecting message while redirect happens
+  if (!listId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center">
+          <p className="text-xl mb-4">Please select a word list to play</p>
+          <p className="text-gray-600">Redirecting...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return <Game />;
+}
 
 function Router() {
   return (
     <Switch>
       <ProtectedRoute path="/" component={Home} />
-      <ProtectedRoute path="/game" component={Game} />
+      <ProtectedRoute path="/game" component={GamePageGuard} />
       <ProtectedRoute path="/leaderboard" component={Leaderboard} />
       <ProtectedRoute path="/word-lists" component={WordListsPage} />
       <ProtectedRoute path="/user-groups" component={UserGroupsPage} />

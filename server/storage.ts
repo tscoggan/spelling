@@ -3,7 +3,6 @@ import {
   type InsertWord, 
   type GameSession, 
   type InsertGameSession, 
-  type DifficultyLevel,
   type User,
   type InsertUser,
   type LeaderboardScore,
@@ -36,12 +35,10 @@ import connectPg from "connect-pg-simple";
 import { pool } from "./db";
 
 export interface IStorage {
-  getAllWords(): Promise<Word[]>;
-  getWordsByDifficulty(difficulty: DifficultyLevel, limit?: number): Promise<Word[]>;
   getWord(id: number): Promise<Word | undefined>;
   getWordByText(word: string): Promise<Word | undefined>;
   createWord(word: InsertWord): Promise<Word>;
-  upsertWord(word: string, difficulty: string, definition?: string, sentenceExample?: string, wordOrigin?: string, partOfSpeech?: string): Promise<Word>;
+  upsertWord(word: string, definition?: string, sentenceExample?: string, wordOrigin?: string, partOfSpeech?: string): Promise<Word>;
   
   getGameSession(id: number): Promise<GameSession | undefined>;
   createGameSession(session: InsertGameSession): Promise<GameSession>;
@@ -53,7 +50,7 @@ export interface IStorage {
   updateUserPreferences(userId: number, preferences: { preferredVoice?: string | null }): Promise<User>;
   
   createLeaderboardScore(score: InsertLeaderboardScore): Promise<LeaderboardScore>;
-  getTopScores(difficulty?: DifficultyLevel, gameMode?: string, limit?: number): Promise<LeaderboardScore[]>;
+  getTopScores(gameMode?: string, limit?: number): Promise<LeaderboardScore[]>;
   getUserBestScores(userId: number): Promise<LeaderboardScore[]>;
   
   createCustomWordList(list: InsertCustomWordList): Promise<CustomWordList>;
@@ -111,15 +108,6 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async getAllWords(): Promise<Word[]> {
-    return await db.select().from(words);
-  }
-
-  async getWordsByDifficulty(difficulty: DifficultyLevel, limit: number = 10): Promise<Word[]> {
-    const allWords = await db.select().from(words).where(eq(words.difficulty, difficulty));
-    return allWords.sort(() => Math.random() - 0.5).slice(0, limit);
-  }
-
   async getWord(id: number): Promise<Word | undefined> {
     const [word] = await db.select().from(words).where(eq(words.id, id));
     return word || undefined;
@@ -136,7 +124,7 @@ export class DatabaseStorage implements IStorage {
     return word;
   }
 
-  async upsertWord(wordText: string, difficulty: string, definition?: string, sentenceExample?: string, wordOrigin?: string, partOfSpeech?: string): Promise<Word> {
+  async upsertWord(wordText: string, definition?: string, sentenceExample?: string, wordOrigin?: string, partOfSpeech?: string): Promise<Word> {
     const normalized = wordText.toLowerCase().trim();
     
     const existing = await this.getWordByText(normalized);
@@ -176,7 +164,6 @@ export class DatabaseStorage implements IStorage {
       .insert(words)
       .values({
         word: normalized,
-        difficulty,
         definition: definition || null,
         sentenceExample: sentenceExample || null,
         wordOrigin: wordOrigin || null,
@@ -251,7 +238,7 @@ export class DatabaseStorage implements IStorage {
     return score;
   }
 
-  async getTopScores(difficulty?: DifficultyLevel, gameMode?: string, limit: number = 10): Promise<any[]> {
+  async getTopScores(gameMode?: string, limit: number = 10): Promise<any[]> {
     const baseQuery = db
       .select({
         id: leaderboardScores.id,
@@ -259,7 +246,6 @@ export class DatabaseStorage implements IStorage {
         sessionId: leaderboardScores.sessionId,
         score: leaderboardScores.score,
         accuracy: leaderboardScores.accuracy,
-        difficulty: leaderboardScores.difficulty,
         gameMode: leaderboardScores.gameMode,
         createdAt: leaderboardScores.createdAt,
         username: users.username,
@@ -268,17 +254,7 @@ export class DatabaseStorage implements IStorage {
       .from(leaderboardScores)
       .leftJoin(users, eq(leaderboardScores.userId, users.id));
 
-    if (difficulty && gameMode) {
-      return await baseQuery
-        .where(and(eq(leaderboardScores.difficulty, difficulty), eq(leaderboardScores.gameMode, gameMode)))
-        .orderBy(desc(leaderboardScores.score))
-        .limit(limit);
-    } else if (difficulty) {
-      return await baseQuery
-        .where(eq(leaderboardScores.difficulty, difficulty))
-        .orderBy(desc(leaderboardScores.score))
-        .limit(limit);
-    } else if (gameMode) {
+    if (gameMode) {
       return await baseQuery
         .where(eq(leaderboardScores.gameMode, gameMode))
         .orderBy(desc(leaderboardScores.score))
@@ -328,7 +304,6 @@ export class DatabaseStorage implements IStorage {
         id: customWordLists.id,
         userId: customWordLists.userId,
         name: customWordLists.name,
-        difficulty: customWordLists.difficulty,
         words: customWordLists.words,
         visibility: customWordLists.visibility,
         assignImages: customWordLists.assignImages,
@@ -383,7 +358,6 @@ export class DatabaseStorage implements IStorage {
         id: customWordLists.id,
         userId: customWordLists.userId,
         name: customWordLists.name,
-        difficulty: customWordLists.difficulty,
         words: customWordLists.words,
         visibility: customWordLists.visibility,
         assignImages: customWordLists.assignImages,
@@ -442,7 +416,6 @@ export class DatabaseStorage implements IStorage {
         id: customWordLists.id,
         userId: customWordLists.userId,
         name: customWordLists.name,
-        difficulty: customWordLists.difficulty,
         words: customWordLists.words,
         visibility: customWordLists.visibility,
         assignImages: customWordLists.assignImages,

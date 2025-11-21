@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trophy, Medal, Home, Crown, Award } from "lucide-react";
-import type { LeaderboardScore, DifficultyLevel } from "@shared/schema";
+import type { LeaderboardScore } from "@shared/schema";
 import { motion } from "framer-motion";
 import { UserHeader } from "@/components/user-header";
 import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
@@ -13,16 +13,11 @@ import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763
 
 export default function Leaderboard() {
   const [, setLocation] = useLocation();
-  const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel | "all">("all");
 
   const { data: topScores, isLoading } = useQuery<LeaderboardScore[]>({
-    queryKey: [`/api/leaderboard`, selectedDifficulty],
+    queryKey: [`/api/leaderboard`],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (selectedDifficulty !== "all") {
-        params.append("difficulty", selectedDifficulty);
-      }
-      const response = await fetch(`/api/leaderboard?${params.toString()}`);
+      const response = await fetch(`/api/leaderboard`);
       if (!response.ok) throw new Error('Failed to fetch leaderboard');
       return response.json();
     },
@@ -160,7 +155,7 @@ export default function Leaderboard() {
                             <div>
                               <div className="text-sm text-gray-600">Mode</div>
                               <div className="text-base font-medium text-gray-700 capitalize" data-testid={`text-mode-${index}`}>
-                                {entry.difficulty} - {entry.gameMode}
+                                {entry.gameMode}
                               </div>
                             </div>
                           </div>

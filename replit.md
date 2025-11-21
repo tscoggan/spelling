@@ -1,7 +1,7 @@
 # Spelling Champions
 
 ## Overview
-Spelling Champions is an interactive educational app designed to improve children's spelling skills through engaging games. It features multiple difficulty levels, text-to-speech, immediate feedback, and a scoring system. All words in the application are sourced from custom word lists created by users, promoting collaborative learning via leaderboards and word list sharing. The core vision is to provide a comprehensive and enjoyable platform for children's spelling development, with recent enhancements focusing on user groups, an audio-only crossword puzzle mode, realistic misspelling challenges, and robust content moderation for child safety.
+Spelling Champions is an interactive educational app designed to improve children's spelling skills through engaging games. It features text-to-speech, immediate feedback, and a scoring system. All words in the application are sourced from custom word lists created by users, promoting collaborative learning via leaderboards and word list sharing. The core vision is to provide a comprehensive and enjoyable platform for children's spelling development, with recent enhancements focusing on user groups, an audio-only crossword puzzle mode, realistic misspelling challenges, and robust content moderation for child safety.
 
 ## User Preferences
 - I prefer simple language.
@@ -21,7 +21,7 @@ The backend uses **Express.js** with **TypeScript**. **PostgreSQL** serves as th
 
 ### Feature Specifications
 - **User Management**: Secure authentication, enhanced user profiles, and support for user groups with membership management and to-do notifications.
-- **Custom Word Lists**: Users create, share, and manage custom word lists with assignable difficulty and grade levels. Lists can control image assignment and visibility (public, private, groups). Supports importing words from .txt, .csv, and .pdf files with automatic text extraction. Profanity filtering is applied to all user-submitted content.
+- **Custom Word Lists**: Users create, share, and manage custom word lists with assignable grade levels. Lists can control image assignment and visibility (public, private, groups). Supports importing words from .txt, .csv, and .pdf files with automatic text extraction. Profanity filtering is applied to all user-submitted content.
 - **Game Modes**:
     - **Practice**: Classic mode with immediate feedback. Uses full word lists with randomized order.
     - **Timed Challenge**: 60-second countdown. Uses full word lists with randomized order.
@@ -33,7 +33,7 @@ The backend uses **Express.js** with **TypeScript**. **PostgreSQL** serves as th
 - **Text-to-Speech**: Pronounces words, definitions, and sentences; includes dedicated button for parts of speech.
 - **Dictionary Integration**: Uses Merriam-Webster APIs (Learner's Dictionary as primary source, Collegiate Dictionary as fallback) for child-friendly definitions, examples, word origins, and parts of speech. Implements robust error handling to distinguish word-not-found (404) from service failures (auth errors, rate limits).
 - **Cartoon Illustrations**: Automated enrichment of custom word lists with kid-friendly cartoon images via Pixabay API, stored permanently in Replit Object Storage.
-- **Scoring System & Leaderboard**: Points based on list difficulty with streak bonuses, displayed on filterable leaderboards.
+- **Scoring System & Leaderboard**: Points (20 per correct word) with streak bonuses, displayed on leaderboards.
 - **Progress Tracking**: Session-based tracking of words, accuracy, and streaks.
 
 ### System Design Choices

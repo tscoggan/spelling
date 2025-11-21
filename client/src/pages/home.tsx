@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, Sparkles, Trophy, Clock, Target, List, ChevronRight, Lock, Globe, Shuffle, AlertCircle, Grid3x3, Users } from "lucide-react";
-import type { DifficultyLevel, GameMode } from "@shared/schema";
+import type { GameMode } from "@shared/schema";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -30,7 +30,6 @@ import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763
 interface CustomWordList {
   id: number;
   name: string;
-  difficulty: string;
   words: string[];
   isPublic: boolean;
   gradeLevel?: string;
@@ -41,7 +40,6 @@ export default function Home() {
   const { user } = useAuth();
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [wordListDialogOpen, setWordListDialogOpen] = useState(false);
-  const [filterDifficulty, setFilterDifficulty] = useState<string>("all");
   const [filterGradeLevel, setFilterGradeLevel] = useState<string>("all");
   const [quizWordCount, setQuizWordCount] = useState<"10" | "all">("all");
   const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
@@ -60,7 +58,6 @@ export default function Home() {
 
   const handleModeClick = (mode: GameMode) => {
     setSelectedMode(mode);
-    setFilterDifficulty("all");
     setFilterGradeLevel("all");
     setQuizWordCount("all");
     setWordListDialogOpen(true);
@@ -70,7 +67,7 @@ export default function Home() {
     if (!selectedMode) return;
     setWordListDialogOpen(false);
     const quizParam = selectedMode === "quiz" ? `&quizCount=${quizWordCount}` : "";
-    setLocation(`/game?listId=${list.id}&difficulty=${list.difficulty}&mode=${selectedMode}${quizParam}`);
+    setLocation(`/game?listId=${list.id}&mode=${selectedMode}${quizParam}`);
   };
 
   const allLists = useMemo(() => {
@@ -86,16 +83,13 @@ export default function Home() {
     
     // Apply filters
     let filtered = uniqueLists;
-    if (filterDifficulty !== "all") {
-      filtered = filtered.filter(list => list.difficulty === filterDifficulty);
-    }
     if (filterGradeLevel !== "all") {
       filtered = filtered.filter(list => list.gradeLevel === filterGradeLevel);
     }
     
     // Sort by name
     return filtered.sort((a, b) => a.name.localeCompare(b.name));
-  }, [customLists, publicLists, sharedLists, filterDifficulty, filterGradeLevel]);
+  }, [customLists, publicLists, sharedLists, filterGradeLevel]);
 
   const availableGradeLevels = useMemo(() => {
     const myLists = customLists || [];
@@ -335,50 +329,30 @@ export default function Home() {
             </div>
           )}
 
-          <div className="flex gap-3 mb-4">
-            <div className="flex-1">
-              <label className="text-sm font-medium mb-1.5 block">Difficulty</label>
-              <Select 
-                value={filterDifficulty} 
-                onValueChange={setFilterDifficulty}
-              >
-                <SelectTrigger data-testid="filter-difficulty">
-                  <SelectValue placeholder="All Difficulties" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Difficulties</SelectItem>
-                  <SelectItem value="easy">Easy</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="hard">Hard</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex-1">
-              <label className="text-sm font-medium mb-1.5 block">Grade Level</label>
-              <Select 
-                value={filterGradeLevel} 
-                onValueChange={setFilterGradeLevel}
-              >
-                <SelectTrigger data-testid="filter-grade">
-                  <SelectValue placeholder="All Grades" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Grades</SelectItem>
-                  {availableGradeLevels.map((grade) => (
-                    <SelectItem key={grade} value={grade || ""}>
-                      Grade {grade}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="mb-4">
+            <label className="text-sm font-medium mb-1.5 block">Grade Level</label>
+            <Select 
+              value={filterGradeLevel} 
+              onValueChange={setFilterGradeLevel}
+            >
+              <SelectTrigger data-testid="filter-grade">
+                <SelectValue placeholder="All Grades" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Grades</SelectItem>
+                {availableGradeLevels.map((grade) => (
+                  <SelectItem key={grade} value={grade || ""}>
+                    Grade {grade}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-2 pr-2">
             {allLists.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                {filterDifficulty !== "all" || filterGradeLevel !== "all" 
+                {filterGradeLevel !== "all" 
                   ? "No word lists match your filters" 
                   : "No word lists available"}
               </div>
@@ -405,17 +379,6 @@ export default function Home() {
                         Grade {list.gradeLevel}
                       </Badge>
                     )}
-                    <Badge 
-                      variant="secondary" 
-                      className={`text-xs ${
-                        list.difficulty === "easy" ? "bg-green-100 text-green-800" :
-                        list.difficulty === "medium" ? "bg-yellow-100 text-yellow-800" :
-                        "bg-red-100 text-red-800"
-                      }`}
-                      data-testid={`badge-difficulty-${list.id}`}
-                    >
-                      {list.difficulty.charAt(0).toUpperCase() + list.difficulty.slice(1)}
-                    </Badge>
                     {list.isPublic ? (
                       <Globe className="w-4 h-4 text-blue-600" data-testid={`icon-public-${list.id}`} />
                     ) : (

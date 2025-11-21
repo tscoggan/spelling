@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertGameSessionSchema, insertWordSchema, insertCustomWordListSchema, type DifficultyLevel } from "@shared/schema";
+import { insertGameSessionSchema, insertWordSchema, insertCustomWordListSchema } from "@shared/schema";
 import { z } from "zod";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import { IllustrationJobService } from "./services/illustrationJobService";
@@ -23,15 +23,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.sendStatus(500);
     }
   });
-  app.get("/api/words", async (req, res) => {
-    try {
-      const words = await storage.getAllWords();
-      res.json(words);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch words" });
-    }
-  });
-
+  
   app.get("/api/words/by-text/:word", async (req, res) => {
     try {
       // Normalize to lowercase for case-insensitive lookup
@@ -45,25 +37,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(word);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch word" });
-    }
-  });
-
-  app.get("/api/words/:difficulty", async (req, res) => {
-    try {
-      const difficulty = req.params.difficulty as DifficultyLevel;
-      
-      if (!["easy", "medium", "hard"].includes(difficulty)) {
-        return res.status(400).json({ error: "Invalid difficulty level" });
-      }
-
-      // Use limit from query param, defaulting to undefined (all words) if not specified
-      // If limit=0 is explicitly passed, treat as unlimited
-      const limitParam = req.query.limit ? parseInt(req.query.limit as string) : undefined;
-      const limit = limitParam === 0 ? undefined : limitParam;
-      const words = await storage.getWordsByDifficulty(difficulty, limit);
-      res.json(words);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch words by difficulty" });
     }
   });
 
@@ -119,11 +92,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/leaderboard", async (req, res) => {
     try {
-      const difficulty = req.query.difficulty as DifficultyLevel | undefined;
       const gameMode = req.query.gameMode as string | undefined;
       const limit = 10; // Always show top 10 only
       
-      const scores = await storage.getTopScores(difficulty, gameMode, limit);
+      const scores = await storage.getTopScores(gameMode, limit);
       res.json(scores);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch leaderboard" });
@@ -180,7 +152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validate words against dictionaries
       const { validateWords: validateDictionary } = await import("./services/dictionaryValidation");
-      const validationResult = await validateDictionary(wordsArray, req.body.difficulty || 'medium', storage);
+      const validationResult = await validateDictionary(wordsArray, storage);
       
       // Check if all words were skipped due to API failures
       if (validationResult.skipped.length === wordsArray.length) {
@@ -386,7 +358,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let validationResult: { valid: string[]; invalid: string[]; skipped: string[] } | undefined;
       if (wordsArray) {
         const { validateWords: validateDictionary } = await import("./services/dictionaryValidation");
-        validationResult = await validateDictionary(wordsArray, req.body.difficulty || existingList.difficulty, storage);
+        validationResult = await validateDictionary(wordsArray, storage);
         
         // Check if all words were skipped due to API failures
         if (validationResult.skipped.length === wordsArray.length) {

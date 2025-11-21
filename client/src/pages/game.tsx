@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Volume2, Home, ArrowRight, CheckCircle2, XCircle, Sparkles, Flame, Clock, SkipForward, Trophy, Settings, BookOpen, MessageSquare, Globe } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Word, DifficultyLevel, GameMode } from "@shared/schema";
+import type { Word, GameMode } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/use-auth";
@@ -77,15 +77,46 @@ const isMobileDevice = (): boolean => {
   return isIOSDevice() || /Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 };
 
+// Wrapper component that validates listId before rendering game logic
+// This prevents React Query hooks from running when listId is missing
 export default function Game() {
   const [, setLocation] = useLocation();
-  const { user } = useAuth();
   const searchParams = useSearch();
   const params = new URLSearchParams(searchParams);
-  const difficulty = params.get("difficulty") as DifficultyLevel;
-  const gameMode = (params.get("mode") || "standard") as GameMode;
   const listId = params.get("listId");
+  const gameMode = (params.get("mode") || "standard") as GameMode;
   const quizCount = params.get("quizCount") || "all";
+
+  // Defense-in-depth: Redirect if no listId
+  useEffect(() => {
+    if (!listId) {
+      console.warn("Game component accessed without listId - redirecting to home");
+      setLocation("/");
+    }
+  }, [listId, setLocation]);
+
+  // Safety fallback if no listId - prevents hooks from running
+  if (!listId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center">
+          <p className="text-xl mb-4">Please select a word list to play</p>
+          <p className="text-gray-600">Redirecting...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Only render game content when listId is confirmed
+  // Pass all parameters as props to avoid GameContent parsing them
+  return <GameContent listId={listId} gameMode={gameMode} quizCount={quizCount} />;
+}
+
+// Actual game component with all the hooks - only rendered when listId exists
+// Receives all parameters as props to ensure hooks always have valid data
+function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode: GameMode; quizCount: string }) {
+  const [, setLocation] = useLocation();
+  const { user } = useAuth();
   
   const [userInput, setUserInput] = useState("");
   const [showFeedback, setShowFeedback] = useState(false);
@@ -244,7 +275,7 @@ export default function Game() {
   };
 
   const createSessionMutation = useMutation({
-    mutationFn: async (sessionData: { difficulty: string; gameMode: string; userId: number | null; customListId?: number }) => {
+    mutationFn: async (sessionData: { gameMode: string; userId: number | null; customListId?: number }) => {
       const response = await apiRequest("POST", "/api/sessions", sessionData);
       return await response.json();
     },
@@ -254,7 +285,7 @@ export default function Game() {
   });
 
   const saveScoreMutation = useMutation({
-    mutationFn: async (scoreData: { score: number; accuracy: number; difficulty: DifficultyLevel; gameMode: GameMode; userId: number | null; sessionId: number }) => {
+    mutationFn: async (scoreData: { score: number; accuracy: number; gameMode: GameMode; userId: number | null; sessionId: number }) => {
       const response = await apiRequest("POST", "/api/leaderboard", scoreData);
       return await response.json();
     },
@@ -281,57 +312,38 @@ export default function Game() {
   };
 
   const { data: words, isLoading } = useQuery<Word[]>({
-    queryKey: listId 
-      ? ['/api/word-lists', listId, gameMode, quizCount, sessionTimestamp] 
-      : ['/api/words', difficulty, gameMode, quizCount, sessionTimestamp],
+    queryKey: ['/api/word-lists', listId, gameMode, quizCount, sessionTimestamp],
     queryFn: async () => {
-      if (listId) {
-        const response = await fetch(`/api/word-lists/${listId}`);
-        if (!response.ok) throw new Error('Failed to fetch custom word list');
-        const listData = await response.json();
-        let wordsArray = listData.words.map((word: string, index: number) => ({
-          id: index + 1,
-          word,
-          difficulty: 'custom' as DifficultyLevel,
-        }));
-        
-        // Randomize word order
-        wordsArray = shuffleArray(wordsArray);
-        
-        // For quiz mode, limit to 10 words if quizCount is "10"
-        if (gameMode === "quiz" && quizCount === "10") {
-          wordsArray = wordsArray.slice(0, 10);
-        }
-        
-        return wordsArray;
-      } else {
-        // Fetch all words for the difficulty level (no limit)
-        const response = await fetch(`/api/words/${difficulty}`);
-        if (!response.ok) throw new Error('Failed to fetch words');
-        let wordsArray = await response.json();
-        
-        // Randomize word order
-        wordsArray = shuffleArray(wordsArray);
-        
-        // For quiz mode, limit to 10 words if quizCount is "10"
-        if (gameMode === "quiz" && quizCount === "10") {
-          wordsArray = wordsArray.slice(0, 10);
-        }
-        
-        return wordsArray;
+      // Safety check: This should never execute without listId due to enabled guard,
+      // but we handle it gracefully just in case
+      if (!listId) {
+        console.warn('Query executed without listId - returning empty array');
+        return [];
       }
+      
+      const response = await fetch(`/api/word-lists/${listId}`);
+      if (!response.ok) throw new Error('Failed to fetch custom word list');
+      const listData = await response.json();
+      let wordsArray = listData.words.map((word: string, index: number) => ({
+        id: index + 1,
+        word,
+      }));
+      
+      // Randomize word order
+      wordsArray = shuffleArray(wordsArray);
+      
+      // For quiz mode, limit to 10 words if quizCount is "10"
+      if (gameMode === "quiz" && quizCount === "10") {
+        wordsArray = wordsArray.slice(0, 10);
+      }
+      
+      return wordsArray;
     },
-    enabled: !!difficulty || !!listId,
+    enabled: !!listId,
   });
 
-  // Fetch system word list ID for standard difficulties
-  const { data: systemWordList } = useQuery<{ id: number }>({
-    queryKey: ['/api/word-lists/system/id'],
-    enabled: !listId && !!difficulty, // Only fetch when playing with standard difficulty
-  });
-
-  // Use custom list ID if provided, otherwise use system list ID
-  const effectiveWordListId = listId ? parseInt(listId) : systemWordList?.id;
+  // Use the custom list ID for illustrations
+  const effectiveWordListId = listId ? parseInt(listId) : undefined;
 
   const { data: wordIllustrations } = useQuery<WordIllustration[]>({
     queryKey: ['/api/word-lists', effectiveWordListId, 'illustrations'],
@@ -350,11 +362,10 @@ export default function Game() {
   });
 
   useEffect(() => {
-    if ((difficulty || listId) && gameMode && !sessionId && user) {
-      const sessionDifficulty = listId ? 'custom' : difficulty;
-      createSessionMutation.mutate({ difficulty: sessionDifficulty, gameMode, userId: user.id });
+    if (listId && gameMode && !sessionId && user) {
+      createSessionMutation.mutate({ gameMode, userId: user.id });
     }
-  }, [difficulty, gameMode, sessionId, user, listId]);
+  }, [gameMode, sessionId, user, listId]);
 
   // Load available voices
   useEffect(() => {
@@ -986,19 +997,18 @@ export default function Game() {
         ? finalAccuracy
         : Math.round((correctCount / (words?.length || 10)) * 100);
       
-      console.log("Saving score to leaderboard:", { score, accuracy, difficulty, gameMode, sessionId });
+      console.log("Saving score to leaderboard:", { score, accuracy, gameMode, sessionId });
       
       saveScoreMutation.mutate({
         score,
         accuracy,
-        difficulty,
         gameMode,
         userId: user.id,
         sessionId,
       });
       setScoreSaved(true);
     }
-  }, [gameComplete, scoreSaved, score, gameMode, correctCount, finalAccuracy, words, difficulty, sessionId, user]);
+  }, [gameComplete, scoreSaved, score, gameMode, correctCount, finalAccuracy, words, sessionId, user]);
 
   // Timed mode: Single 60-second timer for entire game
   useEffect(() => {
@@ -1686,7 +1696,7 @@ export default function Game() {
       } else {
         const allAnswers = [...quizAnswers, { word: currentWord, userAnswer: userInput.trim(), isCorrect: correct }];
         const totalCorrect = allAnswers.filter(a => a.isCorrect).length;
-        const points = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : difficulty === "custom" ? 20 : 30;
+        const points = 20;
         setScore(totalCorrect * points);
         
         // Play celebration sound if all answers correct
@@ -1700,7 +1710,7 @@ export default function Game() {
       // Timed mode: No feedback, immediate next word
       if (correct) {
         playCorrectSound();
-        const points = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : difficulty === "custom" ? 20 : 30;
+        const points = 20;
         setScore(score + points + (streak * 5));
         setCorrectCount(correctCount + 1);
         const newStreak = streak + 1;
@@ -1729,7 +1739,7 @@ export default function Game() {
 
       if (correct) {
         playCorrectSound();
-        const points = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : difficulty === "custom" ? 20 : 30;
+        const points = 20;
         setScore(score + points + (streak * 5));
         setCorrectCount(correctCount + 1);
         const newStreak = streak + 1;
@@ -1873,7 +1883,7 @@ export default function Game() {
 
     if (correct) {
       playCorrectSound();
-      const points = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : difficulty === "custom" ? 20 : 30;
+      const points = 20;
       setScore(score + points + (streak * 5));
       setCorrectCount(correctCount + 1);
       const newStreak = streak + 1;
@@ -1896,7 +1906,7 @@ export default function Game() {
 
     if (correct) {
       playCorrectSound();
-      const points = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : difficulty === "custom" ? 20 : 30;
+      const points = 20;
       setScore(score + points + (streak * 5));
       setCorrectCount(correctCount + 1);
       const newStreak = streak + 1;
@@ -2084,7 +2094,7 @@ export default function Game() {
     let correctWords = 0;
     let incorrectWords = 0;
     let totalScore = 0;
-    const points = difficulty === "easy" ? 10 : difficulty === "medium" ? 20 : difficulty === "custom" ? 20 : 30;
+    const points = 20;
     
     // Check each entry
     crosswordGrid.entries.forEach(entry => {
@@ -2205,12 +2215,8 @@ export default function Game() {
     setDraggedLetterElement(null);
   };
 
-  // Validate difficulty AFTER all hooks
-  if ((!difficulty && !listId) || (difficulty && !["easy", "medium", "hard", "custom"].includes(difficulty))) {
-    setLocation("/");
-    return null;
-  }
-
+  // Note: listId validation is handled by Game wrapper component above
+  
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--page-game-bg))' }}>
@@ -2255,7 +2261,7 @@ export default function Game() {
                   {gameMode === "quiz" ? "Quiz Complete!" : "Amazing Work!"}
                 </h1>
                 <p className="text-lg text-gray-600 capitalize">
-                  {difficulty} Mode - {gameMode === "standard" ? "Practice" : gameMode === "timed" ? "Timed Challenge" : gameMode === "quiz" ? "Quiz Mode" : "Word Scramble"}
+                  {gameMode === "standard" ? "Practice" : gameMode === "timed" ? "Timed Challenge" : gameMode === "quiz" ? "Quiz Mode" : gameMode === "scramble" ? "Word Scramble" : gameMode === "mistake" ? "Mistake Mode" : "Crossword"}
                 </p>
               </motion.div>
             )}
@@ -2437,7 +2443,7 @@ export default function Game() {
     return (
       <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: 'hsl(var(--page-game-bg))' }}>
         <Card className="p-12 text-center space-y-6">
-          <p className="text-2xl">No words available for this difficulty.</p>
+          <p className="text-2xl">No words available.</p>
           <Button onClick={() => setLocation("/")} size="lg" data-testid="button-back-home">
             <Home className="w-5 h-5 mr-2" />
             Go Home

@@ -443,7 +443,7 @@ async function checkMerriamWebsterCollegiate(word: string): Promise<{ valid: boo
 }
 
 // Validate a single word using Merriam-Webster hierarchy (Learner's → Collegiate)
-async function validateSingleWord(word: string, difficulty: string, storage?: IStorage): Promise<{ word: string; isValid: boolean; skipped: boolean }> {
+async function validateSingleWord(word: string, storage?: IStorage): Promise<{ word: string; isValid: boolean; skipped: boolean }> {
   const normalized = normalizeWord(word);
   
   // Check cache first
@@ -534,7 +534,6 @@ async function validateSingleWord(word: string, difficulty: string, storage?: IS
     try {
       await storage.upsertWord(
         word,
-        difficulty,
         finalMetadata.definition,
         finalMetadata.example,
         finalMetadata.origin,
@@ -549,7 +548,7 @@ async function validateSingleWord(word: string, difficulty: string, storage?: IS
 }
 
 // Validate multiple words with concurrency control
-async function validateWordsInBatches(words: string[], difficulty: string, storage?: IStorage): Promise<ValidationResult> {
+async function validateWordsInBatches(words: string[], storage?: IStorage): Promise<ValidationResult> {
   const result: ValidationResult = {
     valid: [],
     invalid: [],
@@ -563,7 +562,7 @@ async function validateWordsInBatches(words: string[], difficulty: string, stora
   for (let i = 0; i < words.length; i += MAX_CONCURRENT) {
     const batch = words.slice(i, i + MAX_CONCURRENT);
     const results = await Promise.all(
-      batch.map(word => validateSingleWord(word, difficulty, storage))
+      batch.map(word => validateSingleWord(word, storage))
     );
     
     for (const { word, isValid, skipped } of results) {
@@ -581,7 +580,7 @@ async function validateWordsInBatches(words: string[], difficulty: string, stora
 }
 
 // Main validation function
-export async function validateWords(words: string[], difficulty: string = 'medium', storage?: IStorage): Promise<ValidationResult> {
+export async function validateWords(words: string[], storage?: IStorage): Promise<ValidationResult> {
   // Filter out empty words
   const filteredWords = words.filter(w => w && w.trim().length > 0);
   
@@ -589,7 +588,7 @@ export async function validateWords(words: string[], difficulty: string = 'mediu
     return { valid: [], invalid: [], skipped: [] };
   }
   
-  return await validateWordsInBatches(filteredWords, difficulty, storage);
+  return await validateWordsInBatches(filteredWords, storage);
 }
 
 // Function to clear cache (for testing or admin purposes)

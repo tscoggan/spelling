@@ -50,7 +50,6 @@ export default function WordListsPage() {
   const [selectedListForPlay, setSelectedListForPlay] = useState<CustomWordList | null>(null);
   const [formData, setFormData] = useState({
     name: "",
-    difficulty: "medium" as "easy" | "medium" | "hard",
     words: "",
     visibility: "private" as "public" | "private" | "groups",
     assignImages: true,
@@ -113,7 +112,6 @@ export default function WordListsPage() {
       const words = data.words.split('\n').map(w => w.trim()).filter(w => w.length > 0);
       const payload: any = {
         name: data.name,
-        difficulty: data.difficulty,
         words,
         visibility: data.visibility,
         assignImages: data.assignImages,
@@ -168,7 +166,6 @@ export default function WordListsPage() {
     mutationFn: async ({ id, data }: { id: number; data: Partial<typeof formData> }) => {
       const updates: any = {
         name: data.name,
-        difficulty: data.difficulty,
         visibility: data.visibility,
         assignImages: data.assignImages,
         gradeLevel: data.gradeLevel || undefined,
@@ -257,7 +254,6 @@ export default function WordListsPage() {
   const resetForm = () => {
     setFormData({
       name: "",
-      difficulty: "medium",
       words: "",
       visibility: "private",
       assignImages: true,
@@ -272,7 +268,6 @@ export default function WordListsPage() {
     const sharedGroups = (list as any).sharedGroups || [];
     setFormData({
       name: list.name,
-      difficulty: list.difficulty as "easy" | "medium" | "hard",
       words: list.words.join('\n'),
       visibility,
       assignImages: (list as any).assignImages !== false,
@@ -409,9 +404,9 @@ export default function WordListsPage() {
     
     // For quiz mode, default to "all" words
     if (mode === "quiz") {
-      setLocation(`/game?listId=${selectedListForPlay.id}&difficulty=custom&mode=${mode}&quizCount=all`);
+      setLocation(`/game?listId=${selectedListForPlay.id}&mode=${mode}&quizCount=all`);
     } else {
-      setLocation(`/game?listId=${selectedListForPlay.id}&difficulty=custom&mode=${mode}`);
+      setLocation(`/game?listId=${selectedListForPlay.id}&mode=${mode}`);
     }
     setGameModeDialogOpen(false);
   };
@@ -643,22 +638,6 @@ export default function WordListsPage() {
                       required
                       data-testid="input-list-name"
                     />
-                  </div>
-                  <div>
-                    <Label htmlFor="difficulty">Difficulty Level</Label>
-                    <Select
-                      value={formData.difficulty}
-                      onValueChange={(value: "easy" | "medium" | "hard") => setFormData({ ...formData, difficulty: value })}
-                    >
-                      <SelectTrigger id="difficulty" data-testid="select-difficulty">
-                        <SelectValue placeholder="Select difficulty" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="easy" data-testid="difficulty-easy">Easy</SelectItem>
-                        <SelectItem value="medium" data-testid="difficulty-medium">Medium</SelectItem>
-                        <SelectItem value="hard" data-testid="difficulty-hard">Hard</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
                   <div>
                     <Label htmlFor="gradeLevel">Grade Level (optional)</Label>
