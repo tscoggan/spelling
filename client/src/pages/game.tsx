@@ -2355,7 +2355,7 @@ export default function Game() {
         }}
       ></div>
       <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
-      <header className="p-4 md:p-6 bg-white/60 dark:bg-black/60 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 relative z-10">
+      <header className="p-4 md:p-6 bg-white/60 dark:bg-black/60 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 relative z-10 md:hidden">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 flex-wrap">
           <Button
             variant="outline"
@@ -2465,7 +2465,7 @@ export default function Game() {
       </header>
 
       <main 
-        className="flex-1 flex items-center justify-center p-4 md:p-6 relative z-10 overflow-auto md:overflow-visible md:pb-0 md:min-h-[calc(100vh-5rem)]"
+        className="flex-1 flex items-center justify-center p-4 md:p-6 relative z-10 overflow-auto md:min-h-screen md:overflow-visible md:pb-0"
         style={{ paddingBottom: keyboardHeight > 0 ? `${keyboardHeight + 16}px` : undefined }}
       >
         {loadingCrossword ? (
@@ -2565,7 +2565,7 @@ export default function Game() {
         ) : (
           <div className="w-full max-w-3xl space-y-6">
             {gameMode !== "crossword" && (
-              <div className="space-y-4">
+              <div className="space-y-4 md:hidden">
                 <div className="flex items-center justify-between text-base md:text-lg font-semibold">
                   <span className="text-gray-600" data-testid="text-word-progress">
                     Word {currentWordIndex + 1} of {words.length}
