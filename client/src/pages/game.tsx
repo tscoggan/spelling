@@ -1171,78 +1171,74 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   // Function to center game card on mobile when keyboard appears or word changes
   const centerGameCard = useCallback(() => {
     if (gameCardRef.current && window.innerWidth < 768) {
-      // Delay to allow content (images, animations) and keyboard to stabilize
-      // 300ms ensures Framer Motion animations (400ms) have time to render
+      // 500ms delay ensures Framer Motion animations (400ms) complete before scrolling
+      // This prevents race conditions on slower Android devices
       setTimeout(() => {
         gameCardRef.current?.scrollIntoView({
           behavior: 'smooth',
           block: 'center',
           inline: 'nearest'
         });
-      }, 300);
+      }, 500);
     }
   }, []);
 
   // Calculate dynamic font size for input fields based on word length
   // Returns both class name and inline style for precise scaling
+  // Font sizes match hint letter sizes for consistency
   const getInputFontSize = (wordLength: number): { className: string; fontSize?: string } => {
     const isIPad = isIPadDevice();
     
-    // Calculate what font size we need to fit the word
-    const charWidth = inputContainerWidth / wordLength;
-    const calculatedFontSize = Math.max(charWidth * 0.85, 10); // 85% of char width, min 10px
-    
-    // Define Tailwind font sizes in px (approximate)
-    // iPad gets larger font sizes for better readability
-    const fontSizes = {
-      mobile: { '2xl': 24, 'xl': 20, 'lg': 18, 'base': 16 },
-      ipad: { '4xl': 36, '3xl': 30, '2xl': 24, 'xl': 20 },  // Same as desktop for better readability
-      desktop: { '4xl': 36, '3xl': 30, '2xl': 24, 'xl': 20 }
-    };
-    
-    // Select appropriate Tailwind class if calculated size is close to a standard size
-    // This gives us better typography when possible, falls back to custom for tight fits
+    // Use same sizing logic as hint letters for consistent appearance
+    // Shorter words get larger font sizes, longer words get smaller sizes
     if (isIPad) {
-      // iPad uses desktop-sized classes
-      const sizes = fontSizes.ipad;
-      if (wordLength <= 8 && calculatedFontSize >= sizes['4xl']) {
+      // iPad uses larger font sizes for better readability
+      if (wordLength <= 8) {
         return { className: 'text-4xl uppercase' };
-      } else if (wordLength <= 12 && calculatedFontSize >= sizes['3xl']) {
+      } else if (wordLength <= 12) {
         return { className: 'text-3xl uppercase' };
-      } else if (wordLength <= 16 && calculatedFontSize >= sizes['2xl']) {
+      } else if (wordLength <= 16) {
         return { className: 'text-2xl uppercase' };
-      } else if (calculatedFontSize >= sizes.xl) {
+      } else if (wordLength <= 20) {
         return { className: 'text-xl uppercase' };
+      } else {
+        // For very long words, calculate to ensure fit
+        const charWidth = inputContainerWidth / wordLength;
+        const fontSize = Math.max(charWidth * 0.85, 14);
+        return { className: 'uppercase', fontSize: `${fontSize}px` };
       }
     } else if (isMobileViewport) {
-      const sizes = fontSizes.mobile;
-      if (wordLength <= 8 && calculatedFontSize >= sizes['2xl']) {
+      if (wordLength <= 8) {
         return { className: 'text-2xl uppercase' };
-      } else if (wordLength <= 12 && calculatedFontSize >= sizes.xl) {
+      } else if (wordLength <= 12) {
         return { className: 'text-xl uppercase' };
-      } else if (wordLength <= 16 && calculatedFontSize >= sizes.lg) {
+      } else if (wordLength <= 16) {
         return { className: 'text-lg uppercase' };
-      } else if (calculatedFontSize >= sizes.base) {
+      } else if (wordLength <= 20) {
         return { className: 'text-base uppercase' };
+      } else {
+        // For very long words, calculate to ensure fit
+        const charWidth = inputContainerWidth / wordLength;
+        const fontSize = Math.max(charWidth * 0.85, 12);
+        return { className: 'uppercase', fontSize: `${fontSize}px` };
       }
     } else {
-      const sizes = fontSizes.desktop;
-      if (wordLength <= 8 && calculatedFontSize >= sizes['4xl']) {
+      // Desktop
+      if (wordLength <= 8) {
         return { className: 'text-4xl uppercase' };
-      } else if (wordLength <= 12 && calculatedFontSize >= sizes['3xl']) {
+      } else if (wordLength <= 12) {
         return { className: 'text-3xl uppercase' };
-      } else if (wordLength <= 16 && calculatedFontSize >= sizes['2xl']) {
+      } else if (wordLength <= 16) {
         return { className: 'text-2xl uppercase' };
-      } else if (calculatedFontSize >= sizes.xl) {
+      } else if (wordLength <= 20) {
         return { className: 'text-xl uppercase' };
+      } else {
+        // For very long words, calculate to ensure fit
+        const charWidth = inputContainerWidth / wordLength;
+        const fontSize = Math.max(charWidth * 0.85, 14);
+        return { className: 'uppercase', fontSize: `${fontSize}px` };
       }
     }
-    
-    // For any word that doesn't fit standard sizes, use calculated font size
-    // For iPad, guarantee at least 30px (text-3xl equivalent) for readability
-    // This ensures Quiz mode and other modes have large enough text on iPad
-    const finalFontSize = isIPad ? Math.max(calculatedFontSize * 1.5, 30) : calculatedFontSize;
-    return { className: 'uppercase', fontSize: `${finalFontSize}px` };
   };
 
   // Calculate dynamic sizing for word hint letters based on word length and container width
@@ -1320,15 +1316,15 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   useEffect(() => {
     // Only scroll on mobile when showing new word input (not feedback)
     if (currentWord && !showFeedback && window.innerWidth < 768 && gameCardRef.current) {
-      // Delay matches centerGameCard() to ensure consistent behavior with hint buttons
-      // 300ms allows Framer Motion animations (400ms) to render before scrolling
+      // 500ms delay ensures Framer Motion animations (400ms) complete before scrolling
+      // This prevents race conditions on slower Android devices
       const timeoutId = setTimeout(() => {
         gameCardRef.current?.scrollIntoView({
           behavior: 'smooth',
           block: 'center',
           inline: 'nearest'
         });
-      }, 300);
+      }, 500);
       
       // Cleanup: Cancel pending scroll if word changes again before timeout fires
       return () => clearTimeout(timeoutId);
@@ -2142,8 +2138,9 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     const defaultFontSize = 40;
     const defaultLineWidth = 30;
     
-    // Use measured container width
-    const containerWidth = scrambleContainerWidth;
+    // Use measured container width with safety margin to prevent overflow
+    // Subtract 32px to account for card padding/margins
+    const containerWidth = Math.max(scrambleContainerWidth - 32, 200);
     
     // Default gap size (gap-2 = 8px on mobile, gap-3 = 12px on desktop)
     const defaultGapSize = containerWidth < 768 ? 8 : 12;
@@ -2937,9 +2934,9 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                 <p className="text-gray-600">Click the play icon at the start of each word to hear the word</p>
               </div>
 
-              <div className="overflow-x-auto px-4 md:flex md:justify-center">
-                {/* Crossword Grid - Scrollable horizontally if too wide */}
-                <div className="inline-block min-w-fit" style={{ display: 'grid', gridTemplateColumns: `repeat(${crosswordGrid.cols}, 2.5rem)`, gap: '2px' }}>
+              <div className="overflow-x-auto px-4">
+                {/* Crossword Grid - Scrollable horizontally if too wide, left-aligned with symmetrical padding */}
+                <div className="inline-block min-w-fit pr-4" style={{ display: 'grid', gridTemplateColumns: `repeat(${crosswordGrid.cols}, 2.5rem)`, gap: '2px' }}>
                     {crosswordGrid.cells.map((row, rowIndex) => 
                       row.map((cell, colIndex) => {
                         const cellKey = `${rowIndex}-${colIndex}`;
@@ -3362,7 +3359,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                           </div>
                         ) : (
                           <div className="text-4xl md:text-5xl font-bold text-gray-800" data-testid="text-correct-word">
-                            {currentWord?.word}
+                            {currentWord?.word.toUpperCase()}
                           </div>
                         )}
                       </>
@@ -3398,14 +3395,14 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                               </div>
                               <p className="text-xl md:text-2xl text-gray-600">Correct spelling:</p>
                               <div className="text-4xl md:text-5xl font-bold text-gray-800" data-testid="text-correct-spelling">
-                                {currentWord?.word}
+                                {currentWord?.word.toUpperCase()}
                               </div>
                             </>
                           ) : (
                             <>
                               <p className="text-xl md:text-2xl text-gray-600">Correct spelling:</p>
                               <div className="text-4xl md:text-5xl font-bold text-gray-800" data-testid="text-correct-spelling">
-                                {currentWord?.word}
+                                {currentWord?.word.toUpperCase()}
                               </div>
                             </>
                           )}
