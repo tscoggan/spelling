@@ -1934,6 +1934,13 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     setUserInput("");
     setShowFeedback(false);
     
+    // Scroll game card into view on mobile to ensure next word is centered
+    setTimeout(() => {
+      if (gameCardRef.current) {
+        gameCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 50);
+    
     if (words && currentWordIndex < words.length - 1) {
       setCurrentWordIndex(currentWordIndex + 1);
     } else {
@@ -2811,10 +2818,9 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                 <p className="text-gray-600">Click the play icon at the start of each word to hear the word</p>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto px-4">
                 {/* Crossword Grid - Scrollable horizontally if too wide */}
-                <div className="flex justify-center min-w-full">
-                  <div className="inline-block" style={{ display: 'grid', gridTemplateColumns: `repeat(${crosswordGrid.cols}, 2.5rem)`, gap: '2px' }}>
+                <div className="inline-block min-w-fit" style={{ display: 'grid', gridTemplateColumns: `repeat(${crosswordGrid.cols}, 2.5rem)`, gap: '2px' }}>
                     {crosswordGrid.cells.map((row, rowIndex) => 
                       row.map((cell, colIndex) => {
                         const cellKey = `${rowIndex}-${colIndex}`;
@@ -2865,7 +2871,6 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                         );
                       })
                     )}
-                  </div>
                 </div>
               </div>
 
