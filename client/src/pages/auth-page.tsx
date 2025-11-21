@@ -44,6 +44,9 @@ export default function AuthPage() {
     email: "",
     selectedAvatar: avatarOptions[0].emoji,
   });
+  
+  const [customAvatarFile, setCustomAvatarFile] = useState<File | null>(null);
+  const [customAvatarPreview, setCustomAvatarPreview] = useState<string | null>(null);
 
   // Password reset dialog state
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
@@ -84,14 +87,70 @@ export default function AuthPage() {
     loginMutation.mutate(loginData);
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    registerMutation.mutate(registerData);
+    
+    let avatarUrl = registerData.selectedAvatar;
+    
+    // Upload custom avatar if selected
+    if (customAvatarFile && registerData.selectedAvatar === "custom") {
+      try {
+        const formData = new FormData();
+        formData.append('avatar', customAvatarFile);
+        
+        const uploadRes = await fetch('/api/upload-avatar', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!uploadRes.ok) {
+          throw new Error('Failed to upload avatar');
+        }
+        
+        const uploadData = await uploadRes.json();
+        avatarUrl = uploadData.avatarUrl;
+      } catch (error) {
+        toast({
+          title: "Avatar Upload Failed",
+          description: "Failed to upload custom avatar. Using default instead.",
+          variant: "destructive",
+        });
+        avatarUrl = avatarOptions[0].emoji; // Fallback to first emoji
+      }
+    }
+    
+    registerMutation.mutate({
+      ...registerData,
+      selectedAvatar: avatarUrl,
+    });
   };
 
   const handleResetPasswordRequest = (e: React.FormEvent) => {
     e.preventDefault();
     resetPasswordMutation.mutate(resetIdentifier);
+  };
+
+  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File Too Large",
+          description: "Avatar image must be less than 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setCustomAvatarFile(file);
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCustomAvatarPreview(reader.result as string);
+        setRegisterData({ ...registerData, selectedAvatar: "custom" });
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
@@ -258,7 +317,7 @@ export default function AuthPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="register-email">Email (used for password reset requests)</Label>
+                <Label htmlFor="register-email">Email</Label>
                 <Input
                   id="register-email"
                   type="email"
@@ -267,6 +326,7 @@ export default function AuthPage() {
                   placeholder="your.email@example.com"
                   data-testid="input-register-email"
                 />
+                <p className="text-sm text-gray-500">Used for password reset requests</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="register-username">Username</Label>
@@ -302,7 +362,11 @@ export default function AuthPage() {
                     <button
                       key={avatar.emoji}
                       type="button"
-                      onClick={() => setRegisterData({ ...registerData, selectedAvatar: avatar.emoji })}
+                      onClick={() => {
+                        setRegisterData({ ...registerData, selectedAvatar: avatar.emoji });
+                        setCustomAvatarFile(null);
+                        setCustomAvatarPreview(null);
+                      }}
                       className={`
                         aspect-square rounded-lg text-3xl flex items-center justify-center
                         transition-all hover-elevate active-elevate-2
@@ -317,6 +381,44 @@ export default function AuthPage() {
                       {avatar.emoji}
                     </button>
                   ))}
+                </div>
+                <div className="pt-2">
+                  <Label htmlFor="custom-avatar-upload" className="cursor-pointer">
+                    <div 
+                      className={`
+                        border-2 border-dashed rounded-lg p-4 flex items-center justify-center gap-3 transition-all hover-elevate active-elevate-2
+                        ${registerData.selectedAvatar === "custom"
+                          ? "border-purple-600 bg-purple-50"
+                          : "border-gray-300 bg-white"
+                        }
+                      `}
+                    >
+                      {customAvatarPreview ? (
+                        <>
+                          <img 
+                            src={customAvatarPreview} 
+                            alt="Custom avatar preview" 
+                            className="w-12 h-12 rounded-full object-cover"
+                          />
+                          <span className="text-sm font-medium">Custom Avatar Selected</span>
+                        </>
+                      ) : (
+                        <>
+                          <UserCircle className="w-6 h-6 text-gray-400" />
+                          <span className="text-sm font-medium">Upload Custom Avatar</span>
+                        </>
+                      )}
+                    </div>
+                    <Input
+                      id="custom-avatar-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarFileChange}
+                      className="hidden"
+                      data-testid="input-custom-avatar"
+                    />
+                  </Label>
+                  <p className="text-sm text-gray-500 mt-1">Max 5MB, JPG/PNG/GIF</p>
                 </div>
               </div>
               <Button

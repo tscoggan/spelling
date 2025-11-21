@@ -204,6 +204,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to reset password" });
     }
   });
+
+  // Avatar upload endpoint
+  const avatarUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only image files are allowed'));
+      }
+    }
+  });
+
+  app.post("/api/upload-avatar", avatarUpload.single('avatar'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const objectStorageService = new ObjectStorageService();
+      const fileExtension = req.file.originalname.split('.').pop() || 'jpg';
+      const filename = `avatar-${Date.now()}-${crypto.randomBytes(8).toString('hex')}.${fileExtension}`;
+      const objectPath = `/public/avatars/${filename}`;
+
+      await objectStorageService.uploadObject(objectPath, req.file.buffer);
+
+      const avatarUrl = `/objects${objectPath}`;
+      res.json({ avatarUrl });
+    } catch (error) {
+      console.error("Avatar upload error:", error);
+      res.status(500).json({ error: "Failed to upload avatar" });
+    }
+  });
   
   app.get("/api/words/by-text/:word", async (req, res) => {
     try {
