@@ -225,13 +225,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const objectStorageService = new ObjectStorageService();
-      const fileExtension = req.file.originalname.split('.').pop() || 'jpg';
-      const filename = `avatar-${Date.now()}-${crypto.randomBytes(8).toString('hex')}.${fileExtension}`;
-      const objectPath = `/public/avatars/${filename}`;
+      const contentType = req.file.mimetype || 'image/jpeg';
+      
+      // uploadImageBuffer handles deduplication and returns /objects/images/{hash}.{ext}
+      const avatarUrl = await objectStorageService.uploadImageBuffer(
+        req.file.buffer,
+        contentType
+      );
 
-      await objectStorageService.uploadObject(objectPath, req.file.buffer);
-
-      const avatarUrl = `/objects${objectPath}`;
       res.json({ avatarUrl });
     } catch (error) {
       console.error("Avatar upload error:", error);
