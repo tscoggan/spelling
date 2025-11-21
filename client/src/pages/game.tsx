@@ -198,12 +198,8 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   const [draggedLetterElement, setDraggedLetterElement] = useState<string | null>(null);
   const dropZoneRefs = useRef<(HTMLDivElement | null)[]>([]);
   
-  // Container ref for measuring width in scramble mode
+  // Container ref for measuring width in scramble mode (for drag/drop positioning)
   const scrambleContainerRef = useRef<HTMLDivElement>(null);
-  // Initialize with viewport-based estimate to avoid zero-width fallback
-  const [scrambleContainerWidth, setScrambleContainerWidth] = useState<number>(
-    typeof window !== 'undefined' ? window.innerWidth - 32 : 0
-  );
   
   // Mistake mode states
   const [mistakeChoices, setMistakeChoices] = useState<string[]>([]);
@@ -986,31 +982,46 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     }
   }, [currentWord]);
 
-  // Auto-focus input when word changes (fallback + immediate focus)
+  // Auto-focus input when word changes
   useEffect(() => {
     if (currentWord && !showFeedback) {
       const isIOS = isIOSDevice();
       
-      // Multiple focus attempts to ensure it works
+      // Focus input with multiple attempts for reliability
       const focusInput = () => {
         if (inputRef.current) {
-          inputRef.current.focus();
+          const input = inputRef.current;
           
-          // For iOS, also trigger click to ensure keyboard opens
+          // Standard focus first
+          input.focus();
+          
+          // iOS-specific: setSelectionRange can help trigger keyboard
           if (isIOS) {
-            inputRef.current.click();
+            try {
+              // Move cursor to end of input
+              const length = input.value.length;
+              input.setSelectionRange(length, length);
+              
+              // Trigger click as additional fallback
+              input.click();
+              
+              // Force readonly toggle trick (iOS specific)
+              const wasReadOnly = input.readOnly;
+              input.readOnly = false;
+              input.focus();
+              input.readOnly = wasReadOnly;
+            } catch (e) {
+              // Silently handle any errors
+            }
           }
         }
       };
       
-      // Try immediately (critical for iOS keyboard)
+      // Try immediately
       focusInput();
       
-      // Try after short delay (for initial render)
-      setTimeout(focusInput, 100);
-      
-      // Try after longer delay (for slower systems)
-      setTimeout(focusInput, 300);
+      // Try after animation completes (400ms Framer Motion + buffer)
+      setTimeout(focusInput, 450);
     }
   }, [currentWordIndex, showFeedback]);
 
@@ -1172,15 +1183,17 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     };
   }, [gameMode]);
 
-  // Function to center game card on mobile when keyboard appears or word changes
+  // Function to scroll to word image on mobile, hiding header/progress bar
   const centerGameCard = useCallback(() => {
-    if (gameCardRef.current && window.innerWidth < 768) {
+    if (window.innerWidth < 768) {
       // 500ms delay ensures Framer Motion animations (400ms) complete before scrolling
       // This prevents race conditions on slower Android devices
       setTimeout(() => {
-        gameCardRef.current?.scrollIntoView({
+        // Scroll to word image with block: 'start' to hide header, progress bar, and title
+        // This shows only the word image and buttons, matching user's expectation
+        wordImageRef.current?.scrollIntoView({
           behavior: 'smooth',
-          block: 'center',
+          block: 'start',
           inline: 'nearest'
         });
       }, 500);
@@ -1188,23 +1201,24 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   }, []);
 
   // Calculate dynamic font size for input fields based on word length
-  // Returns both class name and inline style for precise scaling
+  // Returns inline font size to override Input component's default text-base/text-sm
   // Font sizes match hint letter sizes for consistency
-  const getInputFontSize = (wordLength: number): { className: string; fontSize?: string } => {
+  const getInputFontSize = (wordLength: number): { className: string; fontSize: string } => {
     const isIPad = isIPadDevice();
     
     // Use same sizing logic as hint letters for consistent appearance
-    // Shorter words get larger font sizes, longer words get smaller sizes
+    // Tailwind text sizes: 4xl=36px, 3xl=30px, 2xl=24px, xl=20px, lg=18px, base=16px
+    // Must use inline styles because Input component has text-base/md:text-sm that override classes
     if (isIPad) {
       // iPad uses larger font sizes for better readability
       if (wordLength <= 8) {
-        return { className: 'text-4xl uppercase' };
+        return { className: 'uppercase', fontSize: '36px' }; // text-4xl equivalent
       } else if (wordLength <= 12) {
-        return { className: 'text-3xl uppercase' };
+        return { className: 'uppercase', fontSize: '30px' }; // text-3xl equivalent
       } else if (wordLength <= 16) {
-        return { className: 'text-2xl uppercase' };
+        return { className: 'uppercase', fontSize: '24px' }; // text-2xl equivalent
       } else if (wordLength <= 20) {
-        return { className: 'text-xl uppercase' };
+        return { className: 'uppercase', fontSize: '20px' }; // text-xl equivalent
       } else {
         // For very long words, calculate to ensure fit
         const charWidth = inputContainerWidth / wordLength;
@@ -1213,13 +1227,13 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
       }
     } else if (isMobileViewport) {
       if (wordLength <= 8) {
-        return { className: 'text-2xl uppercase' };
+        return { className: 'uppercase', fontSize: '24px' }; // text-2xl equivalent
       } else if (wordLength <= 12) {
-        return { className: 'text-xl uppercase' };
+        return { className: 'uppercase', fontSize: '20px' }; // text-xl equivalent
       } else if (wordLength <= 16) {
-        return { className: 'text-lg uppercase' };
+        return { className: 'uppercase', fontSize: '18px' }; // text-lg equivalent
       } else if (wordLength <= 20) {
-        return { className: 'text-base uppercase' };
+        return { className: 'uppercase', fontSize: '16px' }; // text-base equivalent
       } else {
         // For very long words, calculate to ensure fit
         const charWidth = inputContainerWidth / wordLength;
@@ -1229,13 +1243,13 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     } else {
       // Desktop
       if (wordLength <= 8) {
-        return { className: 'text-4xl uppercase' };
+        return { className: 'uppercase', fontSize: '36px' }; // text-4xl equivalent
       } else if (wordLength <= 12) {
-        return { className: 'text-3xl uppercase' };
+        return { className: 'uppercase', fontSize: '30px' }; // text-3xl equivalent
       } else if (wordLength <= 16) {
-        return { className: 'text-2xl uppercase' };
+        return { className: 'uppercase', fontSize: '24px' }; // text-2xl equivalent
       } else if (wordLength <= 20) {
-        return { className: 'text-xl uppercase' };
+        return { className: 'uppercase', fontSize: '20px' }; // text-xl equivalent
       } else {
         // For very long words, calculate to ensure fit
         const charWidth = inputContainerWidth / wordLength;
@@ -1393,41 +1407,6 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     };
   }, [currentWordIndex, gameMode, showWordHints]); // Remeasure on word change, mode change, or hints toggle
 
-  // Measure scramble container width for dynamic tile sizing (use useLayoutEffect to measure before render)
-  useLayoutEffect(() => {
-    if (gameMode !== "scramble") {
-      return;
-    }
-
-    const measureWidth = () => {
-      if (scrambleContainerRef.current) {
-        const rect = scrambleContainerRef.current.getBoundingClientRect();
-        if (rect.width > 0) {
-          setScrambleContainerWidth(rect.width);
-        }
-      }
-    };
-
-    // Measure immediately (synchronously before paint)
-    measureWidth();
-
-    // Observe size changes
-    let resizeObserver: ResizeObserver | null = null;
-    if (scrambleContainerRef.current) {
-      resizeObserver = new ResizeObserver(measureWidth);
-      resizeObserver.observe(scrambleContainerRef.current);
-    }
-
-    // Also listen to window resize and orientation change
-    window.addEventListener('resize', measureWidth);
-    window.addEventListener('orientationchange', measureWidth);
-
-    return () => {
-      resizeObserver?.disconnect();
-      window.removeEventListener('resize', measureWidth);
-      window.removeEventListener('orientationchange', measureWidth);
-    };
-  }, [gameMode]); // Only depend on gameMode, not currentWord, to persist width across word changes
 
   // Mobile: Keep keyboard open for typing game modes
   useEffect(() => {
@@ -2136,18 +2115,21 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
 
   // Calculate dynamic tile size for scramble mode to fit all letters in one row
   const getTileSize = (wordLength: number) => {
-    // Default tile sizes (reverted to previous settings)
+    // Default tile sizes
     const defaultWidth = 60;
     const defaultHeight = 90;
     const defaultFontSize = 40;
     const defaultLineWidth = 30;
     
-    // Use measured container width with safety margin to prevent overflow
-    // Subtract 32px to account for card padding/margins
-    const containerWidth = Math.max(scrambleContainerWidth - 32, 200);
+    // Measure Card width and subtract padding to get available width
+    // Card has p-6 (48px total) on mobile, md:px-12 (96px total) on desktop
+    const isMobile = window.innerWidth < 768;
+    const cardPadding = isMobile ? 48 : 96; // 24px * 2 or 48px * 2
+    const cardWidth = gameCardRef.current?.clientWidth || (isMobile ? 400 : 700);
+    const containerWidth = Math.max(cardWidth - cardPadding, 200);
     
     // Default gap size (gap-2 = 8px on mobile, gap-3 = 12px on desktop)
-    const defaultGapSize = containerWidth < 768 ? 8 : 12;
+    const defaultGapSize = isMobile ? 8 : 12;
     
     // Calculate total width needed with default sizes
     const totalGaps = (wordLength - 1) * defaultGapSize;
@@ -2642,8 +2624,8 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
             {gameMode === "crossword" && completedGrid && (
               <div className="space-y-4">
                 <h3 className="text-xl font-bold text-gray-800 text-center">Completed Puzzle</h3>
-                <div className="overflow-x-auto px-4 md:flex md:justify-center">
-                  <div className="inline-block min-w-fit" style={{ display: 'grid', gridTemplateColumns: `repeat(${completedGrid.grid.cols}, 2.5rem)`, gap: '2px' }}>
+                <div className="overflow-x-auto px-4">
+                  <div className="inline-block min-w-fit pr-4" style={{ display: 'grid', gridTemplateColumns: `repeat(${completedGrid.grid.cols}, 2.5rem)`, gap: '2px' }}>
                     {completedGrid.grid.cells.map((row, rowIndex) => 
                       row.map((cell, colIndex) => {
                         if (cell.isBlank) {
@@ -3395,7 +3377,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                             <>
                               <p className="text-xl md:text-2xl text-gray-600">You wrote:</p>
                               <div className="text-3xl md:text-4xl font-semibold text-gray-700 line-through" data-testid="text-user-answer">
-                                {userInput}
+                                {userInput.toUpperCase()}
                               </div>
                               <p className="text-xl md:text-2xl text-gray-600">Correct spelling:</p>
                               <div className="text-4xl md:text-5xl font-bold text-gray-800" data-testid="text-correct-spelling">
