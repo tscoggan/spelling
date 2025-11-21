@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -94,6 +94,13 @@ export default function Game() {
   const [touchPosition, setTouchPosition] = useState<{x: number; y: number} | null>(null);
   const [draggedLetterElement, setDraggedLetterElement] = useState<string | null>(null);
   const dropZoneRefs = useRef<(HTMLDivElement | null)[]>([]);
+  
+  // Container ref for measuring width in scramble mode
+  const scrambleContainerRef = useRef<HTMLDivElement>(null);
+  // Initialize with viewport-based estimate to avoid zero-width fallback
+  const [scrambleContainerWidth, setScrambleContainerWidth] = useState<number>(
+    typeof window !== 'undefined' ? window.innerWidth - 32 : 0
+  );
   
   // Mistake mode states
   const [mistakeChoices, setMistakeChoices] = useState<string[]>([]);
@@ -1048,6 +1055,42 @@ export default function Game() {
     };
   }, [gameMode]);
 
+  // Measure scramble container width for dynamic tile sizing (use useLayoutEffect to measure before render)
+  useLayoutEffect(() => {
+    if (gameMode !== "scramble") {
+      return;
+    }
+
+    const measureWidth = () => {
+      if (scrambleContainerRef.current) {
+        const rect = scrambleContainerRef.current.getBoundingClientRect();
+        if (rect.width > 0) {
+          setScrambleContainerWidth(rect.width);
+        }
+      }
+    };
+
+    // Measure immediately (synchronously before paint)
+    measureWidth();
+
+    // Observe size changes
+    let resizeObserver: ResizeObserver | null = null;
+    if (scrambleContainerRef.current) {
+      resizeObserver = new ResizeObserver(measureWidth);
+      resizeObserver.observe(scrambleContainerRef.current);
+    }
+
+    // Also listen to window resize and orientation change
+    window.addEventListener('resize', measureWidth);
+    window.addEventListener('orientationchange', measureWidth);
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', measureWidth);
+      window.removeEventListener('orientationchange', measureWidth);
+    };
+  }, [gameMode]); // Only depend on gameMode, not currentWord, to persist width across word changes
+
   // Mobile: Keep keyboard open for typing game modes
   useEffect(() => {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -1736,6 +1779,41 @@ export default function Game() {
     newPlaced[targetIndex] = null;
     setPlacedLetters(newPlaced);
     setScrambledLetters(newScrambled);
+  };
+
+  // Calculate dynamic tile size for scramble mode to fit all letters in one row
+  const getTileSize = (wordLength: number) => {
+    // Use measured container width (should always be available due to initialization)
+    const containerWidth = scrambleContainerWidth;
+    
+    // Start with default gap size (gap-2 = 8px on mobile, gap-3 = 12px on desktop)
+    let gapSize = containerWidth < 768 ? 8 : 12;
+    
+    // Calculate total gap width between tiles
+    let totalGaps = (wordLength - 1) * gapSize;
+    
+    // Calculate available width for all tiles
+    let availableWidth = containerWidth - totalGaps;
+    
+    // Dynamically reduce gap size if needed to fit all tiles on one row
+    // Reduce gaps down to 0 if necessary for very long words
+    while (availableWidth < wordLength && gapSize > 0) {
+      gapSize--;
+      totalGaps = (wordLength - 1) * gapSize;
+      availableWidth = containerWidth - totalGaps;
+    }
+    
+    // Calculate tile width to fit exactly in available space
+    // Ensure at least 1px width to prevent layout breakage
+    const width = Math.max(1, Math.floor(availableWidth / wordLength));
+    
+    // Calculate proportional dimensions
+    // All dimensions scale from width - tiles may be very small for extremely long words
+    const height = Math.max(1, Math.floor(width * 1.5)); // Maintain 2:3 aspect ratio, min 1px
+    const fontSize = Math.max(1, Math.floor(width * 0.65)); // Font scales with width, min 1px
+    const lineWidth = Math.max(1, Math.floor(width * 0.5)); // Line width scales with tile width, min 1px
+    
+    return { width, height, fontSize, lineWidth };
   };
 
   const handleScrambleSubmit = () => {
@@ -2637,22 +2715,9 @@ export default function Game() {
                     ) : gameMode === "scramble" && currentWord ? (
                       <div className="space-y-8 overscroll-contain">
                         {/* Drop zones - blank spaces to place letters */}
-                        <div className="flex items-center justify-center gap-2 md:gap-3">
+                        <div className="flex items-center justify-center gap-2 md:gap-3" ref={scrambleContainerRef}>
                           {placedLetters.map((letter, index) => {
-                            const wordLength = currentWord.word.length;
-                            // Scale tile size based on word length to prevent wrapping
-                            const tileSize = wordLength >= 10 ? 'w-8 h-12 md:w-12 md:h-16' 
-                              : wordLength >= 8 ? 'w-9 h-14 md:w-14 md:h-16' 
-                              : wordLength >= 6 ? 'w-10 h-14 md:w-16 md:h-20' 
-                              : 'w-12 h-16 md:w-16 md:h-20';
-                            const textSize = wordLength >= 10 ? 'text-lg md:text-2xl' 
-                              : wordLength >= 8 ? 'text-xl md:text-3xl' 
-                              : wordLength >= 6 ? 'text-xl md:text-3xl' 
-                              : 'text-2xl md:text-4xl';
-                            const lineWidth = wordLength >= 10 ? 'w-4 md:w-6' 
-                              : wordLength >= 8 ? 'w-5 md:w-7' 
-                              : wordLength >= 6 ? 'w-5 md:w-7' 
-                              : 'w-6 md:w-8';
+                            const tileSize = getTileSize(currentWord.word.length);
                             
                             return (
                               <div
@@ -2663,16 +2728,26 @@ export default function Game() {
                                 onDrop={() => handleDrop(index)}
                               >
                                 <div
-                                  className={`${tileSize} rounded-xl border-2 border-dashed border-primary bg-purple-50 flex items-center justify-center cursor-pointer hover-elevate active-elevate-2 touch-none`}
+                                  className="rounded-xl border-2 border-dashed border-primary bg-purple-50 flex items-center justify-center cursor-pointer hover-elevate active-elevate-2 touch-none"
+                                  style={{
+                                    width: `${tileSize.width}px`,
+                                    height: `${tileSize.height}px`,
+                                  }}
                                   data-testid={`drop-zone-${index}`}
                                   onClick={() => handleRemoveLetter(index)}
                                 >
                                   {letter ? (
-                                    <span className={`${textSize} font-bold text-gray-800`}>
+                                    <span 
+                                      className="font-bold text-gray-800"
+                                      style={{ fontSize: `${tileSize.fontSize}px` }}
+                                    >
                                       {letter}
                                     </span>
                                   ) : (
-                                    <div className={`${lineWidth} h-0.5 bg-gray-400`}></div>
+                                    <div 
+                                      className="h-0.5 bg-gray-400"
+                                      style={{ width: `${tileSize.lineWidth}px` }}
+                                    ></div>
                                   )}
                                 </div>
                               </div>
@@ -2683,16 +2758,7 @@ export default function Game() {
                         {/* Draggable letter tiles */}
                         <div className="flex items-center justify-center gap-2 md:gap-3" onTouchMove={handleTouchMove}>
                           {scrambledLetters.map((letter, index) => {
-                            const wordLength = currentWord.word.length;
-                            // Scale tile size based on word length to prevent wrapping
-                            const tileSize = wordLength >= 10 ? 'w-8 h-12 md:w-12 md:h-16' 
-                              : wordLength >= 8 ? 'w-9 h-14 md:w-14 md:h-16' 
-                              : wordLength >= 6 ? 'w-10 h-14 md:w-16 md:h-20' 
-                              : 'w-12 h-16 md:w-16 md:h-20';
-                            const textSize = wordLength >= 10 ? 'text-lg md:text-2xl' 
-                              : wordLength >= 8 ? 'text-xl md:text-3xl' 
-                              : wordLength >= 6 ? 'text-xl md:text-3xl' 
-                              : 'text-2xl md:text-4xl';
+                            const tileSize = getTileSize(currentWord.word.length);
                             
                             return letter && (
                               <div
@@ -2701,10 +2767,17 @@ export default function Game() {
                                 onDragStart={() => handleDragStart(letter, index)}
                                 onTouchStart={(e) => handleTouchStart(e, letter, index)}
                                 onTouchEnd={handleTouchEnd}
-                                className={`${tileSize} rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-lg flex items-center justify-center cursor-move hover-elevate active-elevate-2 touch-none`}
+                                className="rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-lg flex items-center justify-center cursor-move hover-elevate active-elevate-2 touch-none"
+                                style={{
+                                  width: `${tileSize.width}px`,
+                                  height: `${tileSize.height}px`,
+                                }}
                                 data-testid={`letter-tile-${index}`}
                               >
-                                <span className={`${textSize} font-bold text-gray-800 select-none`}>
+                                <span 
+                                  className="font-bold text-gray-800 select-none"
+                                  style={{ fontSize: `${tileSize.fontSize}px` }}
+                                >
                                   {letter}
                                 </span>
                               </div>
