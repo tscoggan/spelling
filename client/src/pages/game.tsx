@@ -47,6 +47,36 @@ interface QuizAnswer {
   isCorrect: boolean;
 }
 
+// Helper function for robust iOS detection (including iPads requesting desktop sites)
+const isIOSDevice = (): boolean => {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return false;
+  }
+  
+  // Check user agent for iOS devices
+  const userAgent = navigator.userAgent;
+  const isIOSUserAgent = /iPhone|iPad|iPod/i.test(userAgent);
+  
+  // Additional check for iPads that request desktop site
+  // iPadOS 13+ may report as Mac, but has touch support
+  const isMacWithTouch = /Macintosh/i.test(userAgent) && navigator.maxTouchPoints > 1;
+  
+  // Check platform (iOS 13+)
+  const isIOSPlatform = /iPhone|iPad|iPod/.test(navigator.platform);
+  
+  return isIOSUserAgent || isMacWithTouch || isIOSPlatform;
+};
+
+// Helper function for general mobile detection
+const isMobileDevice = (): boolean => {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return false;
+  }
+  
+  // Include iOS devices plus other mobile platforms
+  return isIOSDevice() || /Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
 export default function Game() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
@@ -351,6 +381,17 @@ export default function Game() {
         if (savedVoice && englishVoices.find(v => v.name === savedVoice)) {
           setSelectedVoice(savedVoice);
         } else if (englishVoices.length > 0) {
+          // On iOS devices, default to Samantha if available
+          if (isIOSDevice()) {
+            const samanthaVoice = englishVoices.find(v => 
+              v.name.toLowerCase().includes('samantha')
+            );
+            if (samanthaVoice) {
+              setSelectedVoice(samanthaVoice.name);
+              return;
+            }
+          }
+          // Fallback to first available voice
           setSelectedVoice(englishVoices[0].name);
         }
       } catch (error) {
@@ -1019,7 +1060,7 @@ export default function Game() {
     }
     
     // Only apply for mobile devices and typing game modes
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isMobile = isMobileDevice();
     const isTypingMode = gameMode !== "mistake" && gameMode !== "scramble" && gameMode !== "crossword";
     
     if (!isMobile || !isTypingMode) {
@@ -1093,7 +1134,7 @@ export default function Game() {
 
   // Mobile: Keep keyboard open for typing game modes
   useEffect(() => {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isMobile = isMobileDevice();
     const isTypingMode = gameMode !== "mistake" && gameMode !== "scramble" && gameMode !== "crossword";
     
     if (!isMobile || !isTypingMode || gameComplete || showFeedback) {
@@ -2433,7 +2474,7 @@ export default function Game() {
         }}
       ></div>
       <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
-      <header className="p-4 md:px-2 md:pt-2 md:pb-0 bg-white/60 dark:bg-black/60 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 relative z-10">
+      <header className="p-4 md:px-2 md:py-2 bg-white/60 dark:bg-black/60 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 relative z-10">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 md:gap-2 flex-wrap">
           <Button
             variant="outline"

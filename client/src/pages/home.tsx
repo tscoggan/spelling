@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, Sparkles, Trophy, Clock, Target, List, ChevronRight, Lock, Globe, Shuffle, AlertCircle, Grid3x3, Users } from "lucide-react";
 import type { DifficultyLevel, GameMode } from "@shared/schema";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Dialog,
   DialogContent,
@@ -37,11 +38,13 @@ interface CustomWordList {
 
 export default function Home() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [wordListDialogOpen, setWordListDialogOpen] = useState(false);
   const [filterDifficulty, setFilterDifficulty] = useState<string>("all");
   const [filterGradeLevel, setFilterGradeLevel] = useState<string>("all");
   const [quizWordCount, setQuizWordCount] = useState<"10" | "all">("all");
+  const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
 
   const { data: customLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists"],
@@ -106,6 +109,24 @@ export default function Home() {
       return numA - numB;
     });
   }, [customLists, publicLists, sharedLists]);
+
+  // Show welcome dialog for first-time users
+  useEffect(() => {
+    if (!user) return;
+    
+    // Check if welcome has been shown for this user
+    const welcomeShownKey = `welcomeShown_${user.id}`;
+    const hasSeenWelcome = localStorage.getItem(welcomeShownKey);
+    
+    // Show welcome if:
+    // 1. User hasn't seen it before (localStorage check)
+    // 2. User has no custom word lists (first-time indicator)
+    if (!hasSeenWelcome && customLists !== undefined && customLists.length === 0) {
+      setWelcomeDialogOpen(true);
+      // Mark as shown
+      localStorage.setItem(welcomeShownKey, 'true');
+    }
+  }, [user, customLists]);
 
   const gameModes = [
     {
@@ -404,6 +425,44 @@ export default function Home() {
                 </div>
               ))
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Welcome Dialog for First-Time Users */}
+      <Dialog open={welcomeDialogOpen} onOpenChange={setWelcomeDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">Welcome to Spelling Champions!</DialogTitle>
+            <DialogDescription className="text-base pt-4">
+              We're excited to have you here! Get started by creating your first Custom Word List.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <p className="text-sm text-muted-foreground">
+              Custom Word Lists let you practice spelling with words that matter to you. Add your own words, 
+              and we'll help you learn them through fun games and challenges!
+            </p>
+            <div className="flex gap-3">
+              <Button
+                onClick={() => {
+                  setWelcomeDialogOpen(false);
+                  setLocation("/word-lists");
+                }}
+                className="flex-1"
+                data-testid="button-create-word-list"
+              >
+                <List className="w-4 h-4 mr-2" />
+                Create Word List
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setWelcomeDialogOpen(false)}
+                data-testid="button-close-welcome"
+              >
+                Maybe Later
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
