@@ -1316,6 +1316,23 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     centerGameCard();
   }, [currentWordIndex]);
 
+  // Desktop auto-scroll: Center entire game card (from word image to submit button) in viewport
+  useEffect(() => {
+    // Only apply on desktop devices (viewport width >= 768px)
+    const isDesktop = window.innerWidth >= 768;
+    
+    if (isDesktop && gameCardRef.current && currentWord && !showFeedback) {
+      // Small delay to allow content to render/animate
+      setTimeout(() => {
+        gameCardRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'nearest'
+        });
+      }, 150);
+    }
+  }, [currentWordIndex, showFeedback]);
+
   // Measure input element's actual available width for dynamic font sizing
   useLayoutEffect(() => {
     const measureWidth = () => {
