@@ -26,7 +26,7 @@ The backend uses **Express.js** with **TypeScript**. **PostgreSQL** serves as th
     - **Practice**: Classic mode with immediate feedback. Uses full word lists with randomized order.
     - **Timed Challenge**: 60-second countdown. Uses full word lists with randomized order.
     - **Quiz Mode**: No hints, results after all words. Defaults to "All Words" but offers option to limit to "10 Words" for shorter quizzes. Words are randomized before optional limiting.
-    - **Word Scramble**: Drag-and-drop letters. Uses full word lists with randomized order.
+    - **Word Scramble**: Drag-and-drop letters with dynamic tile sizing. Uses full word lists with randomized order. Implements responsive single-row layout with viewport-based container width measurement (useLayoutEffect), automatic gap reduction (8px/12px default, down to 0px for long words), and proportional tile scaling (width, height, fontSize, lineWidth) with 1px minimums to prevent layout breakage. Guarantees all tiles fit on one row for realistic word lengths (4-20+ letters) across all viewport sizes (320px-1920px+).
     - **Find the Mistake**: Identifies misspelled words from realistic, randomized errors with educational feedback. Limited to 4 words per session (mode-specific).
     - **Crossword Puzzle**: Interactive, audio-only crossword puzzles with client-side grid generation, prioritizing word connectivity. Limited to 15 words for grid generation (mode-specific).
 - **Word Randomization**: All game modes use the Durstenfeld shuffle algorithm to randomize word order, ensuring every playthrough offers a fresh experience with different word sequences from the full available list.
