@@ -263,13 +263,22 @@ export default function Home() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
+                className="h-full"
               >
                 <Card
-                  className="hover-elevate active-elevate-2 cursor-pointer h-full shadow-lg border-2"
+                  className="hover-elevate active-elevate-2 cursor-pointer h-full shadow-lg border-2 flex flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                   onClick={() => handleModeClick(mode.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleModeClick(mode.id);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
                   data-testid={`card-mode-${mode.id}`}
                 >
-                  <CardHeader className="space-y-1">
+                  <CardHeader className="space-y-1 flex-1 flex flex-col justify-center">
                     <div className="flex items-center gap-3">
                       <Icon className={`w-8 h-8 ${mode.color}`} />
                       <CardTitle className="text-2xl">{mode.name}</CardTitle>
@@ -278,15 +287,6 @@ export default function Home() {
                       {mode.description}
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <Button
-                      size="lg"
-                      className="w-full text-lg"
-                      data-testid={`button-select-${mode.id}`}
-                    >
-                      Select {mode.name}
-                    </Button>
-                  </CardContent>
                 </Card>
               </motion.div>
             );
