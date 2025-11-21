@@ -879,9 +879,17 @@ export default function UserGroupsPage() {
                       <Card key={member.id} className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl">
-                              {member.selectedAvatar}
-                            </div>
+                            {member.selectedAvatar?.startsWith('/objects/') ? (
+                              <img 
+                                src={member.selectedAvatar} 
+                                alt="User avatar" 
+                                className="w-10 h-10 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl">
+                                {member.selectedAvatar}
+                              </div>
+                            )}
                             <div>
                               <p className="font-semibold">
                                 {member.username}
@@ -971,9 +979,17 @@ export default function UserGroupsPage() {
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl">
-                                  {result.selectedAvatar || '👤'}
-                                </div>
+                                {result.selectedAvatar?.startsWith('/objects/') ? (
+                                  <img 
+                                    src={result.selectedAvatar} 
+                                    alt="User avatar" 
+                                    className="w-10 h-10 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl">
+                                    {result.selectedAvatar || '👤'}
+                                  </div>
+                                )}
                                 <div className="flex-1">
                                   <p className="font-semibold">{result.username}</p>
                                   {(result.firstName || result.lastName) && (

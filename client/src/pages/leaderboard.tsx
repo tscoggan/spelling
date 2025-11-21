@@ -118,7 +118,15 @@ export default function Leaderboard() {
                           <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                             <div className="flex items-center gap-3">
                               {(entry as any).selectedAvatar && (
-                                <div className="text-3xl">{(entry as any).selectedAvatar}</div>
+                                (entry as any).selectedAvatar.startsWith('/objects/') ? (
+                                  <img 
+                                    src={(entry as any).selectedAvatar} 
+                                    alt="User avatar" 
+                                    className="w-10 h-10 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="text-3xl">{(entry as any).selectedAvatar}</div>
+                                )
                               )}
                               <div>
                                 <div className="text-sm text-gray-600">Player</div>

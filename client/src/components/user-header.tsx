@@ -181,7 +181,16 @@ export function UserHeader() {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               {user?.selectedAvatar && (
-                <div className="text-2xl" data-testid="text-user-avatar">{user.selectedAvatar}</div>
+                user.selectedAvatar.startsWith('/objects/') ? (
+                  <img 
+                    src={user.selectedAvatar} 
+                    alt="User avatar" 
+                    className="w-8 h-8 rounded-full object-cover"
+                    data-testid="img-user-avatar"
+                  />
+                ) : (
+                  <div className="text-2xl" data-testid="text-user-avatar">{user.selectedAvatar}</div>
+                )
               )}
               <div className="font-bold text-gray-800" data-testid="text-username">
                 {user?.username}
