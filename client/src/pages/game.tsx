@@ -2355,7 +2355,7 @@ export default function Game() {
         }}
       ></div>
       <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
-      <header className="p-4 md:p-2 bg-white/60 dark:bg-black/60 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 relative z-10">
+      <header className="p-4 md:px-2 md:pt-2 md:pb-0 bg-white/60 dark:bg-black/60 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 relative z-10">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 md:gap-2 flex-wrap">
           <Button
             variant="outline"
@@ -2365,7 +2365,7 @@ export default function Game() {
             data-testid="button-exit"
           >
             <Home className="w-5 h-5 md:w-4 md:h-4 mr-2 md:mr-1" />
-            Exit
+            Home
           </Button>
           
           <div className="flex items-center gap-4 md:gap-2">
@@ -2466,7 +2466,7 @@ export default function Game() {
       </header>
 
       <main 
-        className="flex-1 flex items-center justify-center p-4 md:p-6 relative z-10 overflow-auto md:min-h-screen md:overflow-visible md:pb-0"
+        className="flex-1 flex items-center md:items-start justify-center p-4 md:px-6 md:pt-0 md:pb-0 relative z-10 overflow-auto md:min-h-screen md:overflow-visible"
         style={{ paddingBottom: keyboardHeight > 0 ? `${keyboardHeight + 16}px` : undefined }}
       >
         {loadingCrossword ? (
@@ -2564,9 +2564,9 @@ export default function Game() {
             </Card>
           </div>
         ) : (
-          <div className="w-full max-w-3xl space-y-6">
+          <div className="w-full max-w-3xl space-y-6 md:space-y-0">
             {gameMode !== "crossword" && (
-              <div className="space-y-4 md:space-y-2">
+              <div className="space-y-4 md:space-y-1">
                 <div className="flex items-center justify-between text-base md:text-sm font-semibold">
                   <span className="text-gray-600" data-testid="text-word-progress">
                     Word {currentWordIndex + 1} of {words.length}
