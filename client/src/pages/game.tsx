@@ -2566,7 +2566,7 @@ export default function Game() {
         ) : (
           <div className="w-full max-w-3xl space-y-6 md:space-y-0">
             {gameMode !== "crossword" && (
-              <div className="space-y-4 md:space-y-1">
+              <div className="space-y-4 md:space-y-1 md:mt-2 md:mb-2">
                 <div className="flex items-center justify-between text-base md:text-sm font-semibold">
                   <span className="text-gray-600" data-testid="text-word-progress">
                     Word {currentWordIndex + 1} of {words.length}
