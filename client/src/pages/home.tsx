@@ -7,6 +7,7 @@ import type { GameMode } from "@shared/schema";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { useIOSKeyboardTrigger } from "@/App";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +44,7 @@ export default function Home() {
   const [filterGradeLevel, setFilterGradeLevel] = useState<string>("all");
   const [quizWordCount, setQuizWordCount] = useState<"10" | "all">("all");
   const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
+  const iOSKeyboardInput = useIOSKeyboardTrigger();
 
   const { data: customLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists"],
@@ -65,6 +67,15 @@ export default function Home() {
 
   const startGameWithCustomList = (list: CustomWordList) => {
     if (!selectedMode) return;
+    
+    // For iOS: Focus hidden input BEFORE navigation to maintain gesture context
+    // This allows the keyboard to open automatically when the game page loads
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || 
+                  (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+    if (isIOS && iOSKeyboardInput?.current) {
+      iOSKeyboardInput.current.focus();
+    }
+    
     setWordListDialogOpen(false);
     const quizParam = selectedMode === "quiz" ? `&quizCount=${quizWordCount}` : "";
     setLocation(`/game?listId=${list.id}&mode=${selectedMode}${quizParam}`);

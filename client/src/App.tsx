@@ -13,7 +13,15 @@ import UserGroupsPage from "@/pages/user-groups";
 import AdminPage from "@/pages/admin";
 import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
-import { useEffect } from "react";
+import { useEffect, useRef, createContext, useContext } from "react";
+
+// Context for sharing the hidden iOS keyboard trigger input
+const IOSKeyboardContext = createContext<{ inputRef: React.RefObject<HTMLInputElement> } | null>(null);
+
+export const useIOSKeyboardTrigger = () => {
+  const context = useContext(IOSKeyboardContext);
+  return context?.inputRef || null;
+};
 
 // Guard component to ensure Game page is only accessed with a listId
 function GamePageGuard() {
@@ -60,12 +68,26 @@ function Router() {
 }
 
 function App() {
+  // Hidden input for iOS keyboard trigger - must be focused BEFORE navigation
+  // This maintains user gesture context across route transitions
+  const iOSKeyboardInputRef = useRef<HTMLInputElement>(null);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider>
-          <Toaster />
-          <Router />
+          <IOSKeyboardContext.Provider value={{ inputRef: iOSKeyboardInputRef }}>
+            <Toaster />
+            {/* Hidden input for iOS keyboard activation - positioned off-screen but focusable */}
+            <input
+              ref={iOSKeyboardInputRef}
+              type="text"
+              className="fixed -left-[9999px] top-0 w-1 h-1 opacity-0 pointer-events-none"
+              tabIndex={-1}
+              aria-hidden="true"
+            />
+            <Router />
+          </IOSKeyboardContext.Provider>
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>

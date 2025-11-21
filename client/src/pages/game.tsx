@@ -67,6 +67,22 @@ const isIOSDevice = (): boolean => {
   return isIOSUserAgent || isMacWithTouch || isIOSPlatform;
 };
 
+// Helper function for iPad detection specifically
+const isIPadDevice = (): boolean => {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return false;
+  }
+  
+  const userAgent = navigator.userAgent;
+  // Check for explicit iPad in user agent
+  const isIPadUserAgent = /iPad/i.test(userAgent);
+  
+  // iPadOS 13+ may report as Mac, but has touch support
+  const isMacWithTouch = /Macintosh/i.test(userAgent) && navigator.maxTouchPoints > 1;
+  
+  return isIPadUserAgent || isMacWithTouch;
+};
+
 // Helper function for general mobile detection
 const isMobileDevice = (): boolean => {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') {
@@ -147,6 +163,18 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   const gameCardRef = useRef<HTMLDivElement>(null);
   const wordImageRef = useRef<HTMLDivElement>(null);
   const inputContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Callback ref for iOS keyboard - transfers focus from hidden trigger input
+  // The hidden input in App.tsx was focused BEFORE navigation to maintain gesture context
+  // Now we transfer focus to the real input element
+  const inputCallbackRef = useCallback((node: HTMLInputElement | null) => {
+    inputRef.current = node;
+    if (node && isIOSDevice()) {
+      // Transfer focus from hidden input to real input
+      // The gesture context was maintained through the hidden input
+      node.focus();
+    }
+  }, []);
   
   // Track viewport size for responsive scaling
   const [isMobileViewport, setIsMobileViewport] = useState(false);
@@ -869,10 +897,17 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
 
   const speakWithRefocus = (text: string, buttonElement?: HTMLElement) => {
     if (!text) return;
+    const isIOS = isIOSDevice();
     
     // Blur the button immediately to allow focus elsewhere
     if (buttonElement) {
       buttonElement.blur();
+    }
+    
+    // For iOS, focus immediately and synchronously to maintain gesture context
+    if (isIOS && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.click();
     }
     
     speakWord(text, () => {
@@ -880,6 +915,9 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
       setTimeout(() => {
         if (inputRef.current) {
           inputRef.current.focus();
+          if (isIOS) {
+            inputRef.current.click();
+          }
         }
       }, 150);
     });
@@ -888,6 +926,9 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     setTimeout(() => {
       if (inputRef.current) {
         inputRef.current.focus();
+        if (isIOS) {
+          inputRef.current.click();
+        }
       }
     }, 200);
   };
@@ -941,14 +982,21 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   // Auto-focus input when word changes (fallback + immediate focus)
   useEffect(() => {
     if (currentWord && !showFeedback) {
+      const isIOS = isIOSDevice();
+      
       // Multiple focus attempts to ensure it works
       const focusInput = () => {
         if (inputRef.current) {
           inputRef.current.focus();
+          
+          // For iOS, also trigger click to ensure keyboard opens
+          if (isIOS) {
+            inputRef.current.click();
+          }
         }
       };
       
-      // Try immediately
+      // Try immediately (critical for iOS keyboard)
       focusInput();
       
       // Try after short delay (for initial render)
@@ -1134,42 +1182,62 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   // Calculate dynamic font size for input fields based on word length
   // Returns both class name and inline style for precise scaling
   const getInputFontSize = (wordLength: number): { className: string; fontSize?: string } => {
+    const isIPad = isIPadDevice();
+    
     // Calculate what font size we need to fit the word
     const charWidth = inputContainerWidth / wordLength;
     const calculatedFontSize = Math.max(charWidth * 0.85, 10); // 85% of char width, min 10px
     
     // Define Tailwind font sizes in px (approximate)
+    // iPad gets larger font sizes for better readability
     const fontSizes = {
       mobile: { '2xl': 24, 'xl': 20, 'lg': 18, 'base': 16 },
+      ipad: { '4xl': 36, '3xl': 30, '2xl': 24, 'xl': 20 },  // Same as desktop for better readability
       desktop: { '4xl': 36, '3xl': 30, '2xl': 24, 'xl': 20 }
     };
     
     // Select appropriate Tailwind class if calculated size is close to a standard size
     // This gives us better typography when possible, falls back to custom for tight fits
-    if (isMobileViewport) {
-      if (wordLength <= 8 && calculatedFontSize >= fontSizes.mobile['2xl']) {
+    if (isIPad) {
+      // iPad uses desktop-sized classes
+      const sizes = fontSizes.ipad;
+      if (wordLength <= 8 && calculatedFontSize >= sizes['4xl']) {
+        return { className: 'text-4xl uppercase' };
+      } else if (wordLength <= 12 && calculatedFontSize >= sizes['3xl']) {
+        return { className: 'text-3xl uppercase' };
+      } else if (wordLength <= 16 && calculatedFontSize >= sizes['2xl']) {
         return { className: 'text-2xl uppercase' };
-      } else if (wordLength <= 12 && calculatedFontSize >= fontSizes.mobile.xl) {
+      } else if (calculatedFontSize >= sizes.xl) {
         return { className: 'text-xl uppercase' };
-      } else if (wordLength <= 16 && calculatedFontSize >= fontSizes.mobile.lg) {
+      }
+    } else if (isMobileViewport) {
+      const sizes = fontSizes.mobile;
+      if (wordLength <= 8 && calculatedFontSize >= sizes['2xl']) {
+        return { className: 'text-2xl uppercase' };
+      } else if (wordLength <= 12 && calculatedFontSize >= sizes.xl) {
+        return { className: 'text-xl uppercase' };
+      } else if (wordLength <= 16 && calculatedFontSize >= sizes.lg) {
         return { className: 'text-lg uppercase' };
-      } else if (calculatedFontSize >= fontSizes.mobile.base) {
+      } else if (calculatedFontSize >= sizes.base) {
         return { className: 'text-base uppercase' };
       }
     } else {
-      if (wordLength <= 8 && calculatedFontSize >= fontSizes.desktop['4xl']) {
+      const sizes = fontSizes.desktop;
+      if (wordLength <= 8 && calculatedFontSize >= sizes['4xl']) {
         return { className: 'text-4xl uppercase' };
-      } else if (wordLength <= 12 && calculatedFontSize >= fontSizes.desktop['3xl']) {
+      } else if (wordLength <= 12 && calculatedFontSize >= sizes['3xl']) {
         return { className: 'text-3xl uppercase' };
-      } else if (wordLength <= 16 && calculatedFontSize >= fontSizes.desktop['2xl']) {
+      } else if (wordLength <= 16 && calculatedFontSize >= sizes['2xl']) {
         return { className: 'text-2xl uppercase' };
-      } else if (calculatedFontSize >= fontSizes.desktop.xl) {
+      } else if (calculatedFontSize >= sizes.xl) {
         return { className: 'text-xl uppercase' };
       }
     }
     
     // For any word that doesn't fit standard sizes, use calculated font size
-    return { className: 'uppercase', fontSize: `${calculatedFontSize}px` };
+    // For iPad, increase the calculated size by 20% for better readability
+    const finalFontSize = isIPad ? Math.max(calculatedFontSize * 1.2, 20) : calculatedFontSize;
+    return { className: 'uppercase', fontSize: `${finalFontSize}px` };
   };
 
   // Calculate dynamic sizing for word hint letters based on word length and container width
@@ -1322,6 +1390,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   // Mobile: Keep keyboard open for typing game modes
   useEffect(() => {
     const isMobile = isMobileDevice();
+    const isIOS = isIOSDevice();
     const isTypingMode = gameMode !== "mistake" && gameMode !== "scramble" && gameMode !== "crossword";
     
     if (!isMobile || !isTypingMode || gameComplete || showFeedback) {
@@ -1332,6 +1401,10 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     const focusInput = () => {
       if (inputRef.current && document.activeElement !== inputRef.current) {
         inputRef.current.focus({ preventScroll: true });
+        // For iOS, also trigger click to ensure keyboard opens
+        if (isIOS) {
+          inputRef.current.click();
+        }
       }
     };
     
@@ -3055,7 +3128,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                             return (
                               <div className="relative">
                                 <Input
-                                  ref={inputRef}
+                                  ref={inputCallbackRef}
                                   type="text"
                                   value={userInput}
                                   onChange={(e) => setUserInput(e.target.value)}
@@ -3092,7 +3165,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                             const inputStyle = getInputFontSize(currentWord?.word.length || 8);
                             return (
                               <Input
-                                ref={inputRef}
+                                ref={inputCallbackRef}
                                 type="text"
                                 value={userInput}
                                 onChange={(e) => setUserInput(e.target.value)}
