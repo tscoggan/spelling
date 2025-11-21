@@ -2130,14 +2130,12 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     if (entry) {
       setActiveEntry(entryNumber);
       
-      // Focus first cell
-      setTimeout(() => {
-        const firstInput = document.querySelector(`input[data-row="${entry.row}"][data-col="${entry.col}"]`) as HTMLInputElement;
-        if (firstInput) {
-          firstInput.focus();
-          firstInput.select();
-        }
-      }, 10);
+      // Focus first cell SYNCHRONOUSLY to maintain user gesture context (critical for mobile keyboard)
+      const firstInput = document.querySelector(`input[data-row="${entry.row}"][data-col="${entry.col}"]`) as HTMLInputElement;
+      if (firstInput) {
+        firstInput.focus();
+        firstInput.select();
+      }
     }
   };
 
