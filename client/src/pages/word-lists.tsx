@@ -124,9 +124,10 @@ export default function WordListsPage() {
       return await response.json();
     },
     onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/word-lists"] });
+      // Invalidate all word list queries with correct query keys
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/word-lists/public"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/shared-with-me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/shared-with-me", user?.id] });
       // Invalidate illustrations cache for the newly created list
       if (data.id) {
         queryClient.invalidateQueries({ queryKey: ["/api/word-lists", data.id, "illustrations"] });
@@ -185,9 +186,10 @@ export default function WordListsPage() {
       return await response.json();
     },
     onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/word-lists"] });
+      // Invalidate all word list queries with correct query keys
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/word-lists/public"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/shared-with-me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/shared-with-me", user?.id] });
       // Invalidate illustrations cache for the updated list
       if (data.id) {
         queryClient.invalidateQueries({ queryKey: ["/api/word-lists", data.id, "illustrations"] });
@@ -234,8 +236,10 @@ export default function WordListsPage() {
       await apiRequest("DELETE", `/api/word-lists/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/word-lists"] });
+      // Invalidate all word list queries with correct query keys
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/word-lists/public"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/shared-with-me", user?.id] });
       toast({
         title: "Success!",
         description: "Word list deleted successfully",
@@ -252,6 +256,10 @@ export default function WordListsPage() {
 
   useEffect(() => {
     if (jobStatus?.status === 'completed' && jobId) {
+      // Invalidate word lists to refresh thumbnails after illustration job completes
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/public"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/shared-with-me", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/word-illustrations"] });
       toast({
         title: "Image Search Complete!",
@@ -259,7 +267,7 @@ export default function WordListsPage() {
       });
       setJobId(null);
     }
-  }, [jobStatus?.status, jobId, toast]);
+  }, [jobStatus?.status, jobId, toast, user?.id]);
 
   const resetForm = () => {
     setFormData({
@@ -1189,6 +1197,7 @@ function EditImagesDialog({ list, open, onOpenChange }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [pixabayPreviews, setPixabayPreviews] = useState<any[]>([]);
@@ -1220,6 +1229,10 @@ function EditImagesDialog({ list, open, onOpenChange }: {
       // Invalidate queries for this word list's illustrations
       queryClient.invalidateQueries({ queryKey: ["/api/word-lists", list.id, "illustrations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/word-illustrations"] });
+      // Also invalidate word lists to refresh thumbnails on main page
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/public"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/shared-with-me", user?.id] });
       setSelectedWord(null);
       setPixabayPreviews([]);
       toast({
