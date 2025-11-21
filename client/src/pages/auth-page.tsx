@@ -258,7 +258,7 @@ export default function AuthPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="register-email">Email</Label>
+                <Label htmlFor="register-email">Email (used for password reset requests)</Label>
                 <Input
                   id="register-email"
                   type="email"
