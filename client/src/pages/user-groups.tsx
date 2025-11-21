@@ -445,7 +445,7 @@ export default function UserGroupsPage() {
     }
   };
 
-  // Fetch user to-dos to check for pending join requests
+  // Fetch user to-dos to check for pending join requests received by the user (as group owner)
   const { data: userToDos = [] } = useQuery<any[]>({
     queryKey: ["/api/user-to-dos", user?.id],
     queryFn: async () => {
@@ -456,13 +456,24 @@ export default function UserGroupsPage() {
     enabled: !!user,
   });
 
-  // Filter for join requests only
+  // Fetch user's outgoing pending requests (requests the user has sent to join groups)
+  const { data: userPendingRequests = [] } = useQuery<any[]>({
+    queryKey: ["/api/user-pending-requests", user?.id],
+    queryFn: async () => {
+      const res = await fetch("/api/user-pending-requests", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch pending requests");
+      return await res.json();
+    },
+    enabled: !!user,
+  });
+
+  // Filter for join requests received by the user (as group owner)
   const joinRequestToDos = userToDos.filter(todo => todo.type === 'join_request');
 
-  // Create set of group IDs with pending join requests
+  // Create set of group IDs where the user has pending outgoing requests
   const pendingRequestGroupIds = new Set(
-    joinRequestToDos
-      .map(todo => todo.groupId)
+    userPendingRequests
+      .map(request => request.groupId)
       .filter(Boolean)
   );
 

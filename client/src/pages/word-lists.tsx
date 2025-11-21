@@ -126,6 +126,10 @@ export default function WordListsPage() {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/word-lists"] });
       queryClient.invalidateQueries({ queryKey: ["/api/word-lists/public"] });
+      // Invalidate illustrations cache for the newly created list
+      if (data.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/word-lists", data.id, "illustrations"] });
+      }
       setDialogOpen(false);
       resetForm();
       
@@ -182,6 +186,10 @@ export default function WordListsPage() {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/word-lists"] });
       queryClient.invalidateQueries({ queryKey: ["/api/word-lists/public"] });
+      // Invalidate illustrations cache for the updated list
+      if (data.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/word-lists", data.id, "illustrations"] });
+      }
       setDialogOpen(false);
       setEditingList(null);
       resetForm();

@@ -1834,37 +1834,62 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
 
   // Calculate dynamic tile size for scramble mode to fit all letters in one row
   const getTileSize = (wordLength: number) => {
-    // Use measured container width (should always be available due to initialization)
+    // Default tile sizes (reverted to previous settings)
+    const defaultWidth = 60;
+    const defaultHeight = 90;
+    const defaultFontSize = 40;
+    const defaultLineWidth = 30;
+    
+    // Use measured container width
     const containerWidth = scrambleContainerWidth;
     
-    // Start with default gap size (gap-2 = 8px on mobile, gap-3 = 12px on desktop)
-    let gapSize = containerWidth < 768 ? 8 : 12;
+    // Default gap size (gap-2 = 8px on mobile, gap-3 = 12px on desktop)
+    const defaultGapSize = containerWidth < 768 ? 8 : 12;
     
-    // Calculate total gap width between tiles
-    let totalGaps = (wordLength - 1) * gapSize;
+    // Calculate total width needed with default sizes
+    const totalGaps = (wordLength - 1) * defaultGapSize;
+    const neededWidth = (wordLength * defaultWidth) + totalGaps;
     
-    // Calculate available width for all tiles
-    let availableWidth = containerWidth - totalGaps;
-    
-    // Dynamically reduce gap size if needed to fit all tiles on one row
-    // Reduce gaps down to 0 if necessary for very long words
-    while (availableWidth < wordLength && gapSize > 0) {
-      gapSize--;
-      totalGaps = (wordLength - 1) * gapSize;
-      availableWidth = containerWidth - totalGaps;
+    // If word fits with default sizes, use them
+    if (neededWidth <= containerWidth) {
+      return {
+        width: defaultWidth,
+        height: defaultHeight,
+        fontSize: defaultFontSize,
+        lineWidth: defaultLineWidth
+      };
     }
     
-    // Calculate tile width to fit exactly in available space
-    // Ensure at least 1px width to prevent layout breakage
-    const width = Math.max(1, Math.floor(availableWidth / wordLength));
+    // Word is too long - scale down to fit in single row
+    // Try reducing gap size first
+    let gapSize = defaultGapSize;
+    let availableWidth = containerWidth - ((wordLength - 1) * gapSize);
     
-    // Calculate proportional dimensions
-    // All dimensions scale from width - tiles may be very small for extremely long words
-    const height = Math.max(1, Math.floor(width * 1.5)); // Maintain 2:3 aspect ratio, min 1px
-    const fontSize = Math.max(1, Math.floor(width * 0.65)); // Font scales with width, min 1px
-    const lineWidth = Math.max(1, Math.floor(width * 0.5)); // Line width scales with tile width, min 1px
+    while (availableWidth < wordLength * defaultWidth && gapSize > 0) {
+      gapSize--;
+      availableWidth = containerWidth - ((wordLength - 1) * gapSize);
+    }
     
-    return { width, height, fontSize, lineWidth };
+    // If still doesn't fit, scale down tile sizes proportionally
+    if (availableWidth < wordLength * defaultWidth) {
+      const scaledWidth = Math.max(1, Math.floor(availableWidth / wordLength));
+      const scaleFactor = scaledWidth / defaultWidth;
+      
+      return {
+        width: scaledWidth,
+        height: Math.max(1, Math.floor(defaultHeight * scaleFactor)),
+        fontSize: Math.max(1, Math.floor(defaultFontSize * scaleFactor)),
+        lineWidth: Math.max(1, Math.floor(defaultLineWidth * scaleFactor))
+      };
+    }
+    
+    // Gaps reduced enough to fit with default tile sizes
+    return {
+      width: defaultWidth,
+      height: defaultHeight,
+      fontSize: defaultFontSize,
+      lineWidth: defaultLineWidth
+    };
   };
 
   const handleScrambleSubmit = () => {

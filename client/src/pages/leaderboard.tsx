@@ -1,9 +1,7 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trophy, Medal, Home, Crown, Award } from "lucide-react";
 import type { LeaderboardScore } from "@shared/schema";
 import { motion } from "framer-motion";
@@ -90,16 +88,8 @@ export default function Leaderboard() {
         </div>
 
         <Card className="p-6 md:p-8">
-          <Tabs value={selectedDifficulty} onValueChange={(v) => setSelectedDifficulty(v as DifficultyLevel | "all")}>
-            <TabsList className="grid grid-cols-4 mb-8 w-full md:w-auto">
-              <TabsTrigger value="all" data-testid="tab-all">All</TabsTrigger>
-              <TabsTrigger value="easy" data-testid="tab-easy">Easy</TabsTrigger>
-              <TabsTrigger value="medium" data-testid="tab-medium">Medium</TabsTrigger>
-              <TabsTrigger value="hard" data-testid="tab-hard">Hard</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value={selectedDifficulty} className="space-y-4">
-              {isLoading ? (
+          <div className="space-y-4">
+            {isLoading ? (
                 <div className="text-center py-12">
                   <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                   <p className="text-xl text-gray-600">Loading scores...</p>
@@ -179,8 +169,7 @@ export default function Leaderboard() {
                   </Button>
                 </div>
               )}
-            </TabsContent>
-          </Tabs>
+          </div>
         </Card>
       </div>
     </div>
