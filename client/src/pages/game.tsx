@@ -175,7 +175,11 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     if (node && isIOSDevice()) {
       // Transfer focus from hidden input to real input
       // The gesture context was maintained through the hidden input
-      node.focus();
+      // Use requestAnimationFrame to ensure DOM is fully ready
+      requestAnimationFrame(() => {
+        node.focus();
+        node.click(); // Trigger click to ensure keyboard opens
+      });
     }
   }, []);
   
@@ -2706,7 +2710,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                     >
                       <div className="flex items-center justify-between gap-4">
                         <div className="flex-1">
-                          <div className="font-semibold text-gray-800">{answer.word.word}</div>
+                          <div className="font-semibold text-gray-800">{answer.word.word.toUpperCase()}</div>
                           {!answer.isCorrect && (
                             <div className="text-sm text-gray-600">
                               Your answer: <span className="line-through">{answer.userAnswer}</span>
