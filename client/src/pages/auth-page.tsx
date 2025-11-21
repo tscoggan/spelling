@@ -6,7 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { UserCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
 import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
 import titleBanner from "@assets/image_1763494070680.png";
@@ -29,6 +33,7 @@ const avatarOptions = [
 export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { user, loginMutation, registerMutation } = useAuth();
+  const { toast } = useToast();
 
   const [loginData, setLoginData] = useState({ username: "", password: "" });
   const [registerData, setRegisterData] = useState({
@@ -38,6 +43,34 @@ export default function AuthPage() {
     lastName: "",
     email: "",
     selectedAvatar: avatarOptions[0].emoji,
+  });
+
+  // Password reset dialog state
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetIdentifier, setResetIdentifier] = useState("");
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (identifier: string) => {
+      const response = await apiRequest("POST", "/api/auth/request-password-reset", { identifier });
+      return response.json();
+    },
+    onSuccess: () => {
+      setResetDialogOpen(false);
+      setResetIdentifier("");
+      toast({
+        title: "Password Reset Email Sent",
+        description: "If an account exists with that username or email, you will receive a password reset link shortly.",
+      });
+    },
+    onError: (error: any) => {
+      setResetDialogOpen(false);
+      setResetIdentifier("");
+      toast({
+        title: "Password Reset Not Available",
+        description: error.message || "Unable to send password reset email. Please try logging in or contact support.",
+        variant: "destructive",
+      });
+    },
   });
 
   useEffect(() => {
@@ -54,6 +87,11 @@ export default function AuthPage() {
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     registerMutation.mutate(registerData);
+  };
+
+  const handleResetPasswordRequest = (e: React.FormEvent) => {
+    e.preventDefault();
+    resetPasswordMutation.mutate(resetIdentifier);
   };
 
   return (
@@ -115,7 +153,63 @@ export default function AuthPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="login-password">Password</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="login-password">Password</Label>
+                  <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+                    <DialogTrigger asChild>
+                      <button
+                        type="button"
+                        className="text-sm text-primary hover:underline"
+                        data-testid="link-forgot-password"
+                      >
+                        Forgot password?
+                      </button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Reset Password</DialogTitle>
+                        <DialogDescription>
+                          Enter your username or email address. If your account has an email on file, we'll send you a password reset link.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <form onSubmit={handleResetPasswordRequest} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="reset-identifier">Username or Email</Label>
+                          <Input
+                            id="reset-identifier"
+                            type="text"
+                            value={resetIdentifier}
+                            onChange={(e) => setResetIdentifier(e.target.value)}
+                            placeholder="Enter your username or email"
+                            required
+                            data-testid="input-reset-identifier"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              setResetDialogOpen(false);
+                              setResetIdentifier("");
+                            }}
+                            data-testid="button-cancel-reset"
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            type="submit"
+                            className="flex-1"
+                            disabled={resetPasswordMutation.isPending}
+                            data-testid="button-submit-reset"
+                          >
+                            {resetPasswordMutation.isPending ? "Sending..." : "Send Reset Link"}
+                          </Button>
+                        </div>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
                 <Input
                   id="login-password"
                   type="password"

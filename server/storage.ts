@@ -101,8 +101,10 @@ export interface IStorage {
   
   createPasswordResetToken(token: InsertPasswordResetToken): Promise<PasswordResetToken>;
   getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
+  getPasswordResetTokenById(id: number): Promise<PasswordResetToken | undefined>;
   markTokenAsUsed(tokenId: number): Promise<void>;
   deleteExpiredTokens(): Promise<void>;
+  deleteUnusedTokensForUser(userId: number): Promise<void>;
   
   sessionStore: session.Store;
 }
@@ -905,6 +907,14 @@ export class DatabaseStorage implements IStorage {
     return resetToken || undefined;
   }
 
+  async getPasswordResetTokenById(id: number): Promise<PasswordResetToken | undefined> {
+    const [resetToken] = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(eq(passwordResetTokens.id, id));
+    return resetToken || undefined;
+  }
+
   async markTokenAsUsed(tokenId: number): Promise<void> {
     await db
       .update(passwordResetTokens)
@@ -916,6 +926,17 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(passwordResetTokens)
       .where(sql`${passwordResetTokens.expiresAt} < NOW()`);
+  }
+
+  async deleteUnusedTokensForUser(userId: number): Promise<void> {
+    await db
+      .delete(passwordResetTokens)
+      .where(
+        and(
+          eq(passwordResetTokens.userId, userId),
+          eq(passwordResetTokens.used, false)
+        )
+      );
   }
 }
 

@@ -6,7 +6,9 @@ import { z } from "zod";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import { IllustrationJobService } from "./services/illustrationJobService";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { sendPasswordResetEmail, sendEmailUpdateNotification } from "./services/emailService";
 import multer from "multer";
+import crypto from "crypto";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -22,6 +24,184 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.sendStatus(404);
       }
       return res.sendStatus(500);
+    }
+  });
+
+  // Password reset routes
+  app.post("/api/auth/request-password-reset", async (req, res) => {
+    try {
+      const schema = z.object({
+        identifier: z.string().min(1), // Can be username or email
+      });
+      
+      const { identifier } = schema.parse(req.body);
+      
+      // Try to find user by username or email
+      let user = await storage.getUserByUsername(identifier);
+      if (!user) {
+        user = await storage.getUserByEmail(identifier);
+      }
+      
+      if (!user) {
+        // Don't reveal whether user exists for security
+        return res.json({ message: "If an account exists, a password reset email will be sent." });
+      }
+      
+      // Security: Return generic message even if account lacks email to prevent account enumeration
+      // This prevents attackers from determining which accounts exist
+      if (!user.email) {
+        console.log(`Password reset blocked for user ${user.username} (ID: ${user.id}) - no email on file`);
+        // Return same generic message as successful case
+        return res.json({ message: "If an account exists, a password reset email will be sent." });
+      }
+      
+      // Use the verified email on file
+      const emailToUse = user.email;
+      
+      // Generate secure random secret for the token
+      const tokenSecret = crypto.randomBytes(32).toString('hex');
+      
+      // Hash the secret before storing (security: protect against database compromise)
+      const hashedSecret = crypto.createHash('sha256').update(tokenSecret).digest('hex');
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+      
+      // Delete any existing unused tokens for this user to prevent multiple valid tokens
+      await storage.deleteUnusedTokensForUser(user.id);
+      
+      // Save hashed secret to database (never store raw secret)
+      const createdToken = await storage.createPasswordResetToken({
+        userId: user.id,
+        token: hashedSecret,
+        expiresAt,
+        used: false,
+      });
+      
+      // Create two-part token: <tokenId>.<secret>
+      // The ID is public, the secret is private and hashed in the database
+      const fullToken = `${createdToken.id}.${tokenSecret}`;
+      
+      // Send full token in email (user needs this to reset password)
+      await sendPasswordResetEmail(emailToUse, user.username, fullToken);
+      
+      res.json({ message: "If an account exists, a password reset email will be sent." });
+    } catch (error) {
+      console.error("Password reset request error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to process password reset request" });
+    }
+  });
+
+  app.get("/api/auth/verify-reset-token/:token", async (req, res) => {
+    try {
+      const { token: fullToken } = req.params;
+      
+      // Split the two-part token: <tokenId>.<secret>
+      const parts = fullToken.split('.');
+      if (parts.length !== 2) {
+        return res.status(400).json({ error: "Invalid or expired reset token" });
+      }
+      
+      const [tokenIdStr, providedSecret] = parts;
+      const tokenId = parseInt(tokenIdStr, 10);
+      
+      if (isNaN(tokenId)) {
+        return res.status(400).json({ error: "Invalid or expired reset token" });
+      }
+      
+      // Fetch token by ID (constant time, no enumeration risk)
+      const resetToken = await storage.getPasswordResetTokenById(tokenId);
+      
+      // Hash the provided secret for constant-time comparison
+      const hashedProvidedSecret = crypto.createHash('sha256').update(providedSecret).digest('hex');
+      
+      // Security: Constant-time validation to prevent timing attacks
+      const tokenExists = resetToken !== null && resetToken !== undefined;
+      const secretsMatch = tokenExists && crypto.timingSafeEqual(
+        Buffer.from(hashedProvidedSecret, 'hex'),
+        Buffer.from(resetToken.token, 'hex')
+      );
+      const tokenUsed = tokenExists && resetToken.used;
+      const tokenExpired = tokenExists && new Date() > resetToken.expiresAt;
+      const isValid = tokenExists && secretsMatch && !tokenUsed && !tokenExpired;
+      
+      // Security: Use generic error message to prevent token enumeration attacks
+      // Don't reveal whether token is invalid, expired, or already used
+      if (!isValid) {
+        return res.status(400).json({ error: "Invalid or expired reset token" });
+      }
+      
+      res.json({ valid: true });
+    } catch (error) {
+      console.error("Token verification error:", error);
+      res.status(500).json({ error: "Failed to verify reset token" });
+    }
+  });
+
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const schema = z.object({
+        token: z.string().min(1),
+        newPassword: z.string().min(6),
+      });
+      
+      const { token: fullToken, newPassword } = schema.parse(req.body);
+      
+      // Split the two-part token: <tokenId>.<secret>
+      const parts = fullToken.split('.');
+      if (parts.length !== 2) {
+        return res.status(400).json({ error: "Invalid or expired reset token" });
+      }
+      
+      const [tokenIdStr, providedSecret] = parts;
+      const tokenId = parseInt(tokenIdStr, 10);
+      
+      if (isNaN(tokenId)) {
+        return res.status(400).json({ error: "Invalid or expired reset token" });
+      }
+      
+      // Fetch token by ID (constant time, no enumeration risk)
+      const resetToken = await storage.getPasswordResetTokenById(tokenId);
+      
+      // Hash the provided secret for constant-time comparison
+      const hashedProvidedSecret = crypto.createHash('sha256').update(providedSecret).digest('hex');
+      
+      // Security: Constant-time validation to prevent timing attacks
+      const tokenExists = resetToken !== null && resetToken !== undefined;
+      const secretsMatch = tokenExists && crypto.timingSafeEqual(
+        Buffer.from(hashedProvidedSecret, 'hex'),
+        Buffer.from(resetToken.token, 'hex')
+      );
+      const tokenUsed = tokenExists && resetToken.used;
+      const tokenExpired = tokenExists && new Date() > resetToken.expiresAt;
+      const isValid = tokenExists && secretsMatch && !tokenUsed && !tokenExpired;
+      
+      // Security: Use generic error message to prevent token enumeration attacks
+      // Don't reveal whether token is invalid, expired, or already used
+      if (!isValid) {
+        return res.status(400).json({ error: "Invalid or expired reset token" });
+      }
+      
+      // Hash the new password
+      const hashedPassword = await hashPassword(newPassword);
+      
+      // Update user's password
+      await storage.updateUserPassword(resetToken.userId, hashedPassword);
+      
+      // Mark this token as used
+      await storage.markTokenAsUsed(resetToken.id);
+      
+      // Delete all other unused tokens for this user to ensure no lingering reset links
+      await storage.deleteUnusedTokensForUser(resetToken.userId);
+      
+      res.json({ message: "Password successfully reset" });
+    } catch (error) {
+      console.error("Password reset error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to reset password" });
     }
   });
   

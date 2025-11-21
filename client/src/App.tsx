@@ -12,6 +12,7 @@ import WordListsPage from "@/pages/word-lists";
 import UserGroupsPage from "@/pages/user-groups";
 import AdminPage from "@/pages/admin";
 import AuthPage from "@/pages/auth-page";
+import ResetPasswordPage from "@/pages/reset-password";
 import NotFound from "@/pages/not-found";
 import { useEffect, useRef, createContext, useContext } from "react";
 
@@ -62,6 +63,7 @@ function Router() {
       <ProtectedRoute path="/user-groups" component={UserGroupsPage} />
       <ProtectedRoute path="/admin" component={AdminPage} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/reset-password" component={ResetPasswordPage} />
       <Route component={NotFound} />
     </Switch>
   );
