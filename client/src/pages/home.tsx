@@ -76,15 +76,11 @@ export default function Home() {
       iOSKeyboardInput.current.focus();
     }
     
-    // Navigate FIRST, then close dialog - this keeps focus on hidden input
-    // If we close dialog first, Radix Dialog steals focus back via automatic focus restoration
+    // Close dialog and navigate
+    // Note: Dialog's onCloseAutoFocus prevents focus restoration, keeping focus on hidden input
+    setWordListDialogOpen(false);
     const quizParam = selectedMode === "quiz" ? `&quizCount=${quizWordCount}` : "";
     setLocation(`/game?listId=${list.id}&mode=${selectedMode}${quizParam}`);
-    
-    // Small delay before closing dialog to ensure navigation starts first
-    setTimeout(() => {
-      setWordListDialogOpen(false);
-    }, 50);
   };
 
   const allLists = useMemo(() => {
@@ -312,7 +308,14 @@ export default function Home() {
       </motion.div>
 
       <Dialog open={wordListDialogOpen} onOpenChange={setWordListDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+        <DialogContent 
+          className="max-w-3xl max-h-[85vh] flex flex-col"
+          onCloseAutoFocus={(e) => {
+            // Prevent dialog from restoring focus when closing
+            // This keeps focus on the hidden iOS keyboard trigger input
+            e.preventDefault();
+          }}
+        >
           <DialogHeader>
             <DialogTitle className="text-2xl">Choose Your Word List</DialogTitle>
             <DialogDescription>

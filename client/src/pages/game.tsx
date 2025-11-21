@@ -163,6 +163,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   const gameCardRef = useRef<HTMLDivElement>(null);
   const wordImageRef = useRef<HTMLDivElement>(null);
   const inputContainerRef = useRef<HTMLDivElement>(null);
+  const progressBarRef = useRef<HTMLDivElement>(null);
   
   // Callback ref for iOS keyboard - transfers focus from hidden trigger input
   // The hidden input in App.tsx was focused BEFORE navigation to maintain gesture context
@@ -1237,8 +1238,9 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     }
     
     // For any word that doesn't fit standard sizes, use calculated font size
-    // For iPad, increase the calculated size by 20% for better readability
-    const finalFontSize = isIPad ? Math.max(calculatedFontSize * 1.2, 20) : calculatedFontSize;
+    // For iPad, guarantee at least 30px (text-3xl equivalent) for readability
+    // This ensures Quiz mode and other modes have large enough text on iPad
+    const finalFontSize = isIPad ? Math.max(calculatedFontSize * 1.5, 30) : calculatedFontSize;
     return { className: 'uppercase', fontSize: `${finalFontSize}px` };
   };
 
@@ -1318,17 +1320,19 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     centerGameCard();
   }, [currentWordIndex]);
 
-  // Desktop auto-scroll: Center entire game card (from word image to submit button) in viewport
+  // Desktop auto-scroll: Show progress bar but hide header
   useEffect(() => {
     // Only apply on desktop devices (viewport width >= 768px)
     const isDesktop = window.innerWidth >= 768;
     
-    if (isDesktop && gameCardRef.current && currentWord && !showFeedback) {
+    if (isDesktop && progressBarRef.current && currentWord && !showFeedback) {
       // Small delay to allow content to render/animate
       setTimeout(() => {
-        gameCardRef.current?.scrollIntoView({
+        // Scroll to progress bar element, which puts it at top of viewport
+        // This hides the header (above progress bar) and shows the progress bar + game card
+        progressBarRef.current?.scrollIntoView({
           behavior: 'smooth',
-          block: 'center',
+          block: 'start', // Aligns top of progress bar with top of viewport
           inline: 'nearest'
         });
       }, 150);
@@ -2992,7 +2996,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
         ) : (
           <div className="w-full max-w-3xl space-y-6 md:space-y-0">
             {gameMode !== "crossword" && (
-              <div className="space-y-4 md:space-y-1 md:mt-2 md:mb-2">
+              <div ref={progressBarRef} className="space-y-4 md:space-y-1 md:mt-2 md:mb-2">
                 <div className="flex items-center justify-between text-base md:text-sm font-semibold">
                   <span className="text-gray-600" data-testid="text-word-progress">
                     Word {currentWordIndex + 1} of {words.length}
