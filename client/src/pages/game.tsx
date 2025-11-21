@@ -2637,51 +2637,79 @@ export default function Game() {
                     ) : gameMode === "scramble" && currentWord ? (
                       <div className="space-y-8 overscroll-contain">
                         {/* Drop zones - blank spaces to place letters */}
-                        <div className="flex items-center justify-center gap-2 md:gap-3 flex-wrap">
-                          {placedLetters.map((letter, index) => (
-                            <div
-                              key={`target-${index}`}
-                              className="relative"
-                              ref={(el) => (dropZoneRefs.current[index] = el)}
-                              onDragOver={handleDragOver}
-                              onDrop={() => handleDrop(index)}
-                            >
+                        <div className="flex items-center justify-center gap-2 md:gap-3">
+                          {placedLetters.map((letter, index) => {
+                            const wordLength = currentWord.word.length;
+                            // Scale tile size based on word length to prevent wrapping
+                            const tileSize = wordLength >= 10 ? 'w-8 h-12 md:w-12 md:h-16' 
+                              : wordLength >= 8 ? 'w-9 h-14 md:w-14 md:h-16' 
+                              : wordLength >= 6 ? 'w-10 h-14 md:w-16 md:h-20' 
+                              : 'w-12 h-16 md:w-16 md:h-20';
+                            const textSize = wordLength >= 10 ? 'text-lg md:text-2xl' 
+                              : wordLength >= 8 ? 'text-xl md:text-3xl' 
+                              : wordLength >= 6 ? 'text-xl md:text-3xl' 
+                              : 'text-2xl md:text-4xl';
+                            const lineWidth = wordLength >= 10 ? 'w-4 md:w-6' 
+                              : wordLength >= 8 ? 'w-5 md:w-7' 
+                              : wordLength >= 6 ? 'w-5 md:w-7' 
+                              : 'w-6 md:w-8';
+                            
+                            return (
                               <div
-                                className="w-12 h-16 md:w-16 md:h-20 rounded-xl border-2 border-dashed border-primary bg-purple-50 flex items-center justify-center cursor-pointer hover-elevate active-elevate-2 touch-none"
-                                data-testid={`drop-zone-${index}`}
-                                onClick={() => handleRemoveLetter(index)}
+                                key={`target-${index}`}
+                                className="relative"
+                                ref={(el) => (dropZoneRefs.current[index] = el)}
+                                onDragOver={handleDragOver}
+                                onDrop={() => handleDrop(index)}
                               >
-                                {letter ? (
-                                  <span className="text-2xl md:text-4xl font-bold text-gray-800">
-                                    {letter}
-                                  </span>
-                                ) : (
-                                  <div className="w-6 md:w-8 h-0.5 bg-gray-400"></div>
-                                )}
+                                <div
+                                  className={`${tileSize} rounded-xl border-2 border-dashed border-primary bg-purple-50 flex items-center justify-center cursor-pointer hover-elevate active-elevate-2 touch-none`}
+                                  data-testid={`drop-zone-${index}`}
+                                  onClick={() => handleRemoveLetter(index)}
+                                >
+                                  {letter ? (
+                                    <span className={`${textSize} font-bold text-gray-800`}>
+                                      {letter}
+                                    </span>
+                                  ) : (
+                                    <div className={`${lineWidth} h-0.5 bg-gray-400`}></div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
 
                         {/* Draggable letter tiles */}
-                        <div className="flex items-center justify-center gap-2 md:gap-3 flex-wrap" onTouchMove={handleTouchMove}>
-                          {scrambledLetters.map((letter, index) => (
-                            letter && (
+                        <div className="flex items-center justify-center gap-2 md:gap-3" onTouchMove={handleTouchMove}>
+                          {scrambledLetters.map((letter, index) => {
+                            const wordLength = currentWord.word.length;
+                            // Scale tile size based on word length to prevent wrapping
+                            const tileSize = wordLength >= 10 ? 'w-8 h-12 md:w-12 md:h-16' 
+                              : wordLength >= 8 ? 'w-9 h-14 md:w-14 md:h-16' 
+                              : wordLength >= 6 ? 'w-10 h-14 md:w-16 md:h-20' 
+                              : 'w-12 h-16 md:w-16 md:h-20';
+                            const textSize = wordLength >= 10 ? 'text-lg md:text-2xl' 
+                              : wordLength >= 8 ? 'text-xl md:text-3xl' 
+                              : wordLength >= 6 ? 'text-xl md:text-3xl' 
+                              : 'text-2xl md:text-4xl';
+                            
+                            return letter && (
                               <div
                                 key={`source-${index}`}
                                 draggable
                                 onDragStart={() => handleDragStart(letter, index)}
                                 onTouchStart={(e) => handleTouchStart(e, letter, index)}
                                 onTouchEnd={handleTouchEnd}
-                                className="w-12 h-16 md:w-16 md:h-20 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-lg flex items-center justify-center cursor-move hover-elevate active-elevate-2 touch-none"
+                                className={`${tileSize} rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-lg flex items-center justify-center cursor-move hover-elevate active-elevate-2 touch-none`}
                                 data-testid={`letter-tile-${index}`}
                               >
-                                <span className="text-2xl md:text-4xl font-bold text-gray-800 select-none">
+                                <span className={`${textSize} font-bold text-gray-800 select-none`}>
                                   {letter}
                                 </span>
                               </div>
-                            )
-                          ))}
+                            );
+                          })}
                         </div>
 
                         <div className="text-center text-sm text-gray-600">
