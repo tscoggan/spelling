@@ -1336,13 +1336,14 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   }, [currentWordIndex, showFeedback, currentWord]);
 
   // Desktop auto-scroll: Show progress bar but hide header
-  useEffect(() => {
+  // Use useLayoutEffect to ensure progressBarRef is attached before checking
+  useLayoutEffect(() => {
     // Only apply on desktop devices (viewport width >= 768px)
     const isDesktop = window.innerWidth >= 768;
     
     if (isDesktop && progressBarRef.current && currentWord && !showFeedback) {
       // Small delay to allow content to render/animate
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         // Scroll to progress bar element, which puts it at top of viewport
         // This hides the header (above progress bar) and shows the progress bar + game card
         progressBarRef.current?.scrollIntoView({
@@ -1351,8 +1352,11 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
           inline: 'nearest'
         });
       }, 150);
+      
+      // Cleanup: Cancel pending scroll if word changes before timeout fires
+      return () => clearTimeout(timeoutId);
     }
-  }, [currentWordIndex, showFeedback]);
+  }, [currentWordIndex, showFeedback, currentWord]);
 
   // Measure input element's actual available width for dynamic font sizing
   useLayoutEffect(() => {
