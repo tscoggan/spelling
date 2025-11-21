@@ -144,6 +144,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   const inputRef = useRef<HTMLInputElement>(null);
   const currentWordRef = useRef<string | null>(null);
   const nextButtonRef = useRef<HTMLButtonElement>(null);
+  const gameCardRef = useRef<HTMLDivElement>(null);
   
   // Scramble mode states
   const [scrambledLetters, setScrambledLetters] = useState<string[]>([]);
@@ -888,24 +889,28 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   const speakDefinition = (e?: React.MouseEvent<HTMLButtonElement>) => {
     if (wordDefinition && currentWord) {
       speakWithRefocus(wordDefinition, e?.currentTarget);
+      centerGameCard();
     }
   };
 
   const speakExample = (e?: React.MouseEvent<HTMLButtonElement>) => {
     if (wordExample && currentWord) {
       speakWithRefocus(wordExample, e?.currentTarget);
+      centerGameCard();
     }
   };
 
   const speakPartsOfSpeech = (e?: React.MouseEvent<HTMLButtonElement>) => {
     if (wordPartsOfSpeech && currentWord) {
       speakWithRefocus(wordPartsOfSpeech, e?.currentTarget);
+      centerGameCard();
     }
   };
 
   const speakOrigin = (e?: React.MouseEvent<HTMLButtonElement>) => {
     if (wordOrigin && currentWord) {
       speakWithRefocus(wordOrigin, e?.currentTarget);
+      centerGameCard();
     }
   };
 
@@ -1105,6 +1110,25 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
       window.visualViewport?.removeEventListener('scroll', updateKeyboardHeight);
     };
   }, [gameMode]);
+
+  // Function to center game card on mobile when keyboard appears
+  const centerGameCard = () => {
+    if (gameCardRef.current && window.innerWidth < 768) {
+      // Small delay to allow keyboard to open and layout to stabilize
+      setTimeout(() => {
+        gameCardRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'nearest'
+        });
+      }, 100);
+    }
+  };
+
+  // Center game card when currentWordIndex changes (new word displayed)
+  useEffect(() => {
+    centerGameCard();
+  }, [currentWordIndex]);
 
   // Measure scramble container width for dynamic tile sizing (use useLayoutEffect to measure before render)
   useLayoutEffect(() => {
@@ -1923,6 +1947,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   };
 
   const handleMistakeChoice = (choiceIndex: number) => {
+    centerGameCard();
     const correct = choiceIndex === misspelledIndex;
     
     setSelectedChoiceIndex(choiceIndex);
@@ -2734,7 +2759,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                   animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
               >
-                <Card className="p-6 md:px-12 md:pt-6 md:pb-12 space-y-4 bg-white">
+                <Card ref={gameCardRef} className="p-6 md:px-12 md:pt-6 md:pb-12 space-y-4 bg-white">
                   <div className="text-center space-y-3">
                     <h2 className="text-2xl md:text-3xl font-bold text-gray-800" data-testid="text-instruction">
                       {gameMode === "quiz" ? "Spell the word" : gameMode === "scramble" ? "Unscramble the letters" : gameMode === "mistake" ? "Find the misspelled word" : "Listen and spell the word"}
@@ -2868,6 +2893,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                           type="text"
                           value={userInput}
                           onChange={(e) => setUserInput(e.target.value)}
+                          onFocus={centerGameCard}
                           className="text-transparent caret-transparent absolute inset-0 text-center text-2xl md:text-4xl h-16 md:h-20 rounded-2xl bg-transparent border-transparent pointer-events-auto uppercase"
                           autoComplete="off"
                           autoFocus
@@ -2877,7 +2903,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                         <div 
                           className="h-16 md:h-20 rounded-2xl border-2 border-input bg-background flex items-center justify-center gap-2 md:gap-3 px-4 cursor-text pointer-events-none"
                         >
-                          {Array.from({ length: currentWord.word.length }).map((_, index) => (
+                          {Array.from({ length: Math.max(currentWord.word.length, userInput.length) }).map((_, index) => (
                             <div key={index} className="flex flex-col items-center gap-1">
                               <div className="text-2xl md:text-4xl font-semibold text-gray-800 h-8 md:h-10 flex items-center justify-center min-w-[1.5rem] md:min-w-[2rem] uppercase">
                                 {userInput[index] || ""}
@@ -2893,6 +2919,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                         type="text"
                         value={userInput}
                         onChange={(e) => setUserInput(e.target.value)}
+                        onFocus={centerGameCard}
                         className="text-center text-2xl md:text-4xl h-16 md:h-20 rounded-2xl uppercase"
                         placeholder="Type your answer..."
                         autoComplete="off"
@@ -2979,6 +3006,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                               onClick={(e) => {
                                 if (currentWord) {
                                   speakWithRefocus(currentWord.word, e.currentTarget);
+                                  centerGameCard();
                                 }
                               }}
                               data-testid="button-play-audio"

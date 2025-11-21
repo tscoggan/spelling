@@ -126,6 +126,7 @@ export default function WordListsPage() {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/word-lists"] });
       queryClient.invalidateQueries({ queryKey: ["/api/word-lists/public"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/shared-with-me"] });
       // Invalidate illustrations cache for the newly created list
       if (data.id) {
         queryClient.invalidateQueries({ queryKey: ["/api/word-lists", data.id, "illustrations"] });
@@ -186,6 +187,7 @@ export default function WordListsPage() {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/word-lists"] });
       queryClient.invalidateQueries({ queryKey: ["/api/word-lists/public"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/shared-with-me"] });
       // Invalidate illustrations cache for the updated list
       if (data.id) {
         queryClient.invalidateQueries({ queryKey: ["/api/word-lists", data.id, "illustrations"] });
