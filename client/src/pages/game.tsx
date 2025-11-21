@@ -1168,19 +1168,20 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     };
   }, [gameMode]);
 
-  // Function to center game card on mobile when keyboard appears
-  const centerGameCard = () => {
+  // Function to center game card on mobile when keyboard appears or word changes
+  const centerGameCard = useCallback(() => {
     if (gameCardRef.current && window.innerWidth < 768) {
-      // Small delay to allow keyboard to open and layout to stabilize
+      // Delay to allow content (images, animations) and keyboard to stabilize
+      // 300ms ensures Framer Motion animations (400ms) have time to render
       setTimeout(() => {
         gameCardRef.current?.scrollIntoView({
           behavior: 'smooth',
           block: 'center',
           inline: 'nearest'
         });
-      }, 100);
+      }, 300);
     }
-  };
+  }, []);
 
   // Calculate dynamic font size for input fields based on word length
   // Returns both class name and inline style for precise scaling
@@ -1315,10 +1316,24 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     };
   }, []);
 
-  // Center game card when currentWordIndex changes (new word displayed)
+  // Mobile auto-scroll: Center game card when new word is displayed
   useEffect(() => {
-    centerGameCard();
-  }, [currentWordIndex]);
+    // Only scroll on mobile when showing new word input (not feedback)
+    if (currentWord && !showFeedback && window.innerWidth < 768 && gameCardRef.current) {
+      // Delay matches centerGameCard() to ensure consistent behavior with hint buttons
+      // 300ms allows Framer Motion animations (400ms) to render before scrolling
+      const timeoutId = setTimeout(() => {
+        gameCardRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'nearest'
+        });
+      }, 300);
+      
+      // Cleanup: Cancel pending scroll if word changes again before timeout fires
+      return () => clearTimeout(timeoutId);
+    }
+  }, [currentWordIndex, showFeedback, currentWord]);
 
   // Desktop auto-scroll: Show progress bar but hide header
   useEffect(() => {
