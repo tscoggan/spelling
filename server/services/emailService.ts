@@ -20,9 +20,10 @@ export async function sendPasswordResetEmail(
 ): Promise<void> {
   const { client, fromEmail } = getResendClient();
   
-  const resetUrl = `${process.env.REPL_SLUG ? 
-    `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/reset-password?token=${resetToken}` :
-    `http://localhost:5000/reset-password?token=${resetToken}`}`;
+  // Get the correct Replit domain or fallback to localhost for development
+  const domain = process.env.REPLIT_DOMAINS || 'localhost:5000';
+  const protocol = process.env.REPLIT_DOMAINS ? 'https' : 'http';
+  const resetUrl = `${protocol}://${domain}/reset-password?token=${resetToken}`;
 
   await client.emails.send({
     from: fromEmail,
