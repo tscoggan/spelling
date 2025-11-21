@@ -17,6 +17,8 @@ import {
   type InsertUserGroupMembership,
   type UserToDoItem,
   type InsertUserToDoItem,
+  type PasswordResetToken,
+  type InsertPasswordResetToken,
   words,
   gameSessions,
   users,
@@ -27,6 +29,7 @@ import {
   userGroupMembership,
   userToDoItems,
   wordListUserGroups,
+  passwordResetTokens,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, inArray, not } from "drizzle-orm";
@@ -46,8 +49,11 @@ export interface IStorage {
   
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserPreferences(userId: number, preferences: { preferredVoice?: string | null }): Promise<User>;
+  updateUserEmail(userId: number, email: string): Promise<User>;
+  updateUserPassword(userId: number, password: string): Promise<User>;
   
   createLeaderboardScore(score: InsertLeaderboardScore): Promise<LeaderboardScore>;
   getTopScores(gameMode?: string, limit?: number): Promise<LeaderboardScore[]>;
@@ -92,6 +98,11 @@ export interface IStorage {
   setWordListSharedGroups(wordListId: number, groupIds: number[]): Promise<void>;
   isUserMemberOfWordListGroups(userId: number, wordListId: number): Promise<boolean>;
   isUserGroupMember(userId: number, groupId: number): Promise<boolean>;
+  
+  createPasswordResetToken(token: InsertPasswordResetToken): Promise<PasswordResetToken>;
+  getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
+  markTokenAsUsed(tokenId: number): Promise<void>;
+  deleteExpiredTokens(): Promise<void>;
   
   sessionStore: session.Store;
 }
@@ -203,6 +214,11 @@ export class DatabaseStorage implements IStorage {
     return user || undefined;
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
     return user;
@@ -212,6 +228,24 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db
       .update(users)
       .set(preferences)
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async updateUserEmail(userId: number, email: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ email })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async updateUserPassword(userId: number, password: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ password })
       .where(eq(users.id, userId))
       .returning();
     return user;
@@ -856,6 +890,32 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
     
     return !!membership;
+  }
+
+  async createPasswordResetToken(insertToken: InsertPasswordResetToken): Promise<PasswordResetToken> {
+    const [token] = await db.insert(passwordResetTokens).values(insertToken).returning();
+    return token;
+  }
+
+  async getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
+    const [resetToken] = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(eq(passwordResetTokens.token, token));
+    return resetToken || undefined;
+  }
+
+  async markTokenAsUsed(tokenId: number): Promise<void> {
+    await db
+      .update(passwordResetTokens)
+      .set({ used: true })
+      .where(eq(passwordResetTokens.id, tokenId));
+  }
+
+  async deleteExpiredTokens(): Promise<void> {
+    await db
+      .delete(passwordResetTokens)
+      .where(sql`${passwordResetTokens.expiresAt} < NOW()`);
   }
 }
 

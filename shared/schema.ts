@@ -129,6 +129,15 @@ export const userToDoItems = pgTable("user_to_do_items", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  used: boolean("used").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const usersRelations = relations(users, ({ many }) => ({
   gameSessions: many(gameSessions),
   leaderboardScores: many(leaderboardScores),
@@ -213,6 +222,13 @@ export const userToDoItemsRelations = relations(userToDoItems, ({ one }) => ({
   }),
 }));
 
+export const passwordResetTokensRelations = relations(passwordResetTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [passwordResetTokens.userId],
+    references: [users.id],
+  }),
+}));
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -269,6 +285,11 @@ export const insertUserToDoItemSchema = createInsertSchema(userToDoItems).omit({
   createdAt: true,
 });
 
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertWord = z.infer<typeof insertWordSchema>;
@@ -289,6 +310,8 @@ export type InsertWordListUserGroup = z.infer<typeof insertWordListUserGroupSche
 export type WordListUserGroup = typeof wordListUserGroups.$inferSelect;
 export type InsertUserToDoItem = z.infer<typeof insertUserToDoItemSchema>;
 export type UserToDoItem = typeof userToDoItems.$inferSelect;
+export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 
 export type GameMode = "standard" | "timed" | "quiz" | "scramble" | "mistake" | "crossword";
 
