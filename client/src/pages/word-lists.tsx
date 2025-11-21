@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1195,6 +1195,8 @@ function EditImagesDialog({ list, open, onOpenChange }: {
   const [pixabayPreviews, setPixabayPreviews] = useState<any[]>([]);
   const [loadingPreviews, setLoadingPreviews] = useState(false);
   const [customSearchTerm, setCustomSearchTerm] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Query for word illustrations for this specific word list
   const { data: illustrations = [], refetch: refetchIllustrations } = useQuery<WordIllustration[]>({
@@ -1238,6 +1240,82 @@ function EditImagesDialog({ list, open, onOpenChange }: {
       });
     },
   });
+
+  // Handle file selection and upload
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !selectedWord) return;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select a JPEG, PNG, GIF, or WEBP image",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please select an image smaller than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingImage(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('word', selectedWord);
+      formData.append('wordListId', list.id.toString());
+
+      const response = await fetch('/api/word-illustrations/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to upload image');
+      }
+
+      // Invalidate all word list queries (prefix match includes illustrations subqueries)
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/public"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/shared-with-me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/word-illustrations"] });
+      
+      // Refetch illustrations for this word list to show the new image
+      await refetchIllustrations();
+      
+      setSelectedWord(null);
+      setPixabayPreviews([]);
+      
+      toast({
+        title: "Success!",
+        description: "Custom image uploaded successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to upload image",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingImage(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   // Fetch Pixabay previews for a word
   const fetchPixabayPreviews = async (word: string) => {
@@ -1347,40 +1425,66 @@ function EditImagesDialog({ list, open, onOpenChange }: {
               <p className="text-lg font-semibold">Selecting image for: {selectedWord}</p>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Input
-                type="text"
-                placeholder="Custom search (e.g., 'cartoon dog')"
-                value={customSearchTerm}
-                onChange={(e) => setCustomSearchTerm(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Input
+                  type="text"
+                  placeholder="Custom search (e.g., 'cartoon dog')"
+                  value={customSearchTerm}
+                  onChange={(e) => setCustomSearchTerm(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (customSearchTerm.trim()) {
+                        fetchPixabayPreviews(customSearchTerm);
+                      } else if (selectedWord) {
+                        fetchPixabayPreviews(selectedWord);
+                      }
+                    }
+                  }}
+                  className="flex-1 text-sm h-9"
+                  data-testid="input-custom-search"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
                     if (customSearchTerm.trim()) {
                       fetchPixabayPreviews(customSearchTerm);
                     } else if (selectedWord) {
                       fetchPixabayPreviews(selectedWord);
                     }
-                  }
-                }}
-                className="flex-1 text-sm h-9"
-                data-testid="input-custom-search"
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  if (customSearchTerm.trim()) {
-                    fetchPixabayPreviews(customSearchTerm);
-                  } else if (selectedWord) {
-                    fetchPixabayPreviews(selectedWord);
-                  }
-                }}
-                disabled={loadingPreviews}
-                data-testid="button-custom-search"
-              >
-                Search
-              </Button>
+                  }}
+                  disabled={loadingPreviews}
+                  data-testid="button-custom-search"
+                >
+                  Search
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="flex-1 text-sm text-gray-600">
+                  Or upload your own custom image
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  data-testid="input-file-upload"
+                />
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingImage}
+                  data-testid="button-upload-image"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  {uploadingImage ? 'Uploading...' : 'Upload Image'}
+                </Button>
+              </div>
             </div>
 
             {loadingPreviews ? (

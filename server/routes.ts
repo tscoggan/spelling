@@ -6,6 +6,7 @@ import { z } from "zod";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import { IllustrationJobService } from "./services/illustrationJobService";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import multer from "multer";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -524,6 +525,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Select and download a specific Pixabay image (or remove image if imageUrl is null)
+  // Configure multer for in-memory file uploads
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB max file size
+    },
+    fileFilter: (req, file, cb) => {
+      // Only allow image files
+      const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (allowedMimeTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Only JPEG, PNG, GIF, and WEBP images are allowed.'));
+      }
+    },
+  });
+
+  // Upload custom image for a word
+  app.post("/api/word-illustrations/upload", upload.single('image'), async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: "No image file provided" });
+      }
+
+      const { word, wordListId } = req.body;
+
+      if (!word) {
+        return res.status(400).json({ error: "Word is required" });
+      }
+
+      if (!wordListId) {
+        return res.status(400).json({ error: "Word list ID is required" });
+      }
+
+      // Validate and parse wordListId
+      const parsedWordListId = parseInt(wordListId);
+      if (isNaN(parsedWordListId)) {
+        return res.status(400).json({ error: "Invalid word list ID" });
+      }
+
+      // Authorization: Verify user owns or can edit the word list
+      const existingList = await storage.getCustomWordList(parsedWordListId);
+      if (!existingList) {
+        return res.status(404).json({ error: "Word list not found" });
+      }
+
+      if (existingList.userId !== req.user!.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Upload the file to Object Storage
+      const objectStorageService = new ObjectStorageService();
+      const imagePath = await objectStorageService.uploadImageBuffer(
+        req.file.buffer,
+        req.file.mimetype
+      );
+
+      console.log(`✓ Uploaded custom image for "${word}" to Object Storage: ${imagePath}`);
+
+      // Save to database with source as 'user'
+      const illustration = await storage.createWordIllustration({
+        word: word.toLowerCase(),
+        wordListId: parsedWordListId,
+        imagePath,
+        source: 'user',
+      });
+
+      res.json(illustration);
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      res.status(500).json({ error: "Failed to upload image" });
+    }
+  });
+
   app.post("/api/word-illustrations/select", async (req, res) => {
     try {
       if (!req.isAuthenticated()) {
