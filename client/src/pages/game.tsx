@@ -41,6 +41,10 @@ import incorrectSoundUrl from "@assets/Incorrect spelling_1763574108566.mp3";
 import playWordImage from "@assets/Play word icon_1763580897427.png";
 import playWordIconWithBorder from "@assets/Play word icon with border_1763670707710.png";
 
+// Import bee result images
+import trophyBeeImage from "@assets/Bee with trophy_1763852047681.png";
+import goodTryBeeImage from "@assets/Bee with good try_1763852047680.png";
+
 interface QuizAnswer {
   word: Word;
   userAnswer: string;
@@ -2679,7 +2683,11 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                 transition={{ delay: 0.2, type: "spring" }}
                 className="text-center"
               >
-                <Sparkles className="w-20 h-20 md:w-24 md:h-24 text-purple-600 mx-auto mb-4" />
+                <img 
+                  src={accuracy === 100 ? trophyBeeImage : goodTryBeeImage} 
+                  alt={accuracy === 100 ? "Trophy Bee" : "Good Try Bee"}
+                  className="w-32 h-32 md:w-40 md:h-40 mx-auto mb-4"
+                />
                 <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-2 font-crayon" data-testid="text-game-complete">
                   {gameMode === "quiz" ? "Quiz Complete!" : "Amazing Work!"}
                 </h1>
@@ -2738,8 +2746,8 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
             {gameMode === "crossword" && completedGrid && (
               <div className="space-y-4">
                 <h3 className="text-xl font-bold text-gray-800 text-center">Completed Puzzle</h3>
-                <div className="overflow-x-auto px-4">
-                  <div className="inline-block min-w-fit pr-4" style={{ display: 'grid', gridTemplateColumns: `repeat(${completedGrid.grid.cols}, 2.5rem)`, gap: '2px' }}>
+                <div className="flex justify-center overflow-x-auto px-4">
+                  <div className="inline-block min-w-fit" style={{ display: 'grid', gridTemplateColumns: `repeat(${completedGrid.grid.cols}, 2.5rem)`, gap: '2px' }}>
                     {completedGrid.grid.cells.map((row, rowIndex) => 
                       row.map((cell, colIndex) => {
                         if (cell.isBlank) {
@@ -3077,7 +3085,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                                   onKeyDown={(e) => handleCrosswordKeyDown(rowIndex, colIndex, e)}
                                   onFocus={(e) => e.target.select()}
                                   className={`w-full h-full text-center text-xl font-bold border-0 p-0 uppercase focus-visible:ring-1 focus-visible:ring-primary ${isMistake ? 'text-white bg-red-600' : 'bg-transparent'}`}
-                                  autoComplete="off"
+                                  autoComplete="one-time-code"
                                   autoCorrect="off"
                                   autoCapitalize="off"
                                   spellCheck={false}
@@ -3280,7 +3288,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                                   onFocus={centerGameCard}
                                   className={`text-transparent caret-transparent absolute inset-0 text-center ${inputStyle.className} h-16 md:h-20 rounded-2xl bg-transparent border-transparent pointer-events-auto`}
                                   style={{ fontSize: inputStyle.fontSize, caretColor: 'transparent' }}
-                                  autoComplete="off"
+                                  autoComplete="one-time-code"
                                   autoCorrect="off"
                                   autoCapitalize="off"
                                   spellCheck={false}
@@ -3327,7 +3335,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                                 className={`text-center ${inputStyle.className} h-16 md:h-20 rounded-2xl`}
                                 style={{ fontSize: inputStyle.fontSize }}
                                 placeholder="Type your answer..."
-                                autoComplete="off"
+                                autoComplete="one-time-code"
                                 autoCorrect="off"
                                 autoCapitalize="off"
                                 spellCheck={false}
