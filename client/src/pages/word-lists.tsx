@@ -633,7 +633,7 @@ export default function WordListsPage() {
                   <DialogDescription>
                     {editingList
                       ? "Update your word list details"
-                      : "Create a custom list of spelling words (minimum 5 words, maximum 500)"}
+                      : "Create a custom list of spelling words (minimum 5 words, maximum 5000)"}
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
@@ -696,7 +696,7 @@ export default function WordListsPage() {
                   </div>
                   <div>
                     <Label htmlFor="words">
-                      Words (one per line, min 5, max 500)
+                      Words (one per line, min 5, max 5000)
                     </Label>
                     <Textarea
                       id="words"
