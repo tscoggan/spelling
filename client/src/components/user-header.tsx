@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { LogOut, Bell, Settings } from "lucide-react";
+import { LogOut, Bell, Settings, Volume2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
@@ -30,12 +30,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 
 export function UserHeader() {
   const { user, logoutMutation } = useAuth();
   const [todoModalOpen, setTodoModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [showWordHints, setShowWordHints] = useState(() => {
+    const saved = localStorage.getItem('showWordHints');
+    return saved !== null ? saved === 'true' : true;
+  });
   
   // Ref to track if we need to persist a default voice to database (single-shot)
   const pendingDefaultVoiceRef = useRef<string | null>(null);
@@ -411,6 +416,24 @@ export function UserHeader() {
     }
   }, [pendingDefaultVoiceRef.current, user, retryTrigger]);
 
+  // Save showWordHints preference to localStorage
+  useEffect(() => {
+    localStorage.setItem('showWordHints', String(showWordHints));
+  }, [showWordHints]);
+
+  // Text-to-speech function
+  const speakWord = (text: string) => {
+    if (!selectedVoice) return;
+    
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voice = availableVoices.find((v) => v.name === selectedVoice);
+    if (voice) {
+      utterance.voice = voice;
+    }
+    window.speechSynthesis.speak(utterance);
+  };
+
   return (
     <>
       <div className="flex justify-end mb-6">
@@ -569,10 +592,10 @@ export function UserHeader() {
           <DialogHeader>
             <DialogTitle>Settings</DialogTitle>
             <DialogDescription>
-              Customize your app experience
+              Customize your game experience
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 mt-4">
+          <div className="space-y-6 mt-6">
             <div className="space-y-3">
               <Label htmlFor="voice-select">Voice</Label>
               <Select value={selectedVoice || undefined} onValueChange={handleVoiceChange}>
@@ -587,15 +610,41 @@ export function UserHeader() {
                   ) : (
                     availableVoices.map((voice) => (
                       <SelectItem key={voice.name} value={voice.name} data-testid={`voice-option-${voice.name}`}>
-                        {voice.name} ({voice.lang})
+                        {voice.name}
                       </SelectItem>
                     ))
                   )}
                 </SelectContent>
               </Select>
-              <p className="text-sm text-gray-600">
-                Choose the voice for text-to-speech pronunciation
-              </p>
+              {selectedVoice && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => speakWord("Test")}
+                  data-testid="button-test-voice"
+                >
+                  <Volume2 className="w-4 h-4 mr-2" />
+                  Test Voice
+                </Button>
+              )}
+            </div>
+            
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="word-hints">Word Length Hints</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Show blank spaces for each letter
+                  </p>
+                </div>
+                <Switch
+                  id="word-hints"
+                  checked={showWordHints}
+                  onCheckedChange={setShowWordHints}
+                  data-testid="switch-word-hints"
+                />
+              </div>
             </div>
           </div>
         </DialogContent>

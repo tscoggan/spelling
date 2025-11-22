@@ -151,7 +151,10 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [showWordHints, setShowWordHints] = useState(true);
+  const [showWordHints, setShowWordHints] = useState(() => {
+    const saved = localStorage.getItem('showWordHints');
+    return saved !== null ? saved === 'true' : true;
+  });
   const [wordDefinition, setWordDefinition] = useState<string | null>(null);
   const [wordExample, setWordExample] = useState<string | null>(null);
   const [wordPartsOfSpeech, setWordPartsOfSpeech] = useState<string | null>(null);
@@ -482,6 +485,11 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
       updateVoicePreferenceMutation.mutate(voiceName);
     }
   };
+
+  // Save showWordHints preference to localStorage
+  useEffect(() => {
+    localStorage.setItem('showWordHints', String(showWordHints));
+  }, [showWordHints]);
 
   const currentWord = words?.[currentWordIndex];
 
