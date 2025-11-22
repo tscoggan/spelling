@@ -1,9 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { LogOut, Bell } from "lucide-react";
+import { LogOut, Bell, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -22,10 +22,37 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function UserHeader() {
   const { user, logoutMutation } = useAuth();
   const [todoModalOpen, setTodoModalOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  
+  // Ref to track if we need to persist a default voice to database (single-shot)
+  const pendingDefaultVoiceRef = useRef<string | null>(null);
+  const hasPersistedDefaultRef = useRef(false);
+  // State to trigger retry on error (increments to re-trigger persistence useEffect)
+  const [retryTrigger, setRetryTrigger] = useState(0);
+  // Ref to track retry attempts and prevent infinite loops
+  const retryAttemptsRef = useRef(0);
+  const MAX_RETRY_ATTEMPTS = 3;
+  
+  // Initialize selectedVoice from saved preference immediately (synchronous)
+  const [selectedVoice, setSelectedVoice] = useState<string | null>(() => {
+    // Try to get saved preference from localStorage first
+    const localStoragePreference = localStorage.getItem('preferredVoice');
+    return localStoragePreference || null;
+  });
+  
   const { toast } = useToast();
 
   const { data: todoCount = 0 } = useQuery<number>({
@@ -174,6 +201,200 @@ export function UserHeader() {
     completeTodoMutation.mutate(todoId);
   };
 
+  // Load available voices
+  useEffect(() => {
+    if (!('speechSynthesis' in window)) {
+      setAvailableVoices([]);
+      return;
+    }
+
+    const loadVoices = () => {
+      try {
+        const voices = window.speechSynthesis.getVoices();
+        
+        // Don't process until we have voices (Chrome loads async)
+        if (voices.length === 0) {
+          return;
+        }
+        
+        const englishVoices = voices.filter(voice => voice.lang.startsWith('en'));
+        setAvailableVoices(englishVoices);
+
+        // Load voice preference from user profile
+        const userPreference = user?.preferredVoice;
+        const localStoragePreference = localStorage.getItem('preferredVoice');
+        const savedVoice = userPreference || localStoragePreference;
+
+        // If saved voice is valid, use it
+        if (savedVoice && englishVoices.find(v => v.name === savedVoice)) {
+          setSelectedVoice(savedVoice);
+          return;
+        }
+
+        // Only set default if there's no saved preference at all and we haven't persisted one yet
+        if (!savedVoice && englishVoices.length > 0 && !hasPersistedDefaultRef.current) {
+          // Default to female US English voice
+          const femaleVoiceNames = [
+            'google us english female',
+            'google uk english female',
+            'microsoft zira',
+            'samantha',
+            'karen',
+            'serena',
+            'fiona',
+            'tessa',
+            'victoria',
+            'susan',
+            'female'
+          ];
+
+          let defaultVoice = null;
+          
+          // Try to find US English female voice first
+          for (const voiceName of femaleVoiceNames) {
+            defaultVoice = englishVoices.find(voice =>
+              voice.name.toLowerCase().includes(voiceName) &&
+              voice.lang.startsWith('en-US')
+            );
+            if (defaultVoice) break;
+          }
+
+          // Fallback to any female English voice
+          if (!defaultVoice) {
+            for (const voiceName of femaleVoiceNames) {
+              defaultVoice = englishVoices.find(voice =>
+                voice.name.toLowerCase().includes(voiceName)
+              );
+              if (defaultVoice) break;
+            }
+          }
+
+          // Final fallback to first available voice
+          if (!defaultVoice) {
+            defaultVoice = englishVoices[0];
+          }
+
+          // Set and persist the default voice so other parts of the app can use it
+          if (defaultVoice) {
+            setSelectedVoice(defaultVoice.name);
+            // Persist to localStorage so game and other components can access it
+            localStorage.setItem('preferredVoice', defaultVoice.name);
+            // Store in ref to trigger database persistence (single-shot)
+            pendingDefaultVoiceRef.current = defaultVoice.name;
+          }
+        }
+      } catch (error) {
+        console.error('Error loading voices:', error);
+        setAvailableVoices([]);
+      }
+    };
+
+    loadVoices();
+
+    const handleVoicesChanged = () => {
+      loadVoices();
+    };
+
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = handleVoicesChanged;
+    }
+
+    return () => {
+      // Cleanup: remove the handler
+      if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = null;
+      }
+    };
+  }, [user]);
+
+  // Sync voice preference from user profile when it loads
+  useEffect(() => {
+    if (user?.preferredVoice && user.preferredVoice !== selectedVoice) {
+      setSelectedVoice(user.preferredVoice);
+      localStorage.setItem('preferredVoice', user.preferredVoice);
+    }
+  }, [user?.preferredVoice]);
+
+  // Mutation to update voice preference
+  const updateVoicePreferenceMutation = useMutation({
+    mutationFn: async (voiceName: string) => {
+      return await apiRequest("PATCH", "/api/user", { preferredVoice: voiceName });
+    },
+    onSuccess: (_data, voiceName) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      
+      // Only mark as persisted if this was an auto-default (not manual change)
+      if (pendingDefaultVoiceRef.current === voiceName) {
+        hasPersistedDefaultRef.current = true;
+        pendingDefaultVoiceRef.current = null;
+      }
+      
+      toast({
+        title: "Success!",
+        description: "Voice preference saved",
+      });
+    },
+    onError: (error, voiceName) => {
+      console.error("Failed to save voice preference:", error);
+      
+      // If this was an auto-default that failed, allow retry (up to MAX_RETRY_ATTEMPTS)
+      if (pendingDefaultVoiceRef.current === voiceName) {
+        retryAttemptsRef.current += 1;
+        
+        if (retryAttemptsRef.current < MAX_RETRY_ATTEMPTS) {
+          hasPersistedDefaultRef.current = false;
+          // Increment retry trigger to re-run persistence useEffect
+          setRetryTrigger(prev => prev + 1);
+        } else {
+          // Max retries reached, give up
+          console.warn(`Max retry attempts (${MAX_RETRY_ATTEMPTS}) reached for voice preference persistence`);
+          pendingDefaultVoiceRef.current = null;
+          hasPersistedDefaultRef.current = true; // Prevent further attempts
+        }
+      }
+      
+      toast({
+        title: "Error",
+        description: "Failed to save voice preference",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Save voice preference
+  const handleVoiceChange = (voiceName: string) => {
+    setSelectedVoice(voiceName);
+    localStorage.setItem('preferredVoice', voiceName);
+    
+    // Clear pending default voice to prevent it from overriding manual selection
+    if (pendingDefaultVoiceRef.current) {
+      pendingDefaultVoiceRef.current = null;
+      hasPersistedDefaultRef.current = true; // Mark as handled
+    }
+    
+    if (user) {
+      updateVoicePreferenceMutation.mutate(voiceName);
+    }
+  };
+
+  // Reset refs when user changes (logout/login)
+  useEffect(() => {
+    pendingDefaultVoiceRef.current = null;
+    hasPersistedDefaultRef.current = false;
+    retryAttemptsRef.current = 0;
+  }, [user?.id]);
+
+  // Persist default voice to database (with retry on error)
+  useEffect(() => {
+    // Only persist if we have a pending default voice and haven't already persisted
+    if (pendingDefaultVoiceRef.current && !hasPersistedDefaultRef.current && user && !user.preferredVoice) {
+      const voiceToPersist = pendingDefaultVoiceRef.current;
+      // Don't set hasPersistedDefaultRef here - let the mutation callbacks handle it
+      // This allows retry on error (triggered by retryTrigger state change)
+      updateVoicePreferenceMutation.mutate(voiceToPersist);
+    }
+  }, [pendingDefaultVoiceRef.current, user, retryTrigger]);
+
   return (
     <>
       <div className="flex justify-end mb-6">
@@ -216,6 +437,21 @@ export function UserHeader() {
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>Notifications</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setSettingsOpen(true)}
+                    data-testid="button-settings"
+                  >
+                    <Settings className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Settings</p>
                 </TooltipContent>
               </Tooltip>
               <Button
@@ -309,6 +545,43 @@ export function UserHeader() {
               )}
             </div>
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Settings</DialogTitle>
+            <DialogDescription>
+              Customize your app experience
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-3">
+              <Label htmlFor="voice-select">Voice</Label>
+              <Select value={selectedVoice || undefined} onValueChange={handleVoiceChange}>
+                <SelectTrigger id="voice-select" data-testid="select-voice">
+                  <SelectValue placeholder={availableVoices.length === 0 ? "No voices available" : "Select a voice"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableVoices.length === 0 ? (
+                    <SelectItem value="none" disabled data-testid="voice-option-none">
+                      No voices available
+                    </SelectItem>
+                  ) : (
+                    availableVoices.map((voice) => (
+                      <SelectItem key={voice.name} value={voice.name} data-testid={`voice-option-${voice.name}`}>
+                        {voice.name} ({voice.lang})
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-gray-600">
+                Choose the voice for text-to-speech pronunciation
+              </p>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </>
