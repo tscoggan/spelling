@@ -2683,10 +2683,16 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                 transition={{ delay: 0.2, type: "spring" }}
                 className="text-center"
               >
-                <img 
+                <motion.img 
                   src={accuracy === 100 ? trophyBeeImage : goodTryBeeImage} 
                   alt={accuracy === 100 ? "Trophy Bee" : "Good Try Bee"}
-                  className="w-32 h-32 md:w-40 md:h-40 mx-auto mb-4 object-contain"
+                  className="w-32 h-32 md:w-40 md:h-40 mx-auto mb-2 object-contain"
+                  animate={{ y: [0, -8, 0] }}
+                  transition={{ 
+                    duration: 2.5, 
+                    repeat: Infinity, 
+                    ease: "easeInOut" 
+                  }}
                 />
                 <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-2 font-crayon" data-testid="text-game-complete">
                   {gameMode === "quiz" ? "Quiz Complete!" : "Amazing Work!"}
@@ -2698,11 +2704,17 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
             )}
 
             {gameMode === "crossword" ? (
-              <div className="flex justify-center">
-                <img 
+              <div className="flex justify-center my-2">
+                <motion.img 
                   src={accuracy === 100 ? trophyBeeImage : goodTryBeeImage} 
                   alt={accuracy === 100 ? "Trophy Bee" : "Good Try Bee"}
                   className="w-32 h-32 md:w-40 md:h-40 object-contain"
+                  animate={{ y: [0, -8, 0] }}
+                  transition={{ 
+                    duration: 2.5, 
+                    repeat: Infinity, 
+                    ease: "easeInOut" 
+                  }}
                 />
               </div>
             ) : (
@@ -2745,9 +2757,9 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
             {gameMode === "crossword" && completedGrid && (
               <div className="space-y-4">
                 <h3 className="text-xl font-bold text-gray-800 text-center">Completed Puzzle</h3>
-                <div className="overflow-x-auto">
-                  <div className="flex justify-center px-4">
-                    <div className="inline-block min-w-fit" style={{ display: 'grid', gridTemplateColumns: `repeat(${completedGrid.grid.cols}, 2.5rem)`, gap: '2px' }}>
+                <div className="overflow-x-auto w-full">
+                  <div className="min-w-fit mx-auto px-4">
+                    <div className="inline-grid" style={{ gridTemplateColumns: `repeat(${completedGrid.grid.cols}, 2.5rem)`, gap: '2px' }}>
                     {completedGrid.grid.cells.map((row, rowIndex) => 
                       row.map((cell, colIndex) => {
                         if (cell.isBlank) {
