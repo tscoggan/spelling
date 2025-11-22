@@ -221,6 +221,9 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   const [completedGrid, setCompletedGrid] = useState<{inputs: {[key: string]: string}, grid: CrosswordGrid} | null>(null);
   const [finalAccuracy, setFinalAccuracy] = useState<number>(0);
   
+  // Ref for crossword overflow container to center grid
+  const crosswordScrollRef = useRef<HTMLDivElement>(null);
+  
   // Mobile keyboard management
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   
@@ -1963,6 +1966,20 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     }
   }, [gameMode, words]);
 
+  // Center crossword grid horizontally when it's loaded
+  useLayoutEffect(() => {
+    if (crosswordScrollRef.current && crosswordGrid && gameMode === "crossword") {
+      const container = crosswordScrollRef.current;
+      const gridWidth = crosswordGrid.cols * 40 + (crosswordGrid.cols - 1) * 2; // 2.5rem = 40px, 2px gap
+      const containerWidth = container.clientWidth;
+      
+      // Center the grid if it's wider than the container
+      if (gridWidth > containerWidth) {
+        container.scrollLeft = (gridWidth - containerWidth) / 2;
+      }
+    }
+  }, [crosswordGrid, gameMode]);
+
   const handleTimerExpired = () => {
     // Not used in new timed mode
     setGameComplete(true);
@@ -3017,10 +3034,10 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                 <p className="text-gray-600">Click the play icon at the start of each word to hear the word</p>
               </div>
 
-              <div className="overflow-x-auto px-4">
-                {/* Crossword Grid - Scrollable horizontally if too wide, left-aligned with symmetrical padding */}
-                <div className="inline-block min-w-fit pr-4" style={{ display: 'grid', gridTemplateColumns: `repeat(${crosswordGrid.cols}, 2.5rem)`, gap: '2px' }}>
-                    {crosswordGrid.cells.map((row, rowIndex) => 
+              <div ref={crosswordScrollRef} className="overflow-x-auto px-4">
+                {/* Crossword Grid - Horizontally centered, scrollable if too wide */}
+                <div className="w-max mx-auto" style={{ display: 'grid', gridTemplateColumns: `repeat(${crosswordGrid.cols}, 2.5rem)`, gap: '2px' }}>
+                  {crosswordGrid.cells.map((row, rowIndex) => 
                       row.map((cell, colIndex) => {
                         const cellKey = `${rowIndex}-${colIndex}`;
                         const isMistake = highlightedMistakes.has(cellKey);

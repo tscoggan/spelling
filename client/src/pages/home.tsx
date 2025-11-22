@@ -237,6 +237,7 @@ export default function Home() {
             variant="outline"
             size="lg"
             onClick={() => setLocation("/word-lists")}
+            className="hover:scale-110 transition-transform"
             data-testid="button-word-lists"
           >
             <List className="w-4 h-4 mr-2" />
@@ -246,6 +247,7 @@ export default function Home() {
             variant="outline"
             size="lg"
             onClick={() => setLocation("/user-groups")}
+            className="hover:scale-110 transition-transform"
             data-testid="button-user-groups"
           >
             <Users className="w-4 h-4 mr-2" />
@@ -255,6 +257,7 @@ export default function Home() {
             variant="outline"
             size="lg"
             onClick={() => setLocation("/leaderboard")}
+            className="hover:scale-110 transition-transform"
             data-testid="button-view-leaderboard"
           >
             <Trophy className="w-4 h-4 mr-2" />
@@ -279,7 +282,7 @@ export default function Home() {
                 className="h-full"
               >
                 <Card
-                  className="hover-elevate active-elevate-2 cursor-pointer h-full shadow-lg border-2 flex flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                  className="hover:scale-110 transition-transform cursor-pointer h-full shadow-lg border-2 flex flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                   onClick={() => handleModeClick(mode.id)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
