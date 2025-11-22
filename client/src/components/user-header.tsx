@@ -45,6 +45,8 @@ export function UserHeader() {
   // Ref to track retry attempts and prevent infinite loops
   const retryAttemptsRef = useRef(0);
   const MAX_RETRY_ATTEMPTS = 3;
+  // Ref to track the intended (most recent) voice selection
+  const intendedVoiceRef = useRef<string | null>(null);
   
   // Initialize selectedVoice from saved preference immediately (synchronous)
   const [selectedVoice, setSelectedVoice] = useState<string | null>(() => {
@@ -321,6 +323,14 @@ export function UserHeader() {
       return await apiRequest("PATCH", "/api/user", { preferredVoice: voiceName });
     },
     onSuccess: (_data, voiceName) => {
+      // Check if this mutation result is stale (user has since selected a different voice)
+      if (intendedVoiceRef.current && intendedVoiceRef.current !== voiceName) {
+        // User selected a different voice while this mutation was in-flight
+        // Re-send the correct (intended) voice to fix the race condition
+        updateVoicePreferenceMutation.mutate(intendedVoiceRef.current);
+        return; // Don't invalidate or show toast for stale update
+      }
+      
       queryClient.invalidateQueries({ queryKey: ['/api/user'] });
       
       // Only mark as persisted if this was an auto-default (not manual change)
@@ -366,6 +376,9 @@ export function UserHeader() {
     setSelectedVoice(voiceName);
     localStorage.setItem('preferredVoice', voiceName);
     
+    // Track this as the intended voice (most recent selection)
+    intendedVoiceRef.current = voiceName;
+    
     // Clear pending default voice to prevent it from overriding manual selection
     if (pendingDefaultVoiceRef.current) {
       pendingDefaultVoiceRef.current = null;
@@ -382,6 +395,7 @@ export function UserHeader() {
     pendingDefaultVoiceRef.current = null;
     hasPersistedDefaultRef.current = false;
     retryAttemptsRef.current = 0;
+    intendedVoiceRef.current = null;
   }, [user?.id]);
 
   // Persist default voice to database (with retry on error)
@@ -389,6 +403,8 @@ export function UserHeader() {
     // Only persist if we have a pending default voice and haven't already persisted
     if (pendingDefaultVoiceRef.current && !hasPersistedDefaultRef.current && user && !user.preferredVoice) {
       const voiceToPersist = pendingDefaultVoiceRef.current;
+      // Track this as the intended voice (for race condition detection)
+      intendedVoiceRef.current = voiceToPersist;
       // Don't set hasPersistedDefaultRef here - let the mutation callbacks handle it
       // This allows retry on error (triggered by retryTrigger state change)
       updateVoicePreferenceMutation.mutate(voiceToPersist);
