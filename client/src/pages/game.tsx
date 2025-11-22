@@ -3077,6 +3077,10 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                                   onKeyDown={(e) => handleCrosswordKeyDown(rowIndex, colIndex, e)}
                                   onFocus={(e) => e.target.select()}
                                   className={`w-full h-full text-center text-xl font-bold border-0 p-0 uppercase focus-visible:ring-1 focus-visible:ring-primary ${isMistake ? 'text-white bg-red-600' : 'bg-transparent'}`}
+                                  autoComplete="off"
+                                  autoCorrect="off"
+                                  autoCapitalize="off"
+                                  spellCheck={false}
                                   data-row={rowIndex}
                                   data-col={colIndex}
                                   data-testid={`cell-${rowIndex}-${colIndex}`}
@@ -3277,6 +3281,9 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                                   className={`text-transparent caret-transparent absolute inset-0 text-center ${inputStyle.className} h-16 md:h-20 rounded-2xl bg-transparent border-transparent pointer-events-auto`}
                                   style={{ fontSize: inputStyle.fontSize, caretColor: 'transparent' }}
                                   autoComplete="off"
+                                  autoCorrect="off"
+                                  autoCapitalize="off"
+                                  spellCheck={false}
                                   autoFocus
                                   data-testid="input-spelling"
                                 />
@@ -3321,6 +3328,9 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                                 style={{ fontSize: inputStyle.fontSize }}
                                 placeholder="Type your answer..."
                                 autoComplete="off"
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck={false}
                                 autoFocus
                                 data-testid="input-spelling"
                               />
