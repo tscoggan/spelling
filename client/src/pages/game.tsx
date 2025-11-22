@@ -2626,12 +2626,33 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
       : (totalWords > 0 ? Math.round((correctCount / totalWords) * 100) : 0);
     
     return (
-      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: 'hsl(var(--page-game-bg))' }}>
+      <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
+        {/* Portrait background */}
+        <div 
+          className="fixed inset-0 portrait:block landscape:hidden pointer-events-none"
+          style={{
+            backgroundImage: `url(${rainbowBackgroundPortrait})`,
+            backgroundSize: 'cover',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center top',
+          }}
+        ></div>
+        {/* Landscape background */}
+        <div 
+          className="fixed inset-0 portrait:hidden landscape:block pointer-events-none"
+          style={{
+            backgroundImage: `url(${rainbowBackgroundLandscape})`,
+            backgroundSize: 'cover',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center top',
+          }}
+        ></div>
+        <div className="fixed inset-0 bg-white/5 dark:bg-black/50 pointer-events-none"></div>
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.5 }}
-          className="w-full max-w-4xl"
+          className="w-full max-w-4xl relative z-10"
         >
           <Card className="p-8 md:p-12 space-y-8">
             {gameMode !== "crossword" && (
@@ -3245,20 +3266,26 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                                 <div 
                                   className={`h-16 md:h-20 rounded-2xl border-2 border-input bg-background flex items-center justify-center ${hintSize.gapClass} px-4 cursor-text pointer-events-none`}
                                 >
-                                  {Array.from({ length: Math.max(currentWord.word.length, userInput.length) }).map((_, index) => (
-                                    <div key={index} className="flex flex-col items-center gap-1">
-                                      <div 
-                                        className={`${hintSize.useInline ? '' : hintSize.fontClass} font-semibold text-gray-800 h-8 md:h-10 flex items-center justify-center uppercase`} 
-                                        style={{ 
-                                          minWidth: hintSize.minWidth,
-                                          fontSize: hintSize.useInline ? hintSize.fontSize : undefined
-                                        }}
-                                      >
-                                        {userInput[index] || ""}
+                                  {Array.from({ length: Math.max(currentWord.word.length, userInput.length) }).map((_, index) => {
+                                    const isExcessLetter = index >= currentWord.word.length;
+                                    return (
+                                      <div key={index} className="flex flex-col items-center gap-1">
+                                        <div 
+                                          className={`${hintSize.useInline ? '' : hintSize.fontClass} font-semibold text-gray-800 h-8 md:h-10 flex items-center justify-center uppercase`} 
+                                          style={{ 
+                                            minWidth: hintSize.minWidth,
+                                            fontSize: hintSize.useInline ? hintSize.fontSize : undefined
+                                          }}
+                                        >
+                                          {userInput[index] || ""}
+                                        </div>
+                                        <div 
+                                          className={isExcessLetter ? "h-1 bg-red-600" : "h-0.5 bg-gray-400"} 
+                                          style={{ width: hintSize.minWidth }}
+                                        ></div>
                                       </div>
-                                      <div className="h-0.5 bg-gray-400" style={{ width: hintSize.minWidth }}></div>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               </div>
                             );
