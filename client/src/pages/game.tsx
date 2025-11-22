@@ -189,8 +189,9 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   
   // Scramble mode states
   const [scrambledLetters, setScrambledLetters] = useState<string[]>([]);
-  const [placedLetters, setPlacedLetters] = useState<(string | null)[]>([]);
+  const [placedLetters, setPlacedLetters] = useState<({letter: string; sourceIndex: number} | null)[]>([]);
   const [draggedLetter, setDraggedLetter] = useState<{letter: string; sourceIndex: number} | null>(null);
+  const [isDragging, setIsDragging] = useState(false); // Track if drag operation is in progress
   
   // Touch event states for mobile
   const [touchDragging, setTouchDragging] = useState(false);
@@ -1140,6 +1141,33 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     }
   }, [gameMode, currentWord, currentWordIndex]);
 
+  // Scramble mode: Reset isDragging on cancellation events (Escape key, window blur)
+  useEffect(() => {
+    if (gameMode !== "scramble") return;
+
+    const handleEscapeKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isDragging) {
+        setIsDragging(false);
+        setDraggedLetter(null);
+      }
+    };
+
+    const handleWindowBlur = () => {
+      if (isDragging) {
+        setIsDragging(false);
+        setDraggedLetter(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscapeKey);
+    window.addEventListener('blur', handleWindowBlur);
+
+    return () => {
+      window.removeEventListener('keydown', handleEscapeKey);
+      window.removeEventListener('blur', handleWindowBlur);
+    };
+  }, [gameMode, isDragging]);
+
   // Monitor visualViewport to detect keyboard and adjust layout (mobile only)
   useEffect(() => {
     if (typeof window === 'undefined' || !window.visualViewport) {
@@ -2066,6 +2094,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   // Scramble mode drag-and-drop handlers
   const handleDragStart = (letter: string, sourceIndex: number) => {
     setDraggedLetter({ letter, sourceIndex });
+    setIsDragging(true);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -2078,39 +2107,70 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     const newPlaced = [...placedLetters];
     const newScrambled = [...scrambledLetters];
 
-    // If dropping on a filled slot, return the displaced letter to the tray
+    // If dropping on a filled slot, swap with the displaced letter
     if (newPlaced[targetIndex] !== null) {
-      const displacedLetter = newPlaced[targetIndex]!;
-      // Put displaced letter back in source position before clearing it
-      newScrambled[draggedLetter.sourceIndex] = displacedLetter;
-      newPlaced[targetIndex] = draggedLetter.letter;
+      const displaced = newPlaced[targetIndex]!;
+      // Put displaced letter back to its original source position in the tray
+      newScrambled[displaced.sourceIndex] = displaced.letter;
+      // Place the dragged letter in the target slot
+      newPlaced[targetIndex] = { letter: draggedLetter.letter, sourceIndex: draggedLetter.sourceIndex };
+      // Clear the dragged letter's source slot in the tray
+      newScrambled[draggedLetter.sourceIndex] = '';
     } else {
       // Dropping on empty slot - just move the letter
-      newPlaced[targetIndex] = draggedLetter.letter;
+      newPlaced[targetIndex] = { letter: draggedLetter.letter, sourceIndex: draggedLetter.sourceIndex };
+      // Clear the source slot only (the tile has moved from tray to placement)
       newScrambled[draggedLetter.sourceIndex] = '';
     }
 
     setPlacedLetters(newPlaced);
     setScrambledLetters(newScrambled);
     setDraggedLetter(null);
+    setIsDragging(false);
   };
 
   const handleRemoveLetter = (targetIndex: number) => {
     if (placedLetters[targetIndex] === null) return;
 
-    const letter = placedLetters[targetIndex]!;
+    const placed = placedLetters[targetIndex]!;
     const newPlaced = [...placedLetters];
     const newScrambled = [...scrambledLetters];
 
-    // Find first empty spot in scrambled letters
-    const emptyIndex = newScrambled.findIndex(l => l === '');
-    if (emptyIndex !== -1) {
-      newScrambled[emptyIndex] = letter;
-    }
-
+    // Return letter to its original source position
+    newScrambled[placed.sourceIndex] = placed.letter;
     newPlaced[targetIndex] = null;
+
     setPlacedLetters(newPlaced);
     setScrambledLetters(newScrambled);
+  };
+
+  // Handle clicking/tapping a scrambled letter to place it in the next open slot
+  const handlePlaceLetter = (sourceIndex: number) => {
+    // Ignore clicks if a drag operation is in progress
+    if (isDragging) {
+      return;
+    }
+
+    const letter = scrambledLetters[sourceIndex];
+    if (!letter) return;
+
+    const newPlaced = [...placedLetters];
+    const newScrambled = [...scrambledLetters];
+
+    // Find first empty spot in placed letters
+    const emptyIndex = newPlaced.findIndex(l => l === null);
+    if (emptyIndex !== -1) {
+      newPlaced[emptyIndex] = { letter, sourceIndex };
+      newScrambled[sourceIndex] = '';
+      setPlacedLetters(newPlaced);
+      setScrambledLetters(newScrambled);
+    }
+  };
+
+  // Handle drag end to reset isDragging flag (prevents stuck state)
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    setDraggedLetter(null);
   };
 
   // Calculate dynamic tile size for scramble mode to fit all letters in one row
@@ -2185,7 +2245,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
       return; // Not all letters placed
     }
 
-    const userAnswer = placedLetters.join('');
+    const userAnswer = placedLetters.map(l => l!.letter).join('');
     const correct = userAnswer.toLowerCase() === currentWord.word.toLowerCase();
 
     setIsCorrect(correct);
@@ -2458,6 +2518,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   const handleTouchStart = (e: React.TouchEvent, letter: string, sourceIndex: number) => {
     const touch = e.touches[0];
     setTouchDragging(true);
+    setIsDragging(true);
     setTouchPosition({ x: touch.clientX, y: touch.clientY });
     setDraggedLetter({ letter, sourceIndex });
     setDraggedLetterElement(letter);
@@ -2472,6 +2533,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (!touchDragging || !draggedLetter) {
       setTouchDragging(false);
+      setIsDragging(false);
       setTouchPosition(null);
       setDraggedLetterElement(null);
       return;
@@ -2502,14 +2564,19 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
       const newPlaced = [...placedLetters];
       const newScrambled = [...scrambledLetters];
 
-      // If dropping on a filled slot, return the displaced letter to the tray
+      // If dropping on a filled slot, swap with the displaced letter
       if (newPlaced[targetIndex] !== null) {
-        const displacedLetter = newPlaced[targetIndex]!;
-        newScrambled[draggedLetter.sourceIndex] = displacedLetter;
-        newPlaced[targetIndex] = draggedLetter.letter;
+        const displaced = newPlaced[targetIndex]!;
+        // Put displaced letter back to its original source position in the tray
+        newScrambled[displaced.sourceIndex] = displaced.letter;
+        // Place the dragged letter in the target slot
+        newPlaced[targetIndex] = { letter: draggedLetter.letter, sourceIndex: draggedLetter.sourceIndex };
+        // Clear the dragged letter's source slot in the tray
+        newScrambled[draggedLetter.sourceIndex] = '';
       } else {
         // Dropping on empty slot - just move the letter
-        newPlaced[targetIndex] = draggedLetter.letter;
+        newPlaced[targetIndex] = { letter: draggedLetter.letter, sourceIndex: draggedLetter.sourceIndex };
+        // Clear the source slot only (the tile has moved from tray to placement)
         newScrambled[draggedLetter.sourceIndex] = '';
       }
 
@@ -2519,6 +2586,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
 
     // Reset touch state
     setTouchDragging(false);
+    setIsDragging(false);
     setTouchPosition(null);
     setDraggedLetter(null);
     setDraggedLetterElement(null);
@@ -3096,7 +3164,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                                       className="font-bold text-gray-800"
                                       style={{ fontSize: `${tileSize.fontSize}px` }}
                                     >
-                                      {letter}
+                                      {letter.letter}
                                     </span>
                                   ) : (
                                     <div 
@@ -3120,9 +3188,11 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                                 key={`source-${index}`}
                                 draggable
                                 onDragStart={() => handleDragStart(letter, index)}
+                                onDragEnd={handleDragEnd}
                                 onTouchStart={(e) => handleTouchStart(e, letter, index)}
                                 onTouchEnd={handleTouchEnd}
-                                className="rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-lg flex items-center justify-center cursor-move hover-elevate active-elevate-2 touch-none"
+                                onClick={() => handlePlaceLetter(index)}
+                                className="rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-lg flex items-center justify-center cursor-pointer hover-elevate active-elevate-2 touch-none"
                                 style={{
                                   width: `${tileSize.width}px`,
                                   height: `${tileSize.height}px`,
@@ -3141,7 +3211,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                         </div>
 
                         <div className="text-center text-sm text-gray-600">
-                          Drag the yellow tiles to the blank spaces above
+                          Click or drag the yellow tiles to fill the blank spaces above
                         </div>
                       </div>
                     ) : (
