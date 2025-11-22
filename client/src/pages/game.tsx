@@ -2686,7 +2686,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                 <img 
                   src={accuracy === 100 ? trophyBeeImage : goodTryBeeImage} 
                   alt={accuracy === 100 ? "Trophy Bee" : "Good Try Bee"}
-                  className="w-32 h-32 md:w-40 md:h-40 mx-auto mb-4"
+                  className="w-32 h-32 md:w-40 md:h-40 mx-auto mb-4 object-contain"
                 />
                 <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-2 font-crayon" data-testid="text-game-complete">
                   {gameMode === "quiz" ? "Quiz Complete!" : "Amazing Work!"}
@@ -2699,12 +2699,11 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
 
             {gameMode === "crossword" ? (
               <div className="flex justify-center">
-                <Card className="p-6 bg-green-50 border-green-200 w-64">
-                  <div className="text-4xl md:text-5xl font-bold text-green-600" data-testid="text-accuracy">
-                    {accuracy}%
-                  </div>
-                  <div className="text-lg text-gray-600 mt-2">Accuracy</div>
-                </Card>
+                <img 
+                  src={accuracy === 100 ? trophyBeeImage : goodTryBeeImage} 
+                  alt={accuracy === 100 ? "Trophy Bee" : "Good Try Bee"}
+                  className="w-32 h-32 md:w-40 md:h-40 object-contain"
+                />
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -2727,7 +2726,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
               <p className="text-lg text-gray-700">
                 {gameMode === "crossword" && completedGrid ? (
                   <>You got <span className="font-bold text-gray-900" data-testid="text-correct-count">{correctCount}</span> out of{" "}
-                  <span className="font-bold text-gray-900">{completedGrid.grid.entries.length}</span> words correct!</>
+                  <span className="font-bold text-gray-900">{completedGrid.grid.entries.length}</span> words correct! (<span className="font-bold text-gray-900" data-testid="text-accuracy">{accuracy}%</span> accuracy)</>
                 ) : gameMode === "timed" ? (
                   <>You spelled <span className="font-bold text-gray-900" data-testid="text-correct-count">{correctCount}</span> out of{" "}
                   <span className="font-bold text-gray-900">{totalWords}</span> words correctly in 60 seconds!</>
@@ -2746,8 +2745,9 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
             {gameMode === "crossword" && completedGrid && (
               <div className="space-y-4">
                 <h3 className="text-xl font-bold text-gray-800 text-center">Completed Puzzle</h3>
-                <div className="flex justify-center overflow-x-auto px-4">
-                  <div className="inline-block min-w-fit" style={{ display: 'grid', gridTemplateColumns: `repeat(${completedGrid.grid.cols}, 2.5rem)`, gap: '2px' }}>
+                <div className="overflow-x-auto">
+                  <div className="flex justify-center px-4">
+                    <div className="inline-block min-w-fit" style={{ display: 'grid', gridTemplateColumns: `repeat(${completedGrid.grid.cols}, 2.5rem)`, gap: '2px' }}>
                     {completedGrid.grid.cells.map((row, rowIndex) => 
                       row.map((cell, colIndex) => {
                         if (cell.isBlank) {
@@ -2795,6 +2795,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                         );
                       })
                     )}
+                    </div>
                   </div>
                 </div>
                 <p className="text-center text-sm text-gray-600">
@@ -3089,6 +3090,8 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                                   autoCorrect="off"
                                   autoCapitalize="off"
                                   spellCheck={false}
+                                  enterKeyHint="done"
+                                  data-form-type="other"
                                   data-row={rowIndex}
                                   data-col={colIndex}
                                   data-testid={`cell-${rowIndex}-${colIndex}`}
@@ -3292,6 +3295,8 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                                   autoCorrect="off"
                                   autoCapitalize="off"
                                   spellCheck={false}
+                                  enterKeyHint="done"
+                                  data-form-type="other"
                                   autoFocus
                                   data-testid="input-spelling"
                                 />
@@ -3339,6 +3344,8 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                                 autoCorrect="off"
                                 autoCapitalize="off"
                                 spellCheck={false}
+                                enterKeyHint="done"
+                                data-form-type="other"
                                 autoFocus
                                 data-testid="input-spelling"
                               />
