@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -47,6 +48,7 @@ export default function Home() {
   const [wordListDialogOpen, setWordListDialogOpen] = useState(false);
   const [filterGradeLevel, setFilterGradeLevel] = useState<string>("all");
   const [filterCreatedBy, setFilterCreatedBy] = useState<string>("all");
+  const [hideMastered, setHideMastered] = useState<boolean>(false);
   const [quizWordCount, setQuizWordCount] = useState<"10" | "all">("all");
   const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
   const iOSKeyboardInput = useIOSKeyboardTrigger();
@@ -72,7 +74,7 @@ export default function Home() {
   const getAchievementForList = (wordListId: number) => {
     if (!achievements) return null;
     return achievements.find(
-      (a) => a.wordListId === wordListId && a.achievementType === "Word List Mastery"
+      (a) => a.word_list_id === wordListId && a.achievement_type === "Word List Mastery"
     );
   };
 
@@ -81,13 +83,14 @@ export default function Home() {
     if (!mode || mode === "standard") return false; // Practice mode doesn't award achievements
     const achievement = getAchievementForList(wordListId);
     if (!achievement) return false;
-    return achievement.completedModes?.includes(mode) || false;
+    return achievement.completed_modes?.includes(mode) || false;
   };
 
   const handleModeClick = (mode: GameMode) => {
     setSelectedMode(mode);
     setFilterGradeLevel("all");
     setFilterCreatedBy("all");
+    setHideMastered(false);
     setQuizWordCount("all");
     setWordListDialogOpen(true);
   };
@@ -129,6 +132,13 @@ export default function Home() {
     if (filterCreatedBy !== "all") {
       filtered = filtered.filter(list => list.authorUsername === filterCreatedBy);
     }
+    if (hideMastered && achievements) {
+      // Filter out word lists where user has earned 3 stars
+      filtered = filtered.filter(list => {
+        const achievement = getAchievementForList(list.id);
+        return !achievement || achievement.achievement_value !== "3 Stars";
+      });
+    }
     
     // Sort by createdAt descending (newest first)
     return filtered.sort((a, b) => {
@@ -136,7 +146,7 @@ export default function Home() {
       const dateB = new Date(b.createdAt || 0).getTime();
       return dateB - dateA;
     });
-  }, [customLists, publicLists, sharedLists, filterGradeLevel, filterCreatedBy]);
+  }, [customLists, publicLists, sharedLists, filterGradeLevel, filterCreatedBy, hideMastered, achievements]);
 
   const availableGradeLevels = useMemo(() => {
     const myLists = customLists || [];
@@ -284,7 +294,7 @@ export default function Home() {
             data-testid="button-word-lists"
           >
             <List className="w-4 h-4 mr-2" />
-            Custom Word Lists
+            Word Lists
           </Button>
           <Button
             variant="outline"
@@ -304,7 +314,7 @@ export default function Home() {
             data-testid="button-view-leaderboard"
           >
             <Trophy className="w-4 h-4 mr-2" />
-            View Leaderboard
+            Leaderboard
           </Button>
           <Button
             variant="outline"
@@ -444,6 +454,21 @@ export default function Home() {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="mb-4 flex items-center space-x-2">
+            <Checkbox 
+              id="hide-mastered" 
+              checked={hideMastered}
+              onCheckedChange={(checked) => setHideMastered(checked === true)}
+              data-testid="checkbox-hide-mastered"
+            />
+            <label 
+              htmlFor="hide-mastered" 
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+            >
+              Hide Word Lists I've Mastered
+            </label>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-2 pr-2">

@@ -328,12 +328,26 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   };
 
   const createSessionMutation = useMutation({
-    mutationFn: async (sessionData: { gameMode: string; userId: number | null; customListId?: number }) => {
+    mutationFn: async (sessionData: { gameMode: string; userId: number | null; wordListId?: number }) => {
       const response = await apiRequest("POST", "/api/sessions", sessionData);
       return await response.json();
     },
     onSuccess: (data) => {
       setSessionId(data.id);
+    },
+  });
+
+  const updateSessionMutation = useMutation({
+    mutationFn: async (sessionData: { sessionId: number; score: number; totalWords: number; correctWords: number; bestStreak: number; isComplete: boolean; completedAt: Date }) => {
+      const response = await apiRequest("PATCH", `/api/sessions/${sessionData.sessionId}`, {
+        score: sessionData.score,
+        totalWords: sessionData.totalWords,
+        correctWords: sessionData.correctWords,
+        bestStreak: sessionData.bestStreak,
+        isComplete: sessionData.isComplete,
+        completedAt: sessionData.completedAt,
+      });
+      return await response.json();
     },
   });
 
@@ -478,7 +492,11 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
 
   useEffect(() => {
     if (listId && gameMode && !sessionId && user) {
-      createSessionMutation.mutate({ gameMode, userId: user.id });
+      createSessionMutation.mutate({ 
+        gameMode, 
+        userId: user.id,
+        wordListId: listId ? parseInt(listId, 10) : undefined
+      });
     }
   }, [gameMode, sessionId, user, listId]);
 
@@ -1158,16 +1176,45 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
       
       console.log("Saving score to leaderboard:", { score, accuracy, gameMode, sessionId });
       
-      saveScoreMutation.mutate({
-        score,
-        accuracy,
-        gameMode,
-        userId: user.id,
-        sessionId,
-      });
+      // Update game session with final stats first, then save score
+      const updateAndSave = async () => {
+        try {
+          // Update game session with final stats
+          await updateSessionMutation.mutateAsync({
+            sessionId,
+            score,
+            totalWords: words?.length || 0,
+            correctWords: correctCount,
+            bestStreak: streak,
+            isComplete: true,
+            completedAt: new Date(),
+          });
+          
+          // After session update succeeds, save score to leaderboard
+          saveScoreMutation.mutate({
+            score,
+            accuracy,
+            gameMode,
+            userId: user.id,
+            sessionId,
+          });
+        } catch (error) {
+          console.error("Failed to update game session:", error);
+          // Still save to leaderboard even if session update fails
+          saveScoreMutation.mutate({
+            score,
+            accuracy,
+            gameMode,
+            userId: user.id,
+            sessionId,
+          });
+        }
+      };
+      
+      updateAndSave();
       setScoreSaved(true);
     }
-  }, [gameComplete, scoreSaved, score, gameMode, correctCount, finalAccuracy, words, sessionId, user]);
+  }, [gameComplete, scoreSaved, score, gameMode, correctCount, finalAccuracy, words, sessionId, user, streak]);
 
   // Timed mode: Single 60-second timer for entire game
   useEffect(() => {

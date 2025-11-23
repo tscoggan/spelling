@@ -29,6 +29,7 @@ export const words = pgTable("words", {
 export const gameSessions = pgTable("game_sessions", {
   id: serial("id").primaryKey(),
   userId: integer("user_id"),
+  wordListId: integer("word_list_id"),
   gameMode: text("game_mode").notNull().default("standard"),
   score: integer("score").notNull().default(0),
   totalWords: integer("total_words").notNull().default(0),

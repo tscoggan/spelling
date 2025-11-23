@@ -44,6 +44,7 @@ export default function WordListsPage() {
   const [editingList, setEditingList] = useState<CustomWordList | null>(null);
   const [gradeFilter, setGradeFilter] = useState<string>("all");
   const [createdByFilter, setCreatedByFilter] = useState<string>("all");
+  const [hideMastered, setHideMastered] = useState<boolean>(false);
   const [jobId, setJobId] = useState<number | null>(null);
   const [editImagesDialogOpen, setEditImagesDialogOpen] = useState(false);
   const [editingImagesList, setEditingImagesList] = useState<CustomWordList | null>(null);
@@ -86,6 +87,19 @@ export default function WordListsPage() {
     },
     enabled: !!user,
   });
+
+  const { data: achievements } = useQuery<any[]>({
+    queryKey: ["/api/achievements/user", user?.id],
+    enabled: !!user,
+  });
+
+  // Helper function to get achievement for a word list
+  const getAchievementForList = (wordListId: number) => {
+    if (!achievements) return null;
+    return achievements.find(
+      (a) => a.word_list_id === wordListId && a.achievement_type === "Word List Mastery"
+    );
+  };
 
   const { data: userGroups = [] } = useQuery<any[]>({
     queryKey: ["/api/user-groups", user?.id],
@@ -444,13 +458,21 @@ export default function WordListsPage() {
       filtered = filtered.filter(list => list.authorUsername === createdByFilter);
     }
     
+    // Apply hide mastered filter
+    if (hideMastered && achievements) {
+      filtered = filtered.filter(list => {
+        const achievement = getAchievementForList(list.id);
+        return !achievement || achievement.achievement_value !== "3 Stars";
+      });
+    }
+    
     // Sort by createdAt descending (newest first)
     return filtered.sort((a, b) => {
       const dateA = new Date(a.createdAt || 0).getTime();
       const dateB = new Date(b.createdAt || 0).getTime();
       return dateB - dateA;
     });
-  }, [userLists, gradeFilter, createdByFilter]);
+  }, [userLists, gradeFilter, createdByFilter, hideMastered, achievements]);
 
   const filteredSharedLists = useMemo(() => {
     let filtered = sharedLists;
@@ -469,13 +491,21 @@ export default function WordListsPage() {
       filtered = filtered.filter(list => list.authorUsername === createdByFilter);
     }
     
+    // Apply hide mastered filter
+    if (hideMastered && achievements) {
+      filtered = filtered.filter(list => {
+        const achievement = getAchievementForList(list.id);
+        return !achievement || achievement.achievement_value !== "3 Stars";
+      });
+    }
+    
     // Sort by createdAt descending (newest first)
     return filtered.sort((a, b) => {
       const dateA = new Date(a.createdAt || 0).getTime();
       const dateB = new Date(b.createdAt || 0).getTime();
       return dateB - dateA;
     });
-  }, [sharedLists, gradeFilter, createdByFilter]);
+  }, [sharedLists, gradeFilter, createdByFilter, hideMastered, achievements]);
 
   const filteredPublicLists = useMemo(() => {
     let filtered = publicLists;
@@ -494,13 +524,21 @@ export default function WordListsPage() {
       filtered = filtered.filter(list => list.authorUsername === createdByFilter);
     }
     
+    // Apply hide mastered filter
+    if (hideMastered && achievements) {
+      filtered = filtered.filter(list => {
+        const achievement = getAchievementForList(list.id);
+        return !achievement || achievement.achievement_value !== "3 Stars";
+      });
+    }
+    
     // Sort by createdAt descending (newest first)
     return filtered.sort((a, b) => {
       const dateA = new Date(a.createdAt || 0).getTime();
       const dateB = new Date(b.createdAt || 0).getTime();
       return dateB - dateA;
     });
-  }, [publicLists, gradeFilter, createdByFilter]);
+  }, [publicLists, gradeFilter, createdByFilter, hideMastered, achievements]);
 
   const availableGradeLevels = useMemo(() => {
     const grades = new Set<string>();
@@ -665,7 +703,7 @@ export default function WordListsPage() {
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <div>
             <h1 className="text-4xl md:text-5xl font-bold text-foreground">
-              Custom Word Lists
+              Word Lists
             </h1>
             <p className="text-lg text-muted-foreground mt-1">
               Create your own spelling word lists and share them with others
@@ -700,6 +738,20 @@ export default function WordListsPage() {
                 ))}
               </SelectContent>
             </Select>
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="hide-mastered-lists" 
+                checked={hideMastered}
+                onCheckedChange={(checked) => setHideMastered(checked === true)}
+                data-testid="checkbox-hide-mastered-lists"
+              />
+              <label 
+                htmlFor="hide-mastered-lists" 
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer whitespace-nowrap"
+              >
+                Hide Mastered
+              </label>
+            </div>
           </div>
           <div className="flex gap-2">
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
