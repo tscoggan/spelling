@@ -1643,13 +1643,98 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
         return null;
       },
       
-      // "ic" / "ick" swaps (fantastic -> fantastick, stick -> stic)
+      // vowel + "c" / vowel + "ck" swaps (fantastic -> fantastick, havoc -> havock, muck -> muc)
       () => {
-        if (wordLower.endsWith('ic') && !wordLower.endsWith('ick')) {
-          return wordLower + 'k';
+        const vowels = ['a', 'e', 'i', 'o', 'u'];
+        for (const vowel of vowels) {
+          // Check for vowel+c ending (not followed by k)
+          if (wordLower.endsWith(vowel + 'c') && !wordLower.endsWith(vowel + 'ck')) {
+            return wordLower + 'k';
+          }
+          // Check for vowel+ck ending
+          if (wordLower.endsWith(vowel + 'ck')) {
+            return wordLower.slice(0, -1);
+          }
         }
-        if (wordLower.endsWith('ick')) {
-          return wordLower.slice(0, -1);
+        return null;
+      },
+      
+      // "eur" / "ure" swaps (amateur -> amature, allure -> alleur)
+      () => {
+        if (wordLower.includes('eur')) {
+          return wordLower.replace('eur', 'ure');
+        }
+        if (wordLower.includes('ure')) {
+          return wordLower.replace('ure', 'eur');
+        }
+        return null;
+      },
+      
+      // Double the wrong consonant (tomorrow -> tommorow, beginning -> beggining)
+      () => {
+        const consonants = 'bcdfghjklmnpqrstvwxyz';
+        // Find existing double consonants
+        let doublePos = -1;
+        for (let i = 0; i < wordLower.length - 1; i++) {
+          if (wordLower[i] === wordLower[i + 1] && consonants.includes(wordLower[i])) {
+            doublePos = i;
+            break;
+          }
+        }
+        
+        // If found a double consonant, swap which consonant is doubled
+        if (doublePos >= 0) {
+          const doubledChar = wordLower[doublePos];
+          
+          // Find a different single consonant to double (skip first position)
+          for (let i = 1; i < wordLower.length; i++) {
+            if (i !== doublePos && i !== doublePos + 1 && // not the current double
+                consonants.includes(wordLower[i]) &&
+                wordLower[i] !== doubledChar && // different consonant
+                wordLower[i] !== wordLower[i - 1] && // not already doubled
+                (i === wordLower.length - 1 || wordLower[i] !== wordLower[i + 1])) { // check next char too
+              
+              // Build result: remove one instance of doubled consonant, add double of new consonant
+              let result = wordLower.slice(0, doublePos) + wordLower.slice(doublePos + 1); // remove first of double
+              // Now double the target consonant in the result string
+              // Adjust index if target was after the removed character
+              let targetIdx = i > doublePos ? i - 1 : i;
+              
+              // Double the target consonant in the result string (not wordLower!)
+              return result.slice(0, targetIdx + 1) + result[targetIdx] + result.slice(targetIdx + 1);
+            }
+          }
+        }
+        return null;
+      },
+      
+      // Trailing "er" / "ar" / "or" swaps (calendar -> calender, calender -> calendor)
+      () => {
+        if (wordLower.endsWith('ar') && wordLower.length > 2) {
+          return Math.random() > 0.5 
+            ? wordLower.slice(0, -2) + 'er'
+            : wordLower.slice(0, -2) + 'or';
+        }
+        if (wordLower.endsWith('er') && wordLower.length > 2) {
+          return Math.random() > 0.5 
+            ? wordLower.slice(0, -2) + 'ar'
+            : wordLower.slice(0, -2) + 'or';
+        }
+        if (wordLower.endsWith('or') && wordLower.length > 2) {
+          return Math.random() > 0.5 
+            ? wordLower.slice(0, -2) + 'ar'
+            : wordLower.slice(0, -2) + 'er';
+        }
+        return null;
+      },
+      
+      // "ngth" / "nth" swaps (length -> lenth, strength -> strenth)
+      () => {
+        if (wordLower.includes('ngth')) {
+          return wordLower.replace('ngth', 'nth');
+        }
+        if (wordLower.includes('nth') && !wordLower.includes('ngth')) {
+          return wordLower.replace('nth', 'ngth');
         }
         return null;
       },
@@ -1815,8 +1900,30 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
         return null;
       },
       
-      // s -> c (see -> cee, sun -> cun)
-      () => wordLower.includes('s') ? wordLower.replace('s', 'c') : null,
+      // s -> c / c -> sc (see -> cee, sun -> cun, incense -> inscense)
+      () => {
+        const hasS = wordLower.includes('s');
+        const hasC = wordLower.includes('c');
+        
+        // Randomly choose which transformation to attempt
+        const useScTransform = Math.random() > 0.5;
+        
+        if (useScTransform && hasC) {
+          // Option: c -> sc (insert s before c, only if not already sc)
+          const cIndex = wordLower.indexOf('c');
+          if (cIndex >= 0 && (cIndex === 0 || wordLower[cIndex - 1] !== 's')) {
+            return wordLower.slice(0, cIndex) + 's' + wordLower.slice(cIndex);
+          }
+        }
+        
+        // Fallback or first option: s -> c (replace s with c)
+        if (hasS) {
+          const sIndex = wordLower.indexOf('s');
+          return wordLower.slice(0, sIndex) + 'c' + wordLower.slice(sIndex + 1);
+        }
+        
+        return null;
+      },
       
       // Replace vowel with similar sound (cat -> cet, dog -> dag)
       () => {
