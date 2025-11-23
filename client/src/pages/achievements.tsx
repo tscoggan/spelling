@@ -12,6 +12,7 @@ import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763
 import oneStar from "@assets/1 star_1763905327457.png";
 import twoStars from "@assets/2 stars_1763905327457.png";
 import threeStars from "@assets/3 stars_1763905327456.png";
+import missingStar from "@assets/Missing star (grey)_1763909947996.png";
 
 interface CustomWordList {
   id: number;
@@ -168,7 +169,7 @@ export default function Achievements() {
                       className="backdrop-blur-sm bg-card/90 hover-elevate"
                       data-testid={`achievement-card-${list.id}`}
                     >
-                      <CardHeader className="pb-4">
+                      <CardHeader className="pb-4 min-h-24">
                         <div className="flex items-center justify-between gap-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-2">
@@ -210,7 +211,7 @@ export default function Achievements() {
                               <img 
                                 src={starImage} 
                                 alt={achievement?.achievementValue} 
-                                className="w-16 h-16 object-contain"
+                                className="w-12 h-12 object-contain"
                                 data-testid={`stars-${list.id}`}
                               />
                             </div>

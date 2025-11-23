@@ -28,7 +28,7 @@ import titleBanner from "@assets/image_1763494070680.png";
 import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
 import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
 import oneStar from "@assets/1 star_1763905327457.png";
-import missingStar from "@assets/Missing star_1763908719617.png";
+import missingStar from "@assets/Missing star (grey)_1763909947996.png";
 
 interface CustomWordList {
   id: number;
@@ -416,7 +416,7 @@ export default function Home() {
               allLists.map((list) => (
                 <div
                   key={list.id}
-                  className="flex items-center gap-3 p-3 rounded-md border hover-elevate active-elevate-2 cursor-pointer"
+                  className="flex items-center gap-3 p-3 rounded-md border hover-elevate active-elevate-2 cursor-pointer min-h-24"
                   onClick={() => startGameWithCustomList(list)}
                   data-testid={`card-word-list-${list.id}`}
                 >
