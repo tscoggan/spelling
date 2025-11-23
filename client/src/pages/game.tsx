@@ -46,7 +46,7 @@ import trophyBeeImage from "@assets/Bee with trophy_1763852047681.png";
 import goodTryBeeImage from "@assets/Bee with good try_1763852047680.png";
 
 // Import achievement star
-import achievementStar from "@assets/1 star_1763905327457.png";
+import achievementStar from "@assets/1 star_1763913172283.png";
 
 interface QuizAnswer {
   word: Word;

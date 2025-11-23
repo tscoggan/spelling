@@ -211,7 +211,7 @@ export default function Achievements() {
                               <img 
                                 src={starImage} 
                                 alt={achievement?.achievementValue} 
-                                className="w-36 h-36 object-contain"
+                                className="h-36 w-auto max-w-[144px] object-contain"
                                 data-testid={`stars-${list.id}`}
                               />
                             </div>
