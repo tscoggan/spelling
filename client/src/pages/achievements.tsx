@@ -158,7 +158,7 @@ export default function Achievements() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid gap-4">
+              <div className="grid gap-1">
                 {listsWithAchievements.map((list) => {
                   const achievement = getAchievementForList(list.id);
                   const starImage = achievement ? getStarImage(achievement.achievementValue) : null;
@@ -169,11 +169,11 @@ export default function Achievements() {
                       className="backdrop-blur-sm bg-card/90 hover-elevate"
                       data-testid={`achievement-card-${list.id}`}
                     >
-                      <CardHeader className="p-3 pb-2">
-                        <div className="flex items-center justify-between gap-2">
+                      <CardHeader className="p-1 space-y-0">
+                        <div className="flex items-center justify-between gap-0.5">
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1 mb-0.5">
-                              <CardTitle className="text-lg" data-testid={`text-list-name-${list.id}`}>
+                            <div className="flex items-center gap-0.5">
+                              <CardTitle className="text-sm leading-tight" data-testid={`text-list-name-${list.id}`}>
                                 {list.name}
                               </CardTitle>
                               {list.gradeLevel && (
@@ -182,12 +182,12 @@ export default function Achievements() {
                                 </Badge>
                               )}
                               {list.isPublic ? (
-                                <Globe className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                                <Globe className="w-3 h-3 text-blue-600 flex-shrink-0" />
                               ) : (
-                                <Lock className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                <Lock className="w-3 h-3 text-gray-400 flex-shrink-0" />
                               )}
                             </div>
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground flex-wrap">
+                            <div className="flex items-center gap-0.5 text-xs text-muted-foreground leading-tight flex-wrap">
                               <span>{list.words.length} words</span>
                               {achievement && achievement.completedModes && achievement.completedModes.length > 0 && (
                                 <>
