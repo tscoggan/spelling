@@ -1185,33 +1185,33 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
 
   useEffect(() => {
     if (gameComplete && !scoreSaved && sessionId && user) {
-      // Use stored accuracy for crossword mode, calculate for other modes
+      // Calculate actual words used based on game mode
+      let actualWordsCount = words?.length || 0;
+      if (gameMode === "mistake") {
+        // Mistake: Use actual number of questions attempted (answered + current if answered)
+        // currentWordIndex tracks current question being shown, so +1 for total attempted
+        actualWordsCount = currentWordIndex + 1;
+      } else if (gameMode === "crossword") {
+        // Crossword: Use actual number of words placed in the grid
+        actualWordsCount = crosswordGrid?.entries.length || 0;
+      } else if (gameMode === "timed") {
+        // Timed: Only count words where Check button was pressed (correct + incorrect)
+        // If timer expired (timeLeft === 0): currentWordIndex = words checked
+        // If all words checked (timeLeft > 0): currentWordIndex + 1 = words checked
+        actualWordsCount = timeLeft === 0 ? currentWordIndex : currentWordIndex + 1;
+      }
+      // For practice/quiz/scramble: words?.length is already the actual game words count
+      
+      // Calculate accuracy using actual words attempted
       const accuracy = gameMode === "crossword"
         ? finalAccuracy
-        : Math.round((correctCount / (words?.length || 10)) * 100);
+        : Math.round((correctCount / (actualWordsCount || 1)) * 100);
       
-      console.log("Saving score to leaderboard:", { score, accuracy, gameMode, sessionId });
+      console.log("Saving score to leaderboard:", { score, accuracy, gameMode, sessionId, correctCount, actualWordsCount });
       
       // Update game session with final stats first, then save score
       const updateAndSave = async () => {
         try {
-          // Calculate actual words used based on game mode
-          let actualWordsCount = words?.length || 0;
-          if (gameMode === "mistake") {
-            // Mistake: Use actual number of questions attempted (answered + current if answered)
-            // currentWordIndex tracks current question being shown, so +1 for total attempted
-            actualWordsCount = currentWordIndex + 1;
-          } else if (gameMode === "crossword") {
-            // Crossword: Use actual number of words placed in the grid
-            actualWordsCount = crosswordGrid?.entries.length || 0;
-          } else if (gameMode === "timed") {
-            // Timed: Only count words where Check button was pressed (correct + incorrect)
-            // If timer expired (timeLeft === 0): currentWordIndex = words checked
-            // If all words checked (timeLeft > 0): currentWordIndex + 1 = words checked
-            actualWordsCount = timeLeft === 0 ? currentWordIndex : currentWordIndex + 1;
-          }
-          // For practice/quiz/scramble: words?.length is already the actual game words count
-          
           // Update game session with final stats
           await updateSessionMutation.mutateAsync({
             sessionId,
