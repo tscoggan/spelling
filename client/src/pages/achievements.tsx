@@ -169,7 +169,7 @@ export default function Achievements() {
                       className="backdrop-blur-sm bg-card/90 hover-elevate"
                       data-testid={`achievement-card-${list.id}`}
                     >
-                      <CardHeader className="pb-4 min-h-48">
+                      <CardHeader className="pb-4">
                         <div className="flex items-center justify-between gap-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-2">

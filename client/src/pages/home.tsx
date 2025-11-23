@@ -416,7 +416,7 @@ export default function Home() {
               allLists.map((list) => (
                 <div
                   key={list.id}
-                  className="flex items-center gap-3 p-3 rounded-md border hover-elevate active-elevate-2 cursor-pointer min-h-48"
+                  className="flex items-center gap-3 p-3 rounded-md border hover-elevate active-elevate-2 cursor-pointer"
                   onClick={() => startGameWithCustomList(list)}
                   data-testid={`card-word-list-${list.id}`}
                 >
