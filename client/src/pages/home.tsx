@@ -416,7 +416,7 @@ export default function Home() {
               allLists.map((list) => (
                 <div
                   key={list.id}
-                  className="flex items-center gap-3 p-3 rounded-md border hover-elevate active-elevate-2 cursor-pointer min-h-24"
+                  className="flex items-center gap-3 p-3 rounded-md border hover-elevate active-elevate-2 cursor-pointer min-h-48"
                   onClick={() => startGameWithCustomList(list)}
                   data-testid={`card-word-list-${list.id}`}
                 >
@@ -446,7 +446,7 @@ export default function Home() {
                       <img 
                         src={hasModeAchievement(list.id, selectedMode) ? oneStar : missingStar}
                         alt={hasModeAchievement(list.id, selectedMode) ? "Achievement earned" : "No achievement"} 
-                        className="w-12 h-12 object-contain"
+                        className="w-36 h-36 object-contain"
                         data-testid={`achievement-${list.id}`}
                       />
                     )}
