@@ -207,13 +207,13 @@ export default function Achievements() {
                           </div>
                           
                           {starImage && (
-                            <div className="flex-shrink-0">
+                            <div className="flex-shrink-0 flex justify-center items-center min-w-[144px]">
                               <img 
                                 src={starImage} 
                                 alt={achievement?.achievementValue} 
                                 className={`object-contain ${
                                   achievement?.achievementValue === "1 Star" 
-                                    ? "h-18 w-auto max-w-[72px]" 
+                                    ? "h-16 w-auto max-w-[64px]" 
                                     : "h-36 w-auto max-w-[144px]"
                                 }`}
                                 data-testid={`stars-${list.id}`}

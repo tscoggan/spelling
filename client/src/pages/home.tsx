@@ -441,16 +441,16 @@ export default function Home() {
                     </div>
                   </div>
                   
-                  <div className="flex-shrink-0">
-                    {selectedMode && selectedMode !== "standard" && (
+                  {selectedMode && selectedMode !== "standard" && (
+                    <div className="flex-shrink-0 flex justify-center items-center min-w-[144px]">
                       <img 
                         src={hasModeAchievement(list.id, selectedMode) ? oneStar : missingStar}
                         alt={hasModeAchievement(list.id, selectedMode) ? "Achievement earned" : "No achievement"} 
-                        className="h-18 w-auto max-w-[72px] object-contain"
+                        className="h-16 w-auto max-w-[64px] object-contain"
                         data-testid={`achievement-${list.id}`}
                       />
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               ))
             )}
