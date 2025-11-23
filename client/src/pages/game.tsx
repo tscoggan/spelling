@@ -1600,9 +1600,10 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
       },
       
       // Double a single consonant (top -> topp, banana -> bananna)
+      // Don't double the first letter if it's a consonant (cat -> catt not ccat)
       () => {
         const consonants = 'bcdfghjklmnpqrstvwxyz';
-        for (let i = wordLower.length - 2; i >= 0; i--) {
+        for (let i = wordLower.length - 2; i >= 1; i--) {  // Start from position 1, not 0
           if (consonants.includes(wordLower[i]) && wordLower[i] !== wordLower[i + 1]) {
             return wordLower.slice(0, i + 1) + wordLower[i] + wordLower.slice(i + 1);
           }
@@ -1752,10 +1753,19 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
       },
       
       // Common vowel drops (delicious -> delicius, beautiful -> beautful)
+      // Don't drop vowels surrounded by consonants (surround -> surrund not srround, barn stays as barn)
       () => {
         const vowels = 'aeiou';
+        const consonants = 'bcdfghjklmnpqrstvwxyz';
         for (let i = 1; i < wordLower.length - 1; i++) {
           if (vowels.includes(wordLower[i])) {
+            // Skip if vowel is surrounded by consonants on both sides
+            const beforeIsConsonant = i > 0 && consonants.includes(wordLower[i - 1]);
+            const afterIsConsonant = i < wordLower.length - 1 && consonants.includes(wordLower[i + 1]);
+            if (beforeIsConsonant && afterIsConsonant) {
+              continue;  // Skip this vowel
+            }
+            // Drop this vowel (it has at least one vowel neighbor)
             return wordLower.slice(0, i) + wordLower.slice(i + 1);
           }
         }
@@ -1794,9 +1804,10 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
       () => wordLower.includes('f') && !wordLower.includes('ph') ? wordLower.replace('f', 'ph') : null,
       
       // Double a consonant (pig -> pigg, run -> runn)
+      // Don't double the first letter if it's a consonant (cat -> catt not ccat)
       () => {
         const consonants = 'bcdfghjklmnpqrstvwxyz';
-        for (let i = wordLower.length - 2; i >= 0; i--) {
+        for (let i = wordLower.length - 2; i >= 1; i--) {  // Start from position 1, not 0
           if (consonants.includes(wordLower[i]) && wordLower[i] !== wordLower[i + 1]) {
             return wordLower.slice(0, i + 1) + wordLower[i] + wordLower.slice(i + 1);
           }
@@ -2695,10 +2706,16 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                   }}
                 />
                 <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-2 font-crayon" data-testid="text-game-complete">
-                  {gameMode === "quiz" ? "Quiz Complete!" : "Amazing Work!"}
+                  {accuracy === 100 ? "Amazing Work!" : 
+                    gameMode === "standard" ? "Practice Complete!" :
+                    gameMode === "timed" ? "Timed Challenge Complete!" :
+                    gameMode === "quiz" ? "Quiz Complete!" :
+                    gameMode === "scramble" ? "Word Scramble Complete!" :
+                    gameMode === "mistake" ? "Find the Mistake Complete!" :
+                    "Game Complete!"}
                 </h1>
                 <p className="text-lg text-gray-600 capitalize">
-                  {gameMode === "standard" ? "Practice" : gameMode === "timed" ? "Timed Challenge" : gameMode === "quiz" ? "Quiz Mode" : gameMode === "scramble" ? "Word Scramble" : gameMode === "mistake" ? "Mistake Mode" : "Crossword"}
+                  {gameMode === "standard" ? "Practice" : gameMode === "timed" ? "Timed Challenge" : gameMode === "quiz" ? "Quiz Mode" : gameMode === "scramble" ? "Word Scramble" : gameMode === "mistake" ? "Find the Mistake" : "Crossword"}
                 </p>
               </motion.div>
             )}
