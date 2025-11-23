@@ -17,7 +17,12 @@ import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload, Filter, Camera, X,
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
-import type { CustomWordList, WordIllustration } from "@shared/schema";
+import type { CustomWordList as BaseCustomWordList, WordIllustration } from "@shared/schema";
+
+// Extend the base type to include fields added by the backend
+type CustomWordList = BaseCustomWordList & {
+  authorUsername?: string;
+};
 import { useToast } from "@/hooks/use-toast";
 import { UserHeader } from "@/components/user-header";
 import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
@@ -38,6 +43,7 @@ export default function WordListsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingList, setEditingList] = useState<CustomWordList | null>(null);
   const [gradeFilter, setGradeFilter] = useState<string>("all");
+  const [createdByFilter, setCreatedByFilter] = useState<string>("all");
   const [jobId, setJobId] = useState<number | null>(null);
   const [editImagesDialogOpen, setEditImagesDialogOpen] = useState(false);
   const [editingImagesList, setEditingImagesList] = useState<CustomWordList | null>(null);
@@ -422,22 +428,79 @@ export default function WordListsPage() {
   };
 
   const filteredUserLists = useMemo(() => {
-    if (gradeFilter === "all") return userLists;
-    if (gradeFilter === "none") return userLists.filter(list => !list.gradeLevel);
-    return userLists.filter(list => list.gradeLevel === gradeFilter);
-  }, [userLists, gradeFilter]);
+    let filtered = userLists;
+    
+    // Apply grade filter
+    if (gradeFilter !== "all") {
+      if (gradeFilter === "none") {
+        filtered = filtered.filter(list => !list.gradeLevel);
+      } else {
+        filtered = filtered.filter(list => list.gradeLevel === gradeFilter);
+      }
+    }
+    
+    // Apply created by filter
+    if (createdByFilter !== "all") {
+      filtered = filtered.filter(list => list.authorUsername === createdByFilter);
+    }
+    
+    // Sort by createdAt descending (newest first)
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
+  }, [userLists, gradeFilter, createdByFilter]);
 
   const filteredSharedLists = useMemo(() => {
-    if (gradeFilter === "all") return sharedLists;
-    if (gradeFilter === "none") return sharedLists.filter(list => !list.gradeLevel);
-    return sharedLists.filter(list => list.gradeLevel === gradeFilter);
-  }, [sharedLists, gradeFilter]);
+    let filtered = sharedLists;
+    
+    // Apply grade filter
+    if (gradeFilter !== "all") {
+      if (gradeFilter === "none") {
+        filtered = filtered.filter(list => !list.gradeLevel);
+      } else {
+        filtered = filtered.filter(list => list.gradeLevel === gradeFilter);
+      }
+    }
+    
+    // Apply created by filter
+    if (createdByFilter !== "all") {
+      filtered = filtered.filter(list => list.authorUsername === createdByFilter);
+    }
+    
+    // Sort by createdAt descending (newest first)
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
+  }, [sharedLists, gradeFilter, createdByFilter]);
 
   const filteredPublicLists = useMemo(() => {
-    if (gradeFilter === "all") return publicLists;
-    if (gradeFilter === "none") return publicLists.filter(list => !list.gradeLevel);
-    return publicLists.filter(list => list.gradeLevel === gradeFilter);
-  }, [publicLists, gradeFilter]);
+    let filtered = publicLists;
+    
+    // Apply grade filter
+    if (gradeFilter !== "all") {
+      if (gradeFilter === "none") {
+        filtered = filtered.filter(list => !list.gradeLevel);
+      } else {
+        filtered = filtered.filter(list => list.gradeLevel === gradeFilter);
+      }
+    }
+    
+    // Apply created by filter
+    if (createdByFilter !== "all") {
+      filtered = filtered.filter(list => list.authorUsername === createdByFilter);
+    }
+    
+    // Sort by createdAt descending (newest first)
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
+  }, [publicLists, gradeFilter, createdByFilter]);
 
   const availableGradeLevels = useMemo(() => {
     const grades = new Set<string>();
@@ -452,7 +515,15 @@ export default function WordListsPage() {
       if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
       return a.localeCompare(b);
     });
-  }, [userLists, publicLists]);
+  }, [userLists, sharedLists, publicLists]);
+
+  const availableAuthors = useMemo(() => {
+    const authors = new Set<string>();
+    [...userLists, ...sharedLists, ...publicLists].forEach(list => {
+      if (list.authorUsername) authors.add(list.authorUsername);
+    });
+    return Array.from(authors).sort((a, b) => a.localeCompare(b));
+  }, [userLists, sharedLists, publicLists]);
 
   const renderWordList = (list: any, canEdit: boolean) => (
     <Card key={list.id} className="hover-elevate" data-testid={`card-word-list-${list.id}`}>
@@ -600,7 +671,7 @@ export default function WordListsPage() {
               Create your own spelling word lists and share them with others
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Filter className="w-4 h-4 text-gray-600" />
             <Select value={gradeFilter} onValueChange={setGradeFilter}>
               <SelectTrigger className="w-[180px]" data-testid="select-grade-filter">
@@ -612,6 +683,19 @@ export default function WordListsPage() {
                 {availableGradeLevels.map((grade) => (
                   <SelectItem key={grade} value={grade} data-testid={`filter-${grade}`}>
                     Grade {grade}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={createdByFilter} onValueChange={setCreatedByFilter}>
+              <SelectTrigger className="w-[200px]" data-testid="select-author-filter">
+                <SelectValue placeholder="Filter by author" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" data-testid="filter-all-authors">All Authors</SelectItem>
+                {availableAuthors.map((author) => (
+                  <SelectItem key={author} value={author} data-testid={`filter-author-${author}`}>
+                    {author}
                   </SelectItem>
                 ))}
               </SelectContent>

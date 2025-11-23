@@ -36,6 +36,8 @@ interface CustomWordList {
   words: string[];
   isPublic: boolean;
   gradeLevel?: string;
+  authorUsername?: string;
+  createdAt?: string | Date;
 }
 
 export default function Home() {
@@ -44,6 +46,7 @@ export default function Home() {
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [wordListDialogOpen, setWordListDialogOpen] = useState(false);
   const [filterGradeLevel, setFilterGradeLevel] = useState<string>("all");
+  const [filterCreatedBy, setFilterCreatedBy] = useState<string>("all");
   const [quizWordCount, setQuizWordCount] = useState<"10" | "all">("all");
   const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
   const iOSKeyboardInput = useIOSKeyboardTrigger();
@@ -84,6 +87,7 @@ export default function Home() {
   const handleModeClick = (mode: GameMode) => {
     setSelectedMode(mode);
     setFilterGradeLevel("all");
+    setFilterCreatedBy("all");
     setQuizWordCount("all");
     setWordListDialogOpen(true);
   };
@@ -122,10 +126,17 @@ export default function Home() {
     if (filterGradeLevel !== "all") {
       filtered = filtered.filter(list => list.gradeLevel === filterGradeLevel);
     }
+    if (filterCreatedBy !== "all") {
+      filtered = filtered.filter(list => list.authorUsername === filterCreatedBy);
+    }
     
-    // Sort by name
-    return filtered.sort((a, b) => a.name.localeCompare(b.name));
-  }, [customLists, publicLists, sharedLists, filterGradeLevel]);
+    // Sort by createdAt descending (newest first)
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
+  }, [customLists, publicLists, sharedLists, filterGradeLevel, filterCreatedBy]);
 
   const availableGradeLevels = useMemo(() => {
     const myLists = customLists || [];
@@ -138,6 +149,15 @@ export default function Home() {
       const numB = parseInt(b || "0");
       return numA - numB;
     });
+  }, [customLists, publicLists, sharedLists]);
+
+  const availableAuthors = useMemo(() => {
+    const myLists = customLists || [];
+    const pubLists = publicLists || [];
+    const shared = sharedLists || [];
+    const combined = [...myLists, ...pubLists, ...shared];
+    const authors = new Set(combined.map(list => list.authorUsername).filter(Boolean));
+    return Array.from(authors).sort((a, b) => a!.localeCompare(b!));
   }, [customLists, publicLists, sharedLists]);
 
   // Show welcome dialog for first-time users
@@ -385,24 +405,45 @@ export default function Home() {
             </div>
           )}
 
-          <div className="mb-4">
-            <label className="text-sm font-medium mb-1.5 block">Grade Level</label>
-            <Select 
-              value={filterGradeLevel} 
-              onValueChange={setFilterGradeLevel}
-            >
-              <SelectTrigger data-testid="filter-grade">
-                <SelectValue placeholder="All Grades" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Grades</SelectItem>
-                {availableGradeLevels.map((grade) => (
-                  <SelectItem key={grade} value={grade || ""}>
-                    Grade {grade}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Grade Level</label>
+              <Select 
+                value={filterGradeLevel} 
+                onValueChange={setFilterGradeLevel}
+              >
+                <SelectTrigger data-testid="filter-grade">
+                  <SelectValue placeholder="All Grades" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Grades</SelectItem>
+                  {availableGradeLevels.map((grade) => (
+                    <SelectItem key={grade} value={grade || ""}>
+                      Grade {grade}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Created By</label>
+              <Select 
+                value={filterCreatedBy} 
+                onValueChange={setFilterCreatedBy}
+              >
+                <SelectTrigger data-testid="filter-author">
+                  <SelectValue placeholder="All Authors" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Authors</SelectItem>
+                  {availableAuthors.map((author) => (
+                    <SelectItem key={author} value={author || ""}>
+                      {author}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-2 pr-2">

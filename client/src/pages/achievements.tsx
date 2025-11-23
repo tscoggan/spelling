@@ -110,32 +110,32 @@ export default function Achievements() {
 
       {/* Content */}
       <div className="relative z-10 flex flex-col min-h-screen">
-        <UserHeader />
+        <div className="container max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-start justify-between mb-6">
+            <Button
+              variant="outline"
+              onClick={() => setLocation("/")}
+              data-testid="button-home"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Home
+            </Button>
+            <UserHeader />
+          </div>
+        </div>
         
-        <main className="flex-1 container max-w-4xl mx-auto px-4 py-8">
+        <main className="flex-1 container max-w-4xl mx-auto px-4 py-2">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="space-y-6"
           >
             {/* Header */}
-            <div className="flex items-center gap-4 mb-8">
-              <Button
-                variant="outline"
-                onClick={() => setLocation("/")}
-                className="backdrop-blur-sm bg-card/90"
-                data-testid="button-back"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Home
-              </Button>
-              
-              <div>
-                <h1 className="text-4xl md:text-5xl font-bold text-foreground">
-                  My Achievements
-                </h1>
-                <p className="text-lg text-muted-foreground mt-1">Your spelling accomplishments</p>
-              </div>
+            <div className="mb-8">
+              <h1 className="text-4xl md:text-5xl font-bold text-foreground">
+                My Achievements
+              </h1>
+              <p className="text-lg text-muted-foreground mt-1">Your spelling accomplishments</p>
             </div>
 
             {/* Achievements List */}
