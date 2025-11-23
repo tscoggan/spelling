@@ -192,7 +192,7 @@ export default function Home() {
     {
       id: "standard" as GameMode,
       name: "Practice",
-      description: "Classic spelling game with immediate feedback",
+      description: "Practice spelling words with immediate feedback",
       icon: Target,
       color: "text-blue-600",
     },
@@ -389,33 +389,7 @@ export default function Home() {
             </DialogDescription>
           </DialogHeader>
 
-          {selectedMode === "quiz" && (
-            <div className="mb-4 p-3 bg-purple-50 rounded-md border border-purple-200">
-              <label className="text-sm font-medium mb-2 block">Quiz Length</label>
-              <div className="flex gap-3">
-                <Button
-                  variant={quizWordCount === "10" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setQuizWordCount("10")}
-                  data-testid="button-quiz-10"
-                  className="flex-1"
-                >
-                  10 Words
-                </Button>
-                <Button
-                  variant={quizWordCount === "all" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setQuizWordCount("all")}
-                  data-testid="button-quiz-all"
-                  className="flex-1"
-                >
-                  All Words
-                </Button>
-              </div>
-            </div>
-          )}
-
-          <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className={`mb-4 grid grid-cols-1 gap-4 ${selectedMode === "quiz" ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
             <div>
               <label className="text-sm font-medium mb-1.5 block">Grade Level</label>
               <Select 
@@ -454,6 +428,31 @@ export default function Home() {
                 </SelectContent>
               </Select>
             </div>
+            {selectedMode === "quiz" && (
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Quiz Length</label>
+                <div className="flex gap-2">
+                  <Button
+                    variant={quizWordCount === "10" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setQuizWordCount("10")}
+                    data-testid="button-quiz-10"
+                    className="flex-1"
+                  >
+                    10 Words
+                  </Button>
+                  <Button
+                    variant={quizWordCount === "all" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setQuizWordCount("all")}
+                    data-testid="button-quiz-all"
+                    className="flex-1"
+                  >
+                    All Words
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="mb-4 flex items-center space-x-2">
