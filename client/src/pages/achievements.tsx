@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
 import { UserHeader } from "@/components/user-header";
-import { WordListStats } from "@/components/word-list-stats";
+import { AccuracyCard } from "@/components/accuracy-card";
 import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
 import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
 import oneStar from "@assets/1 star_1763916010555.png";
@@ -171,7 +171,7 @@ export default function Achievements() {
                       data-testid={`achievement-card-${list.id}`}
                     >
                       <CardHeader className="p-3 pb-2">
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1 mb-0.5">
                               <CardTitle className="text-lg" data-testid={`text-list-name-${list.id}`}>
@@ -190,7 +190,6 @@ export default function Achievements() {
                             </div>
                             <div className="flex items-center gap-1 text-sm text-muted-foreground flex-wrap">
                               <span>{list.words.length} words</span>
-                              <WordListStats wordListId={list.id} layout="inline" />
                               {achievement && achievement.completedModes && achievement.completedModes.length > 0 && (
                                 <>
                                   <span>•</span>
@@ -206,6 +205,10 @@ export default function Achievements() {
                                 </>
                               )}
                             </div>
+                          </div>
+                          
+                          <div className="flex-shrink-0">
+                            <AccuracyCard wordListId={list.id} />
                           </div>
                           
                           {starImage && (

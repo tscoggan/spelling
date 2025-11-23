@@ -1184,8 +1184,13 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
           if (gameMode === "mistake") {
             actualWordsCount = 4; // Find the Mistake always uses 4 words
           } else if (gameMode === "crossword") {
-            actualWordsCount = Math.min(15, words?.length || 0); // Crossword uses up to 15 words
+            // Crossword: Use actual number of words placed in the grid
+            actualWordsCount = crosswordGrid?.entries.length || 0;
+          } else if (gameMode === "timed") {
+            // Timed: Use actual number of words attempted before time ran out
+            actualWordsCount = currentWordIndex + 1;
           }
+          // For quiz/scramble: words?.length is already limited to the actual game words
           
           // Update game session with final stats
           await updateSessionMutation.mutateAsync({
@@ -2622,7 +2627,23 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   const handleCrosswordCellFocus = (row: number, col: number) => {
     if (!crosswordGrid) return;
     
-    // Find all entries that contain this cell
+    // Check if this cell is part of the current active entry
+    if (activeEntry !== null) {
+      const currentEntry = crosswordGrid.entries.find(e => e.number === activeEntry);
+      if (currentEntry) {
+        // Check if the focused cell belongs to the current active entry
+        for (let i = 0; i < currentEntry.word.length; i++) {
+          const r = currentEntry.direction === "across" ? currentEntry.row : currentEntry.row + i;
+          const c = currentEntry.direction === "across" ? currentEntry.col + i : currentEntry.col;
+          if (r === row && c === col) {
+            // Cell is part of current active entry, keep the same activeEntry
+            return;
+          }
+        }
+      }
+    }
+    
+    // Cell is not part of current active entry, find all entries that contain this cell
     const containingEntries = crosswordGrid.entries.filter(entry => {
       for (let i = 0; i < entry.word.length; i++) {
         const r = entry.direction === "across" ? entry.row : entry.row + i;

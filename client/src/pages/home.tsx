@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { UserHeader } from "@/components/user-header";
-import { WordListStats } from "@/components/word-list-stats";
+import { AccuracyCard } from "@/components/accuracy-card";
 import titleBanner from "@assets/image_1763494070680.png";
 import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
 import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
@@ -502,11 +502,12 @@ export default function Home() {
                         <Lock className="w-4 h-4 text-gray-400 flex-shrink-0" data-testid={`icon-private-${list.id}`} />
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground leading-tight space-y-0.5">
-                      <div>{list.words.length} words</div>
-                      <WordListStats wordListId={list.id} />
+                    <div className="text-xs text-muted-foreground leading-tight">
+                      {list.words.length} words
                     </div>
                   </div>
+                  
+                  <AccuracyCard wordListId={list.id} />
                   
                   {selectedMode && selectedMode !== "standard" && (
                     <div className="flex-shrink-0 flex justify-center items-center min-w-[80px]">
