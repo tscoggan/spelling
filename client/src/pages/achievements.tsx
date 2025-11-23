@@ -9,10 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { UserHeader } from "@/components/user-header";
 import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
 import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
-import oneStar from "@assets/1 star_1763913172283.png";
-import twoStars from "@assets/2 stars_1763913172281.png";
-import threeStars from "@assets/3 stars_1763913172282.png";
-import missingStar from "@assets/Missing star (grey)_1763913172283.png";
+import oneStar from "@assets/1 star_1763915441808.png";
+import twoStars from "@assets/2 stars_1763915441808.png";
+import threeStars from "@assets/3 stars_1763915441807.png";
+import missingStar from "@assets/Missing star (grey)_1763915441807.png";
 
 interface CustomWordList {
   id: number;
@@ -169,11 +169,7 @@ export default function Achievements() {
                       className="backdrop-blur-sm bg-card/90 hover-elevate"
                       data-testid={`achievement-card-${list.id}`}
                     >
-                      <CardHeader className={
-                        achievement?.achievementValue === "1 Star" 
-                          ? "p-3 pb-2" 
-                          : "p-2 pb-1.5"
-                      }>
+                      <CardHeader className="p-3 pb-2">
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1 mb-0.5">
@@ -211,15 +207,11 @@ export default function Achievements() {
                           </div>
                           
                           {starImage && (
-                            <div className="flex-shrink-0 flex justify-center items-center min-w-[144px]">
+                            <div className="flex-shrink-0 flex justify-center items-center min-w-[80px]">
                               <img 
                                 src={starImage} 
                                 alt={achievement?.achievementValue} 
-                                className={`object-contain ${
-                                  achievement?.achievementValue === "1 Star" 
-                                    ? "h-16 w-auto max-w-[64px]" 
-                                    : "h-36 w-auto max-w-[144px]"
-                                }`}
+                                className="h-16 w-auto max-w-[80px] object-contain"
                                 data-testid={`stars-${list.id}`}
                               />
                             </div>
