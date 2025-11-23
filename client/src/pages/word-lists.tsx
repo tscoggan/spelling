@@ -738,7 +738,7 @@ export default function WordListsPage() {
                 ))}
               </SelectContent>
             </Select>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 bg-white/30 dark:bg-black/30 px-3 py-2 rounded-md backdrop-blur-sm">
               <Checkbox 
                 id="hide-mastered-lists" 
                 checked={hideMastered}
@@ -749,7 +749,7 @@ export default function WordListsPage() {
                 htmlFor="hide-mastered-lists" 
                 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer whitespace-nowrap"
               >
-                Hide Mastered
+                Hide Word Lists I've Mastered
               </label>
             </div>
           </div>
