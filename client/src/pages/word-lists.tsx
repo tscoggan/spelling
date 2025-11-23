@@ -97,7 +97,7 @@ export default function WordListsPage() {
   const getAchievementForList = (wordListId: number) => {
     if (!achievements) return null;
     return achievements.find(
-      (a) => a.word_list_id === wordListId && a.achievement_type === "Word List Mastery"
+      (a) => a.wordListId === wordListId && a.achievementType === "Word List Mastery"
     );
   };
 
@@ -462,7 +462,7 @@ export default function WordListsPage() {
     if (hideMastered && achievements) {
       filtered = filtered.filter(list => {
         const achievement = getAchievementForList(list.id);
-        return !achievement || achievement.achievement_value !== "3 Stars";
+        return !achievement || achievement.achievementValue !== "3 Stars";
       });
     }
     
@@ -495,7 +495,7 @@ export default function WordListsPage() {
     if (hideMastered && achievements) {
       filtered = filtered.filter(list => {
         const achievement = getAchievementForList(list.id);
-        return !achievement || achievement.achievement_value !== "3 Stars";
+        return !achievement || achievement.achievementValue !== "3 Stars";
       });
     }
     
@@ -528,7 +528,7 @@ export default function WordListsPage() {
     if (hideMastered && achievements) {
       filtered = filtered.filter(list => {
         const achievement = getAchievementForList(list.id);
-        return !achievement || achievement.achievement_value !== "3 Stars";
+        return !achievement || achievement.achievementValue !== "3 Stars";
       });
     }
     

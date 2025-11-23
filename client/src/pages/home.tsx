@@ -74,7 +74,7 @@ export default function Home() {
   const getAchievementForList = (wordListId: number) => {
     if (!achievements) return null;
     return achievements.find(
-      (a) => a.word_list_id === wordListId && a.achievement_type === "Word List Mastery"
+      (a) => a.wordListId === wordListId && a.achievementType === "Word List Mastery"
     );
   };
 
@@ -83,7 +83,7 @@ export default function Home() {
     if (!mode || mode === "standard") return false; // Practice mode doesn't award achievements
     const achievement = getAchievementForList(wordListId);
     if (!achievement) return false;
-    return achievement.completed_modes?.includes(mode) || false;
+    return achievement.completedModes?.includes(mode) || false;
   };
 
   const handleModeClick = (mode: GameMode) => {
@@ -136,7 +136,7 @@ export default function Home() {
       // Filter out word lists where user has earned 3 stars
       filtered = filtered.filter(list => {
         const achievement = getAchievementForList(list.id);
-        return !achievement || achievement.achievement_value !== "3 Stars";
+        return !achievement || achievement.achievementValue !== "3 Stars";
       });
     }
     
