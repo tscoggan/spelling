@@ -19,6 +19,8 @@ import {
   type InsertUserToDoItem,
   type PasswordResetToken,
   type InsertPasswordResetToken,
+  type Achievement,
+  type InsertAchievement,
   words,
   gameSessions,
   users,
@@ -30,6 +32,7 @@ import {
   userToDoItems,
   wordListUserGroups,
   passwordResetTokens,
+  achievements,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, inArray, not } from "drizzle-orm";
@@ -105,6 +108,11 @@ export interface IStorage {
   markTokenAsUsed(tokenId: number): Promise<void>;
   deleteExpiredTokens(): Promise<void>;
   deleteUnusedTokensForUser(userId: number): Promise<void>;
+  
+  getAchievement(userId: number, wordListId: number, achievementType: string): Promise<Achievement | undefined>;
+  getUserAchievements(userId: number): Promise<Achievement[]>;
+  getWordListAchievements(wordListId: number): Promise<Achievement[]>;
+  upsertAchievement(achievement: InsertAchievement): Promise<Achievement>;
   
   sessionStore: session.Store;
 }
@@ -937,6 +945,64 @@ export class DatabaseStorage implements IStorage {
           eq(passwordResetTokens.used, false)
         )
       );
+  }
+
+  async getAchievement(userId: number, wordListId: number, achievementType: string): Promise<Achievement | undefined> {
+    const [achievement] = await db
+      .select()
+      .from(achievements)
+      .where(
+        and(
+          eq(achievements.userId, userId),
+          eq(achievements.wordListId, wordListId),
+          eq(achievements.achievementType, achievementType)
+        )
+      );
+    return achievement || undefined;
+  }
+
+  async getUserAchievements(userId: number): Promise<Achievement[]> {
+    return await db
+      .select()
+      .from(achievements)
+      .where(eq(achievements.userId, userId));
+  }
+
+  async getWordListAchievements(wordListId: number): Promise<Achievement[]> {
+    return await db
+      .select()
+      .from(achievements)
+      .where(eq(achievements.wordListId, wordListId));
+  }
+
+  async upsertAchievement(insertAchievement: InsertAchievement): Promise<Achievement> {
+    const existing = await this.getAchievement(
+      insertAchievement.userId,
+      insertAchievement.wordListId,
+      insertAchievement.achievementType
+    );
+
+    if (existing) {
+      const [updated] = await db
+        .update(achievements)
+        .set({
+          achievementValue: insertAchievement.achievementValue,
+          completedModes: insertAchievement.completedModes,
+          updatedAt: new Date(),
+        })
+        .where(eq(achievements.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(achievements)
+        .values({
+          ...insertAchievement,
+          completedModes: insertAchievement.completedModes || [],
+        })
+        .returning();
+      return created;
+    }
   }
 }
 

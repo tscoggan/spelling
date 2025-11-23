@@ -27,6 +27,9 @@ import { UserHeader } from "@/components/user-header";
 import titleBanner from "@assets/image_1763494070680.png";
 import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
 import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
+import oneStar from "@assets/1 star_1763905327457.png";
+import twoStars from "@assets/2 stars_1763905327457.png";
+import threeStars from "@assets/3 stars_1763905327456.png";
 
 interface CustomWordList {
   id: number;
@@ -57,6 +60,27 @@ export default function Home() {
   const { data: sharedLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists/shared-with-me"],
   });
+
+  const { data: achievements } = useQuery<any[]>({
+    queryKey: ["/api/achievements/user", user?.id],
+    enabled: !!user,
+  });
+
+  // Helper function to get achievement for a word list
+  const getAchievementForList = (wordListId: number) => {
+    if (!achievements) return null;
+    return achievements.find(
+      (a) => a.wordListId === wordListId && a.achievementType === "Word List Mastery"
+    );
+  };
+
+  // Helper function to get star image based on achievement value
+  const getStarImage = (achievementValue: string) => {
+    if (achievementValue === "1 Star") return oneStar;
+    if (achievementValue === "2 Stars") return twoStars;
+    if (achievementValue === "3 Stars") return threeStars;
+    return null;
+  };
 
   const handleModeClick = (mode: GameMode) => {
     setSelectedMode(mode);
@@ -263,6 +287,16 @@ export default function Home() {
             <Trophy className="w-4 h-4 mr-2" />
             View Leaderboard
           </Button>
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => setLocation("/achievements")}
+            className="hover:scale-110 transition-transform"
+            data-testid="button-view-achievements"
+          >
+            <Trophy className="w-4 h-4 mr-2" />
+            Achievements
+          </Button>
         </div>
 
         <div className="flex justify-center mb-6">
@@ -397,6 +431,18 @@ export default function Home() {
                   </div>
                   
                   <div className="flex items-center gap-2 flex-shrink-0">
+                    {(() => {
+                      const achievement = getAchievementForList(list.id);
+                      const starImage = achievement ? getStarImage(achievement.achievementValue) : null;
+                      return starImage ? (
+                        <img 
+                          src={starImage} 
+                          alt={achievement.achievementValue} 
+                          className="w-8 h-8 object-contain"
+                          data-testid={`achievement-${list.id}`}
+                        />
+                      ) : null;
+                    })()}
                     {list.gradeLevel && (
                       <Badge variant="secondary" className="text-xs" data-testid={`badge-grade-${list.id}`}>
                         Grade {list.gradeLevel}

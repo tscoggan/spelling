@@ -332,6 +332,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/achievements/user/:userId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const achievements = await storage.getUserAchievements(userId);
+      res.json(achievements);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch achievements" });
+    }
+  });
+
+  app.post("/api/achievements", async (req, res) => {
+    try {
+      const { insertAchievementSchema } = await import("@shared/schema");
+      const achievementData = insertAchievementSchema.parse(req.body);
+      const achievement = await storage.upsertAchievement(achievementData);
+      res.json(achievement);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid achievement data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to save achievement" });
+    }
+  });
+
   app.post("/api/word-lists", async (req, res) => {
     try {
       if (!req.isAuthenticated()) {

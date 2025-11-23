@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, serial } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, serial, unique } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -138,6 +138,19 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const achievements = pgTable("achievements", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  wordListId: integer("word_list_id").notNull(),
+  achievementType: text("achievement_type").notNull(),
+  achievementValue: text("achievement_value").notNull(),
+  completedModes: text("completed_modes").array(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  userWordListTypeUnique: unique("achievements_user_wordlist_type_unique").on(table.userId, table.wordListId, table.achievementType),
+}));
+
 export const usersRelations = relations(users, ({ many }) => ({
   gameSessions: many(gameSessions),
   leaderboardScores: many(leaderboardScores),
@@ -145,6 +158,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   ownedGroups: many(userGroups),
   groupMemberships: many(userGroupMembership),
   toDoItems: many(userToDoItems),
+  achievements: many(achievements),
 }));
 
 export const gameSessionsRelations = relations(gameSessions, ({ one }) => ({
@@ -175,6 +189,7 @@ export const customWordListsRelations = relations(customWordLists, ({ one, many 
   }),
   wordListUserGroups: many(wordListUserGroups),
   wordIllustrations: many(wordIllustrations),
+  achievements: many(achievements),
 }));
 
 export const wordIllustrationsRelations = relations(wordIllustrations, ({ one }) => ({
@@ -226,6 +241,17 @@ export const passwordResetTokensRelations = relations(passwordResetTokens, ({ on
   user: one(users, {
     fields: [passwordResetTokens.userId],
     references: [users.id],
+  }),
+}));
+
+export const achievementsRelations = relations(achievements, ({ one }) => ({
+  user: one(users, {
+    fields: [achievements.userId],
+    references: [users.id],
+  }),
+  wordList: one(customWordLists, {
+    fields: [achievements.wordListId],
+    references: [customWordLists.id],
   }),
 }));
 
@@ -290,6 +316,12 @@ export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTo
   createdAt: true,
 });
 
+export const insertAchievementSchema = createInsertSchema(achievements).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertWord = z.infer<typeof insertWordSchema>;
@@ -312,6 +344,8 @@ export type InsertUserToDoItem = z.infer<typeof insertUserToDoItemSchema>;
 export type UserToDoItem = typeof userToDoItems.$inferSelect;
 export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type InsertAchievement = z.infer<typeof insertAchievementSchema>;
+export type Achievement = typeof achievements.$inferSelect;
 
 export type GameMode = "standard" | "timed" | "quiz" | "scramble" | "mistake" | "crossword";
 

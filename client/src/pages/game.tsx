@@ -338,7 +338,62 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
       const response = await apiRequest("POST", "/api/leaderboard", scoreData);
       return await response.json();
     },
+    onSuccess: async (data, variables) => {
+      // Track achievements for Word List Mastery
+      if (variables.userId && listId && variables.gameMode !== "standard") {
+        await checkAndAwardAchievement(variables);
+      }
+    },
   });
+
+  const checkAndAwardAchievement = async (scoreData: { score: number; accuracy: number; gameMode: GameMode; userId: number | null; sessionId: number }) => {
+    if (!scoreData.userId || !listId) return;
+
+    let earnedStar = false;
+
+    // Determine if star should be awarded based on game mode and performance
+    if (scoreData.gameMode === "timed") {
+      // Timed: Need 10+ words correct (or all words for lists <10) with 100% accuracy on attempted words
+      const totalWords = words?.length || 0;
+      const minRequired = Math.min(10, totalWords);
+      earnedStar = correctCount >= minRequired && scoreData.accuracy === 100;
+    } else if (["quiz", "scramble", "mistake", "crossword"].includes(scoreData.gameMode)) {
+      // Other modes: Need 100% accuracy
+      earnedStar = scoreData.accuracy === 100;
+    }
+
+    if (earnedStar) {
+      // Fetch current achievements for this word list
+      const achievementsResponse = await fetch(`/api/achievements/user/${scoreData.userId}`);
+      const allAchievements = await achievementsResponse.json();
+      
+      // Find existing Word List Mastery achievement for this word list
+      const existingAchievement = allAchievements.find(
+        (a: any) => a.wordListId === Number(listId) && a.achievementType === "Word List Mastery"
+      );
+
+      // Track which modes have been completed with 100% for this word list
+      const completedModes = new Set<string>(existingAchievement?.completedModes || []);
+      
+      // Only award star if this mode hasn't been completed before
+      if (!completedModes.has(scoreData.gameMode)) {
+        completedModes.add(scoreData.gameMode);
+        const totalStars = Math.min(completedModes.size, 3); // Cap at 3 stars
+        
+        // Update or create achievement
+        await apiRequest("POST", "/api/achievements", {
+          userId: scoreData.userId,
+          wordListId: parseInt(listId, 10), // Convert listId to number
+          achievementType: "Word List Mastery",
+          achievementValue: `${totalStars} ${totalStars === 1 ? "Star" : "Stars"}`,
+          completedModes: Array.from(completedModes),
+        });
+        
+        // Invalidate achievements cache to refresh UI
+        queryClient.invalidateQueries({ queryKey: ["/api/achievements/user", scoreData.userId] });
+      }
+    }
+  };
 
   // Seeded random number generator using current timestamp
   const createSeededRandom = (seed: number) => {
