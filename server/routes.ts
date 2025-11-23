@@ -959,7 +959,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid word list ID" });
       }
 
-      const sessions = await storage.getGameSessionsForWordList(wordListId, req.user!.id);
+      const gameMode = req.query.gameMode as string | undefined;
+
+      let sessions = await storage.getGameSessionsForWordList(wordListId, req.user!.id);
+      
+      // Filter by game mode if provided
+      if (gameMode) {
+        sessions = sessions.filter(session => session.gameMode === gameMode);
+      }
+      
+      // Only use completed sessions for accuracy calculations
+      sessions = sessions.filter(session => session.isComplete);
       
       if (sessions.length === 0) {
         return res.json({ totalAccuracy: null, lastGameAccuracy: null });

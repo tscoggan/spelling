@@ -378,45 +378,61 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
       const totalWords = words?.length || 0;
       const minRequired = Math.min(10, totalWords);
       earnedStar = correctCount >= minRequired && scoreData.accuracy === 100;
+      console.log("🏆 Timed mode achievement check:", { correctCount, minRequired, accuracy: scoreData.accuracy, earnedStar });
     } else if (["quiz", "scramble", "mistake", "crossword"].includes(scoreData.gameMode)) {
       // Other modes: Need 100% accuracy
       earnedStar = scoreData.accuracy === 100;
+      console.log("🏆 Achievement check:", { gameMode: scoreData.gameMode, accuracy: scoreData.accuracy, earnedStar });
     }
 
     if (earnedStar) {
-      // Fetch current achievements for this word list
-      const achievementsResponse = await fetch(`/api/achievements/user/${scoreData.userId}`);
-      const allAchievements = await achievementsResponse.json();
-      
-      // Find existing Word List Mastery achievement for this word list
-      const existingAchievement = allAchievements.find(
-        (a: any) => a.wordListId === Number(listId) && a.achievementType === "Word List Mastery"
-      );
+      try {
+        console.log("🌟 Fetching current achievements for user:", scoreData.userId);
+        // Fetch current achievements for this word list
+        const achievementsResponse = await fetch(`/api/achievements/user/${scoreData.userId}`);
+        const allAchievements = await achievementsResponse.json();
+        console.log("📋 Current achievements:", allAchievements);
+        
+        // Find existing Word List Mastery achievement for this word list
+        const existingAchievement = allAchievements.find(
+          (a: any) => a.wordListId === Number(listId) && a.achievementType === "Word List Mastery"
+        );
+        console.log("🔍 Existing achievement for this list:", existingAchievement);
 
-      // Track which modes have been completed with 100% for this word list
-      const completedModes = new Set<string>(existingAchievement?.completedModes || []);
-      
-      // Only award star if this mode hasn't been completed before
-      if (!completedModes.has(scoreData.gameMode)) {
-        completedModes.add(scoreData.gameMode);
-        const totalStars = Math.min(completedModes.size, 3); // Cap at 3 stars
+        // Track which modes have been completed with 100% for this word list
+        const completedModes = new Set<string>(existingAchievement?.completedModes || []);
+        console.log("✅ Completed modes before:", Array.from(completedModes));
         
-        // Update or create achievement
-        await apiRequest("POST", "/api/achievements", {
-          userId: scoreData.userId,
-          wordListId: parseInt(listId, 10), // Convert listId to number
-          achievementType: "Word List Mastery",
-          achievementValue: `${totalStars} ${totalStars === 1 ? "Star" : "Stars"}`,
-          completedModes: Array.from(completedModes),
-        });
-        
-        // Invalidate achievements cache to refresh UI
-        queryClient.invalidateQueries({ queryKey: ["/api/achievements/user", scoreData.userId] });
-        
-        // Set achievement earned flag to show notification on results screen
-        // Only set to true if this is a NEW achievement
-        setAchievementEarned(true);
+        // Only award star if this mode hasn't been completed before
+        if (!completedModes.has(scoreData.gameMode)) {
+          completedModes.add(scoreData.gameMode);
+          const totalStars = Math.min(completedModes.size, 3); // Cap at 3 stars
+          console.log("⭐ Awarding new star! Total stars:", totalStars, "Completed modes:", Array.from(completedModes));
+          
+          // Update or create achievement
+          const achievementResult = await apiRequest("POST", "/api/achievements", {
+            userId: scoreData.userId,
+            wordListId: parseInt(listId, 10), // Convert listId to number
+            achievementType: "Word List Mastery",
+            achievementValue: `${totalStars} ${totalStars === 1 ? "Star" : "Stars"}`,
+            completedModes: Array.from(completedModes),
+          });
+          console.log("💾 Achievement saved:", await achievementResult.json());
+          
+          // Invalidate achievements cache to refresh UI
+          queryClient.invalidateQueries({ queryKey: ["/api/achievements/user", scoreData.userId] });
+          
+          // Set achievement earned flag to show notification on results screen
+          // Only set to true if this is a NEW achievement
+          setAchievementEarned(true);
+        } else {
+          console.log("ℹ️ Achievement already earned for this mode");
+        }
+      } catch (error) {
+        console.error("❌ Error saving achievement:", error);
       }
+    } else {
+      console.log("❌ Did not earn achievement");
     }
   };
 
@@ -1168,7 +1184,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   }, [showFeedback, gameMode]);
 
   useEffect(() => {
-    if (gameComplete && !scoreSaved && sessionId && user && gameMode !== "standard") {
+    if (gameComplete && !scoreSaved && sessionId && user) {
       // Use stored accuracy for crossword mode, calculate for other modes
       const accuracy = gameMode === "crossword"
         ? finalAccuracy
@@ -1194,7 +1210,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
             // If all words checked (timeLeft > 0): currentWordIndex + 1 = words checked
             actualWordsCount = timeLeft === 0 ? currentWordIndex : currentWordIndex + 1;
           }
-          // For quiz/scramble: words?.length is already limited to the actual game words
+          // For practice/quiz/scramble: words?.length is already the actual game words count
           
           // Update game session with final stats
           await updateSessionMutation.mutateAsync({
@@ -1207,24 +1223,28 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
             completedAt: new Date(),
           });
           
-          // After session update succeeds, save score to leaderboard
-          saveScoreMutation.mutate({
-            score,
-            accuracy,
-            gameMode,
-            userId: user.id,
-            sessionId,
-          });
+          // After session update succeeds, save score to leaderboard (except for practice mode)
+          if (gameMode !== "standard") {
+            saveScoreMutation.mutate({
+              score,
+              accuracy,
+              gameMode,
+              userId: user.id,
+              sessionId,
+            });
+          }
         } catch (error) {
           console.error("Failed to update game session:", error);
-          // Still save to leaderboard even if session update fails
-          saveScoreMutation.mutate({
-            score,
-            accuracy,
-            gameMode,
-            userId: user.id,
-            sessionId,
-          });
+          // Still save to leaderboard even if session update fails (except for practice mode)
+          if (gameMode !== "standard") {
+            saveScoreMutation.mutate({
+              score,
+              accuracy,
+              gameMode,
+              userId: user.id,
+              sessionId,
+            });
+          }
         }
       };
       
@@ -2965,9 +2985,11 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   }
 
   if (gameComplete) {
-    // For timed mode, count words attempted (current index + 1)
+    // For timed mode, only count words where Check button was pressed (correct + incorrect)
+    // If timer expired (timeLeft === 0): currentWordIndex = words checked
+    // If all words checked (timeLeft > 0): currentWordIndex + 1 = words checked
     const totalWords = gameMode === "timed" 
-      ? (currentWordIndex + 1) 
+      ? (timeLeft === 0 ? currentWordIndex : currentWordIndex + 1)
       : (words?.length || 10);
     // Use stored accuracy for crossword mode, calculate for other modes
     const accuracy = gameMode === "crossword" 
@@ -3592,7 +3614,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                                       className="font-bold text-gray-800"
                                       style={{ fontSize: `${tileSize.fontSize}px` }}
                                     >
-                                      {letter.letter}
+                                      {letter.letter.toUpperCase()}
                                     </span>
                                   ) : (
                                     <div 
@@ -3631,7 +3653,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                                   className="font-bold text-gray-800 select-none"
                                   style={{ fontSize: `${tileSize.fontSize}px` }}
                                 >
-                                  {letter}
+                                  {letter.toUpperCase()}
                                 </span>
                               </div>
                             );

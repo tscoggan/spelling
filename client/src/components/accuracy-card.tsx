@@ -9,15 +9,19 @@ interface WordListStatsData {
 
 interface AccuracyCardProps {
   wordListId: number;
+  gameMode?: string;
 }
 
-export function AccuracyCard({ wordListId }: AccuracyCardProps) {
+export function AccuracyCard({ wordListId, gameMode }: AccuracyCardProps) {
   const { user } = useAuth();
   
   const { data: stats } = useQuery<WordListStatsData>({
-    queryKey: ["/api/word-lists", wordListId, "stats"],
+    queryKey: ["/api/word-lists", wordListId, "stats", gameMode],
     queryFn: async () => {
-      const response = await fetch(`/api/word-lists/${wordListId}/stats`);
+      const url = gameMode 
+        ? `/api/word-lists/${wordListId}/stats?gameMode=${gameMode}`
+        : `/api/word-lists/${wordListId}/stats`;
+      const response = await fetch(url);
       if (!response.ok) {
         if (response.status === 401) {
           return { totalAccuracy: null, lastGameAccuracy: null };

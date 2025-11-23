@@ -507,7 +507,7 @@ export default function Home() {
                     </div>
                   </div>
                   
-                  <AccuracyCard wordListId={list.id} />
+                  <AccuracyCard wordListId={list.id} gameMode={selectedMode || undefined} />
                   
                   {selectedMode && selectedMode !== "standard" && (
                     <div className="flex-shrink-0 flex justify-center items-center min-w-[80px]">
