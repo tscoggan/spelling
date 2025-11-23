@@ -536,8 +536,8 @@ export default function UserGroupsPage() {
         
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-foreground mb-2 font-crayon">User Groups</h1>
-            <p className="text-muted-foreground">Create and manage groups to share word lists</p>
+            <h1 className="text-4xl md:text-5xl font-bold text-foreground">User Groups</h1>
+            <p className="text-lg text-muted-foreground mt-1">Create and manage groups to share word lists</p>
           </div>
           <div className="flex gap-2">
             <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>

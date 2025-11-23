@@ -45,6 +45,9 @@ import playWordIconWithBorder from "@assets/Play word icon with border_176367070
 import trophyBeeImage from "@assets/Bee with trophy_1763852047681.png";
 import goodTryBeeImage from "@assets/Bee with good try_1763852047680.png";
 
+// Import achievement star
+import achievementStar from "@assets/1 star_1763905327457.png";
+
 interface QuizAnswer {
   word: Word;
   userAnswer: string;
@@ -152,6 +155,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   const [quizAnswers, setQuizAnswers] = useState<QuizAnswer[]>([]);
   const [scoreSaved, setScoreSaved] = useState(false);
   const [sessionId, setSessionId] = useState<number | null>(null);
+  const [achievementEarned, setAchievementEarned] = useState(false);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -347,6 +351,9 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   });
 
   const checkAndAwardAchievement = async (scoreData: { score: number; accuracy: number; gameMode: GameMode; userId: number | null; sessionId: number }) => {
+    // Reset achievement earned state at start of check
+    setAchievementEarned(false);
+    
     if (!scoreData.userId || !listId) return;
 
     let earnedStar = false;
@@ -391,6 +398,10 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
         
         // Invalidate achievements cache to refresh UI
         queryClient.invalidateQueries({ queryKey: ["/api/achievements/user", scoreData.userId] });
+        
+        // Set achievement earned flag to show notification on results screen
+        // Only set to true if this is a NEW achievement
+        setAchievementEarned(true);
       }
     }
   };
@@ -2969,6 +2980,24 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                   <span className="font-bold text-gray-900">{words?.length}</span> words correctly!</>
                 )}
               </p>
+              {achievementEarned && (
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.3, type: "spring" }}
+                  className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 flex items-center justify-center gap-3"
+                  data-testid="achievement-notification"
+                >
+                  <img 
+                    src={achievementStar} 
+                    alt="Achievement Star" 
+                    className="w-12 h-12 object-contain"
+                  />
+                  <p className="text-lg font-bold text-yellow-800">
+                    Achievement Earned! You earned a star for this word list!
+                  </p>
+                </motion.div>
+              )}
               {bestStreak > 2 && (
                 <p className="text-orange-600 font-semibold flex items-center justify-center gap-2 text-lg">
                   Best streak: {bestStreak} words in a row! <Flame className="w-6 h-6" />

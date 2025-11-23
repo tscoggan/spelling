@@ -75,15 +75,11 @@ export default function Leaderboard() {
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-4"
           >
-            <Trophy className="w-12 h-12 text-purple-600" />
-            <div>
-              <h1 className="text-4xl md:text-5xl font-bold text-foreground font-crayon">
-                Leaderboard
-              </h1>
-              <p className="text-lg text-muted-foreground mt-1">Top 10 Champions</p>
-            </div>
+            <h1 className="text-4xl md:text-5xl font-bold text-foreground">
+              Leaderboard
+            </h1>
+            <p className="text-lg text-muted-foreground mt-1">Top 10 Champions</p>
           </motion.div>
         </div>
 

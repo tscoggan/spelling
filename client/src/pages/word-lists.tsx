@@ -593,10 +593,10 @@ export default function WordListsPage() {
         
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <div>
-            <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 font-crayon">
+            <h1 className="text-4xl md:text-5xl font-bold text-foreground">
               Custom Word Lists
             </h1>
-            <p className="text-muted-foreground mt-2">
+            <p className="text-lg text-muted-foreground mt-1">
               Create your own spelling word lists and share them with others
             </p>
           </div>

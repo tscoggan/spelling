@@ -129,10 +129,12 @@ export default function Achievements() {
                 Back to Home
               </Button>
               
-              <h1 className="text-4xl font-bold text-primary flex items-center gap-3 bg-white/90 dark:bg-black/50 backdrop-blur-sm px-4 py-2 rounded-lg">
-                <Trophy className="w-8 h-8" />
-                My Achievements
-              </h1>
+              <div>
+                <h1 className="text-4xl md:text-5xl font-bold text-foreground">
+                  My Achievements
+                </h1>
+                <p className="text-lg text-muted-foreground mt-1">Your spelling accomplishments</p>
+              </div>
             </div>
 
             {/* Achievements List */}
@@ -166,57 +168,55 @@ export default function Achievements() {
                       className="backdrop-blur-sm bg-card/90 hover-elevate"
                       data-testid={`achievement-card-${list.id}`}
                     >
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <CardTitle className="text-xl mb-2" data-testid={`text-list-name-${list.id}`}>
-                              {list.name}
-                            </CardTitle>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <span>{list.words.length} words</span>
+                      <CardHeader className="pb-4">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              <CardTitle className="text-xl" data-testid={`text-list-name-${list.id}`}>
+                                {list.name}
+                              </CardTitle>
                               {list.gradeLevel && (
-                                <Badge variant="secondary" className="text-xs">
+                                <Badge variant="secondary" className="text-xs flex-shrink-0">
                                   Grade {list.gradeLevel}
                                 </Badge>
                               )}
                               {list.isPublic ? (
-                                <Globe className="w-4 h-4 text-blue-600" />
+                                <Globe className="w-4 h-4 text-blue-600 flex-shrink-0" />
                               ) : (
-                                <Lock className="w-4 h-4 text-gray-400" />
+                                <Lock className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+                              <span>{list.words.length} words</span>
+                              {achievement && achievement.completedModes && achievement.completedModes.length > 0 && (
+                                <>
+                                  <span>•</span>
+                                  <span className="font-medium">Completed:</span>
+                                  {achievement.completedModes.map((mode, index) => (
+                                    <span key={mode}>
+                                      <Badge variant="outline" className="capitalize text-xs">
+                                        {mode}
+                                      </Badge>
+                                      {index < achievement.completedModes.length - 1 && " "}
+                                    </span>
+                                  ))}
+                                </>
                               )}
                             </div>
                           </div>
                           
                           {starImage && (
-                            <div className="flex flex-col items-center gap-2">
+                            <div className="flex-shrink-0">
                               <img 
                                 src={starImage} 
                                 alt={achievement?.achievementValue} 
                                 className="w-16 h-16 object-contain"
                                 data-testid={`stars-${list.id}`}
                               />
-                              <span className="text-xs font-semibold text-primary">
-                                {achievement?.achievementValue}
-                              </span>
                             </div>
                           )}
                         </div>
                       </CardHeader>
-                      
-                      {achievement && achievement.completedModes && achievement.completedModes.length > 0 && (
-                        <CardContent>
-                          <div className="text-sm">
-                            <p className="font-semibold mb-2 text-muted-foreground">Completed Modes:</p>
-                            <div className="flex flex-wrap gap-2">
-                              {achievement.completedModes.map((mode) => (
-                                <Badge key={mode} variant="outline" className="capitalize">
-                                  {mode}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        </CardContent>
-                      )}
                     </Card>
                   );
                 })}

@@ -28,8 +28,7 @@ import titleBanner from "@assets/image_1763494070680.png";
 import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
 import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
 import oneStar from "@assets/1 star_1763905327457.png";
-import twoStars from "@assets/2 stars_1763905327457.png";
-import threeStars from "@assets/3 stars_1763905327456.png";
+import missingStar from "@assets/Missing star_1763908719617.png";
 
 interface CustomWordList {
   id: number;
@@ -74,12 +73,12 @@ export default function Home() {
     );
   };
 
-  // Helper function to get star image based on achievement value
-  const getStarImage = (achievementValue: string) => {
-    if (achievementValue === "1 Star") return oneStar;
-    if (achievementValue === "2 Stars") return twoStars;
-    if (achievementValue === "3 Stars") return threeStars;
-    return null;
+  // Helper function to check if current mode has been completed
+  const hasModeAchievement = (wordListId: number, mode: GameMode | null) => {
+    if (!mode || mode === "standard") return false; // Practice mode doesn't award achievements
+    const achievement = getAchievementForList(wordListId);
+    if (!achievement) return false;
+    return achievement.completedModes?.includes(mode) || false;
   };
 
   const handleModeClick = (mode: GameMode) => {
@@ -251,7 +250,7 @@ export default function Home() {
               data-testid="img-title-banner"
             />
           </motion.div>
-          <p className="text-lg md:text-xl text-foreground font-semibold bg-white/60 dark:bg-gray-900/70 backdrop-blur-sm px-6 py-3 rounded-full inline-block shadow-md">
+          <p className="text-lg md:text-xl text-foreground font-semibold">
             Master your spelling skills with fun, interactive challenges!
           </p>
         </div>
@@ -300,7 +299,7 @@ export default function Home() {
         </div>
 
         <div className="flex justify-center mb-6">
-          <h2 className="text-2xl md:text-3xl font-bold text-center text-foreground bg-white/60 dark:bg-gray-900/70 backdrop-blur-sm px-8 py-4 rounded-2xl shadow-md">
+          <h2 className="text-2xl md:text-3xl font-bold text-center text-foreground">
             Choose Your Game Mode
           </h2>
         </div>
@@ -422,36 +421,34 @@ export default function Home() {
                   data-testid={`card-word-list-${list.id}`}
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-base truncate" data-testid={`text-list-name-${list.id}`}>
-                      {list.name}
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="font-semibold text-base truncate" data-testid={`text-list-name-${list.id}`}>
+                        {list.name}
+                      </div>
+                      {list.gradeLevel && (
+                        <Badge variant="secondary" className="text-xs flex-shrink-0" data-testid={`badge-grade-${list.id}`}>
+                          Grade {list.gradeLevel}
+                        </Badge>
+                      )}
+                      {list.isPublic ? (
+                        <Globe className="w-4 h-4 text-blue-600 flex-shrink-0" data-testid={`icon-public-${list.id}`} />
+                      ) : (
+                        <Lock className="w-4 h-4 text-gray-400 flex-shrink-0" data-testid={`icon-private-${list.id}`} />
+                      )}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       {list.words.length} words
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {(() => {
-                      const achievement = getAchievementForList(list.id);
-                      const starImage = achievement ? getStarImage(achievement.achievementValue) : null;
-                      return starImage ? (
-                        <img 
-                          src={starImage} 
-                          alt={achievement.achievementValue} 
-                          className="w-8 h-8 object-contain"
-                          data-testid={`achievement-${list.id}`}
-                        />
-                      ) : null;
-                    })()}
-                    {list.gradeLevel && (
-                      <Badge variant="secondary" className="text-xs" data-testid={`badge-grade-${list.id}`}>
-                        Grade {list.gradeLevel}
-                      </Badge>
-                    )}
-                    {list.isPublic ? (
-                      <Globe className="w-4 h-4 text-blue-600" data-testid={`icon-public-${list.id}`} />
-                    ) : (
-                      <Lock className="w-4 h-4 text-gray-400" data-testid={`icon-private-${list.id}`} />
+                  <div className="flex-shrink-0">
+                    {selectedMode && selectedMode !== "standard" && (
+                      <img 
+                        src={hasModeAchievement(list.id, selectedMode) ? oneStar : missingStar}
+                        alt={hasModeAchievement(list.id, selectedMode) ? "Achievement earned" : "No achievement"} 
+                        className="w-12 h-12 object-contain"
+                        data-testid={`achievement-${list.id}`}
+                      />
                     )}
                   </div>
                 </div>
