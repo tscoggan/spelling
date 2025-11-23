@@ -446,7 +446,7 @@ export default function Home() {
                       <img 
                         src={hasModeAchievement(list.id, selectedMode) ? oneStar : missingStar}
                         alt={hasModeAchievement(list.id, selectedMode) ? "Achievement earned" : "No achievement"} 
-                        className="h-36 w-auto max-w-[144px] object-contain"
+                        className="h-18 w-auto max-w-[72px] object-contain"
                         data-testid={`achievement-${list.id}`}
                       />
                     )}
