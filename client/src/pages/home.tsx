@@ -27,8 +27,8 @@ import { UserHeader } from "@/components/user-header";
 import titleBanner from "@assets/image_1763494070680.png";
 import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
 import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
-import oneStar from "@assets/1 star_1763915441808.png";
-import missingStar from "@assets/Missing star (grey)_1763915441807.png";
+import oneStar from "@assets/1 star_1763916010555.png";
+import missingStar from "@assets/Missing star (grey)_1763916010554.png";
 
 interface CustomWordList {
   id: number;
