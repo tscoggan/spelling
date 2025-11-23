@@ -9,10 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { UserHeader } from "@/components/user-header";
 import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
 import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
-import oneStar from "@assets/1 star_1763905327457.png";
-import twoStars from "@assets/2 stars_1763905327457.png";
-import threeStars from "@assets/3 stars_1763905327456.png";
-import missingStar from "@assets/Missing star (grey)_1763909947996.png";
+import oneStar from "@assets/1 star_1763913172283.png";
+import twoStars from "@assets/2 stars_1763913172281.png";
+import threeStars from "@assets/3 stars_1763913172282.png";
+import missingStar from "@assets/Missing star (grey)_1763913172283.png";
 
 interface CustomWordList {
   id: number;
