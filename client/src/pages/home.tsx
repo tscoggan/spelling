@@ -416,13 +416,13 @@ export default function Home() {
               allLists.map((list) => (
                 <div
                   key={list.id}
-                  className="flex items-center gap-3 p-3 rounded-md border hover-elevate active-elevate-2 cursor-pointer"
+                  className="flex items-center gap-2 p-2 rounded-md border hover-elevate active-elevate-2 cursor-pointer"
                   onClick={() => startGameWithCustomList(list)}
                   data-testid={`card-word-list-${list.id}`}
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="font-semibold text-base truncate" data-testid={`text-list-name-${list.id}`}>
+                    <div className="flex items-center gap-1 mb-0.5">
+                      <div className="font-semibold text-sm truncate" data-testid={`text-list-name-${list.id}`}>
                         {list.name}
                       </div>
                       {list.gradeLevel && (
@@ -436,7 +436,7 @@ export default function Home() {
                         <Lock className="w-4 h-4 text-gray-400 flex-shrink-0" data-testid={`icon-private-${list.id}`} />
                       )}
                     </div>
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-xs text-muted-foreground leading-tight">
                       {list.words.length} words
                     </div>
                   </div>
