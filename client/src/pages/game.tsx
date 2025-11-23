@@ -1182,13 +1182,17 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
           // Calculate actual words used based on game mode
           let actualWordsCount = words?.length || 0;
           if (gameMode === "mistake") {
-            actualWordsCount = 4; // Find the Mistake always uses 4 words
+            // Mistake: Use actual number of questions attempted (answered + current if answered)
+            // currentWordIndex tracks current question being shown, so +1 for total attempted
+            actualWordsCount = currentWordIndex + 1;
           } else if (gameMode === "crossword") {
             // Crossword: Use actual number of words placed in the grid
             actualWordsCount = crosswordGrid?.entries.length || 0;
           } else if (gameMode === "timed") {
-            // Timed: Use actual number of words attempted before time ran out
-            actualWordsCount = currentWordIndex + 1;
+            // Timed: Only count words where Check button was pressed (correct + incorrect)
+            // If timer expired (timeLeft === 0): currentWordIndex = words checked
+            // If all words checked (timeLeft > 0): currentWordIndex + 1 = words checked
+            actualWordsCount = timeLeft === 0 ? currentWordIndex : currentWordIndex + 1;
           }
           // For quiz/scramble: words?.length is already limited to the actual game words
           

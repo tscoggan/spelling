@@ -58,6 +58,20 @@ The backend uses **Express.js** with **TypeScript**. **PostgreSQL** serves as th
   - **Metadata Extraction**: Parses complex Merriam-Webster JSON format with formatting codes ({bc}, {it}, {vis}, etc.)
   - **Caching**: In-memory cache with 24-hour TTL to minimize API calls
   - **Concurrency Control**: Maximum 5 concurrent API requests with 5-second timeout per word
+- **Game Session Tracking** (game_sessions table):
+  - **total_words**: Tracks actual words/questions attempted, calculated per game mode:
+    - **Practice/Scramble**: Full word list length
+    - **Quiz**: Actual quiz length (10 words or full list)
+    - **Timed Challenge**: Words where "Check" button was pressed (correct + incorrect). If timer expires: `currentWordIndex`. If all words checked: `currentWordIndex + 1`
+    - **Find the Mistake**: Number of multiple-choice questions attempted = `currentWordIndex + 1`
+    - **Crossword**: Number of words placed in generated grid (up to 15)
+  - **correct_words**: Count of correctly spelled words, incremented during gameplay when user answers correctly
+  - **is_complete**: Boolean flag set to `true` when game finishes (via updateSessionMutation), used to filter completed sessions for statistics
+  - **score**: Total points earned = (correct_words × 20) + streak bonuses (5 points per streak level). Calculated incrementally during gameplay
+  - **Accuracy Calculation** (GET /api/word-lists/:id/stats):
+    - **Total Accuracy**: Weighted average across all completed sessions = `sum(correct_words) / sum(total_words) × 100`
+    - **Last Game Accuracy**: Single-session accuracy = `correct_words / total_words × 100` for most recent session
+    - Returns `null` when no completed sessions exist or total_words = 0
 
 ## External Dependencies
 
