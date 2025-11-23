@@ -1179,11 +1179,19 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
       // Update game session with final stats first, then save score
       const updateAndSave = async () => {
         try {
+          // Calculate actual words used based on game mode
+          let actualWordsCount = words?.length || 0;
+          if (gameMode === "mistake") {
+            actualWordsCount = 4; // Find the Mistake always uses 4 words
+          } else if (gameMode === "crossword") {
+            actualWordsCount = Math.min(15, words?.length || 0); // Crossword uses up to 15 words
+          }
+          
           // Update game session with final stats
           await updateSessionMutation.mutateAsync({
             sessionId,
             score,
-            totalWords: words?.length || 0,
+            totalWords: actualWordsCount,
             correctWords: correctCount,
             bestStreak: streak,
             isComplete: true,
@@ -2611,6 +2619,27 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     }
   };
 
+  const handleCrosswordCellFocus = (row: number, col: number) => {
+    if (!crosswordGrid) return;
+    
+    // Find all entries that contain this cell
+    const containingEntries = crosswordGrid.entries.filter(entry => {
+      for (let i = 0; i < entry.word.length; i++) {
+        const r = entry.direction === "across" ? entry.row : entry.row + i;
+        const c = entry.direction === "across" ? entry.col + i : entry.col;
+        if (r === row && c === col) return true;
+      }
+      return false;
+    });
+    
+    // Prefer "across" entries over "down" entries
+    const entryToActivate = containingEntries.find(e => e.direction === "across") || containingEntries[0];
+    
+    if (entryToActivate) {
+      setActiveEntry(entryToActivate.number);
+    }
+  };
+
   const handleCrosswordCellInput = (row: number, col: number, value: string) => {
     if (!crosswordGrid) return;
     
@@ -3394,7 +3423,10 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                                   value={crosswordInputs[cellKey] || ''}
                                   onChange={(e) => handleCrosswordCellInput(rowIndex, colIndex, e.target.value)}
                                   onKeyDown={(e) => handleCrosswordKeyDown(rowIndex, colIndex, e)}
-                                  onFocus={(e) => e.target.select()}
+                                  onFocus={(e) => {
+                                    handleCrosswordCellFocus(rowIndex, colIndex);
+                                    e.target.select();
+                                  }}
                                   className={`w-full h-full text-center text-xl font-bold border-0 p-0 uppercase focus-visible:ring-1 focus-visible:ring-primary ${isMistake ? 'text-white bg-red-600' : 'bg-transparent'}`}
                                   autoComplete="one-time-code"
                                   autoCorrect="off"

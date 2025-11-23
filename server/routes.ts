@@ -948,6 +948,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/word-lists/:id/stats", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const wordListId = parseInt(req.params.id);
+      if (isNaN(wordListId)) {
+        return res.status(400).json({ error: "Invalid word list ID" });
+      }
+
+      const sessions = await storage.getGameSessionsForWordList(wordListId, req.user!.id);
+      
+      if (sessions.length === 0) {
+        return res.json({ totalAccuracy: null, lastGameAccuracy: null });
+      }
+
+      // Calculate total accuracy (weighted by words across all sessions)
+      const totalCorrectWords = sessions.reduce((sum, session) => sum + session.correctWords, 0);
+      const totalTotalWords = sessions.reduce((sum, session) => sum + session.totalWords, 0);
+      const totalAccuracy = totalTotalWords > 0
+        ? Math.round((totalCorrectWords / totalTotalWords) * 100)
+        : null;
+
+      // Last game accuracy (most recent session)
+      const lastSession = sessions[0]; // Already ordered by completedAt desc
+      const lastGameAccuracy = lastSession.totalWords > 0
+        ? Math.round((lastSession.correctWords / lastSession.totalWords) * 100)
+        : null;
+
+      res.json({ totalAccuracy, lastGameAccuracy });
+    } catch (error) {
+      console.error("Error fetching word list stats:", error);
+      res.status(500).json({ error: "Failed to fetch word list statistics" });
+    }
+  });
+
   app.get("/api/word-illustrations/:word", async (req, res) => {
     try {
       const word = req.params.word.toLowerCase();

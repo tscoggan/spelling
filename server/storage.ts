@@ -49,6 +49,7 @@ export interface IStorage {
   getGameSession(id: number): Promise<GameSession | undefined>;
   createGameSession(session: InsertGameSession): Promise<GameSession>;
   updateGameSession(id: number, updates: Partial<GameSession>): Promise<GameSession | undefined>;
+  getGameSessionsForWordList(wordListId: number, userId: number): Promise<GameSession[]>;
   
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -212,6 +213,21 @@ export class DatabaseStorage implements IStorage {
       .where(eq(gameSessions.id, id))
       .returning();
     return session || undefined;
+  }
+
+  async getGameSessionsForWordList(wordListId: number, userId: number): Promise<GameSession[]> {
+    const sessions = await db
+      .select()
+      .from(gameSessions)
+      .where(
+        and(
+          eq(gameSessions.wordListId, wordListId),
+          eq(gameSessions.userId, userId),
+          eq(gameSessions.isComplete, true)
+        )
+      )
+      .orderBy(desc(gameSessions.completedAt));
+    return sessions;
   }
 
   async getUser(id: number): Promise<User | undefined> {

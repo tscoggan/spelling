@@ -41,6 +41,49 @@ interface CustomWordList {
   createdAt?: string | Date;
 }
 
+interface WordListStatsData {
+  totalAccuracy: number | null;
+  lastGameAccuracy: number | null;
+}
+
+function WordListStats({ wordListId }: { wordListId: number }) {
+  const { user } = useAuth();
+  
+  const { data: stats } = useQuery<WordListStatsData>({
+    queryKey: ["/api/word-lists", wordListId, "stats"],
+    queryFn: async () => {
+      const response = await fetch(`/api/word-lists/${wordListId}/stats`);
+      if (!response.ok) {
+        if (response.status === 401) {
+          return { totalAccuracy: null, lastGameAccuracy: null };
+        }
+        throw new Error('Failed to fetch stats');
+      }
+      return response.json();
+    },
+    enabled: !!user,
+  });
+
+  if (!user || !stats || (stats.totalAccuracy === null && stats.lastGameAccuracy === null)) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-0.5">
+      {stats.totalAccuracy !== null && (
+        <div data-testid={`text-total-accuracy-${wordListId}`}>
+          Total: {stats.totalAccuracy}%
+        </div>
+      )}
+      {stats.lastGameAccuracy !== null && (
+        <div data-testid={`text-last-accuracy-${wordListId}`}>
+          Last: {stats.lastGameAccuracy}%
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Home() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
@@ -501,8 +544,9 @@ export default function Home() {
                         <Lock className="w-4 h-4 text-gray-400 flex-shrink-0" data-testid={`icon-private-${list.id}`} />
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground leading-tight">
-                      {list.words.length} words
+                    <div className="text-xs text-muted-foreground leading-tight space-y-0.5">
+                      <div>{list.words.length} words</div>
+                      <WordListStats wordListId={list.id} />
                     </div>
                   </div>
                   

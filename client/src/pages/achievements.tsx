@@ -31,6 +31,55 @@ interface Achievement {
   completedModes: string[];
 }
 
+interface WordListStatsData {
+  totalAccuracy: number | null;
+  lastGameAccuracy: number | null;
+}
+
+function WordListStats({ wordListId }: { wordListId: number }) {
+  const { user } = useAuth();
+  
+  const { data: stats } = useQuery<WordListStatsData>({
+    queryKey: ["/api/word-lists", wordListId, "stats"],
+    queryFn: async () => {
+      const response = await fetch(`/api/word-lists/${wordListId}/stats`);
+      if (!response.ok) {
+        if (response.status === 401) {
+          return { totalAccuracy: null, lastGameAccuracy: null };
+        }
+        throw new Error('Failed to fetch stats');
+      }
+      return response.json();
+    },
+    enabled: !!user,
+  });
+
+  if (!user || !stats || (stats.totalAccuracy === null && stats.lastGameAccuracy === null)) {
+    return null;
+  }
+
+  return (
+    <>
+      {stats.totalAccuracy !== null && (
+        <>
+          <span>•</span>
+          <span data-testid={`text-total-accuracy-${wordListId}`}>
+            Total: {stats.totalAccuracy}%
+          </span>
+        </>
+      )}
+      {stats.lastGameAccuracy !== null && (
+        <>
+          <span>•</span>
+          <span data-testid={`text-last-accuracy-${wordListId}`}>
+            Last: {stats.lastGameAccuracy}%
+          </span>
+        </>
+      )}
+    </>
+  );
+}
+
 export default function Achievements() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
@@ -189,6 +238,7 @@ export default function Achievements() {
                             </div>
                             <div className="flex items-center gap-1 text-sm text-muted-foreground flex-wrap">
                               <span>{list.words.length} words</span>
+                              <WordListStats wordListId={list.id} />
                               {achievement && achievement.completedModes && achievement.completedModes.length > 0 && (
                                 <>
                                   <span>•</span>
