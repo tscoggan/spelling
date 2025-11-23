@@ -169,7 +169,11 @@ export default function Achievements() {
                       className="backdrop-blur-sm bg-card/90 hover-elevate"
                       data-testid={`achievement-card-${list.id}`}
                     >
-                      <CardHeader className="p-3 pb-2">
+                      <CardHeader className={
+                        achievement?.achievementValue === "1 Star" 
+                          ? "p-3 pb-2" 
+                          : "p-2 pb-1.5"
+                      }>
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1 mb-0.5">
