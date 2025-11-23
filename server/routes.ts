@@ -293,7 +293,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid session ID" });
       }
       
-      const updates = req.body;
+      // Convert completedAt string to Date object if present
+      const updates = { ...req.body };
+      if (updates.completedAt && typeof updates.completedAt === 'string') {
+        updates.completedAt = new Date(updates.completedAt);
+      }
+      
       const session = await storage.updateGameSession(id, updates);
       
       if (!session) {
@@ -302,6 +307,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(session);
     } catch (error) {
+      console.error(`❌ Failed to update session ${req.params.id}:`, error);
       res.status(500).json({ error: "Failed to update session" });
     }
   });
