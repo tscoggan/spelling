@@ -1925,6 +1925,35 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
         return null;
       },
       
+      // O surrounded by consonants -> AU/AW/OU (dog -> daug, dawg, doug)
+      () => {
+        const consonants = 'bcdfghjklmnpqrstvwxyz';
+        for (let i = 1; i < wordLower.length - 1; i++) {
+          if (wordLower[i] === 'o' &&
+              consonants.includes(wordLower[i - 1]) &&
+              consonants.includes(wordLower[i + 1])) {
+            // Randomly choose AU, AW, or OU
+            const replacements = ['au', 'aw', 'ou'];
+            const replacement = replacements[Math.floor(Math.random() * replacements.length)];
+            return wordLower.slice(0, i) + replacement + wordLower.slice(i + 1);
+          }
+        }
+        return null;
+      },
+      
+      // AU <-> AW swap (dawn -> daun, haul -> hawl)
+      () => {
+        if (wordLower.includes('au')) {
+          const auIndex = wordLower.indexOf('au');
+          return wordLower.slice(0, auIndex) + 'aw' + wordLower.slice(auIndex + 2);
+        }
+        if (wordLower.includes('aw')) {
+          const awIndex = wordLower.indexOf('aw');
+          return wordLower.slice(0, awIndex) + 'au' + wordLower.slice(awIndex + 2);
+        }
+        return null;
+      },
+      
       // Replace vowel with similar sound (cat -> cet, dog -> dag)
       () => {
         const vowelMap: { [key: string]: string } = {
@@ -1955,12 +1984,26 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
       }
     }
     
-    // Fallback: Swap first two letters (guaranteed to work)
+    // Fallback: Swap first two letters (but not for short words ≤4 letters)
     const letters = wordLower.split('');
-    if (letters.length > 1) {
+    if (letters.length > 4) {
       [letters[0], letters[1]] = [letters[1], letters[0]];
+      return preserveCapitalization(letters.join(''));
     }
-    return preserveCapitalization(letters.join(''));
+    
+    // For short words, prefer doubling the last consonant (dog -> dogg, not ddog)
+    const consonants = 'bcdfghjklmnpqrstvwxyz';
+    for (let i = wordLower.length - 1; i >= 0; i--) {
+      if (consonants.includes(wordLower[i]) && 
+          (i === wordLower.length - 1 || wordLower[i] !== wordLower[i + 1])) {
+        return preserveCapitalization(
+          wordLower.slice(0, i + 1) + wordLower[i] + wordLower.slice(i + 1)
+        );
+      }
+    }
+    
+    // Ultimate fallback: add extra letter at end
+    return preserveCapitalization(wordLower + wordLower[wordLower.length - 1]);
   };
 
   // Mistake mode: Initialize 4 word choices when word changes
