@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
 import { UserHeader } from "@/components/user-header";
+import { WordListStats } from "@/components/word-list-stats";
 import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
 import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
 import oneStar from "@assets/1 star_1763916010555.png";
@@ -29,55 +30,6 @@ interface Achievement {
   achievementType: string;
   achievementValue: string;
   completedModes: string[];
-}
-
-interface WordListStatsData {
-  totalAccuracy: number | null;
-  lastGameAccuracy: number | null;
-}
-
-function WordListStats({ wordListId }: { wordListId: number }) {
-  const { user } = useAuth();
-  
-  const { data: stats } = useQuery<WordListStatsData>({
-    queryKey: ["/api/word-lists", wordListId, "stats"],
-    queryFn: async () => {
-      const response = await fetch(`/api/word-lists/${wordListId}/stats`);
-      if (!response.ok) {
-        if (response.status === 401) {
-          return { totalAccuracy: null, lastGameAccuracy: null };
-        }
-        throw new Error('Failed to fetch stats');
-      }
-      return response.json();
-    },
-    enabled: !!user,
-  });
-
-  if (!user || !stats || (stats.totalAccuracy === null && stats.lastGameAccuracy === null)) {
-    return null;
-  }
-
-  return (
-    <>
-      {stats.totalAccuracy !== null && (
-        <>
-          <span>•</span>
-          <span data-testid={`text-total-accuracy-${wordListId}`}>
-            Total: {stats.totalAccuracy}%
-          </span>
-        </>
-      )}
-      {stats.lastGameAccuracy !== null && (
-        <>
-          <span>•</span>
-          <span data-testid={`text-last-accuracy-${wordListId}`}>
-            Last: {stats.lastGameAccuracy}%
-          </span>
-        </>
-      )}
-    </>
-  );
 }
 
 export default function Achievements() {
@@ -238,7 +190,7 @@ export default function Achievements() {
                             </div>
                             <div className="flex items-center gap-1 text-sm text-muted-foreground flex-wrap">
                               <span>{list.words.length} words</span>
-                              <WordListStats wordListId={list.id} />
+                              <WordListStats wordListId={list.id} layout="inline" />
                               {achievement && achievement.completedModes && achievement.completedModes.length > 0 && (
                                 <>
                                   <span>•</span>

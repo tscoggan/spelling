@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { UserHeader } from "@/components/user-header";
+import { WordListStats } from "@/components/word-list-stats";
 import titleBanner from "@assets/image_1763494070680.png";
 import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
 import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
@@ -39,49 +40,6 @@ interface CustomWordList {
   gradeLevel?: string;
   authorUsername?: string;
   createdAt?: string | Date;
-}
-
-interface WordListStatsData {
-  totalAccuracy: number | null;
-  lastGameAccuracy: number | null;
-}
-
-function WordListStats({ wordListId }: { wordListId: number }) {
-  const { user } = useAuth();
-  
-  const { data: stats } = useQuery<WordListStatsData>({
-    queryKey: ["/api/word-lists", wordListId, "stats"],
-    queryFn: async () => {
-      const response = await fetch(`/api/word-lists/${wordListId}/stats`);
-      if (!response.ok) {
-        if (response.status === 401) {
-          return { totalAccuracy: null, lastGameAccuracy: null };
-        }
-        throw new Error('Failed to fetch stats');
-      }
-      return response.json();
-    },
-    enabled: !!user,
-  });
-
-  if (!user || !stats || (stats.totalAccuracy === null && stats.lastGameAccuracy === null)) {
-    return null;
-  }
-
-  return (
-    <div className="space-y-0.5">
-      {stats.totalAccuracy !== null && (
-        <div data-testid={`text-total-accuracy-${wordListId}`}>
-          Total: {stats.totalAccuracy}%
-        </div>
-      )}
-      {stats.lastGameAccuracy !== null && (
-        <div data-testid={`text-last-accuracy-${wordListId}`}>
-          Last: {stats.lastGameAccuracy}%
-        </div>
-      )}
-    </div>
-  );
 }
 
 export default function Home() {
