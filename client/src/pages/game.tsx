@@ -1223,6 +1223,11 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
             completedAt: new Date(),
           });
           
+          // Invalidate word list stats cache to refresh accuracy metrics
+          if (listId) {
+            queryClient.invalidateQueries({ queryKey: ["/api/word-lists", parseInt(listId, 10), "stats"] });
+          }
+          
           // After session update succeeds, save score to leaderboard (except for practice mode)
           if (gameMode !== "practice") {
             saveScoreMutation.mutate({
