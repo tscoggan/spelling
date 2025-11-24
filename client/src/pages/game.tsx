@@ -107,7 +107,7 @@ export default function Game() {
   const searchParams = useSearch();
   const params = new URLSearchParams(searchParams);
   const listId = params.get("listId");
-  const gameMode = (params.get("mode") || "standard") as GameMode;
+  const gameMode = (params.get("mode") || "practice") as GameMode;
   const quizCount = params.get("quizCount") || "all";
 
   // Defense-in-depth: Redirect if no listId
@@ -358,7 +358,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     },
     onSuccess: async (data, variables) => {
       // Track achievements for Word List Mastery
-      if (variables.userId && listId && variables.gameMode !== "standard") {
+      if (variables.userId && listId && variables.gameMode !== "practice") {
         await checkAndAwardAchievement(variables);
       }
     },
@@ -1169,7 +1169,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
 
   // Auto-focus Next Word button when feedback appears in Practice mode
   useEffect(() => {
-    if (showFeedback && gameMode === "standard") {
+    if (showFeedback && gameMode === "practice") {
       const focusButton = () => {
         if (nextButtonRef.current) {
           nextButtonRef.current.focus();
@@ -1224,7 +1224,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
           });
           
           // After session update succeeds, save score to leaderboard (except for practice mode)
-          if (gameMode !== "standard") {
+          if (gameMode !== "practice") {
             saveScoreMutation.mutate({
               score,
               accuracy,
@@ -1236,7 +1236,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
         } catch (error) {
           console.error("Failed to update game session:", error);
           // Still save to leaderboard even if session update fails (except for practice mode)
-          if (gameMode !== "standard") {
+          if (gameMode !== "practice") {
             saveScoreMutation.mutate({
               score,
               accuracy,
@@ -1640,10 +1640,10 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     }
   }, [gameMode, gameComplete, showFeedback]);
 
-  // Play celebration sound when game completes with all words correct (for standard/practice/timed/scramble/mistake modes)
+  // Play celebration sound when game completes with all words correct (for practice/timed/scramble/mistake modes)
   useEffect(() => {
     if (gameComplete && words && gameMode !== "quiz" && gameMode !== "crossword") {
-      // For standard, practice, timed, scramble, and mistake modes
+      // For practice, timed, scramble, and mistake modes
       if (correctCount === words.length) {
         playCelebrationSound();
       }
@@ -3046,16 +3046,13 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
                 />
                 <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-2 font-crayon" data-testid="text-game-complete">
                   {accuracy === 100 ? "Amazing Work!" : 
-                    gameMode === "standard" ? "Practice Complete!" :
+                    gameMode === "practice" ? "Practice Complete!" :
                     gameMode === "timed" ? "Timed Challenge Complete!" :
                     gameMode === "quiz" ? "Quiz Complete!" :
                     gameMode === "scramble" ? "Word Scramble Complete!" :
                     gameMode === "mistake" ? "Find the Mistake Complete!" :
                     "Game Complete!"}
                 </h1>
-                <p className="text-lg text-gray-600 capitalize">
-                  {gameMode === "standard" ? "Practice" : gameMode === "timed" ? "Timed Challenge" : gameMode === "quiz" ? "Quiz Mode" : gameMode === "scramble" ? "Word Scramble" : gameMode === "mistake" ? "Find the Mistake" : "Crossword"}
-                </p>
               </motion.div>
             )}
 

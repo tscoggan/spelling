@@ -30,7 +30,7 @@ export const gameSessions = pgTable("game_sessions", {
   id: serial("id").primaryKey(),
   userId: integer("user_id"),
   wordListId: integer("word_list_id"),
-  gameMode: text("game_mode").notNull().default("standard"),
+  gameMode: text("game_mode").notNull().default("practice"),
   score: integer("score").notNull().default(0),
   totalWords: integer("total_words").notNull().default(0),
   correctWords: integer("correct_words").notNull().default(0),
@@ -348,7 +348,7 @@ export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type InsertAchievement = z.infer<typeof insertAchievementSchema>;
 export type Achievement = typeof achievements.$inferSelect;
 
-export type GameMode = "standard" | "timed" | "quiz" | "scramble" | "mistake" | "crossword";
+export type GameMode = "practice" | "timed" | "quiz" | "scramble" | "mistake" | "crossword";
 
 export interface GameState {
   sessionId: number;

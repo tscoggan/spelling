@@ -1164,8 +1164,8 @@ export default function WordListsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <Card
                 className="cursor-pointer hover-elevate active-elevate-2 transition-all"
-                onClick={() => startGameWithMode("standard")}
-                data-testid="gamemode-standard"
+                onClick={() => startGameWithMode("practice")}
+                data-testid="gamemode-practice"
               >
                 <CardHeader>
                   <div className="flex items-center gap-3">

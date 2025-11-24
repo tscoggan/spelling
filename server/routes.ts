@@ -258,7 +258,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/sessions", async (req, res) => {
     try {
-      const sessionData = insertGameSessionSchema.parse(req.body);
+      // Normalize legacy "standard" mode to "practice"
+      const normalizedData = {
+        ...req.body,
+        gameMode: req.body.gameMode === "standard" ? "practice" : req.body.gameMode
+      };
+      const sessionData = insertGameSessionSchema.parse(normalizedData);
       const session = await storage.createGameSession(sessionData);
       res.json(session);
     } catch (error) {
@@ -299,6 +304,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updates.completedAt = new Date(updates.completedAt);
       }
       
+      // Normalize legacy "standard" mode to "practice" if present in updates
+      if (updates.gameMode === "standard") {
+        updates.gameMode = "practice";
+      }
+      
       const session = await storage.updateGameSession(id, updates);
       
       if (!session) {
@@ -327,7 +337,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/leaderboard", async (req, res) => {
     try {
       const { insertLeaderboardScoreSchema } = await import("@shared/schema");
-      const scoreData = insertLeaderboardScoreSchema.parse(req.body);
+      // Normalize legacy "standard" mode to "practice"
+      const normalizedData = {
+        ...req.body,
+        gameMode: req.body.gameMode === "standard" ? "practice" : req.body.gameMode
+      };
+      const scoreData = insertLeaderboardScoreSchema.parse(normalizedData);
       const score = await storage.createLeaderboardScore(scoreData);
       res.json(score);
     } catch (error) {
@@ -351,7 +366,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/achievements", async (req, res) => {
     try {
       const { insertAchievementSchema } = await import("@shared/schema");
-      const achievementData = insertAchievementSchema.parse(req.body);
+      // Normalize legacy "standard" mode to "practice" in completedModes array
+      const normalizedData = {
+        ...req.body,
+        completedModes: req.body.completedModes 
+          ? req.body.completedModes.map((mode: string) => mode === "standard" ? "practice" : mode)
+          : []
+      };
+      const achievementData = insertAchievementSchema.parse(normalizedData);
       const achievement = await storage.upsertAchievement(achievementData);
       res.json(achievement);
     } catch (error) {

@@ -1,8 +1,10 @@
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Trophy, Lock, Globe } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ArrowLeft, Trophy, Lock, Globe, HelpCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +37,7 @@ interface Achievement {
 export default function Achievements() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const [helpDialogOpen, setHelpDialogOpen] = useState(false);
 
   const { data: achievements } = useQuery<Achievement[]>({
     queryKey: ["/api/achievements/user", user?.id],
@@ -139,6 +142,19 @@ export default function Achievements() {
               <p className="text-lg text-muted-foreground mt-1">Your spelling accomplishments</p>
             </div>
 
+            {/* Word List Mastery Section */}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold text-foreground">Word List Mastery</h2>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setHelpDialogOpen(true)}
+                data-testid="button-help"
+              >
+                <HelpCircle className="w-5 h-5" />
+              </Button>
+            </div>
+
             {/* Achievements List */}
             {!user ? (
               <Card className="backdrop-blur-sm bg-card/90">
@@ -231,6 +247,80 @@ export default function Achievements() {
           </motion.div>
         </main>
       </div>
+
+      {/* Help Dialog */}
+      <Dialog open={helpDialogOpen} onOpenChange={setHelpDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>How to Earn Achievement Badges</DialogTitle>
+            <DialogDescription>
+              Complete game modes with 100% accuracy to earn stars for each word list
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <h3 className="font-semibold text-lg">Game Modes & Requirements:</h3>
+              
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <Badge variant="outline" className="mt-0.5">Timed Challenge</Badge>
+                  <p className="text-sm text-muted-foreground flex-1">
+                    Spell at least 10 words correctly (or all words for lists with fewer than 10) with 100% accuracy within 60 seconds
+                  </p>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <Badge variant="outline" className="mt-0.5">Quiz Mode</Badge>
+                  <p className="text-sm text-muted-foreground flex-1">
+                    Complete the entire quiz with 100% accuracy (no hints, results shown at the end)
+                  </p>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <Badge variant="outline" className="mt-0.5">Word Scramble</Badge>
+                  <p className="text-sm text-muted-foreground flex-1">
+                    Unscramble all words correctly by dragging and dropping letters
+                  </p>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <Badge variant="outline" className="mt-0.5">Find the Mistake</Badge>
+                  <p className="text-sm text-muted-foreground flex-1">
+                    Identify all misspelled words correctly (4 questions per game)
+                  </p>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <Badge variant="outline" className="mt-0.5">Crossword</Badge>
+                  <p className="text-sm text-muted-foreground flex-1">
+                    Complete the entire audio-based crossword puzzle with 100% accuracy (up to 15 words)
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="font-semibold text-lg">Star Levels:</h3>
+              <div className="flex items-center gap-4">
+                <img src={oneStar} alt="1 Star" className="h-12 w-auto" />
+                <p className="text-sm text-muted-foreground">1 game mode completed with 100% accuracy</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <img src={twoStars} alt="2 Stars" className="h-12 w-auto" />
+                <p className="text-sm text-muted-foreground">2 game modes completed with 100% accuracy</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <img src={threeStars} alt="3 Stars" className="h-12 w-auto" />
+                <p className="text-sm text-muted-foreground">3 or more game modes completed with 100% accuracy (maximum)</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-muted-foreground italic">
+              Note: Practice mode does not award achievement stars as it provides immediate feedback and hints.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
