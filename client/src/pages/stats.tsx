@@ -159,7 +159,7 @@ export default function Stats() {
               </div>
             ) : stats ? (
               <>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                 {/* Total Words Attempted */}
                 <Card className="backdrop-blur-sm bg-card/90" data-testid="card-total-words">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -168,8 +168,8 @@ export default function Stats() {
                     </CardTitle>
                     <TrendingUp className="w-4 h-4 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold" data-testid="text-total-words">
+                  <CardContent className="py-3">
+                    <div className="text-2xl font-bold" data-testid="text-total-words">
                       {stats.totalWordsAttempted.toLocaleString()}
                     </div>
                   </CardContent>
@@ -183,8 +183,8 @@ export default function Stats() {
                     </CardTitle>
                     <Trophy className="w-4 h-4 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold" data-testid="text-accuracy">
+                  <CardContent className="py-3">
+                    <div className="text-2xl font-bold" data-testid="text-accuracy">
                       {stats.accuracy !== null ? `${stats.accuracy}%` : "N/A"}
                     </div>
                   </CardContent>
@@ -198,8 +198,8 @@ export default function Stats() {
                     </CardTitle>
                     <Flame className="w-4 h-4 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold" data-testid="text-longest-streak">
+                  <CardContent className="py-3">
+                    <div className="text-2xl font-bold" data-testid="text-longest-streak">
                       {stats.longestStreak}
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -216,8 +216,8 @@ export default function Stats() {
                     </CardTitle>
                     <Flame className="w-4 h-4 text-orange-500" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold" data-testid="text-current-streak">
+                  <CardContent className="py-3">
+                    <div className="text-2xl font-bold" data-testid="text-current-streak">
                       {stats.currentStreak}
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -234,8 +234,8 @@ export default function Stats() {
                     </CardTitle>
                     <Award className="w-4 h-4 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold" data-testid="text-games-played">
+                  <CardContent className="py-3">
+                    <div className="text-2xl font-bold" data-testid="text-games-played">
                       {stats.totalGamesPlayed.toLocaleString()}
                     </div>
                   </CardContent>
@@ -249,8 +249,8 @@ export default function Stats() {
                     </CardTitle>
                     <Trophy className="w-4 h-4 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold" data-testid="text-average-score">
+                  <CardContent className="py-3">
+                    <div className="text-2xl font-bold" data-testid="text-average-score">
                       {stats.averageScore.toLocaleString()}
                     </div>
                   </CardContent>
@@ -264,8 +264,8 @@ export default function Stats() {
                     </CardTitle>
                     <Trophy className="w-4 h-4 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-xl font-bold" data-testid="text-favorite-mode">
+                  <CardContent className="py-3">
+                    <div className="text-lg font-bold" data-testid="text-favorite-mode">
                       {stats.favoriteGameMode ? gameModeNames[stats.favoriteGameMode] || stats.favoriteGameMode : "N/A"}
                     </div>
                   </CardContent>
@@ -274,9 +274,9 @@ export default function Stats() {
 
               {/* Most Misspelled Words */}
               {stats.mostMisspelledWords && stats.mostMisspelledWords.length > 0 && (
-                <Card className="backdrop-blur-sm bg-card/90 mt-6" data-testid="card-most-misspelled">
-                  <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
-                    <CardTitle className="text-xl font-semibold">
+                <Card className="backdrop-blur-sm bg-card/90 mt-4" data-testid="card-most-misspelled">
+                  <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-3">
+                    <CardTitle className="text-lg font-semibold">
                       Most Misspelled Words
                     </CardTitle>
                     <Button
@@ -289,11 +289,11 @@ export default function Stats() {
                       Play
                     </Button>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
+                  <CardContent className="py-3">
+                    <div className="space-y-2">
                       {stats.mostMisspelledWords.map(({ word, mistakes }, index) => (
                         <div key={word} className="flex items-center justify-between" data-testid={`misspelled-word-${index}`}>
-                          <span className="text-lg font-medium capitalize">{word}</span>
+                          <span className="text-base font-medium capitalize">{word}</span>
                           <span className="text-sm text-muted-foreground">{mistakes} {mistakes === 1 ? 'mistake' : 'mistakes'}</span>
                         </div>
                       ))}

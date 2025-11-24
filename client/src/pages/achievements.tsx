@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { ArrowLeft, Trophy, Lock, Globe, HelpCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -23,6 +24,9 @@ interface CustomWordList {
   words: string[];
   isPublic: boolean;
   gradeLevel?: string;
+  authorUsername?: string;
+  visibility?: "public" | "private" | "groups";
+  sharedGroups?: any[];
 }
 
 interface Achievement {
@@ -32,6 +36,11 @@ interface Achievement {
   achievementType: string;
   achievementValue: string;
   completedModes: string[];
+}
+
+function getVisibility(list: any): "public" | "private" | "groups" {
+  if (list.visibility) return list.visibility;
+  return list.isPublic ? "public" : "private";
 }
 
 export default function Achievements() {
@@ -189,36 +198,27 @@ export default function Achievements() {
                       <CardHeader className="p-3 pb-2">
                         <div className="flex items-center gap-2">
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1 mb-0.5">
-                              <CardTitle className="text-lg" data-testid={`text-list-name-${list.id}`}>
-                                {list.name}
-                              </CardTitle>
+                            <CardTitle className="flex items-center gap-2 flex-wrap text-lg" data-testid={`text-list-name-${list.id}`}>
+                              {list.name}
+                              {getVisibility(list) === 'public' ? (
+                                <Globe className="w-4 h-4 text-green-600" data-testid="icon-public" />
+                              ) : getVisibility(list) === 'groups' ? (
+                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded flex-shrink-0" data-testid="badge-groups">
+                                  Groups
+                                </span>
+                              ) : (
+                                <Lock className="w-4 h-4 text-gray-600" data-testid="icon-private" />
+                              )}
+                            </CardTitle>
+                            <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                              <span data-testid={`author-${list.id}`}>
+                                by <span className="font-semibold">{list.authorUsername || 'Unknown'}</span>
+                              </span>
+                              <span>{list.words.length} words</span>
                               {list.gradeLevel && (
-                                <Badge variant="secondary" className="text-xs flex-shrink-0">
+                                <Badge variant="secondary" className="text-xs">
                                   Grade {list.gradeLevel}
                                 </Badge>
-                              )}
-                              {list.isPublic ? (
-                                <Globe className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                              ) : (
-                                <Lock className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground flex-wrap">
-                              <span>{list.words.length} words</span>
-                              {achievement && achievement.completedModes && achievement.completedModes.length > 0 && (
-                                <>
-                                  <span>•</span>
-                                  <span className="font-medium">Completed:</span>
-                                  {achievement.completedModes.map((mode, index) => (
-                                    <span key={mode}>
-                                      <Badge variant="outline" className="capitalize text-xs">
-                                        {mode}
-                                      </Badge>
-                                      {index < achievement.completedModes.length - 1 && " "}
-                                    </span>
-                                  ))}
-                                </>
                               )}
                             </div>
                           </div>
@@ -228,14 +228,32 @@ export default function Achievements() {
                           </div>
                           
                           {starImage && (
-                            <div className="flex-shrink-0 flex justify-center items-center min-w-[80px]">
-                              <img 
-                                src={starImage} 
-                                alt={achievement?.achievementValue} 
-                                className="h-16 w-auto max-w-[80px] object-contain"
-                                data-testid={`stars-${list.id}`}
-                              />
-                            </div>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex-shrink-0 flex justify-center items-center min-w-[80px] cursor-help">
+                                  <img 
+                                    src={starImage} 
+                                    alt={achievement?.achievementValue} 
+                                    className="h-16 w-auto max-w-[80px] object-contain"
+                                    data-testid={`stars-${list.id}`}
+                                  />
+                                </div>
+                              </TooltipTrigger>
+                              {achievement && achievement.completedModes && achievement.completedModes.length > 0 && (
+                                <TooltipContent>
+                                  <div className="text-sm">
+                                    <p className="font-semibold mb-1">Completed Modes:</p>
+                                    <div className="flex flex-wrap gap-1">
+                                      {achievement.completedModes.map((mode) => (
+                                        <Badge key={mode} variant="outline" className="capitalize text-xs">
+                                          {mode}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
                           )}
                         </div>
                       </CardHeader>

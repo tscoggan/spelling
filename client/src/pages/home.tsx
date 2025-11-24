@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Sparkles, Trophy, Clock, Target, List, ChevronRight, Lock, Globe, Shuffle, AlertCircle, Grid3x3, Users } from "lucide-react";
+import { BookOpen, Sparkles, Trophy, Clock, Target, List, ChevronRight, Lock, Globe, Shuffle, AlertCircle, Grid3x3, Users, BarChart3 } from "lucide-react";
 import type { GameMode } from "@shared/schema";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -314,7 +314,7 @@ export default function Home() {
             className="hover:scale-110 transition-transform"
             data-testid="button-view-stats"
           >
-            <Trophy className="w-4 h-4 mr-2" />
+            <BarChart3 className="w-4 h-4 mr-2" />
             My Stats
           </Button>
           <Button
