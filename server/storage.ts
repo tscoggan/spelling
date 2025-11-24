@@ -21,6 +21,8 @@ import {
   type InsertPasswordResetToken,
   type Achievement,
   type InsertAchievement,
+  type UserStreak,
+  type InsertUserStreak,
   words,
   gameSessions,
   users,
@@ -33,6 +35,7 @@ import {
   wordListUserGroups,
   passwordResetTokens,
   achievements,
+  userStreaks,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, inArray, not } from "drizzle-orm";
@@ -114,7 +117,13 @@ export interface IStorage {
   getUserAchievements(userId: number): Promise<Achievement[]>;
   getWordListAchievements(wordListId: number): Promise<Achievement[]>;
   upsertAchievement(achievement: InsertAchievement): Promise<Achievement>;
-  getUserStats(userId: number, startDate: Date | null): Promise<any>;
+  getUserStats(userId: number, startDate: Date | null, timezone: string): Promise<any>;
+  
+  getUserStreak(userId: number): Promise<UserStreak | undefined>;
+  createUserStreak(userId: number): Promise<UserStreak>;
+  updateUserStreak(userId: number, currentStreak: number, longestStreak: number): Promise<UserStreak>;
+  incrementWordStreak(userId: number): Promise<void>;
+  resetWordStreak(userId: number): Promise<void>;
   
   sessionStore: session.Store;
 }
@@ -1022,8 +1031,8 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getUserStats(userId: number, startDate: Date | null): Promise<any> {
-    // Get ALL completed sessions for lifetime metrics (streaks, favorite mode)
+  async getUserStats(userId: number, startDate: Date | null, timezone: string): Promise<any> {
+    // Get all completed sessions within the date filter
     const allSessions = await db
       .select()
       .from(gameSessions)
@@ -1033,7 +1042,7 @@ export class DatabaseStorage implements IStorage {
       ))
       .orderBy(desc(gameSessions.completedAt));
 
-    // Get filtered sessions for date-specific metrics
+    // Filter sessions by date if startDate provided
     let filteredSessions = allSessions;
     if (startDate) {
       filteredSessions = allSessions.filter(s => 
@@ -1041,7 +1050,7 @@ export class DatabaseStorage implements IStorage {
       );
     }
 
-    // Calculate date-filtered metrics (can be zero if no sessions in range)
+    // Calculate ALL metrics from filtered sessions only
     const totalWordsAttempted = filteredSessions.reduce((sum, s) => sum + (s.totalWords || 0), 0);
     const correctWords = filteredSessions.reduce((sum, s) => sum + (s.correctWords || 0), 0);
     const accuracy = totalWordsAttempted > 0 ? Math.round((correctWords / totalWordsAttempted) * 100) : null;
@@ -1050,73 +1059,65 @@ export class DatabaseStorage implements IStorage {
       ? filteredSessions.reduce((sum, s) => sum + (s.score || 0), 0) / totalGamesPlayed 
       : 0;
     
-    // Calculate lifetime metrics (always use all sessions, never zero out)
-    const longestStreak = allSessions.length > 0 
-      ? Math.max(...allSessions.map(s => s.bestStreak || 0), 0)
-      : 0;
-    
-    // Calculate current streak (consecutive days ending with most recent session)
-    // Use ALL sessions for lifetime streak calculation
-    const sortedSessions = allSessions
-      .filter(s => s.completedAt != null)
-      .sort((a, b) => {
-        return new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime();
-      });
-    
-    let currentStreak = 0;
-    if (sortedSessions.length > 0) {
-      // Get date of most recent session (normalize to UTC start of day)
-      const latestSession = sortedSessions[0];
-      if (latestSession.completedAt) {
-        let checkDate = new Date(latestSession.completedAt);
-        checkDate.setUTCHours(0, 0, 0, 0);
-        
-        // Walk backwards from most recent session
-        for (let i = 0; i < sortedSessions.length; i++) {
-          const session = sortedSessions[i];
-          if (!session.completedAt) continue;
-          
-          const sessionDate = new Date(session.completedAt);
-          sessionDate.setUTCHours(0, 0, 0, 0);
-          
-          // Check if this session is on the expected date
-          if (sessionDate.getTime() === checkDate.getTime()) {
-            currentStreak++;
-            // Move back one day
-            checkDate = new Date(checkDate.getTime() - 24 * 60 * 60 * 1000);
-            // Skip other sessions on the same day
-            while (i + 1 < sortedSessions.length) {
-              const nextSession = sortedSessions[i + 1];
-              if (!nextSession.completedAt) break;
-              
-              const nextDate = new Date(nextSession.completedAt);
-              nextDate.setUTCHours(0, 0, 0, 0);
-              if (nextDate.getTime() === sessionDate.getTime()) {
-                i++;
-              } else {
-                break;
-              }
-            }
-          } else {
-            // Gap in streak, stop counting
-            break;
-          }
-          
-          // Safety limit
-          if (currentStreak > 365) break;
-        }
-      }
-    }
-
-    // Lifetime favorite game mode (use all sessions, never null if user has any sessions)
+    // Favorite game mode from filtered sessions
     let favoriteGameMode: string | null = null;
-    if (allSessions.length > 0) {
+    if (filteredSessions.length > 0) {
       const gameModeCounts: { [key: string]: number } = {};
-      allSessions.forEach(s => {
+      filteredSessions.forEach(s => {
         gameModeCounts[s.gameMode] = (gameModeCounts[s.gameMode] || 0) + 1;
       });
       favoriteGameMode = Object.entries(gameModeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
     }
+
+    // Calculate streaks: use user_streaks table for All Time, calculate from sessions for filtered dates
+    let longestStreak = 0;
+    let currentStreak = 0;
+
+    if (!startDate) {
+      // All Time: use authoritative user_streaks table
+      const userStreak = await this.getUserStreak(userId);
+      longestStreak = userStreak?.longestWordStreak || 0;
+      currentStreak = userStreak?.currentWordStreak || 0;
+    } else {
+      // Filtered date range: calculate from filtered sessions
+      // Longest streak: max bestStreak from filtered sessions
+      longestStreak = filteredSessions.length > 0 
+        ? Math.max(...filteredSessions.map(s => s.bestStreak || 0), 0)
+        : 0;
+
+      // Current streak: count consecutive correct words from most recent filtered sessions
+      // Walk backwards from most recent session, counting words until we hit an incorrect word
+      if (filteredSessions.length > 0) {
+        const sortedSessions = filteredSessions
+          .filter(s => s.completedAt != null)
+          .sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime());
+
+        for (const session of sortedSessions) {
+          // If this session had any incorrect words, streak breaks
+          if (session.incorrectWords && session.incorrectWords.length > 0) {
+            break;
+          }
+          // Add correct words from this session to streak
+          currentStreak += session.correctWords || 0;
+        }
+      }
+    }
+
+    // Calculate most misspelled words from incorrect_words column
+    const wordFrequency: { [key: string]: number } = {};
+    filteredSessions.forEach(session => {
+      if (session.incorrectWords && Array.isArray(session.incorrectWords)) {
+        session.incorrectWords.forEach(word => {
+          wordFrequency[word] = (wordFrequency[word] || 0) + 1;
+        });
+      }
+    });
+
+    // Sort by frequency and get top 5
+    const mostMisspelledWords = Object.entries(wordFrequency)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([word, mistakes]) => ({ word, mistakes }));
 
     return {
       totalWordsAttempted,
@@ -1126,7 +1127,64 @@ export class DatabaseStorage implements IStorage {
       totalGamesPlayed,
       favoriteGameMode,
       averageScore: Math.round(averageScore),
+      mostMisspelledWords,
     };
+  }
+
+  async getUserStreak(userId: number): Promise<UserStreak | undefined> {
+    const [streak] = await db
+      .select()
+      .from(userStreaks)
+      .where(eq(userStreaks.userId, userId));
+    return streak || undefined;
+  }
+
+  async createUserStreak(userId: number): Promise<UserStreak> {
+    const [created] = await db
+      .insert(userStreaks)
+      .values({
+        userId,
+        currentWordStreak: 0,
+        longestWordStreak: 0,
+      })
+      .returning();
+    return created;
+  }
+
+  async updateUserStreak(userId: number, currentStreak: number, longestStreak: number): Promise<UserStreak> {
+    const [updated] = await db
+      .update(userStreaks)
+      .set({
+        currentWordStreak: currentStreak,
+        longestWordStreak: longestStreak,
+        updatedAt: new Date(),
+      })
+      .where(eq(userStreaks.userId, userId))
+      .returning();
+    return updated;
+  }
+
+  async incrementWordStreak(userId: number): Promise<void> {
+    // Get or create user streak
+    let streak = await this.getUserStreak(userId);
+    if (!streak) {
+      streak = await this.createUserStreak(userId);
+    }
+
+    const newCurrent = streak.currentWordStreak + 1;
+    const newLongest = Math.max(newCurrent, streak.longestWordStreak);
+
+    await this.updateUserStreak(userId, newCurrent, newLongest);
+  }
+
+  async resetWordStreak(userId: number): Promise<void> {
+    // Get or create user streak
+    let streak = await this.getUserStreak(userId);
+    if (!streak) {
+      streak = await this.createUserStreak(userId);
+    }
+
+    await this.updateUserStreak(userId, 0, streak.longestWordStreak);
   }
 }
 

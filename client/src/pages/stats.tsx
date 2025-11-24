@@ -20,6 +20,7 @@ interface UserStats {
   totalGamesPlayed: number;
   favoriteGameMode: string | null;
   averageScore: number;
+  mostMisspelledWords: { word: string; mistakes: number }[];
 }
 
 export default function Stats() {
@@ -27,11 +28,14 @@ export default function Stats() {
   const { user } = useAuth();
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
 
+  // Get user's timezone
+  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
   const { data: stats, isLoading } = useQuery<UserStats>({
-    queryKey: [`/api/stats/user/${user?.id}`, dateFilter],
+    queryKey: [`/api/stats/user/${user?.id}`, dateFilter, userTimezone],
     queryFn: async () => {
       if (!user) return null;
-      const response = await fetch(`/api/stats/user/${user.id}?dateFilter=${dateFilter}`);
+      const response = await fetch(`/api/stats/user/${user.id}?dateFilter=${dateFilter}&timezone=${encodeURIComponent(userTimezone)}`);
       if (!response.ok) throw new Error('Failed to fetch stats');
       return response.json();
     },
@@ -133,6 +137,7 @@ export default function Stats() {
                 <p className="text-xl text-muted-foreground">Loading stats...</p>
               </div>
             ) : stats ? (
+              <>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {/* Total Words Attempted */}
                 <Card className="backdrop-blur-sm bg-card/90" data-testid="card-total-words">
@@ -167,12 +172,9 @@ export default function Stats() {
                 {/* Longest Streak */}
                 <Card className="backdrop-blur-sm bg-card/90" data-testid="card-longest-streak">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <div>
-                      <CardTitle className="text-sm font-medium">
-                        Longest Streak
-                      </CardTitle>
-                      <p className="text-xs text-muted-foreground mt-0.5">All Time</p>
-                    </div>
+                    <CardTitle className="text-sm font-medium">
+                      Longest Streak
+                    </CardTitle>
                     <Flame className="w-4 h-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
@@ -188,12 +190,9 @@ export default function Stats() {
                 {/* Current Streak */}
                 <Card className="backdrop-blur-sm bg-card/90" data-testid="card-current-streak">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <div>
-                      <CardTitle className="text-sm font-medium">
-                        Current Streak
-                      </CardTitle>
-                      <p className="text-xs text-muted-foreground mt-0.5">All Time</p>
-                    </div>
+                    <CardTitle className="text-sm font-medium">
+                      Current Streak
+                    </CardTitle>
                     <Flame className="w-4 h-4 text-orange-500" />
                   </CardHeader>
                   <CardContent>
@@ -201,7 +200,7 @@ export default function Stats() {
                       {stats.currentStreak}
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      consecutive days
+                      words in a row
                     </p>
                   </CardContent>
                 </Card>
@@ -239,12 +238,9 @@ export default function Stats() {
                 {/* Favorite Game Mode */}
                 <Card className="backdrop-blur-sm bg-card/90" data-testid="card-favorite-mode">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <div>
-                      <CardTitle className="text-sm font-medium">
-                        Favorite Game Mode
-                      </CardTitle>
-                      <p className="text-xs text-muted-foreground mt-0.5">All Time</p>
-                    </div>
+                    <CardTitle className="text-sm font-medium">
+                      Favorite Game Mode
+                    </CardTitle>
                     <Trophy className="w-4 h-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
@@ -254,6 +250,28 @@ export default function Stats() {
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Most Misspelled Words */}
+              {stats.mostMisspelledWords && stats.mostMisspelledWords.length > 0 && (
+                <Card className="backdrop-blur-sm bg-card/90 mt-6" data-testid="card-most-misspelled">
+                  <CardHeader>
+                    <CardTitle className="text-xl font-semibold">
+                      Most Misspelled Words
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {stats.mostMisspelledWords.map(({ word, mistakes }, index) => (
+                        <div key={word} className="flex items-center justify-between" data-testid={`misspelled-word-${index}`}>
+                          <span className="text-lg font-medium capitalize">{word}</span>
+                          <span className="text-sm text-muted-foreground">{mistakes} {mistakes === 1 ? 'mistake' : 'mistakes'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              </>
             ) : (
               <Card className="backdrop-blur-sm bg-card/90">
                 <CardContent className="py-8 text-center">

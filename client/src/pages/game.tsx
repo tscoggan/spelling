@@ -154,6 +154,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   const [timerActive, setTimerActive] = useState(false);
   const [quizAnswers, setQuizAnswers] = useState<QuizAnswer[]>([]);
   const [scoreSaved, setScoreSaved] = useState(false);
+  const [incorrectWords, setIncorrectWords] = useState<string[]>([]);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [achievementEarned, setAchievementEarned] = useState(false);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -338,15 +339,30 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   });
 
   const updateSessionMutation = useMutation({
-    mutationFn: async (sessionData: { sessionId: number; score: number; totalWords: number; correctWords: number; bestStreak: number; isComplete: boolean; completedAt: Date }) => {
+    mutationFn: async (sessionData: { sessionId: number; score: number; totalWords: number; correctWords: number; bestStreak: number; incorrectWords: string[]; isComplete: boolean; completedAt: Date }) => {
       const response = await apiRequest("PATCH", `/api/sessions/${sessionData.sessionId}`, {
         score: sessionData.score,
         totalWords: sessionData.totalWords,
         correctWords: sessionData.correctWords,
         bestStreak: sessionData.bestStreak,
+        incorrectWords: sessionData.incorrectWords,
         isComplete: sessionData.isComplete,
         completedAt: sessionData.completedAt,
       });
+      return await response.json();
+    },
+  });
+
+  const incrementWordStreakMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/streaks/increment");
+      return await response.json();
+    },
+  });
+
+  const resetWordStreakMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/streaks/reset");
       return await response.json();
     },
   });
@@ -1219,6 +1235,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
             totalWords: actualWordsCount,
             correctWords: correctCount,
             bestStreak: streak,
+            incorrectWords,
             isComplete: true,
             completedAt: new Date(),
           });
@@ -2334,9 +2351,12 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
         if (newStreak > bestStreak) {
           setBestStreak(newStreak);
         }
+        incrementWordStreakMutation.mutate();
       } else {
         playIncorrectSound();
         setStreak(0);
+        setIncorrectWords([...incorrectWords, currentWord.word]);
+        resetWordStreakMutation.mutate();
       }
       
       setUserInput("");
@@ -2368,9 +2388,12 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
         if (newStreak > bestStreak) {
           setBestStreak(newStreak);
         }
+        incrementWordStreakMutation.mutate();
       } else {
         playIncorrectSound();
         setStreak(0);
+        setIncorrectWords([...incorrectWords, currentWord.word]);
+        resetWordStreakMutation.mutate();
       }
       
       setUserInput("");
@@ -2397,9 +2420,12 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
         if (newStreak > bestStreak) {
           setBestStreak(newStreak);
         }
+        incrementWordStreakMutation.mutate();
       } else {
         playIncorrectSound();
         setStreak(0);
+        setIncorrectWords([...incorrectWords, currentWord.word]);
+        resetWordStreakMutation.mutate();
       }
     }
   };
@@ -2612,9 +2638,12 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
       if (newStreak > bestStreak) {
         setBestStreak(newStreak);
       }
+      incrementWordStreakMutation.mutate();
     } else {
       playIncorrectSound();
       setStreak(0);
+      setIncorrectWords([...incorrectWords, currentWord.word]);
+      resetWordStreakMutation.mutate();
     }
   };
 
@@ -2636,9 +2665,12 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
       if (newStreak > bestStreak) {
         setBestStreak(newStreak);
       }
+      incrementWordStreakMutation.mutate();
     } else {
       playIncorrectSound();
       setStreak(0);
+      // Note: Don't track incorrect words for mistake mode as it's a multiple-choice question about finding mistakes
+      resetWordStreakMutation.mutate();
     }
   };
 
@@ -2872,8 +2904,11 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
       if (entryCorrect) {
         correctWords++;
         totalScore += points;
+        incrementWordStreakMutation.mutate();
       } else {
         incorrectWords++;
+        setIncorrectWords(prev => [...prev, entry.word]);
+        resetWordStreakMutation.mutate();
       }
       
       console.log(`Entry ${entry.number} (${entry.word}): User entered "${userWord.join('')}", Correct: ${entryCorrect}`);

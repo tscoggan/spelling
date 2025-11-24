@@ -35,6 +35,7 @@ export const gameSessions = pgTable("game_sessions", {
   totalWords: integer("total_words").notNull().default(0),
   correctWords: integer("correct_words").notNull().default(0),
   bestStreak: integer("best_streak").notNull().default(0),
+  incorrectWords: text("incorrect_words").array().notNull().default(sql`'{}'::text[]`),
   isComplete: boolean("is_complete").notNull().default(false),
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -139,6 +140,14 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const userStreaks = pgTable("user_streaks", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().unique(),
+  currentWordStreak: integer("current_word_streak").notNull().default(0),
+  longestWordStreak: integer("longest_word_streak").notNull().default(0),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const achievements = pgTable("achievements", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
@@ -152,7 +161,7 @@ export const achievements = pgTable("achievements", {
   userWordListTypeUnique: unique("achievements_user_wordlist_type_unique").on(table.userId, table.wordListId, table.achievementType),
 }));
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ many, one }) => ({
   gameSessions: many(gameSessions),
   leaderboardScores: many(leaderboardScores),
   customWordLists: many(customWordLists),
@@ -160,6 +169,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   groupMemberships: many(userGroupMembership),
   toDoItems: many(userToDoItems),
   achievements: many(achievements),
+  streaks: one(userStreaks),
 }));
 
 export const gameSessionsRelations = relations(gameSessions, ({ one }) => ({
@@ -256,6 +266,13 @@ export const achievementsRelations = relations(achievements, ({ one }) => ({
   }),
 }));
 
+export const userStreaksRelations = relations(userStreaks, ({ one }) => ({
+  user: one(users, {
+    fields: [userStreaks.userId],
+    references: [users.id],
+  }),
+}));
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -323,6 +340,11 @@ export const insertAchievementSchema = createInsertSchema(achievements).omit({
   updatedAt: true,
 });
 
+export const insertUserStreakSchema = createInsertSchema(userStreaks).omit({
+  id: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertWord = z.infer<typeof insertWordSchema>;
@@ -347,6 +369,8 @@ export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSc
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type InsertAchievement = z.infer<typeof insertAchievementSchema>;
 export type Achievement = typeof achievements.$inferSelect;
+export type InsertUserStreak = z.infer<typeof insertUserStreakSchema>;
+export type UserStreak = typeof userStreaks.$inferSelect;
 
 export type GameMode = "practice" | "timed" | "quiz" | "scramble" | "mistake" | "crossword";
 

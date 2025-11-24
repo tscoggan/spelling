@@ -363,6 +363,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/streaks/increment", async (req, res) => {
+    try {
+      if (!req.isAuthenticated() || !req.user) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      
+      await storage.incrementWordStreak(req.user.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error incrementing streak:", error);
+      res.status(500).json({ error: "Failed to increment streak" });
+    }
+  });
+
+  app.post("/api/streaks/reset", async (req, res) => {
+    try {
+      if (!req.isAuthenticated() || !req.user) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      
+      await storage.resetWordStreak(req.user.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error resetting streak:", error);
+      res.status(500).json({ error: "Failed to reset streak" });
+    }
+  });
+
   app.get("/api/stats/user/:userId", async (req, res) => {
     try {
       if (!req.isAuthenticated()) {
@@ -378,25 +406,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const dateFilter = req.query.dateFilter as string || "all";
+      const timezone = (req.query.timezone as string) || 'UTC';
       
-      // Calculate date range using UTC to avoid timezone issues
+      // Calculate date range using user's timezone
       const now = new Date();
       let startDate: Date | null = null;
       
       if (dateFilter === "today") {
-        // Start of today in UTC
-        startDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+        // Start of today in user's timezone
+        const todayInTz = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
+        startDate = new Date(Date.UTC(todayInTz.getFullYear(), todayInTz.getMonth(), todayInTz.getDate(), 0, 0, 0, 0));
       } else if (dateFilter === "week") {
-        // Start of 7 days ago in UTC
+        // Start of 7 days ago in user's timezone
         const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        startDate = new Date(Date.UTC(weekAgo.getUTCFullYear(), weekAgo.getUTCMonth(), weekAgo.getUTCDate(), 0, 0, 0, 0));
+        const weekAgoInTz = new Date(weekAgo.toLocaleString('en-US', { timeZone: timezone }));
+        startDate = new Date(Date.UTC(weekAgoInTz.getFullYear(), weekAgoInTz.getMonth(), weekAgoInTz.getDate(), 0, 0, 0, 0));
       } else if (dateFilter === "month") {
-        // Start of 30 days ago in UTC
+        // Start of 30 days ago in user's timezone
         const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        startDate = new Date(Date.UTC(monthAgo.getUTCFullYear(), monthAgo.getUTCMonth(), monthAgo.getUTCDate(), 0, 0, 0, 0));
+        const monthAgoInTz = new Date(monthAgo.toLocaleString('en-US', { timeZone: timezone }));
+        startDate = new Date(Date.UTC(monthAgoInTz.getFullYear(), monthAgoInTz.getMonth(), monthAgoInTz.getDate(), 0, 0, 0, 0));
       }
       
-      const stats = await storage.getUserStats(user.id, startDate);
+      const stats = await storage.getUserStats(user.id, startDate, timezone);
       res.json(stats);
     } catch (error) {
       console.error("Error fetching user stats:", error);
