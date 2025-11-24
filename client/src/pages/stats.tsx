@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Home, Target, Trophy, Flame, TrendingUp, Award, Calendar, Play } from "lucide-react";
+import { Home, Target, Trophy, Flame, TrendingUp, Award, Calendar, Play, Shuffle, AlertCircle, Grid3x3 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { UserHeader } from "@/components/user-header";
@@ -278,13 +278,13 @@ export default function Stats() {
                       Most Misspelled Words
                     </CardTitle>
                     <Button
-                      size="icon"
-                      variant="ghost"
+                      size="sm"
                       onClick={() => setShowGameModeDialog(true)}
                       data-testid="button-play-misspelled"
                       title="Practice these words"
                     >
-                      <Play className="w-5 h-5" />
+                      <Play className="w-4 h-4 mr-2" />
+                      Play
                     </Button>
                   </CardHeader>
                   <CardContent>
@@ -358,8 +358,26 @@ export default function Stats() {
               onClick={() => handleGameModeSelect('scramble')}
               data-testid="button-mode-scramble"
             >
-              <TrendingUp className="w-4 h-4 mr-2" />
+              <Shuffle className="w-4 h-4 mr-2" />
               Word Scramble
+            </Button>
+            <Button
+              variant="outline"
+              className="justify-start"
+              onClick={() => handleGameModeSelect('mistake')}
+              data-testid="button-mode-mistake"
+            >
+              <AlertCircle className="w-4 h-4 mr-2" />
+              Find the Mistake
+            </Button>
+            <Button
+              variant="outline"
+              className="justify-start"
+              onClick={() => handleGameModeSelect('crossword')}
+              data-testid="button-mode-crossword"
+            >
+              <Grid3x3 className="w-4 h-4 mr-2" />
+              Crossword Puzzle
             </Button>
           </div>
         </DialogContent>

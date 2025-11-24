@@ -408,27 +408,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dateFilter = req.query.dateFilter as string || "all";
       const timezone = (req.query.timezone as string) || 'UTC';
       
-      // Calculate date range using user's timezone
-      const now = new Date();
-      let startDate: Date | null = null;
-      
-      if (dateFilter === "today") {
-        // Start of today in user's timezone
-        const todayInTz = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
-        startDate = new Date(Date.UTC(todayInTz.getFullYear(), todayInTz.getMonth(), todayInTz.getDate(), 0, 0, 0, 0));
-      } else if (dateFilter === "week") {
-        // Start of 7 days ago in user's timezone
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        const weekAgoInTz = new Date(weekAgo.toLocaleString('en-US', { timeZone: timezone }));
-        startDate = new Date(Date.UTC(weekAgoInTz.getFullYear(), weekAgoInTz.getMonth(), weekAgoInTz.getDate(), 0, 0, 0, 0));
-      } else if (dateFilter === "month") {
-        // Start of 30 days ago in user's timezone
-        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        const monthAgoInTz = new Date(monthAgo.toLocaleString('en-US', { timeZone: timezone }));
-        startDate = new Date(Date.UTC(monthAgoInTz.getFullYear(), monthAgoInTz.getMonth(), monthAgoInTz.getDate(), 0, 0, 0, 0));
-      }
-      
-      const stats = await storage.getUserStats(user.id, startDate, timezone);
+      // Let PostgreSQL handle timezone conversion using AT TIME ZONE
+      const stats = await storage.getUserStats(user.id, dateFilter, timezone);
       res.json(stats);
     } catch (error) {
       console.error("Error fetching user stats:", error);

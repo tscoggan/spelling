@@ -1031,24 +1031,48 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getUserStats(userId: number, startDate: Date | null, timezone: string): Promise<any> {
-    // Get all completed sessions within the date filter
-    const allSessions = await db
-      .select()
-      .from(gameSessions)
-      .where(and(
-        eq(gameSessions.userId, userId),
-        eq(gameSessions.isComplete, true)
-      ))
-      .orderBy(desc(gameSessions.completedAt));
-
-    // Filter sessions by date if startDate provided
-    let filteredSessions = allSessions;
-    if (startDate) {
-      filteredSessions = allSessions.filter(s => 
-        s.completedAt && new Date(s.completedAt) >= startDate
-      );
+  async getUserStats(userId: number, dateFilter: string, timezone: string): Promise<any> {
+    // Use PostgreSQL's AT TIME ZONE to filter by calendar boundaries in user's timezone
+    let allSessions;
+    
+    if (dateFilter === "all") {
+      // No date filtering
+      allSessions = await db
+        .select()
+        .from(gameSessions)
+        .where(and(
+          eq(gameSessions.userId, userId),
+          eq(gameSessions.isComplete, true)
+        ))
+        .orderBy(desc(gameSessions.completedAt));
+    } else {
+      // Use SQL fragments within Drizzle query for timezone-aware filtering
+      let daysAgo: number;
+      if (dateFilter === "today") {
+        daysAgo = 0; // Today means from midnight today
+      } else if (dateFilter === "week") {
+        daysAgo = 6; // Last 7 days (6 days ago + today)
+      } else if (dateFilter === "month") {
+        daysAgo = 29; // Last 30 days (29 days ago + today)
+      } else {
+        daysAgo = 0;
+      }
+      
+      // Use Drizzle query with SQL fragment for AT TIME ZONE support
+      // Convert the timezone-aware boundary back to UTC for comparison with UTC completedAt
+      allSessions = await db
+        .select()
+        .from(gameSessions)
+        .where(and(
+          eq(gameSessions.userId, userId),
+          eq(gameSessions.isComplete, true),
+          sql`${gameSessions.completedAt} >= (date_trunc('day', (NOW() AT TIME ZONE ${timezone}) - INTERVAL '${sql.raw(daysAgo.toString())} days') AT TIME ZONE ${timezone} AT TIME ZONE 'UTC')`
+        ))
+        .orderBy(desc(gameSessions.completedAt));
     }
+    
+    // Use allSessions for all metrics (no separate filteredSessions needed)
+    let filteredSessions = allSessions;
 
     // Calculate ALL metrics from filtered sessions only
     const totalWordsAttempted = filteredSessions.reduce((sum, s) => sum + (s.totalWords || 0), 0);
@@ -1069,12 +1093,12 @@ export class DatabaseStorage implements IStorage {
       favoriteGameMode = Object.entries(gameModeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
     }
 
-    // Calculate streaks: use user_streaks table for All Time, calculate from sessions for filtered dates
+    // Calculate streaks: use user_streaks for All Time, calculate from sessions for filtered dates
     let longestStreak = 0;
     let currentStreak = 0;
 
-    if (!startDate) {
-      // All Time: use authoritative user_streaks table
+    if (dateFilter === "all") {
+      // All Time: use authoritative user_streaks table which tracks word-level streaks during gameplay
       const userStreak = await this.getUserStreak(userId);
       longestStreak = userStreak?.longestWordStreak || 0;
       currentStreak = userStreak?.currentWordStreak || 0;
@@ -1113,10 +1137,10 @@ export class DatabaseStorage implements IStorage {
       }
     });
 
-    // Sort by frequency and get top 5
+    // Sort by frequency and get top 20
     const mostMisspelledWords = Object.entries(wordFrequency)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
+      .slice(0, 20)
       .map(([word, mistakes]) => ({ word, mistakes }));
 
     return {

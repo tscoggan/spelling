@@ -3320,16 +3320,6 @@ function GameContent({ listId, virtualWords, gameMode, quizCount }: { listId?: s
                 Home
               </Button>
               <Button
-                variant="outline"
-                size="lg"
-                className="flex-1 text-lg h-12"
-                onClick={() => setLocation("/leaderboard")}
-                data-testid="button-leaderboard"
-              >
-                <Trophy className="w-5 h-5 mr-2" />
-                Leaderboard
-              </Button>
-              <Button
                 variant="default"
                 size="lg"
                 className="flex-1 text-lg h-12"
