@@ -100,26 +100,27 @@ const isMobileDevice = (): boolean => {
   return isIOSDevice() || /Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 };
 
-// Wrapper component that validates listId before rendering game logic
-// This prevents React Query hooks from running when listId is missing
+// Wrapper component that validates listId or virtualWords before rendering game logic
+// This prevents React Query hooks from running when neither is present
 export default function Game() {
   const [, setLocation] = useLocation();
   const searchParams = useSearch();
   const params = new URLSearchParams(searchParams);
   const listId = params.get("listId");
+  const virtualWords = params.get("virtualWords");
   const gameMode = (params.get("mode") || "practice") as GameMode;
   const quizCount = params.get("quizCount") || "all";
 
-  // Defense-in-depth: Redirect if no listId
+  // Defense-in-depth: Redirect if no listId and no virtualWords
   useEffect(() => {
-    if (!listId) {
-      console.warn("Game component accessed without listId - redirecting to home");
+    if (!listId && !virtualWords) {
+      console.warn("Game component accessed without listId or virtualWords - redirecting to home");
       setLocation("/");
     }
-  }, [listId, setLocation]);
+  }, [listId, virtualWords, setLocation]);
 
-  // Safety fallback if no listId - prevents hooks from running
-  if (!listId) {
+  // Safety fallback if no listId and no virtualWords - prevents hooks from running
+  if (!listId && !virtualWords) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center">
@@ -130,14 +131,14 @@ export default function Game() {
     );
   }
 
-  // Only render game content when listId is confirmed
+  // Only render game content when listId or virtualWords is confirmed
   // Pass all parameters as props to avoid GameContent parsing them
-  return <GameContent listId={listId} gameMode={gameMode} quizCount={quizCount} />;
+  return <GameContent listId={listId || undefined} virtualWords={virtualWords || undefined} gameMode={gameMode} quizCount={quizCount} />;
 }
 
-// Actual game component with all the hooks - only rendered when listId exists
+// Actual game component with all the hooks - only rendered when listId or virtualWords exists
 // Receives all parameters as props to ensure hooks always have valid data
-function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode: GameMode; quizCount: string }) {
+function GameContent({ listId, virtualWords, gameMode, quizCount }: { listId?: string; virtualWords?: string; gameMode: GameMode; quizCount: string }) {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   
@@ -355,6 +356,9 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
 
   const incrementWordStreakMutation = useMutation({
     mutationFn: async () => {
+      // Skip streak tracking for virtual word lists
+      if (virtualWords) return null;
+      
       const response = await apiRequest("POST", "/api/streaks/increment");
       return await response.json();
     },
@@ -362,6 +366,9 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
 
   const resetWordStreakMutation = useMutation({
     mutationFn: async () => {
+      // Skip streak tracking for virtual word lists
+      if (virtualWords) return null;
+      
       const response = await apiRequest("POST", "/api/streaks/reset");
       return await response.json();
     },
@@ -373,6 +380,9 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
       return await response.json();
     },
     onSuccess: async (data, variables) => {
+      // Skip achievement tracking for virtual word lists
+      if (virtualWords) return;
+      
       // Track achievements for Word List Mastery
       if (variables.userId && listId && variables.gameMode !== "practice") {
         await checkAndAwardAchievement(variables);
@@ -383,6 +393,9 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   const checkAndAwardAchievement = async (scoreData: { score: number; accuracy: number; gameMode: GameMode; userId: number | null; sessionId: number }) => {
     // Reset achievement earned state at start of check
     setAchievementEarned(false);
+    
+    // Skip achievement tracking for virtual word lists
+    if (virtualWords) return;
     
     if (!scoreData.userId || !listId) return;
 
@@ -473,8 +486,27 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   };
 
   const { data: words, isLoading } = useQuery<Word[]>({
-    queryKey: ['/api/word-lists', listId, gameMode, quizCount, sessionTimestamp],
+    queryKey: ['/api/word-lists', listId, virtualWords, gameMode, quizCount, sessionTimestamp],
     queryFn: async () => {
+      // Handle virtual word lists (from Most Misspelled Words)
+      if (virtualWords) {
+        const wordList = virtualWords.split(',');
+        let wordsArray = wordList.map((word: string, index: number) => ({
+          id: index + 1,
+          word: word.trim(),
+        }));
+        
+        // Randomize word order
+        wordsArray = shuffleArray(wordsArray);
+        
+        // For quiz mode, limit to 10 words if quizCount is "10"
+        if (gameMode === "quiz" && quizCount === "10") {
+          wordsArray = wordsArray.slice(0, 10);
+        }
+        
+        return wordsArray;
+      }
+      
       // Safety check: This should never execute without listId due to enabled guard,
       // but we handle it gracefully just in case
       if (!listId) {
@@ -500,7 +532,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
       
       return wordsArray;
     },
-    enabled: !!listId,
+    enabled: !!listId || !!virtualWords,
   });
 
   // Use the custom list ID for illustrations
@@ -523,6 +555,11 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   });
 
   useEffect(() => {
+    // Skip session creation for virtual word lists (no stats tracking)
+    if (virtualWords) {
+      return;
+    }
+    
     if (listId && gameMode && !sessionId && user) {
       createSessionMutation.mutate({ 
         gameMode, 
@@ -530,7 +567,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
         wordListId: listId ? parseInt(listId, 10) : undefined
       });
     }
-  }, [gameMode, sessionId, user, listId]);
+  }, [gameMode, sessionId, user, listId, virtualWords]);
 
   // Load available voices
   useEffect(() => {
@@ -1200,6 +1237,14 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
   }, [showFeedback, gameMode]);
 
   useEffect(() => {
+    // Skip score saving and session updates for virtual word lists
+    if (virtualWords) {
+      if (gameComplete && !scoreSaved) {
+        setScoreSaved(true);
+      }
+      return;
+    }
+    
     if (gameComplete && !scoreSaved && sessionId && user) {
       // Calculate actual words used based on game mode
       let actualWordsCount = words?.length || 0;
@@ -1273,7 +1318,7 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
       updateAndSave();
       setScoreSaved(true);
     }
-  }, [gameComplete, scoreSaved, score, gameMode, correctCount, finalAccuracy, words, sessionId, user, streak]);
+  }, [gameComplete, scoreSaved, score, gameMode, correctCount, finalAccuracy, words, sessionId, user, streak, virtualWords]);
 
   // Timed mode: Single 60-second timer for entire game
   useEffect(() => {

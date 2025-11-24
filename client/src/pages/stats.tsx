@@ -2,13 +2,20 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Home, Target, Trophy, Flame, TrendingUp, Award, Calendar } from "lucide-react";
+import { Home, Target, Trophy, Flame, TrendingUp, Award, Calendar, Play } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { UserHeader } from "@/components/user-header";
 import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
 import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
 import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type DateFilter = "all" | "month" | "week" | "today";
 
@@ -27,6 +34,7 @@ export default function Stats() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const [showGameModeDialog, setShowGameModeDialog] = useState(false);
 
   // Get user's timezone
   const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -56,6 +64,17 @@ export default function Stats() {
     month: "Last 30 Days",
     week: "Last 7 Days",
     today: "Today",
+  };
+
+  const handleGameModeSelect = (gameMode: string) => {
+    if (!stats?.mostMisspelledWords || stats.mostMisspelledWords.length === 0) return;
+    
+    // Create a virtual word list from most misspelled words
+    const words = stats.mostMisspelledWords.map(item => item.word).join(',');
+    
+    // Navigate to game with virtual list flag
+    setLocation(`/game?mode=${gameMode}&virtualWords=${encodeURIComponent(words)}`);
+    setShowGameModeDialog(false);
   };
 
   return (
@@ -254,10 +273,19 @@ export default function Stats() {
               {/* Most Misspelled Words */}
               {stats.mostMisspelledWords && stats.mostMisspelledWords.length > 0 && (
                 <Card className="backdrop-blur-sm bg-card/90 mt-6" data-testid="card-most-misspelled">
-                  <CardHeader>
+                  <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
                     <CardTitle className="text-xl font-semibold">
                       Most Misspelled Words
                     </CardTitle>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => setShowGameModeDialog(true)}
+                      data-testid="button-play-misspelled"
+                      title="Practice these words"
+                    >
+                      <Play className="w-5 h-5" />
+                    </Button>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
@@ -286,6 +314,56 @@ export default function Stats() {
           </motion.div>
         </div>
       </div>
+
+      {/* Game Mode Selection Dialog */}
+      <Dialog open={showGameModeDialog} onOpenChange={setShowGameModeDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Choose Game Mode</DialogTitle>
+            <DialogDescription>
+              Select a game mode to practice your most misspelled words
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-3 mt-4">
+            <Button
+              variant="outline"
+              className="justify-start"
+              onClick={() => handleGameModeSelect('practice')}
+              data-testid="button-mode-practice"
+            >
+              <Target className="w-4 h-4 mr-2" />
+              Practice
+            </Button>
+            <Button
+              variant="outline"
+              className="justify-start"
+              onClick={() => handleGameModeSelect('timed')}
+              data-testid="button-mode-timed"
+            >
+              <Flame className="w-4 h-4 mr-2" />
+              Timed Challenge
+            </Button>
+            <Button
+              variant="outline"
+              className="justify-start"
+              onClick={() => handleGameModeSelect('quiz')}
+              data-testid="button-mode-quiz"
+            >
+              <Trophy className="w-4 h-4 mr-2" />
+              Quiz Mode
+            </Button>
+            <Button
+              variant="outline"
+              className="justify-start"
+              onClick={() => handleGameModeSelect('scramble')}
+              data-testid="button-mode-scramble"
+            >
+              <TrendingUp className="w-4 h-4 mr-2" />
+              Word Scramble
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
