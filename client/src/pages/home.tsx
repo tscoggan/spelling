@@ -310,12 +310,12 @@ export default function Home() {
           <Button
             variant="outline"
             size="lg"
-            onClick={() => setLocation("/leaderboard")}
+            onClick={() => setLocation("/stats")}
             className="hover:scale-110 transition-transform"
-            data-testid="button-view-leaderboard"
+            data-testid="button-view-stats"
           >
             <Trophy className="w-4 h-4 mr-2" />
-            Leaderboard
+            My Stats
           </Button>
           <Button
             variant="outline"

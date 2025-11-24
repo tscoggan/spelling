@@ -1684,6 +1684,12 @@ function GameContent({ listId, gameMode, quizCount }: { listId: string; gameMode
     
     const tryMisspelling = async (misspelled: string): Promise<string | null> => {
       if (misspelled !== wordLower && !otherWordsLower.includes(misspelled)) {
+        // Check if misspelling contains 3 consecutive identical letters (e.g., "ooo", "lll")
+        const hasTripleLetters = /(.)\1{2,}/.test(misspelled);
+        if (hasTripleLetters) {
+          return null; // Reject misspellings with 3+ consecutive identical letters
+        }
+        
         // Check if the misspelling is actually a real word in the dictionary
         const isRealWord = await checkWordExists(misspelled);
         if (!isRealWord) {

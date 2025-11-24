@@ -42,6 +42,12 @@ The backend uses **Express.js** with **TypeScript**. **PostgreSQL** serves as th
 - **Cartoon Illustrations**: Automated enrichment of custom word lists with kid-friendly cartoon images via Pixabay API, stored permanently in Replit Object Storage.
 - **Scoring System & Leaderboard**: Points (20 per correct word) with streak bonuses, displayed on leaderboards.
 - **Progress Tracking**: Session-based tracking of words, accuracy, and streaks.
+- **My Stats Page**: Aggregate performance metrics with date filtering (All Time, Last 30 Days, Last 7 Days, Today):
+  - **Lifetime Metrics** (unaffected by date filter): Longest Streak (words in a row), Current Streak (consecutive days), Favorite Game Mode (most played mode across all games)
+  - **Date-Filtered Metrics**: Total Words Attempted, Accuracy (%), Total Games Played, Average Score
+  - **Misspelling Prevention**: Find the Mistake mode rejects misspellings with 3+ consecutive identical letters (e.g., "thhhat", "ooorange") using regex pattern `/(.)\1{2,}/`
+  - **Security**: Authenticated users can only view their own stats (req.user.id validation)
+  - **UTC Date Boundaries**: All date filtering uses UTC start-of-day boundaries to prevent timezone edge cases
 
 ### System Design Choices
 - **Client-Server Architecture**: React frontend communicates with an Express.js backend.

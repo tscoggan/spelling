@@ -114,6 +114,7 @@ export interface IStorage {
   getUserAchievements(userId: number): Promise<Achievement[]>;
   getWordListAchievements(wordListId: number): Promise<Achievement[]>;
   upsertAchievement(achievement: InsertAchievement): Promise<Achievement>;
+  getUserStats(userId: number, startDate: Date | null): Promise<any>;
   
   sessionStore: session.Store;
 }
@@ -1019,6 +1020,113 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return created;
     }
+  }
+
+  async getUserStats(userId: number, startDate: Date | null): Promise<any> {
+    // Get ALL completed sessions for lifetime metrics (streaks, favorite mode)
+    const allSessions = await db
+      .select()
+      .from(gameSessions)
+      .where(and(
+        eq(gameSessions.userId, userId),
+        eq(gameSessions.isComplete, true)
+      ))
+      .orderBy(desc(gameSessions.completedAt));
+
+    // Get filtered sessions for date-specific metrics
+    let filteredSessions = allSessions;
+    if (startDate) {
+      filteredSessions = allSessions.filter(s => 
+        s.completedAt && new Date(s.completedAt) >= startDate
+      );
+    }
+
+    // Calculate date-filtered metrics (can be zero if no sessions in range)
+    const totalWordsAttempted = filteredSessions.reduce((sum, s) => sum + (s.totalWords || 0), 0);
+    const correctWords = filteredSessions.reduce((sum, s) => sum + (s.correctWords || 0), 0);
+    const accuracy = totalWordsAttempted > 0 ? Math.round((correctWords / totalWordsAttempted) * 100) : null;
+    const totalGamesPlayed = filteredSessions.length;
+    const averageScore = totalGamesPlayed > 0 
+      ? filteredSessions.reduce((sum, s) => sum + (s.score || 0), 0) / totalGamesPlayed 
+      : 0;
+    
+    // Calculate lifetime metrics (always use all sessions, never zero out)
+    const longestStreak = allSessions.length > 0 
+      ? Math.max(...allSessions.map(s => s.bestStreak || 0), 0)
+      : 0;
+    
+    // Calculate current streak (consecutive days ending with most recent session)
+    // Use ALL sessions for lifetime streak calculation
+    const sortedSessions = allSessions
+      .filter(s => s.completedAt != null)
+      .sort((a, b) => {
+        return new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime();
+      });
+    
+    let currentStreak = 0;
+    if (sortedSessions.length > 0) {
+      // Get date of most recent session (normalize to UTC start of day)
+      const latestSession = sortedSessions[0];
+      if (latestSession.completedAt) {
+        let checkDate = new Date(latestSession.completedAt);
+        checkDate.setUTCHours(0, 0, 0, 0);
+        
+        // Walk backwards from most recent session
+        for (let i = 0; i < sortedSessions.length; i++) {
+          const session = sortedSessions[i];
+          if (!session.completedAt) continue;
+          
+          const sessionDate = new Date(session.completedAt);
+          sessionDate.setUTCHours(0, 0, 0, 0);
+          
+          // Check if this session is on the expected date
+          if (sessionDate.getTime() === checkDate.getTime()) {
+            currentStreak++;
+            // Move back one day
+            checkDate = new Date(checkDate.getTime() - 24 * 60 * 60 * 1000);
+            // Skip other sessions on the same day
+            while (i + 1 < sortedSessions.length) {
+              const nextSession = sortedSessions[i + 1];
+              if (!nextSession.completedAt) break;
+              
+              const nextDate = new Date(nextSession.completedAt);
+              nextDate.setUTCHours(0, 0, 0, 0);
+              if (nextDate.getTime() === sessionDate.getTime()) {
+                i++;
+              } else {
+                break;
+              }
+            }
+          } else {
+            // Gap in streak, stop counting
+            break;
+          }
+          
+          // Safety limit
+          if (currentStreak > 365) break;
+        }
+      }
+    }
+
+    // Lifetime favorite game mode (use all sessions, never null if user has any sessions)
+    let favoriteGameMode: string | null = null;
+    if (allSessions.length > 0) {
+      const gameModeCounts: { [key: string]: number } = {};
+      allSessions.forEach(s => {
+        gameModeCounts[s.gameMode] = (gameModeCounts[s.gameMode] || 0) + 1;
+      });
+      favoriteGameMode = Object.entries(gameModeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+    }
+
+    return {
+      totalWordsAttempted,
+      accuracy,
+      longestStreak,
+      currentStreak,
+      totalGamesPlayed,
+      favoriteGameMode,
+      averageScore: Math.round(averageScore),
+    };
   }
 }
 

@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/lib/protected-route";
 import Home from "@/pages/home";
 import Game from "@/pages/game";
 import Leaderboard from "@/pages/leaderboard";
+import Stats from "@/pages/stats";
 import Achievements from "@/pages/achievements";
 import WordListsPage from "@/pages/word-lists";
 import UserGroupsPage from "@/pages/user-groups";
@@ -60,6 +61,7 @@ function Router() {
       <ProtectedRoute path="/" component={Home} />
       <ProtectedRoute path="/game" component={GamePageGuard} />
       <ProtectedRoute path="/leaderboard" component={Leaderboard} />
+      <ProtectedRoute path="/stats" component={Stats} />
       <ProtectedRoute path="/achievements" component={Achievements} />
       <ProtectedRoute path="/word-lists" component={WordListsPage} />
       <ProtectedRoute path="/user-groups" component={UserGroupsPage} />

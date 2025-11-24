@@ -363,6 +363,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/stats/user/:userId", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const requestedUserId = parseInt(req.params.userId);
+      const user = req.user as any;
+      
+      // Only allow users to view their own stats
+      if (user.id !== requestedUserId) {
+        return res.status(403).json({ error: "You can only view your own stats" });
+      }
+
+      const dateFilter = req.query.dateFilter as string || "all";
+      
+      // Calculate date range using UTC to avoid timezone issues
+      const now = new Date();
+      let startDate: Date | null = null;
+      
+      if (dateFilter === "today") {
+        // Start of today in UTC
+        startDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+      } else if (dateFilter === "week") {
+        // Start of 7 days ago in UTC
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        startDate = new Date(Date.UTC(weekAgo.getUTCFullYear(), weekAgo.getUTCMonth(), weekAgo.getUTCDate(), 0, 0, 0, 0));
+      } else if (dateFilter === "month") {
+        // Start of 30 days ago in UTC
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        startDate = new Date(Date.UTC(monthAgo.getUTCFullYear(), monthAgo.getUTCMonth(), monthAgo.getUTCDate(), 0, 0, 0, 0));
+      }
+      
+      const stats = await storage.getUserStats(user.id, startDate);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching user stats:", error);
+      res.status(500).json({ error: "Failed to fetch stats" });
+    }
+  });
+
   app.post("/api/achievements", async (req, res) => {
     try {
       const { insertAchievementSchema } = await import("@shared/schema");
