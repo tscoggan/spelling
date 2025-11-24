@@ -26,22 +26,23 @@ export const useIOSKeyboardTrigger = () => {
   return context?.inputRef || null;
 };
 
-// Guard component to ensure Game page is only accessed with a listId
+// Guard component to ensure Game page is only accessed with a listId or virtualWords
 function GamePageGuard() {
   const searchParams = useSearch();
   const [, setLocation] = useLocation();
   const params = new URLSearchParams(searchParams);
   const listId = params.get("listId");
+  const virtualWords = params.get("virtualWords");
 
   useEffect(() => {
-    if (!listId) {
+    if (!listId && !virtualWords) {
       // Redirect to home where user can select a word list
       setLocation("/");
     }
-  }, [listId, setLocation]);
+  }, [listId, virtualWords, setLocation]);
 
   // Show loading/redirecting message while redirect happens
-  if (!listId) {
+  if (!listId && !virtualWords) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center">

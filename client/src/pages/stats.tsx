@@ -68,21 +68,11 @@ export default function Stats() {
   };
 
   const handleGameModeSelect = (gameMode: string) => {
-    if (!stats?.mostMisspelledWords || stats.mostMisspelledWords.length === 0) {
-      console.warn("No misspelled words available");
-      return;
-    }
+    if (!stats?.mostMisspelledWords || stats.mostMisspelledWords.length === 0) return;
     
     // Create a virtual word list from most misspelled words
     const words = stats.mostMisspelledWords.map(item => item.word).join(',');
     const url = `/game?mode=${gameMode}&virtualWords=${encodeURIComponent(words)}`;
-    
-    console.log("🎮 Navigating to game with virtual words:", {
-      gameMode,
-      wordCount: stats.mostMisspelledWords.length,
-      words: words,
-      url: url
-    });
     
     // Close dialog first, then navigate
     setShowGameModeDialog(false);
