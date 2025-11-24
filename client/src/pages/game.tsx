@@ -1290,6 +1290,9 @@ function GameContent({ listId, virtualWords, gameMode, quizCount }: { listId?: s
             queryClient.invalidateQueries({ queryKey: ["/api/word-lists", parseInt(listId, 10), "stats"] });
           }
           
+          // Invalidate user stats cache to refresh My Stats page
+          queryClient.invalidateQueries({ queryKey: [`/api/stats/user/${user.id}`] });
+          
           // After session update succeeds, save score to leaderboard (except for practice mode)
           if (gameMode !== "practice") {
             saveScoreMutation.mutate({

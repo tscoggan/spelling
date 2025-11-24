@@ -49,6 +49,8 @@ export default function Stats() {
     },
     enabled: !!user,
     refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const gameModeNames: { [key: string]: string } = {
