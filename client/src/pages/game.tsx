@@ -111,11 +111,22 @@ export default function Game() {
   const gameMode = (params.get("mode") || "practice") as GameMode;
   const quizCount = params.get("quizCount") || "all";
 
+  console.log("🎮 Game component loaded with params:", {
+    listId,
+    virtualWords: virtualWords ? `${virtualWords.substring(0, 50)}...` : null,
+    gameMode,
+    quizCount,
+    searchParams,
+    fullUrl: window.location.href
+  });
+
   // Defense-in-depth: Redirect if no listId and no virtualWords
   useEffect(() => {
     if (!listId && !virtualWords) {
-      console.warn("Game component accessed without listId or virtualWords - redirecting to home");
+      console.warn("⚠️ Game component accessed without listId or virtualWords - redirecting to home");
       setLocation("/");
+    } else {
+      console.log("✅ Valid game params - proceeding with game");
     }
   }, [listId, virtualWords, setLocation]);
 
