@@ -117,7 +117,7 @@ export interface IStorage {
   getUserAchievements(userId: number): Promise<Achievement[]>;
   getWordListAchievements(wordListId: number): Promise<Achievement[]>;
   upsertAchievement(achievement: InsertAchievement): Promise<Achievement>;
-  getUserStats(userId: number, startDate: Date | null, timezone: string): Promise<any>;
+  getUserStats(userId: number, dateFilter: string, timezone: string): Promise<any>;
   
   getUserStreak(userId: number): Promise<UserStreak | undefined>;
   createUserStreak(userId: number): Promise<UserStreak>;
@@ -1093,39 +1093,11 @@ export class DatabaseStorage implements IStorage {
       favoriteGameMode = Object.entries(gameModeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
     }
 
-    // Calculate streaks: use user_streaks for All Time, calculate from sessions for filtered dates
-    let longestStreak = 0;
-    let currentStreak = 0;
-
-    if (dateFilter === "all") {
-      // All Time: use authoritative user_streaks table which tracks word-level streaks during gameplay
-      const userStreak = await this.getUserStreak(userId);
-      longestStreak = userStreak?.longestWordStreak || 0;
-      currentStreak = userStreak?.currentWordStreak || 0;
-    } else {
-      // Filtered date range: calculate from filtered sessions
-      // Longest streak: max bestStreak from filtered sessions
-      longestStreak = filteredSessions.length > 0 
-        ? Math.max(...filteredSessions.map(s => s.bestStreak || 0), 0)
-        : 0;
-
-      // Current streak: count consecutive correct words from most recent filtered sessions
-      // Walk backwards from most recent session, counting words until we hit an incorrect word
-      if (filteredSessions.length > 0) {
-        const sortedSessions = filteredSessions
-          .filter(s => s.completedAt != null)
-          .sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime());
-
-        for (const session of sortedSessions) {
-          // If this session had any incorrect words, streak breaks
-          if (session.incorrectWords && session.incorrectWords.length > 0) {
-            break;
-          }
-          // Add correct words from this session to streak
-          currentStreak += session.correctWords || 0;
-        }
-      }
-    }
+    // Streaks are lifetime metrics tracked during gameplay, not date-filtered
+    // Always use authoritative user_streaks table for consistency across all date filters
+    const userStreak = await this.getUserStreak(userId);
+    const longestStreak = userStreak?.longestWordStreak || 0;
+    const currentStreak = userStreak?.currentWordStreak || 0;
 
     // Calculate most misspelled words from incorrect_words column
     const wordFrequency: { [key: string]: number } = {};

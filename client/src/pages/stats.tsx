@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Home, Target, Trophy, Flame, TrendingUp, Award, Calendar, Play, Shuffle, AlertCircle, Grid3x3 } from "lucide-react";
+import { Home, Target, Trophy, Flame, TrendingUp, Award, Calendar, Play, Shuffle, AlertCircle, Grid3x3, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { UserHeader } from "@/components/user-header";
@@ -48,6 +48,7 @@ export default function Stats() {
       return response.json();
     },
     enabled: !!user,
+    refetchOnMount: true,
   });
 
   const gameModeNames: { [key: string]: string } = {
@@ -317,68 +318,169 @@ export default function Stats() {
 
       {/* Game Mode Selection Dialog */}
       <Dialog open={showGameModeDialog} onOpenChange={setShowGameModeDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Choose Game Mode</DialogTitle>
+            <DialogTitle>Choose a Game Mode</DialogTitle>
             <DialogDescription>
-              Select a game mode to practice your most misspelled words
+              Select how you want to practice with your most misspelled words
             </DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-1 gap-3 mt-4">
-            <Button
-              variant="outline"
-              className="justify-start"
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <Card
+              role="button"
+              tabIndex={0}
+              className="cursor-pointer hover-elevate active-elevate-2 transition-all"
               onClick={() => handleGameModeSelect('practice')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleGameModeSelect('practice');
+                }
+              }}
               data-testid="button-mode-practice"
             >
-              <Target className="w-4 h-4 mr-2" />
-              Practice
-            </Button>
-            <Button
-              variant="outline"
-              className="justify-start"
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <Target className="w-8 h-8 text-blue-600" />
+                  <div>
+                    <CardTitle className="text-lg">Practice</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Classic spelling game with immediate feedback
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+
+            <Card
+              role="button"
+              tabIndex={0}
+              className="cursor-pointer hover-elevate active-elevate-2 transition-all"
               onClick={() => handleGameModeSelect('timed')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleGameModeSelect('timed');
+                }
+              }}
               data-testid="button-mode-timed"
             >
-              <Flame className="w-4 h-4 mr-2" />
-              Timed Challenge
-            </Button>
-            <Button
-              variant="outline"
-              className="justify-start"
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <Clock className="w-8 h-8 text-orange-600" />
+                  <div>
+                    <CardTitle className="text-lg">Timed Challenge</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Spell as many words correctly in 60 seconds as you can!
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+
+            <Card
+              role="button"
+              tabIndex={0}
+              className="cursor-pointer hover-elevate active-elevate-2 transition-all"
               onClick={() => handleGameModeSelect('quiz')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleGameModeSelect('quiz');
+                }
+              }}
               data-testid="button-mode-quiz"
             >
-              <Trophy className="w-4 h-4 mr-2" />
-              Quiz Mode
-            </Button>
-            <Button
-              variant="outline"
-              className="justify-start"
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <Trophy className="w-8 h-8 text-purple-600" />
+                  <div>
+                    <CardTitle className="text-lg">Quiz Mode</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Spell all the words in a list, then see your results
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+
+            <Card
+              role="button"
+              tabIndex={0}
+              className="cursor-pointer hover-elevate active-elevate-2 transition-all"
               onClick={() => handleGameModeSelect('scramble')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleGameModeSelect('scramble');
+                }
+              }}
               data-testid="button-mode-scramble"
             >
-              <Shuffle className="w-4 h-4 mr-2" />
-              Word Scramble
-            </Button>
-            <Button
-              variant="outline"
-              className="justify-start"
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <Shuffle className="w-8 h-8 text-green-600" />
+                  <div>
+                    <CardTitle className="text-lg">Word Scramble</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Drag and drop letter tiles to unscramble the word
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+
+            <Card
+              role="button"
+              tabIndex={0}
+              className="cursor-pointer hover-elevate active-elevate-2 transition-all"
               onClick={() => handleGameModeSelect('mistake')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleGameModeSelect('mistake');
+                }
+              }}
               data-testid="button-mode-mistake"
             >
-              <AlertCircle className="w-4 h-4 mr-2" />
-              Find the Mistake
-            </Button>
-            <Button
-              variant="outline"
-              className="justify-start"
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="w-8 h-8 text-red-600" />
+                  <div>
+                    <CardTitle className="text-lg">Find the Mistake</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Identify the one misspelled word from four choices
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+
+            <Card
+              role="button"
+              tabIndex={0}
+              className="cursor-pointer hover-elevate active-elevate-2 transition-all"
               onClick={() => handleGameModeSelect('crossword')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleGameModeSelect('crossword');
+                }
+              }}
               data-testid="button-mode-crossword"
             >
-              <Grid3x3 className="w-4 h-4 mr-2" />
-              Crossword Puzzle
-            </Button>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <Grid3x3 className="w-8 h-8 text-indigo-600" />
+                  <div>
+                    <CardTitle className="text-lg">Crossword Puzzle</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Solve a crossword using spelling words and their pronunciations
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
           </div>
         </DialogContent>
       </Dialog>
