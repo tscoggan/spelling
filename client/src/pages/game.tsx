@@ -3682,9 +3682,9 @@ function GameContent({ listId, virtualWords, gameMode, quizCount }: { listId?: s
                                 <button
                                   type="button"
                                   className="w-10 h-10 md:w-12 md:h-12 p-0 bg-transparent border-0 hover:scale-110 transition-transform cursor-pointer pointer-events-auto"
-                                  onClick={() => speakWord(currentWord.word)}
+                                  onClick={() => speakWord(index === misspelledIndex ? currentWord.word : word)}
                                   data-testid={`button-speak-${index}`}
-                                  aria-label={`Hear correct pronunciation`}
+                                  aria-label={`Hear pronunciation of ${word}`}
                                 >
                                   <img 
                                     src={playWordIconWithBorder} 
