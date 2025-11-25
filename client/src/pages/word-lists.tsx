@@ -804,50 +804,6 @@ export default function WordListsPage() {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="file-import">
-                      Import from File (optional)
-                    </Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="file-import"
-                        type="file"
-                        accept=".txt,.csv,.pdf"
-                        onChange={handleFileImport}
-                        className="cursor-pointer"
-                        data-testid="input-file-import"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => document.getElementById('file-import')?.click()}
-                        data-testid="button-file-import"
-                      >
-                        <Upload className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Upload a .txt (one word per line), .csv (comma-separated), or .pdf file
-                    </p>
-                  </div>
-                  <div>
-                    <Label htmlFor="words">
-                      Words (one per line, min 5, max 5000)
-                    </Label>
-                    <Textarea
-                      id="words"
-                      value={formData.words}
-                      onChange={(e) => setFormData({ ...formData, words: e.target.value })}
-                      placeholder="photosynthesis&#10;mitochondria&#10;chloroplast&#10;ecosystem&#10;biodiversity"
-                      className="min-h-[200px] font-mono"
-                      required
-                      data-testid="textarea-words"
-                    />
-                    <p className="text-sm text-gray-600 mt-1">
-                      {formData.words.split('\n').filter(w => w.trim()).length} words entered
-                    </p>
-                  </div>
-                  <div>
                     <Label htmlFor="visibility">Visibility</Label>
                     <Select
                       value={formData.visibility}
@@ -945,6 +901,50 @@ export default function WordListsPage() {
                         <span>Automatically find cartoon images for words</span>
                       </div>
                     </Label>
+                  </div>
+                  <div>
+                    <Label htmlFor="file-import">
+                      Import from File (optional)
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="file-import"
+                        type="file"
+                        accept=".txt,.csv,.pdf"
+                        onChange={handleFileImport}
+                        className="cursor-pointer"
+                        data-testid="input-file-import"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => document.getElementById('file-import')?.click()}
+                        data-testid="button-file-import"
+                      >
+                        <Upload className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Upload a .txt (one word per line), .csv (comma-separated), or .pdf file
+                    </p>
+                  </div>
+                  <div>
+                    <Label htmlFor="words">
+                      Words (one per line, min 5, max 5000)
+                    </Label>
+                    <Textarea
+                      id="words"
+                      value={formData.words}
+                      onChange={(e) => setFormData({ ...formData, words: e.target.value })}
+                      placeholder="photosynthesis&#10;mitochondria&#10;chloroplast&#10;ecosystem&#10;biodiversity"
+                      className="min-h-[200px] font-mono"
+                      required
+                      data-testid="textarea-words"
+                    />
+                    <p className="text-sm text-gray-600 mt-1">
+                      {formData.words.split('\n').filter(w => w.trim()).length} words entered
+                    </p>
                   </div>
                   </div>
                   <div className="flex gap-2 justify-end pt-4 border-t mt-4">

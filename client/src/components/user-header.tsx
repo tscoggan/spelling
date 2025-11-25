@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { LogOut, Bell, Settings, Volume2 } from "lucide-react";
+import { LogOut, Bell, Settings, Volume2, HelpCircle, Mail, BookOpen, Trophy, Gamepad2, List, Send } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
@@ -31,11 +31,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { appConfig } from "@/lib/config";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 export function UserHeader() {
   const { user, logoutMutation } = useAuth();
   const [todoModalOpen, setTodoModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactMessage, setContactMessage] = useState("");
+  const [sendingMessage, setSendingMessage] = useState(false);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [showWordHints, setShowWordHints] = useState(() => {
     const saved = localStorage.getItem('showWordHints');
@@ -493,6 +507,21 @@ export function UserHeader() {
                   <p>Settings</p>
                 </TooltipContent>
               </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setHelpOpen(true)}
+                    data-testid="button-help"
+                  >
+                    <HelpCircle className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Help</p>
+                </TooltipContent>
+              </Tooltip>
               <Button
                 variant="outline"
                 size="sm"
@@ -647,6 +676,243 @@ export function UserHeader() {
               </div>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HelpCircle className="w-5 h-5" />
+              Help & Support
+            </DialogTitle>
+            <DialogDescription>
+              Learn about game features or send us a message
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh] pr-4">
+            <div className="space-y-6 mt-4">
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="game-modes">
+                  <AccordionTrigger className="text-left">
+                    <div className="flex items-center gap-2">
+                      <Gamepad2 className="w-4 h-4 text-primary" />
+                      Game Modes
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-3 text-sm">
+                    <div>
+                      <strong>Practice Mode</strong>
+                      <p className="text-muted-foreground">Listen to a word and type the correct spelling. Take your time and learn at your own pace.</p>
+                    </div>
+                    <div>
+                      <strong>Timed Challenge</strong>
+                      <p className="text-muted-foreground">Race against the clock! Spell as many words correctly as you can before time runs out.</p>
+                    </div>
+                    <div>
+                      <strong>Quiz Mode</strong>
+                      <p className="text-muted-foreground">Choose the correct spelling from multiple options. Test your word recognition skills.</p>
+                    </div>
+                    <div>
+                      <strong>Word Scramble</strong>
+                      <p className="text-muted-foreground">Unscramble the jumbled letters to spell the word correctly. Drag and drop letters into place.</p>
+                    </div>
+                    <div>
+                      <strong>Find the Mistake</strong>
+                      <p className="text-muted-foreground">Identify the misspelled word among the options. Watch out for tricky spelling errors!</p>
+                    </div>
+                    <div>
+                      <strong>Crossword Puzzle</strong>
+                      <p className="text-muted-foreground">Listen to clues and fill in the crossword grid. A fun twist on spelling practice!</p>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="achievements">
+                  <AccordionTrigger className="text-left">
+                    <div className="flex items-center gap-2">
+                      <Trophy className="w-4 h-4 text-yellow-500" />
+                      Achievements
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-3 text-sm">
+                    <p className="text-muted-foreground">
+                      Earn achievements as you play! Complete challenges like building streaks, 
+                      spelling words correctly on your first try, and mastering different game modes.
+                    </p>
+                    <div>
+                      <strong>How to earn achievements:</strong>
+                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                        <li>Build spelling streaks by getting words correct in a row</li>
+                        <li>Complete games with high accuracy</li>
+                        <li>Try all different game modes</li>
+                        <li>Practice consistently over time</li>
+                      </ul>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="word-lists">
+                  <AccordionTrigger className="text-left">
+                    <div className="flex items-center gap-2">
+                      <List className="w-4 h-4 text-blue-500" />
+                      Word Lists
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-3 text-sm">
+                    <p className="text-muted-foreground">
+                      Create custom word lists to practice the words you want to learn!
+                    </p>
+                    <div>
+                      <strong>Creating lists:</strong>
+                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                        <li>Go to "My Word Lists" from the main menu</li>
+                        <li>Click "Create New List" and add your words</li>
+                        <li>You can import words from text files, CSV, or PDF</li>
+                        <li>Enable cartoon images to make learning more fun</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <strong>Sharing lists:</strong>
+                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                        <li>Make lists public for everyone to use</li>
+                        <li>Share with specific groups you create</li>
+                        <li>Keep lists private for personal practice</li>
+                      </ul>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="stats">
+                  <AccordionTrigger className="text-left">
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-green-500" />
+                      My Stats
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-3 text-sm">
+                    <p className="text-muted-foreground">
+                      Track your progress over time with detailed statistics!
+                    </p>
+                    <div>
+                      <strong>Available stats:</strong>
+                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                        <li>Total games played and words practiced</li>
+                        <li>Overall accuracy percentage</li>
+                        <li>Best streaks and favorite game modes</li>
+                        <li>Most misspelled words to practice</li>
+                        <li>Filter by date range to see recent progress</li>
+                      </ul>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+
+              <div className="border-t pt-6">
+                <h3 className="font-semibold flex items-center gap-2 mb-4">
+                  <Mail className="w-4 h-4" />
+                  Contact Us
+                </h3>
+                <form 
+                  className="space-y-4"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!contactName || !contactEmail || !contactMessage) {
+                      toast({
+                        title: "Missing Information",
+                        description: "Please fill in all fields",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    if (contactMessage.length < 10) {
+                      toast({
+                        title: "Message Too Short",
+                        description: "Please write at least 10 characters",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    setSendingMessage(true);
+                    try {
+                      const response = await fetch("/api/contact", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          name: contactName,
+                          email: contactEmail,
+                          message: contactMessage,
+                        }),
+                      });
+                      if (!response.ok) {
+                        throw new Error("Failed to send message");
+                      }
+                      toast({
+                        title: "Message Sent!",
+                        description: "Thank you for your feedback. We'll get back to you soon.",
+                      });
+                      setContactName("");
+                      setContactEmail("");
+                      setContactMessage("");
+                      setHelpOpen(false);
+                    } catch (error) {
+                      toast({
+                        title: "Error",
+                        description: "Failed to send message. Please try again.",
+                        variant: "destructive",
+                      });
+                    } finally {
+                      setSendingMessage(false);
+                    }
+                  }}
+                >
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="contact-name">Your Name</Label>
+                      <Input
+                        id="contact-name"
+                        placeholder="Enter your name"
+                        value={contactName}
+                        onChange={(e) => setContactName(e.target.value)}
+                        data-testid="input-contact-name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="contact-email">Email</Label>
+                      <Input
+                        id="contact-email"
+                        type="email"
+                        placeholder="your@email.com"
+                        value={contactEmail}
+                        onChange={(e) => setContactEmail(e.target.value)}
+                        data-testid="input-contact-email"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="contact-message">Message</Label>
+                    <Textarea
+                      id="contact-message"
+                      placeholder="How can we help? Share your questions, feedback, or suggestions..."
+                      value={contactMessage}
+                      onChange={(e) => setContactMessage(e.target.value)}
+                      className="min-h-[100px]"
+                      data-testid="input-contact-message"
+                    />
+                  </div>
+                  <Button 
+                    type="submit" 
+                    className="w-full"
+                    disabled={sendingMessage}
+                    data-testid="button-send-message"
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    {sendingMessage ? "Sending..." : "Send Message"}
+                  </Button>
+                </form>
+              </div>
+            </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </>

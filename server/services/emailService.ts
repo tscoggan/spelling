@@ -72,6 +72,57 @@ export async function sendPasswordResetEmail(
   });
 }
 
+export async function sendContactEmail(
+  name: string,
+  email: string,
+  message: string,
+  toEmail: string
+): Promise<void> {
+  const { client, fromEmail } = getResendClient();
+  
+  await client.emails.send({
+    from: fromEmail,
+    to: toEmail,
+    replyTo: email,
+    subject: `Spelling Champions - Feedback from ${name}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff); padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+            .header h1 { color: white; margin: 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+            .message-box { background: white; padding: 15px; border-radius: 4px; border-left: 4px solid #4f46e5; margin: 15px 0; }
+            .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Spelling Champions - Contact Form</h1>
+            </div>
+            <div class="content">
+              <h2>New Message Received</h2>
+              <p><strong>From:</strong> ${name}</p>
+              <p><strong>Email:</strong> ${email}</p>
+              <p><strong>Message:</strong></p>
+              <div class="message-box">
+                ${message.replace(/\n/g, '<br>')}
+              </div>
+            </div>
+            <div class="footer">
+              <p>This message was sent via the Spelling Champions Help form.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  });
+}
+
 export async function sendEmailUpdateNotification(
   toEmail: string, 
   username: string

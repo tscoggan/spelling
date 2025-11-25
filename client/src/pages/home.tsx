@@ -491,17 +491,17 @@ export default function Home() {
                       <div className="font-semibold text-sm truncate" data-testid={`text-list-name-${list.id}`}>
                         {list.name}
                       </div>
-                      {list.gradeLevel && (
-                        <Badge variant="secondary" className="text-xs flex-shrink-0" data-testid={`badge-grade-${list.id}`}>
-                          Grade {list.gradeLevel}
-                        </Badge>
-                      )}
                       {list.isPublic ? (
                         <Globe className="w-4 h-4 text-blue-600 flex-shrink-0" data-testid={`icon-public-${list.id}`} />
                       ) : (
                         <Lock className="w-4 h-4 text-gray-400 flex-shrink-0" data-testid={`icon-private-${list.id}`} />
                       )}
                     </div>
+                    {list.gradeLevel && (
+                      <div className="text-xs text-muted-foreground leading-tight" data-testid={`text-grade-${list.id}`}>
+                        Grade {list.gradeLevel}
+                      </div>
+                    )}
                     <div className="text-xs text-muted-foreground leading-tight">
                       {list.words.length} words
                     </div>

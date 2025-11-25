@@ -6,7 +6,7 @@ import { z } from "zod";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import { IllustrationJobService } from "./services/illustrationJobService";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
-import { sendPasswordResetEmail, sendEmailUpdateNotification } from "./services/emailService";
+import { sendPasswordResetEmail, sendEmailUpdateNotification, sendContactEmail } from "./services/emailService";
 import multer from "multer";
 import crypto from "crypto";
 
@@ -202,6 +202,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid request data", details: error.errors });
       }
       res.status(500).json({ error: "Failed to reset password" });
+    }
+  });
+
+  // Contact/Feedback email endpoint
+  app.post("/api/contact", async (req, res) => {
+    try {
+      const schema = z.object({
+        name: z.string().min(1, "Name is required"),
+        email: z.string().email("Valid email is required"),
+        message: z.string().min(10, "Message must be at least 10 characters"),
+      });
+      
+      const { name, email, message } = schema.parse(req.body);
+      
+      // Dev team email address
+      const devTeamEmail = "tsmith28@mail.com";
+      
+      await sendContactEmail(name, email, message, devTeamEmail);
+      
+      res.json({ message: "Message sent successfully" });
+    } catch (error) {
+      console.error("Contact email error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to send message" });
     }
   });
 
