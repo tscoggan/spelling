@@ -2598,6 +2598,22 @@ function GameContent({ listId, virtualWords, gameMode, quizCount }: { listId?: s
     setDraggedLetter(null);
   };
 
+  // Clear all placed letters and return them to the scrambled letters tray
+  const handleClearScramble = () => {
+    const newScrambled = [...scrambledLetters];
+    
+    // Return all placed letters to their source positions
+    placedLetters.forEach((placed) => {
+      if (placed) {
+        newScrambled[placed.sourceIndex] = placed.letter;
+      }
+    });
+    
+    // Clear all placed letters
+    setScrambledLetters(newScrambled);
+    setPlacedLetters(new Array(currentWord?.word.length || 0).fill(null));
+  };
+
   // Calculate dynamic tile size for scramble mode to fit all letters in one row
   const getTileSize = (wordLength: number) => {
     // Default tile sizes
@@ -3393,12 +3409,6 @@ function GameContent({ listId, virtualWords, gameMode, quizCount }: { listId?: s
           </Button>
           
           <div className="flex items-center gap-4 md:gap-2">
-            {gameMode === "timed" && !showFeedback && (
-              <div className={`flex items-center gap-2 md:gap-1 ${timeLeft <= 10 ? 'text-red-600' : 'text-gray-700'}`}>
-                <Clock className="w-6 h-6 md:w-4 md:h-4" />
-                <span className="text-xl md:text-sm font-bold" data-testid="text-timer">{timeLeft}s</span>
-              </div>
-            )}
             {streak > 0 && gameMode !== "quiz" && (
               <div className="flex items-center gap-2 md:gap-1 text-orange-600">
                 <Flame className="w-6 h-6 md:w-4 md:h-4" />
@@ -3617,9 +3627,17 @@ function GameContent({ listId, virtualWords, gameMode, quizCount }: { listId?: s
               >
                 <Card ref={gameCardRef} className="p-6 md:px-12 md:pt-6 md:pb-12 space-y-4 bg-white">
                   <div className="text-center space-y-3">
-                    <h2 className="text-2xl md:text-3xl font-bold text-gray-800" data-testid="text-instruction">
-                      {gameMode === "quiz" ? "Spell the word" : gameMode === "scramble" ? "Unscramble the letters" : gameMode === "mistake" ? "Find the misspelled word" : "Listen and spell the word"}
-                    </h2>
+                    <div className="relative">
+                      {gameMode === "timed" && !showFeedback && (
+                        <div className={`absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-2 ${timeLeft <= 10 ? 'text-red-600' : 'text-gray-700'}`}>
+                          <Clock className="w-6 h-6 md:w-8 md:h-8" />
+                          <span className="text-xl md:text-2xl font-bold" data-testid="text-timer">{timeLeft}s</span>
+                        </div>
+                      )}
+                      <h2 className="text-2xl md:text-3xl font-bold text-gray-800" data-testid="text-instruction">
+                        {gameMode === "quiz" ? "Spell the word" : gameMode === "scramble" ? "Unscramble the letters" : gameMode === "mistake" ? "Find the misspelled word" : "Listen and spell the word"}
+                      </h2>
+                    </div>
                     
                     {gameMode !== "mistake" && currentWord && wordIllustrations && (() => {
                       const illustration = wordIllustrations.find(
@@ -3757,8 +3775,20 @@ function GameContent({ listId, virtualWords, gameMode, quizCount }: { listId?: s
                           })}
                         </div>
 
-                        <div className="text-center text-sm text-gray-600">
-                          Click or drag the yellow tiles to fill the blank spaces above
+                        <div className="flex flex-col items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleClearScramble}
+                            className="text-xs md:text-sm"
+                            data-testid="button-clear-scramble"
+                          >
+                            Clear
+                          </Button>
+                          <div className="text-center text-sm text-gray-600">
+                            Click or drag the yellow tiles to fill the blank spaces above
+                          </div>
                         </div>
                       </div>
                     ) : (
@@ -4064,7 +4094,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount }: { listId?: s
           className="w-12 h-16 md:w-16 md:h-20 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500 shadow-2xl flex items-center justify-center opacity-90"
         >
           <span className="text-2xl md:text-4xl font-bold text-gray-800 select-none">
-            {draggedLetterElement}
+            {draggedLetterElement.toUpperCase()}
           </span>
         </div>
       )}
