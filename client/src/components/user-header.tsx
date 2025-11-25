@@ -783,6 +783,45 @@ export function UserHeader() {
                   </AccordionContent>
                 </AccordionItem>
 
+                <AccordionItem value="user-groups">
+                  <AccordionTrigger className="text-left">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-purple-500" />
+                      User Groups
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-3 text-sm">
+                    <p className="text-muted-foreground">
+                      Create or join groups to share word lists with friends, classmates, or family!
+                    </p>
+                    <div>
+                      <strong>Creating a group:</strong>
+                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                        <li>Go to "My Groups" from the main menu</li>
+                        <li>Click "Create Group" and give it a name</li>
+                        <li>Set a password if you want members to join with a code</li>
+                        <li>Invite members by username or let them request access</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <strong>Joining a group:</strong>
+                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                        <li>Accept an invitation from the notifications bell</li>
+                        <li>Request to join a group and wait for approval</li>
+                        <li>Enter a group password if you have one</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <strong>Sharing with groups:</strong>
+                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                        <li>When creating a word list, choose "Groups" visibility</li>
+                        <li>Select which groups can access your list</li>
+                        <li>Group members can then practice with your shared lists</li>
+                      </ul>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
                 <AccordionItem value="stats">
                   <AccordionTrigger className="text-left">
                     <div className="flex items-center gap-2">
