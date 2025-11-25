@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Sparkles, Trophy, Clock, Target, List, ChevronRight, Lock, Globe, Shuffle, AlertCircle, Grid3x3, Users, BarChart3 } from "lucide-react";
+import { BookOpen, Sparkles, Trophy, Clock, Target, List, ChevronRight, Shuffle, AlertCircle, Grid3x3, Users, BarChart3 } from "lucide-react";
 import type { GameMode } from "@shared/schema";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -487,15 +487,8 @@ export default function Home() {
                   data-testid={`card-word-list-${list.id}`}
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1 mb-0.5">
-                      <div className="font-semibold text-sm truncate" data-testid={`text-list-name-${list.id}`}>
-                        {list.name}
-                      </div>
-                      {list.isPublic ? (
-                        <Globe className="w-4 h-4 text-blue-600 flex-shrink-0" data-testid={`icon-public-${list.id}`} />
-                      ) : (
-                        <Lock className="w-4 h-4 text-gray-400 flex-shrink-0" data-testid={`icon-private-${list.id}`} />
-                      )}
+                    <div className="font-semibold text-sm truncate mb-0.5" data-testid={`text-list-name-${list.id}`}>
+                      {list.name}
                     </div>
                     {list.gradeLevel && (
                       <div className="text-xs text-muted-foreground leading-tight" data-testid={`text-grade-${list.id}`}>
