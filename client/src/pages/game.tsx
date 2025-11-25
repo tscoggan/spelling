@@ -3645,7 +3645,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount }: { listId?: s
                   </div>
 
                   <form onSubmit={gameMode === "scramble" ? (e) => { e.preventDefault(); handleScrambleSubmit(); } : gameMode === "mistake" ? (e) => { e.preventDefault(); } : handleSubmit} className="space-y-6">
-                    {gameMode === "mistake" && mistakeChoices.length === 4 ? (
+                    {gameMode === "mistake" && mistakeChoices.length === 4 && currentWord ? (
                       <div className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {mistakeChoices.map((word, index) => (
@@ -3664,9 +3664,9 @@ function GameContent({ listId, virtualWords, gameMode, quizCount }: { listId?: s
                                 <button
                                   type="button"
                                   className="w-10 h-10 md:w-12 md:h-12 p-0 bg-transparent border-0 hover:scale-110 transition-transform cursor-pointer pointer-events-auto"
-                                  onClick={() => speakWord(word)}
+                                  onClick={() => speakWord(currentWord.word)}
                                   data-testid={`button-speak-${index}`}
-                                  aria-label={`Hear pronunciation of ${word}`}
+                                  aria-label={`Hear correct pronunciation`}
                                 >
                                   <img 
                                     src={playWordIconWithBorder} 
