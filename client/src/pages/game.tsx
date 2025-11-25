@@ -3649,17 +3649,29 @@ function GameContent({ listId, virtualWords, gameMode, quizCount }: { listId?: s
                       <div className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {mistakeChoices.map((word, index) => (
-                            <Button
-                              key={index}
-                              type="button"
-                              variant="outline"
-                              size="lg"
-                              className="h-16 md:h-20 text-xl md:text-2xl font-bold border-2"
-                              onClick={() => handleMistakeChoice(index)}
-                              data-testid={`button-choice-${index}`}
-                            >
-                              {word.toUpperCase()}
-                            </Button>
+                            <div key={index} className="flex gap-2 items-stretch">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="lg"
+                                className="h-16 md:h-20 text-xl md:text-2xl font-bold border-2 flex-1"
+                                onClick={() => handleMistakeChoice(index)}
+                                data-testid={`button-choice-${index}`}
+                              >
+                                {word.toUpperCase()}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="outline"
+                                className="border-2 flex-shrink-0"
+                                onClick={() => speakWord(word)}
+                                data-testid={`button-speak-${index}`}
+                                aria-label={`Hear pronunciation of ${word}`}
+                              >
+                                <Volume2 className="w-5 h-5" />
+                              </Button>
+                            </div>
                           ))}
                         </div>
                         <div className="text-center text-sm text-gray-600">
