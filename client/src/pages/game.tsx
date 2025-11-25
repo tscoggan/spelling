@@ -3649,28 +3649,32 @@ function GameContent({ listId, virtualWords, gameMode, quizCount }: { listId?: s
                       <div className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {mistakeChoices.map((word, index) => (
-                            <div key={index} className="flex gap-2 items-stretch">
+                            <div key={index} className="relative">
                               <Button
                                 type="button"
                                 variant="outline"
                                 size="lg"
-                                className="h-16 md:h-20 text-xl md:text-2xl font-bold border-2 flex-1"
+                                className="h-16 md:h-20 text-xl md:text-2xl font-bold border-2 w-full pr-14 md:pr-16"
                                 onClick={() => handleMistakeChoice(index)}
                                 data-testid={`button-choice-${index}`}
                               >
                                 {word.toUpperCase()}
                               </Button>
-                              <Button
-                                type="button"
-                                size="icon"
-                                variant="outline"
-                                className="border-2 flex-shrink-0"
-                                onClick={() => speakWord(word)}
-                                data-testid={`button-speak-${index}`}
-                                aria-label={`Hear pronunciation of ${word}`}
-                              >
-                                <Volume2 className="w-5 h-5" />
-                              </Button>
+                              <div className="absolute top-2 right-2 md:top-3 md:right-3 pointer-events-none">
+                                <button
+                                  type="button"
+                                  className="w-10 h-10 md:w-12 md:h-12 p-0 bg-transparent border-0 hover:scale-110 transition-transform cursor-pointer pointer-events-auto"
+                                  onClick={() => speakWord(word)}
+                                  data-testid={`button-speak-${index}`}
+                                  aria-label={`Hear pronunciation of ${word}`}
+                                >
+                                  <img 
+                                    src={playWordIconWithBorder} 
+                                    alt="Play" 
+                                    className="w-full h-full"
+                                  />
+                                </button>
+                              </div>
                             </div>
                           ))}
                         </div>
