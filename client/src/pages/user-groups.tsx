@@ -149,6 +149,8 @@ export default function UserGroupsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user-groups", user?.id] });
+      // Invalidate shared word lists since joining a group grants access to new lists
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/shared-with-me"] });
       setPasswordDialogOpen(false);
       setPasswordInput("");
       setSelectedGroupForPassword(null);

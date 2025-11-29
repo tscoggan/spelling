@@ -3629,9 +3629,9 @@ function GameContent({ listId, virtualWords, gameMode, quizCount }: { listId?: s
                   <div className="text-center space-y-3">
                     <div className="relative">
                       {gameMode === "timed" && !showFeedback && (
-                        <div className={`absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-2 ${timeLeft <= 10 ? 'text-red-600' : 'text-gray-700'}`}>
-                          <Clock className="w-6 h-6 md:w-8 md:h-8" />
-                          <span className="text-xl md:text-2xl font-bold" data-testid="text-timer">{timeLeft}s</span>
+                        <div className={`absolute left-0 top-1/2 -translate-y-1/2 hidden md:flex items-center gap-2 ${timeLeft <= 10 ? 'text-red-600' : 'text-gray-700'}`}>
+                          <Clock className="w-8 h-8" />
+                          <span className="text-2xl font-bold" data-testid="text-timer">{timeLeft}s</span>
                         </div>
                       )}
                       <h2 className="text-2xl md:text-3xl font-bold text-gray-800" data-testid="text-instruction">
@@ -3793,6 +3793,13 @@ function GameContent({ listId, virtualWords, gameMode, quizCount }: { listId?: s
                       </div>
                     ) : (
                       <div ref={inputContainerRef}>
+                        {/* Mobile timer - positioned above input field */}
+                        {gameMode === "timed" && !showFeedback && (
+                          <div className={`flex md:hidden items-center gap-2 mb-3 ${timeLeft <= 10 ? 'text-red-600' : 'text-gray-700'}`}>
+                            <Clock className="w-5 h-5" />
+                            <span className="text-lg font-bold" data-testid="text-timer-mobile">{timeLeft}s</span>
+                          </div>
+                        )}
                         {showWordHints && currentWord && gameMode !== "quiz" ? (
                           (() => {
                             const hintSize = getHintLetterSize(currentWord.word.length);
