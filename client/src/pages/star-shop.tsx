@@ -127,7 +127,7 @@ export default function StarShop() {
             alt="Star Shop"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="h-12 object-contain mb-3"
+            className="h-20 sm:h-24 object-contain mb-3"
             data-testid="img-shop-title"
           />
           
