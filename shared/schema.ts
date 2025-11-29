@@ -177,6 +177,7 @@ export const SHOP_ITEMS = {
 } as const;
 
 export type ShopItemId = keyof typeof SHOP_ITEMS;
+export type ShopItem = typeof SHOP_ITEMS[ShopItemId];
 
 export const achievements = pgTable("achievements", {
   id: serial("id").primaryKey(),
