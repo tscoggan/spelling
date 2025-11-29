@@ -294,58 +294,68 @@ export default function Home() {
         <div className="flex justify-center flex-wrap gap-4 mb-8">
           <button
             onClick={() => setLocation("/word-lists")}
-            className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-lg"
+            className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-full"
             data-testid="button-word-lists"
           >
-            <img 
-              src={wordListsButton} 
-              alt="Word Lists" 
-              className="h-24 md:h-28 w-auto"
-            />
+            <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-white/60 flex items-center justify-center p-2">
+              <img 
+                src={wordListsButton} 
+                alt="Word Lists" 
+                className="h-full w-full object-contain"
+              />
+            </div>
           </button>
           <button
             onClick={() => setLocation("/user-groups")}
-            className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-lg"
+            className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-full"
             data-testid="button-user-groups"
           >
-            <img 
-              src={userGroupsButton} 
-              alt="User Groups" 
-              className="h-24 md:h-28 w-auto"
-            />
+            <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-white/60 flex items-center justify-center p-2">
+              <img 
+                src={userGroupsButton} 
+                alt="User Groups" 
+                className="h-full w-full object-contain"
+              />
+            </div>
           </button>
           <button
             onClick={() => setLocation("/stats")}
-            className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-lg"
+            className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-full"
             data-testid="button-view-stats"
           >
-            <img 
-              src={myStatsButton} 
-              alt="My Stats" 
-              className="h-24 md:h-28 w-auto"
-            />
+            <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-white/60 flex items-center justify-center p-2">
+              <img 
+                src={myStatsButton} 
+                alt="My Stats" 
+                className="h-full w-full object-contain"
+              />
+            </div>
           </button>
           <button
             onClick={() => setLocation("/achievements")}
-            className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-lg"
+            className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-full"
             data-testid="button-view-achievements"
           >
-            <img 
-              src={achievementsButton} 
-              alt="Achievements" 
-              className="h-24 md:h-28 w-auto"
-            />
+            <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-white/60 flex items-center justify-center p-2">
+              <img 
+                src={achievementsButton} 
+                alt="Achievements" 
+                className="h-full w-full object-contain"
+              />
+            </div>
           </button>
           <button
             onClick={() => {}}
-            className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-lg"
+            className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-full"
             data-testid="button-star-shop"
           >
-            <img 
-              src={starShopButton} 
-              alt="Star Shop" 
-              className="h-24 md:h-28 w-auto"
-            />
+            <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-white/60 flex items-center justify-center p-2">
+              <img 
+                src={starShopButton} 
+                alt="Star Shop" 
+                className="h-full w-full object-contain"
+              />
+            </div>
           </button>
         </div>
 
