@@ -343,7 +343,7 @@ export default function Home() {
             </div>
           </button>
           <button
-            onClick={() => {}}
+            onClick={() => setLocation("/star-shop")}
             className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-full"
             data-testid="button-star-shop"
           >
