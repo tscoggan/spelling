@@ -150,6 +150,34 @@ export const userStreaks = pgTable("user_streaks", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const userItems = pgTable("user_items", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  itemId: text("item_id").notNull(),
+  quantity: integer("quantity").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  userItemUnique: unique("user_items_user_item_unique").on(table.userId, table.itemId),
+}));
+
+export const SHOP_ITEMS = {
+  do_over: {
+    id: "do_over",
+    name: "Do Over",
+    description: "Retry one incorrect word during a game with no penalty",
+    cost: 1,
+  },
+  second_chance: {
+    id: "second_chance",
+    name: "2nd Chance",
+    description: "Retry all incorrect words at the end of a game with no penalty",
+    cost: 5,
+  },
+} as const;
+
+export type ShopItemId = keyof typeof SHOP_ITEMS;
+
 export const achievements = pgTable("achievements", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
@@ -172,6 +200,14 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   toDoItems: many(userToDoItems),
   achievements: many(achievements),
   streaks: one(userStreaks),
+  items: many(userItems),
+}));
+
+export const userItemsRelations = relations(userItems, ({ one }) => ({
+  user: one(users, {
+    fields: [userItems.userId],
+    references: [users.id],
+  }),
 }));
 
 export const gameSessionsRelations = relations(gameSessions, ({ one }) => ({
@@ -347,6 +383,12 @@ export const insertUserStreakSchema = createInsertSchema(userStreaks).omit({
   updatedAt: true,
 });
 
+export const insertUserItemSchema = createInsertSchema(userItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertWord = z.infer<typeof insertWordSchema>;
@@ -373,6 +415,8 @@ export type InsertAchievement = z.infer<typeof insertAchievementSchema>;
 export type Achievement = typeof achievements.$inferSelect;
 export type InsertUserStreak = z.infer<typeof insertUserStreakSchema>;
 export type UserStreak = typeof userStreaks.$inferSelect;
+export type InsertUserItem = z.infer<typeof insertUserItemSchema>;
+export type UserItem = typeof userItems.$inferSelect;
 
 export type GameMode = "practice" | "timed" | "quiz" | "scramble" | "mistake" | "crossword";
 
