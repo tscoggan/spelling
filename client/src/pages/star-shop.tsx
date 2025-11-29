@@ -101,25 +101,27 @@ export default function StarShop() {
         <img 
           src={shopBackground} 
           alt="" 
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain object-top bg-[#5FBCD3]"
         />
       </div>
 
       <div className="relative z-10 flex flex-col min-h-screen">
-        <UserHeader />
+        <header className="flex items-center justify-between p-2 relative z-20">
+          <Button
+            variant="default"
+            onClick={() => setLocation("/")}
+            className="bg-white/90 dark:bg-black/70 text-foreground hover:bg-white dark:hover:bg-black/80 shadow-lg"
+            data-testid="button-home"
+          >
+            <Home className="h-4 w-4 mr-2" />
+            Home
+          </Button>
+          
+          <UserHeader />
+        </header>
 
         <main className="flex-1 flex flex-col items-center pt-4 px-4">
-          <div className="w-full max-w-md flex items-center justify-between mb-4">
-            <Button
-              variant="default"
-              onClick={() => setLocation("/")}
-              className="bg-white/90 dark:bg-black/70 text-foreground hover:bg-white dark:hover:bg-black/80 shadow-lg"
-              data-testid="button-home"
-            >
-              <Home className="h-4 w-4 mr-2" />
-              Home
-            </Button>
-            
+          <div className="w-full max-w-md flex items-center justify-center mb-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
