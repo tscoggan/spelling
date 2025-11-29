@@ -314,7 +314,7 @@ export default function Home() {
               <img 
                 src={userGroupsButton} 
                 alt="User Groups" 
-                className="h-full w-full object-contain"
+                className="h-[95%] w-[95%] object-contain"
               />
             </div>
           </button>
