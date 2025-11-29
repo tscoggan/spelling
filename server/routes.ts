@@ -1122,24 +1122,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sessions = sessions.filter(session => session.gameMode === gameMode);
       }
       
-      // Only use completed sessions for accuracy calculations
-      sessions = sessions.filter(session => session.isComplete);
+      // Include sessions with attempted words (complete OR partial with activity)
+      // This ensures partial sessions from restarts count toward accuracy metrics
+      // Check for totalWords > 0 OR any incorrect words recorded (handles edge case where totalWords is 0 but attempts were made)
+      sessions = sessions.filter(session => 
+        session.isComplete || 
+        (session.totalWords && session.totalWords > 0) ||
+        (session.incorrectWords && session.incorrectWords.length > 0) ||
+        (session.correctWords && session.correctWords > 0)
+      );
       
       if (sessions.length === 0) {
         return res.json({ totalAccuracy: null, lastGameAccuracy: null });
       }
 
       // Calculate total accuracy (weighted by words across all sessions)
-      const totalCorrectWords = sessions.reduce((sum, session) => sum + session.correctWords, 0);
-      const totalTotalWords = sessions.reduce((sum, session) => sum + session.totalWords, 0);
+      // For each session, compute attempted words as max of totalWords or (correctWords + incorrectWords.length)
+      // This handles partial sessions where totalWords might be 0 but there's activity
+      const totalCorrectWords = sessions.reduce((sum, session) => sum + (session.correctWords || 0), 0);
+      const totalTotalWords = sessions.reduce((sum, session) => {
+        const sessionTotal = session.totalWords || 0;
+        const sessionActivity = (session.correctWords || 0) + (session.incorrectWords?.length || 0);
+        return sum + Math.max(sessionTotal, sessionActivity);
+      }, 0);
       const totalAccuracy = totalTotalWords > 0
         ? Math.round((totalCorrectWords / totalTotalWords) * 100)
         : null;
 
       // Last game accuracy (most recent session)
-      const lastSession = sessions[0]; // Already ordered by completedAt desc
-      const lastGameAccuracy = lastSession.totalWords > 0
-        ? Math.round((lastSession.correctWords / lastSession.totalWords) * 100)
+      const lastSession = sessions[0]; // Already ordered by completedAt/createdAt desc
+      const lastSessionTotal = lastSession.totalWords || 0;
+      const lastSessionActivity = (lastSession.correctWords || 0) + (lastSession.incorrectWords?.length || 0);
+      const lastWordsAttempted = Math.max(lastSessionTotal, lastSessionActivity);
+      const lastGameAccuracy = lastWordsAttempted > 0
+        ? Math.round(((lastSession.correctWords || 0) / lastWordsAttempted) * 100)
         : null;
 
       res.json({ totalAccuracy, lastGameAccuracy });

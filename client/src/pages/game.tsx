@@ -595,16 +595,21 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
         // - If showFeedback is true, we've also attempted the current word
         const wordsAttempted = showFeedback ? currentWordIndex + 1 : currentWordIndex;
         
-        // Only save if at least one word was attempted
-        if (wordsAttempted > 0) {
+        // Only save if at least one word was attempted or there are incorrect words
+        if (wordsAttempted > 0 || incorrectWords.length > 0 || correctCount > 0) {
+          // Ensure totalWords reflects actual activity (correctWords + incorrectWords count)
+          // This handles edge cases where the counting differs
+          const actualWordsAttempted = Math.max(wordsAttempted, correctCount + incorrectWords.length);
+          
           await apiRequest("PATCH", `/api/sessions/${sessionId}`, {
-            totalWords: wordsAttempted,
+            totalWords: actualWordsAttempted,
             correctWords: correctCount,
             bestStreak: bestStreak,
             incorrectWords: incorrectWords,
             isComplete: false, // Mark as incomplete since it was restarted
+            // Don't set completedAt for partial sessions - createdAt will be used for ordering
           });
-          console.log(`💾 Saved partial progress on restart: ${wordsAttempted} words attempted, ${correctCount} correct`);
+          console.log(`💾 Saved partial progress on restart: ${actualWordsAttempted} words attempted, ${correctCount} correct`);
         }
       } catch (error) {
         console.error("Failed to save partial progress:", error);

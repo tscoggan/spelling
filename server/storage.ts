@@ -227,6 +227,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getGameSessionsForWordList(wordListId: number, userId: number): Promise<GameSession[]> {
+    // Include sessions that are complete OR have at least one word attempted
+    // This ensures partial sessions (from restarts) count toward accuracy metrics
+    // Check for totalWords > 0 OR correctWords > 0 OR incorrectWords array has items
+    // Use COALESCE to fall back to createdAt for incomplete sessions that don't have completedAt set
     const sessions = await db
       .select()
       .from(gameSessions)
@@ -234,10 +238,10 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(gameSessions.wordListId, wordListId),
           eq(gameSessions.userId, userId),
-          eq(gameSessions.isComplete, true)
+          sql`(${gameSessions.isComplete} = true OR COALESCE(${gameSessions.totalWords}, 0) > 0 OR COALESCE(${gameSessions.correctWords}, 0) > 0 OR COALESCE(array_length(${gameSessions.incorrectWords}, 1), 0) > 0)`
         )
       )
-      .orderBy(desc(gameSessions.completedAt));
+      .orderBy(desc(sql`COALESCE(${gameSessions.completedAt}, ${gameSessions.createdAt})`));
     return sessions;
   }
 
@@ -1072,18 +1076,22 @@ export class DatabaseStorage implements IStorage {
 
   async getUserStats(userId: number, dateFilter: string, timezone: string): Promise<any> {
     // Use PostgreSQL's AT TIME ZONE to filter by calendar boundaries in user's timezone
+    // Include sessions that are complete OR have at least one word attempted (partial sessions from restarts)
     let allSessions;
     
     if (dateFilter === "all") {
       // No date filtering
+      // Include sessions that are complete OR have at least one word attempted
+      // Check for totalWords > 0 OR correctWords > 0 OR incorrectWords array has items
+      // Use COALESCE to fall back to createdAt for incomplete sessions that don't have completedAt set
       allSessions = await db
         .select()
         .from(gameSessions)
         .where(and(
           eq(gameSessions.userId, userId),
-          eq(gameSessions.isComplete, true)
+          sql`(${gameSessions.isComplete} = true OR COALESCE(${gameSessions.totalWords}, 0) > 0 OR COALESCE(${gameSessions.correctWords}, 0) > 0 OR COALESCE(array_length(${gameSessions.incorrectWords}, 1), 0) > 0)`
         ))
-        .orderBy(desc(gameSessions.completedAt));
+        .orderBy(desc(sql`COALESCE(${gameSessions.completedAt}, ${gameSessions.createdAt})`));
     } else {
       // Use SQL fragments within Drizzle query for timezone-aware filtering
       let daysAgo: number;
@@ -1099,22 +1107,31 @@ export class DatabaseStorage implements IStorage {
       
       // Use Drizzle query with SQL fragment for AT TIME ZONE support
       // Convert the timezone-aware boundary back to UTC for comparison with UTC completedAt
+      // Include sessions that are complete OR have at least one word attempted
+      // Check for totalWords > 0 OR correctWords > 0 OR incorrectWords array has items
+      // Use COALESCE to fall back to createdAt for incomplete sessions that don't have completedAt set
       allSessions = await db
         .select()
         .from(gameSessions)
         .where(and(
           eq(gameSessions.userId, userId),
-          eq(gameSessions.isComplete, true),
-          sql`${gameSessions.completedAt} >= (date_trunc('day', (NOW() AT TIME ZONE ${timezone}) - INTERVAL '${sql.raw(daysAgo.toString())} days') AT TIME ZONE ${timezone} AT TIME ZONE 'UTC')`
+          sql`(${gameSessions.isComplete} = true OR COALESCE(${gameSessions.totalWords}, 0) > 0 OR COALESCE(${gameSessions.correctWords}, 0) > 0 OR COALESCE(array_length(${gameSessions.incorrectWords}, 1), 0) > 0)`,
+          sql`COALESCE(${gameSessions.completedAt}, ${gameSessions.createdAt}) >= (date_trunc('day', (NOW() AT TIME ZONE ${timezone}) - INTERVAL '${sql.raw(daysAgo.toString())} days') AT TIME ZONE ${timezone} AT TIME ZONE 'UTC')`
         ))
-        .orderBy(desc(gameSessions.completedAt));
+        .orderBy(desc(sql`COALESCE(${gameSessions.completedAt}, ${gameSessions.createdAt})`));
     }
     
     // Use allSessions for all metrics (no separate filteredSessions needed)
     let filteredSessions = allSessions;
 
     // Calculate ALL metrics from filtered sessions only
-    const totalWordsAttempted = filteredSessions.reduce((sum, s) => sum + (s.totalWords || 0), 0);
+    // For each session, compute attempted words as max of totalWords or (correctWords + incorrectWords.length)
+    // This handles partial sessions where totalWords might be 0 but there's activity
+    const totalWordsAttempted = filteredSessions.reduce((sum, s) => {
+      const sessionTotal = s.totalWords || 0;
+      const sessionActivity = (s.correctWords || 0) + (s.incorrectWords?.length || 0);
+      return sum + Math.max(sessionTotal, sessionActivity);
+    }, 0);
     const correctWords = filteredSessions.reduce((sum, s) => sum + (s.correctWords || 0), 0);
     const accuracy = totalWordsAttempted > 0 ? Math.round((correctWords / totalWordsAttempted) * 100) : null;
     const totalGamesPlayed = filteredSessions.length;
