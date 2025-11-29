@@ -585,6 +585,37 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
     }
   }, [gameMode, sessionId, user, listId, virtualWords]);
 
+  // Handler to save partial progress before restarting
+  const handleRestartWithSave = useCallback(async () => {
+    // Only save if we have a session and user is logged in
+    if (sessionId && user) {
+      try {
+        // Calculate words attempted:
+        // - currentWordIndex is 0-based, representing how many words we've moved past
+        // - If showFeedback is true, we've also attempted the current word
+        const wordsAttempted = showFeedback ? currentWordIndex + 1 : currentWordIndex;
+        
+        // Only save if at least one word was attempted
+        if (wordsAttempted > 0) {
+          await apiRequest("PATCH", `/api/sessions/${sessionId}`, {
+            totalWords: wordsAttempted,
+            correctWords: correctCount,
+            bestStreak: bestStreak,
+            incorrectWords: incorrectWords,
+            isComplete: false, // Mark as incomplete since it was restarted
+          });
+          console.log(`💾 Saved partial progress on restart: ${wordsAttempted} words attempted, ${correctCount} correct`);
+        }
+      } catch (error) {
+        console.error("Failed to save partial progress:", error);
+        // Continue with restart even if save fails
+      }
+    }
+    
+    // Trigger the restart (remount)
+    onRestart();
+  }, [sessionId, currentWordIndex, correctCount, bestStreak, incorrectWords, showFeedback, user, onRestart]);
+
   // Load available voices
   useEffect(() => {
     // Feature detection - check if speechSynthesis is available
@@ -4107,7 +4138,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={onRestart}
+                onClick={handleRestartWithSave}
                 data-testid="button-restart"
                 className="text-gray-600 hover:text-gray-800"
               >
