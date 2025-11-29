@@ -126,6 +126,8 @@ export interface IStorage {
   incrementWordStreak(userId: number): Promise<void>;
   resetWordStreak(userId: number): Promise<void>;
   
+  incrementUserStars(userId: number, amount: number): Promise<void>;
+  
   sessionStore: session.Store;
 }
 
@@ -1239,6 +1241,13 @@ export class DatabaseStorage implements IStorage {
     }
 
     await this.updateUserStreak(userId, 0, streak.longestWordStreak);
+  }
+
+  async incrementUserStars(userId: number, amount: number): Promise<void> {
+    await db
+      .update(users)
+      .set({ stars: sql`COALESCE(${users.stars}, 0) + ${amount}` })
+      .where(eq(users.id, userId));
   }
 }
 

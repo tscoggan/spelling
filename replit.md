@@ -18,7 +18,7 @@ The application features a bright, responsive rainbow-themed design optimized fo
 The frontend is built with React, utilizing Wouter for routing, TanStack Query for data fetching, Framer Motion for animations, Shadcn UI for components, and Tailwind CSS for styling. Text-to-speech is powered by the Web Speech API. The backend uses Express.js with TypeScript and PostgreSQL as the database, managed by Drizzle ORM. Passport.js handles authentication with Scrypt for password hashing. Content moderation uses the `bad-words` library.
 
 ### Feature Specifications
-- **User Management**: Secure authentication, enhanced user profiles, and support for user groups with membership and to-do notifications.
+- **User Management**: Secure authentication, enhanced user profiles, support for user groups with membership and to-do notifications, and a `stars` column to track spendable stars for the Star Shop.
 - **Custom Word Lists**: Users create, share, and manage custom word lists with assignable grade levels, image assignment, and visibility controls (public, private, groups). Supports importing words from .txt, .csv, and .pdf files with profanity filtering.
 - **Game Modes**: Includes Practice, Timed Challenge, Quiz Mode, Word Scramble (with dynamic tile sizing and single-row layout), Find the Mistake (with realistic error generation), and Crossword Puzzle (interactive, audio-only with client-side grid generation and mobile UX enhancements). All game modes use Durstenfeld shuffle for word randomization.
 - **Responsive Font Scaling**: Dynamic font sizing ensures long words fit within input fields across all game modes and viewport sizes.

@@ -387,10 +387,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updates.gameMode = "practice";
       }
       
+      // First update the session
       const session = await storage.updateGameSession(id, updates);
       
       if (!session) {
         return res.status(404).json({ error: "Session not found" });
+      }
+      
+      // Only increment user stars after successful session update
+      if (updates.starsEarned && updates.starsEarned > 0 && session.userId) {
+        await storage.incrementUserStars(session.userId, updates.starsEarned);
+        console.log(`⭐ Incremented user ${session.userId} stars by ${updates.starsEarned}`);
       }
       
       res.json(session);
