@@ -31,11 +31,11 @@ import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_17
 import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
 import oneStar from "@assets/1 star_1763916010555.png";
 import missingStar from "@assets/Missing star (grey)_1763916010554.png";
-import wordListsButton from "@assets/Word Lists button_1764424892580.png";
-import userGroupsButton from "@assets/User Groups 2 button_1764437553958.png";
-import myStatsButton from "@assets/My Stats button_1764424892578.png";
-import achievementsButton from "@assets/Achievements 2 button_1764437553957.png";
-import starShopButton from "@assets/Star Shops 2 button_1764437553956.png";
+import wordListsButton from "@assets/Word Lists button_1764442517980.png";
+import userGroupsButton from "@assets/User Groups button_1764442517979.png";
+import myStatsButton from "@assets/My Stats button_1764442517978.png";
+import achievementsButton from "@assets/Achievements button_1764442517979.png";
+import starShopButton from "@assets/Star Shops button_1764442517979.png";
 
 interface CustomWordList {
   id: number;
@@ -293,14 +293,14 @@ export default function Home() {
 
         <div className="flex justify-center flex-wrap gap-4 mb-8">
           <button
-            onClick={() => setLocation("/word-lists")}
+            onClick={() => setLocation("/stats")}
             className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-full"
-            data-testid="button-word-lists"
+            data-testid="button-view-stats"
           >
             <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-white/60 flex items-center justify-center p-2">
               <img 
-                src={wordListsButton} 
-                alt="Word Lists" 
+                src={myStatsButton} 
+                alt="My Stats" 
                 className="h-full w-full object-contain"
               />
             </div>
@@ -319,17 +319,15 @@ export default function Home() {
             </div>
           </button>
           <button
-            onClick={() => setLocation("/stats")}
-            className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-full"
-            data-testid="button-view-stats"
+            onClick={() => setLocation("/word-lists")}
+            className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-lg"
+            data-testid="button-word-lists"
           >
-            <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-white/60 flex items-center justify-center p-2">
-              <img 
-                src={myStatsButton} 
-                alt="My Stats" 
-                className="h-full w-full object-contain"
-              />
-            </div>
+            <img 
+              src={wordListsButton} 
+              alt="Word Lists" 
+              className="h-24 md:h-28 w-auto"
+            />
           </button>
           <button
             onClick={() => setLocation("/achievements")}
