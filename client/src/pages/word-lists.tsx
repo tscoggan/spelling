@@ -72,6 +72,8 @@ export default function WordListsPage() {
       return await response.json();
     },
     enabled: !!user,
+    refetchOnMount: "always",
+    staleTime: 0,
   });
 
   const { data: publicLists = [], isLoading: loadingPublicLists } = useQuery<CustomWordList[]>({
@@ -86,6 +88,8 @@ export default function WordListsPage() {
       return await response.json();
     },
     enabled: !!user,
+    refetchOnMount: "always",
+    staleTime: 0,
   });
 
   const { data: achievements } = useQuery<any[]>({

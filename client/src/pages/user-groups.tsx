@@ -52,6 +52,8 @@ export default function UserGroupsPage() {
       return await response.json();
     },
     enabled: !!user,
+    refetchOnMount: "always",
+    staleTime: 0,
   });
 
   const createMutation = useMutation({
