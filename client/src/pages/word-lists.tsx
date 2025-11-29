@@ -540,6 +540,51 @@ export default function WordListsPage() {
     });
   }, [publicLists, gradeFilter, createdByFilter, hideMastered, achievements]);
 
+  // Combined "All" lists - merge all accessible lists, removing duplicates
+  const filteredAllLists = useMemo(() => {
+    // Combine all lists with source markers
+    const myLists = userLists.map(list => ({ ...list, source: 'mine' as const }));
+    const shared = sharedLists.map(list => ({ ...list, source: 'shared' as const }));
+    const pub = publicLists.map(list => ({ ...list, source: 'public' as const }));
+    
+    // Combine and remove duplicates (prefer user's own lists, then shared, then public)
+    const combined = [...myLists, ...shared, ...pub];
+    const uniqueLists = combined.filter((list, index, self) => 
+      index === self.findIndex(l => l.id === list.id)
+    );
+    
+    let filtered = uniqueLists;
+    
+    // Apply grade filter
+    if (gradeFilter !== "all") {
+      if (gradeFilter === "none") {
+        filtered = filtered.filter(list => !list.gradeLevel);
+      } else {
+        filtered = filtered.filter(list => list.gradeLevel === gradeFilter);
+      }
+    }
+    
+    // Apply created by filter
+    if (createdByFilter !== "all") {
+      filtered = filtered.filter(list => list.authorUsername === createdByFilter);
+    }
+    
+    // Apply hide mastered filter
+    if (hideMastered && achievements) {
+      filtered = filtered.filter(list => {
+        const achievement = getAchievementForList(list.id);
+        return !achievement || achievement.achievementValue !== "3 Stars";
+      });
+    }
+    
+    // Sort by createdAt descending (newest first)
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
+  }, [userLists, sharedLists, publicLists, gradeFilter, createdByFilter, hideMastered, achievements]);
+
   const availableGradeLevels = useMemo(() => {
     const grades = new Set<string>();
     [...userLists, ...sharedLists, ...publicLists].forEach(list => {
@@ -1005,12 +1050,39 @@ export default function WordListsPage() {
           </Card>
         )}
 
-        <Tabs defaultValue="my-lists" className="space-y-6">
-          <TabsList className="grid w-full max-w-2xl grid-cols-3">
+        <Tabs defaultValue="all" className="space-y-6">
+          <TabsList className="grid w-full max-w-2xl grid-cols-4">
+            <TabsTrigger value="all" data-testid="tab-all">All</TabsTrigger>
             <TabsTrigger value="my-lists" data-testid="tab-my-lists">My Lists</TabsTrigger>
             <TabsTrigger value="shared" data-testid="tab-shared">Shared With Me</TabsTrigger>
             <TabsTrigger value="public" data-testid="tab-public">Public Lists</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="all" className="space-y-4">
+            {loadingUserLists || loadingSharedLists || loadingPublicLists ? (
+              <div className="text-center py-12">
+                <div className="text-gray-600">Loading word lists...</div>
+              </div>
+            ) : filteredAllLists.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-gray-600 mb-4">
+                    {userLists.length === 0 && sharedLists.length === 0 && publicLists.length === 0
+                      ? "No word lists available yet. Create your first list to get started!"
+                      : "No word lists found for the selected filters"}
+                  </p>
+                  {userLists.length === 0 && (
+                    <Button onClick={() => setDialogOpen(true)} data-testid="button-create-first-all">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Your First List
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              filteredAllLists.map((list) => renderWordList(list, user?.id === list.userId))
+            )}
+          </TabsContent>
 
           <TabsContent value="my-lists" className="space-y-4">
             {loadingUserLists ? (
