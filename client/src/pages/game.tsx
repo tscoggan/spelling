@@ -621,6 +621,40 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
     onRestart();
   }, [sessionId, currentWordIndex, correctCount, bestStreak, incorrectWords, showFeedback, user, onRestart]);
 
+  // Handler to save partial progress before going home
+  const handleHomeWithSave = useCallback(async () => {
+    // Only save if we have a session and user is logged in
+    if (sessionId && user) {
+      try {
+        // Calculate words attempted:
+        // - currentWordIndex is 0-based, representing how many words we've moved past
+        // - If showFeedback is true, we've also attempted the current word
+        const wordsAttempted = showFeedback ? currentWordIndex + 1 : currentWordIndex;
+        
+        // Only save if at least one word was attempted or there are incorrect words
+        if (wordsAttempted > 0 || incorrectWords.length > 0 || correctCount > 0) {
+          // Ensure totalWords reflects actual activity (correctWords + incorrectWords count)
+          const actualWordsAttempted = Math.max(wordsAttempted, correctCount + incorrectWords.length);
+          
+          await apiRequest("PATCH", `/api/sessions/${sessionId}`, {
+            totalWords: actualWordsAttempted,
+            correctWords: correctCount,
+            bestStreak: bestStreak,
+            incorrectWords: incorrectWords,
+            isComplete: false, // Mark as incomplete since it was aborted
+          });
+          console.log(`💾 Saved partial progress on home: ${actualWordsAttempted} words attempted, ${correctCount} correct`);
+        }
+      } catch (error) {
+        console.error("Failed to save partial progress:", error);
+        // Continue with navigation even if save fails
+      }
+    }
+    
+    // Navigate to home
+    setLocation("/");
+  }, [sessionId, currentWordIndex, correctCount, bestStreak, incorrectWords, showFeedback, user, setLocation]);
+
   // Load available voices
   useEffect(() => {
     // Feature detection - check if speechSynthesis is available
@@ -3453,7 +3487,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
             variant="outline"
             size="lg"
             className="md:h-8 md:text-sm md:px-2"
-            onClick={() => setLocation("/")}
+            onClick={handleHomeWithSave}
             data-testid="button-exit"
           >
             <Home className="w-5 h-5 md:w-4 md:h-4 mr-2 md:mr-1" />

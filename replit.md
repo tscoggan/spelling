@@ -39,7 +39,7 @@ The frontend is built with React, utilizing Wouter for routing, TanStack Query f
 - **Background Job System**: Asynchronously processes Pixabay image enrichment for custom word lists with real-time UI updates.
 - **React Query Caching**: Uses prefix-based and tuple-based query keys for efficient and accurate cache management.
 - **Dictionary Validation System**: Utilizes a precedence hierarchy for Merriam-Webster dictionaries, robust error handling, in-memory caching, and concurrency control for API requests.
-- **Game Session Tracking**: The `game_sessions` table accurately tracks `total_words`, `correct_words`, `is_complete` status, and `score` for various game modes, with detailed accuracy calculation logic.
+- **Game Session Tracking**: The `game_sessions` table accurately tracks `total_words`, `correct_words`, `is_complete` status, and `score` for various game modes, with detailed accuracy calculation logic. Partial sessions (from clicking Restart or Home mid-game) are saved with `isComplete=false` and included in accuracy metrics calculations.
 
 ## External Dependencies
 
