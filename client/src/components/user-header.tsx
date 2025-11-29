@@ -592,7 +592,7 @@ export function UserHeader() {
                   <div className="text-2xl" data-testid="text-user-avatar">{user.selectedAvatar}</div>
                 )
               )}
-              <div className="font-bold text-gray-800" data-testid="text-username">
+              <div className="text-gray-800 dark:text-gray-200" data-testid="text-username">
                 {user?.username}
               </div>
             </button>

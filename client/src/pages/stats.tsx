@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Home, Target, Trophy, Flame, TrendingUp, Award, Calendar, Play, Shuffle, AlertCircle, Grid3x3, Clock } from "lucide-react";
+import { Home, Target, Trophy, Flame, TrendingUp, Award, Calendar, Play, Shuffle, AlertCircle, Grid3x3, Clock, Star } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { UserHeader } from "@/components/user-header";
@@ -27,6 +27,7 @@ interface UserStats {
   totalGamesPlayed: number;
   favoriteGameMode: string | null;
   averageScore: number;
+  starsEarned: number;
   mostMisspelledWords: { word: string; mistakes: number }[];
 }
 
@@ -269,6 +270,21 @@ export default function Stats() {
                   <CardContent className="py-3">
                     <div className="text-lg font-bold" data-testid="text-favorite-mode">
                       {stats.favoriteGameMode ? gameModeNames[stats.favoriteGameMode] || stats.favoriteGameMode : "N/A"}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Stars Earned */}
+                <Card className="backdrop-blur-sm bg-card/90" data-testid="card-stars-earned">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Stars Earned
+                    </CardTitle>
+                    <Star className="w-4 h-4 text-yellow-500" />
+                  </CardHeader>
+                  <CardContent className="py-3">
+                    <div className="text-2xl font-bold" data-testid="text-stars-earned">
+                      {stats.starsEarned.toLocaleString()}
                     </div>
                   </CardContent>
                 </Card>

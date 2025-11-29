@@ -817,7 +817,8 @@ export default function UserGroupsPage() {
                               <h3 className="font-semibold text-gray-800 truncate">{group.name}</h3>
                               <Globe className="w-3 h-3 text-green-600 flex-shrink-0" />
                             </div>
-                            <p className="text-xs text-gray-600 mb-2">Public Group{group.hasPassword ? ' • Password Protected' : ''}</p>
+                            <p className="text-xs text-gray-600">Public Group{group.hasPassword ? ' • Password Protected' : ''}</p>
+                            <p className="text-xs text-gray-500 mb-2" data-testid={`text-public-owner-${group.id}`}>Owner: {group.ownerUsername}</p>
                             <div className="flex gap-2 flex-wrap">
                               <Button
                                 size="sm"

@@ -349,7 +349,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
   });
 
   const updateSessionMutation = useMutation({
-    mutationFn: async (sessionData: { sessionId: number; score: number; totalWords: number; correctWords: number; bestStreak: number; incorrectWords: string[]; isComplete: boolean; completedAt: Date }) => {
+    mutationFn: async (sessionData: { sessionId: number; score: number; totalWords: number; correctWords: number; bestStreak: number; incorrectWords: string[]; isComplete: boolean; completedAt: Date; starsEarned?: number }) => {
       const response = await apiRequest("PATCH", `/api/sessions/${sessionData.sessionId}`, {
         score: sessionData.score,
         totalWords: sessionData.totalWords,
@@ -358,6 +358,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
         incorrectWords: sessionData.incorrectWords,
         isComplete: sessionData.isComplete,
         completedAt: sessionData.completedAt,
+        ...(sessionData.starsEarned !== undefined && { starsEarned: sessionData.starsEarned }),
       });
       return await response.json();
     },
@@ -459,6 +460,12 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
           
           // Invalidate achievements cache to refresh UI
           queryClient.invalidateQueries({ queryKey: ["/api/achievements/user", scoreData.userId] });
+          
+          // Update the game session to record that a star was earned
+          await apiRequest("PATCH", `/api/sessions/${scoreData.sessionId}`, {
+            starsEarned: 1,
+          });
+          console.log("⭐ Updated session with starsEarned=1");
           
           // Set achievement earned flag to show notification on results screen
           // Only set to true if this is a NEW achievement

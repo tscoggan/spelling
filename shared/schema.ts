@@ -37,6 +37,7 @@ export const gameSessions = pgTable("game_sessions", {
   bestStreak: integer("best_streak").notNull().default(0),
   incorrectWords: text("incorrect_words").array().notNull().default(sql`'{}'::text[]`),
   isComplete: boolean("is_complete").notNull().default(false),
+  starsEarned: integer("stars_earned").notNull().default(0),
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

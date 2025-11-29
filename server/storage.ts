@@ -1121,6 +1121,7 @@ export class DatabaseStorage implements IStorage {
     const averageScore = totalGamesPlayed > 0 
       ? filteredSessions.reduce((sum, s) => sum + (s.score || 0), 0) / totalGamesPlayed 
       : 0;
+    const starsEarned = filteredSessions.reduce((sum, s) => sum + (s.starsEarned || 0), 0);
     
     // Favorite game mode from filtered sessions
     let favoriteGameMode: string | null = null;
@@ -1162,6 +1163,7 @@ export class DatabaseStorage implements IStorage {
       totalGamesPlayed,
       favoriteGameMode,
       averageScore: Math.round(averageScore),
+      starsEarned,
       mostMisspelledWords,
     };
   }
