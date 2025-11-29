@@ -31,6 +31,11 @@ import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_17
 import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
 import oneStar from "@assets/1 star_1763916010555.png";
 import missingStar from "@assets/Missing star (grey)_1763916010554.png";
+import wordListsButton from "@assets/Word Lists button_1764424892580.png";
+import userGroupsButton from "@assets/User Groups button_1764424892579.png";
+import myStatsButton from "@assets/My Stats button_1764424892578.png";
+import achievementsButton from "@assets/Achievements button_1764424892578.png";
+import starShopButton from "@assets/Star Shops button_1764424892579.png";
 
 interface CustomWordList {
   id: number;
@@ -287,46 +292,61 @@ export default function Home() {
         </div>
 
         <div className="flex justify-center flex-wrap gap-4 mb-8">
-          <Button
-            variant="outline"
-            size="lg"
+          <button
             onClick={() => setLocation("/word-lists")}
-            className="hover:scale-110 transition-transform"
+            className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-lg"
             data-testid="button-word-lists"
           >
-            <List className="w-4 h-4 mr-2" />
-            Word Lists
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
+            <img 
+              src={wordListsButton} 
+              alt="Word Lists" 
+              className="h-24 md:h-28 w-auto"
+            />
+          </button>
+          <button
             onClick={() => setLocation("/user-groups")}
-            className="hover:scale-110 transition-transform"
+            className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-lg"
             data-testid="button-user-groups"
           >
-            <Users className="w-4 h-4 mr-2" />
-            User Groups
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
+            <img 
+              src={userGroupsButton} 
+              alt="User Groups" 
+              className="h-24 md:h-28 w-auto"
+            />
+          </button>
+          <button
             onClick={() => setLocation("/stats")}
-            className="hover:scale-110 transition-transform"
+            className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-lg"
             data-testid="button-view-stats"
           >
-            <BarChart3 className="w-4 h-4 mr-2" />
-            My Stats
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
+            <img 
+              src={myStatsButton} 
+              alt="My Stats" 
+              className="h-24 md:h-28 w-auto"
+            />
+          </button>
+          <button
             onClick={() => setLocation("/achievements")}
-            className="hover:scale-110 transition-transform"
+            className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-lg"
             data-testid="button-view-achievements"
           >
-            <Trophy className="w-4 h-4 mr-2" />
-            Achievements
-          </Button>
+            <img 
+              src={achievementsButton} 
+              alt="Achievements" 
+              className="h-24 md:h-28 w-auto"
+            />
+          </button>
+          <button
+            onClick={() => {}}
+            className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-lg"
+            data-testid="button-star-shop"
+          >
+            <img 
+              src={starShopButton} 
+              alt="Star Shop" 
+              className="h-24 md:h-28 w-auto"
+            />
+          </button>
         </div>
 
         <div className="flex justify-center mb-6">
