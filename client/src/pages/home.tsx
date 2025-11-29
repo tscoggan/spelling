@@ -32,10 +32,10 @@ import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763
 import oneStar from "@assets/1 star_1763916010555.png";
 import missingStar from "@assets/Missing star (grey)_1763916010554.png";
 import wordListsButton from "@assets/Word Lists button_1764424892580.png";
-import userGroupsButton from "@assets/User Groups button_1764424892579.png";
+import userGroupsButton from "@assets/User Groups 2 button_1764437553958.png";
 import myStatsButton from "@assets/My Stats button_1764424892578.png";
-import achievementsButton from "@assets/Achievements button_1764424892578.png";
-import starShopButton from "@assets/Star Shops button_1764424892579.png";
+import achievementsButton from "@assets/Achievements 2 button_1764437553957.png";
+import starShopButton from "@assets/Star Shops 2 button_1764437553956.png";
 
 interface CustomWordList {
   id: number;
