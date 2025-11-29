@@ -23,6 +23,7 @@ import {
   type InsertAchievement,
   type UserStreak,
   type InsertUserStreak,
+  type UserItem,
   words,
   gameSessions,
   users,
@@ -36,6 +37,9 @@ import {
   passwordResetTokens,
   achievements,
   userStreaks,
+  userItems,
+  SHOP_ITEMS,
+  type ShopItemId,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, inArray, not } from "drizzle-orm";
@@ -127,6 +131,10 @@ export interface IStorage {
   resetWordStreak(userId: number): Promise<void>;
   
   incrementUserStars(userId: number, amount: number): Promise<void>;
+  
+  getUserItems(userId: number): Promise<UserItem[]>;
+  purchaseItem(userId: number, itemId: ShopItemId, quantity?: number): Promise<{ success: boolean; newStarBalance: number; newItemQuantity: number; error?: string }>;
+  useItem(userId: number, itemId: ShopItemId, quantity?: number): Promise<{ success: boolean; remainingQuantity: number; error?: string }>;
   
   sessionStore: session.Store;
 }
@@ -1248,6 +1256,85 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ stars: sql`COALESCE(${users.stars}, 0) + ${amount}` })
       .where(eq(users.id, userId));
+  }
+
+  async getUserItems(userId: number): Promise<UserItem[]> {
+    return await db
+      .select()
+      .from(userItems)
+      .where(eq(userItems.userId, userId));
+  }
+
+  async purchaseItem(
+    userId: number, 
+    itemId: ShopItemId, 
+    quantity: number = 1
+  ): Promise<{ success: boolean; newStarBalance: number; newItemQuantity: number; error?: string }> {
+    const shopItem = SHOP_ITEMS[itemId];
+    if (!shopItem) {
+      return { success: false, newStarBalance: 0, newItemQuantity: 0, error: "Item not found" };
+    }
+
+    const totalCost = shopItem.cost * quantity;
+
+    const user = await this.getUser(userId);
+    if (!user) {
+      return { success: false, newStarBalance: 0, newItemQuantity: 0, error: "User not found" };
+    }
+
+    if ((user.stars || 0) < totalCost) {
+      return { success: false, newStarBalance: user.stars || 0, newItemQuantity: 0, error: "Not enough stars" };
+    }
+
+    const newStarBalance = (user.stars || 0) - totalCost;
+    await db
+      .update(users)
+      .set({ stars: newStarBalance })
+      .where(eq(users.id, userId));
+
+    const existingItem = await db
+      .select()
+      .from(userItems)
+      .where(and(eq(userItems.userId, userId), eq(userItems.itemId, itemId)));
+
+    let newItemQuantity: number;
+    if (existingItem.length > 0) {
+      newItemQuantity = existingItem[0].quantity + quantity;
+      await db
+        .update(userItems)
+        .set({ quantity: newItemQuantity, updatedAt: new Date() })
+        .where(and(eq(userItems.userId, userId), eq(userItems.itemId, itemId)));
+    } else {
+      newItemQuantity = quantity;
+      await db
+        .insert(userItems)
+        .values({ userId, itemId, quantity });
+    }
+
+    return { success: true, newStarBalance, newItemQuantity };
+  }
+
+  async useItem(
+    userId: number, 
+    itemId: ShopItemId, 
+    quantity: number = 1
+  ): Promise<{ success: boolean; remainingQuantity: number; error?: string }> {
+    const existingItem = await db
+      .select()
+      .from(userItems)
+      .where(and(eq(userItems.userId, userId), eq(userItems.itemId, itemId)));
+
+    if (existingItem.length === 0 || existingItem[0].quantity < quantity) {
+      return { success: false, remainingQuantity: existingItem[0]?.quantity || 0, error: "Not enough items" };
+    }
+
+    const remainingQuantity = existingItem[0].quantity - quantity;
+    await db
+      .update(userItems)
+      .set({ quantity: remainingQuantity, updatedAt: new Date() })
+      .where(and(eq(userItems.userId, userId), eq(userItems.itemId, itemId)));
+
+    return { success: true, remainingQuantity };
   }
 }
 
