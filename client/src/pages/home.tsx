@@ -34,7 +34,7 @@ import missingStar from "@assets/Missing star (grey)_1763916010554.png";
 import wordListsButton from "@assets/Word Lists button_1764442517980.png";
 import userGroupsButton from "@assets/User Groups button 2_1764445093609.png";
 import myStatsButton from "@assets/My Stats button 2_1764445093611.png";
-import achievementsButton from "@assets/Achievements button 2_1764445093612.png";
+import achievementsButton from "@assets/Achievements button 3_1764446032415.png";
 import starShopButton from "@assets/Star Shops button 2_1764445093610.png";
 
 interface CustomWordList {
