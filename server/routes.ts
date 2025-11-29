@@ -523,6 +523,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/user-items", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const user = req.user as any;
+      const items = await storage.getUserItems(user.id);
+      const { SHOP_ITEMS } = await import("@shared/schema");
+      
+      res.json({
+        stars: user.stars || 0,
+        inventory: items,
+        catalog: SHOP_ITEMS,
+      });
+    } catch (error) {
+      console.error("Error fetching user items:", error);
+      res.status(500).json({ error: "Failed to fetch user items" });
+    }
+  });
+
+  app.post("/api/user-items/purchase", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const { itemId, quantity = 1 } = req.body;
+      
+      if (!itemId || typeof itemId !== 'string') {
+        return res.status(400).json({ error: "Invalid item ID" });
+      }
+
+      const { SHOP_ITEMS } = await import("@shared/schema");
+      type ShopItemIdType = keyof typeof SHOP_ITEMS;
+      
+      if (!(itemId in SHOP_ITEMS)) {
+        return res.status(400).json({ error: "Item not found in catalog" });
+      }
+
+      const user = req.user as any;
+      const result = await storage.purchaseItem(user.id, itemId as ShopItemIdType, quantity);
+      
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      res.json({
+        success: true,
+        newStarBalance: result.newStarBalance,
+        newItemQuantity: result.newItemQuantity,
+      });
+    } catch (error) {
+      console.error("Error purchasing item:", error);
+      res.status(500).json({ error: "Failed to purchase item" });
+    }
+  });
+
+  app.post("/api/user-items/use", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const { itemId, quantity = 1 } = req.body;
+      
+      if (!itemId || typeof itemId !== 'string') {
+        return res.status(400).json({ error: "Invalid item ID" });
+      }
+
+      const { SHOP_ITEMS } = await import("@shared/schema");
+      type ShopItemIdType = keyof typeof SHOP_ITEMS;
+      
+      if (!(itemId in SHOP_ITEMS)) {
+        return res.status(400).json({ error: "Item not found in catalog" });
+      }
+
+      const user = req.user as any;
+      const result = await storage.useItem(user.id, itemId as ShopItemIdType, quantity);
+      
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      res.json({
+        success: true,
+        remainingQuantity: result.remainingQuantity,
+      });
+    } catch (error) {
+      console.error("Error using item:", error);
+      res.status(500).json({ error: "Failed to use item" });
+    }
+  });
+
   app.post("/api/word-lists", async (req, res) => {
     try {
       if (!req.isAuthenticated()) {
