@@ -61,6 +61,7 @@ export interface IStorage {
   updateUserPreferences(userId: number, preferences: { preferredVoice?: string | null }): Promise<User>;
   updateUserEmail(userId: number, email: string): Promise<User>;
   updateUserPassword(userId: number, password: string): Promise<User>;
+  updateUserProfile(userId: number, updates: { firstName?: string; lastName?: string; email?: string; selectedAvatar?: string }): Promise<User>;
   
   createLeaderboardScore(score: InsertLeaderboardScore): Promise<LeaderboardScore>;
   getTopScores(gameMode?: string, limit?: number): Promise<LeaderboardScore[]>;
@@ -282,6 +283,15 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db
       .update(users)
       .set({ password })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async updateUserProfile(userId: number, updates: { firstName?: string; lastName?: string; email?: string; selectedAvatar?: string }): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set(updates)
       .where(eq(users.id, userId))
       .returning();
     return user;
@@ -640,8 +650,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserAccessibleGroups(userId: number): Promise<any[]> {
-    const ownedGroups = await db.select().from(userGroups).where(eq(userGroups.ownerUserId, userId));
+    // Get owned groups with owner username (self)
+    const ownedGroups = await db
+      .select({
+        id: userGroups.id,
+        name: userGroups.name,
+        ownerUserId: userGroups.ownerUserId,
+        isPublic: userGroups.isPublic,
+        createdAt: userGroups.createdAt,
+        plaintextPassword: userGroups.plaintextPassword,
+        ownerUsername: users.username,
+      })
+      .from(userGroups)
+      .innerJoin(users, eq(userGroups.ownerUserId, users.id))
+      .where(eq(userGroups.ownerUserId, userId));
     
+    // Get member groups with owner username
     const memberGroups = await db
       .select({
         id: userGroups.id,
@@ -649,12 +673,27 @@ export class DatabaseStorage implements IStorage {
         ownerUserId: userGroups.ownerUserId,
         isPublic: userGroups.isPublic,
         createdAt: userGroups.createdAt,
+        ownerUsername: users.username,
       })
       .from(userGroupMembership)
       .innerJoin(userGroups, eq(userGroupMembership.groupId, userGroups.id))
+      .innerJoin(users, eq(userGroups.ownerUserId, users.id))
       .where(eq(userGroupMembership.userId, userId));
     
-    const publicGroups = await db.select().from(userGroups).where(eq(userGroups.isPublic, true));
+    // Get public groups with owner username
+    const publicGroups = await db
+      .select({
+        id: userGroups.id,
+        name: userGroups.name,
+        ownerUserId: userGroups.ownerUserId,
+        isPublic: userGroups.isPublic,
+        createdAt: userGroups.createdAt,
+        plaintextPassword: userGroups.plaintextPassword,
+        ownerUsername: users.username,
+      })
+      .from(userGroups)
+      .innerJoin(users, eq(userGroups.ownerUserId, users.id))
+      .where(eq(userGroups.isPublic, true));
     
     // Get member counts for all groups in one query
     const memberCounts = await db

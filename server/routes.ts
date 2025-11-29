@@ -265,6 +265,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to upload avatar" });
     }
   });
+
+  // Update user profile
+  app.patch("/api/user/profile", async (req, res) => {
+    try {
+      if (!req.isAuthenticated() || !req.user) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      // Validate request body with zod schema
+      const profileUpdateSchema = z.object({
+        firstName: z.string().max(100).optional(),
+        lastName: z.string().max(100).optional(),
+        email: z.string().email("Invalid email address").max(255).optional().nullable(),
+        selectedAvatar: z.string().max(500).optional(),
+      });
+      
+      const validationResult = profileUpdateSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Validation failed", 
+          details: validationResult.error.flatten() 
+        });
+      }
+      
+      const { firstName, lastName, email, selectedAvatar } = validationResult.data;
+      
+      // Build updates object with only provided fields
+      const updates: { firstName?: string; lastName?: string; email?: string | null; selectedAvatar?: string } = {};
+      if (firstName !== undefined) updates.firstName = firstName;
+      if (lastName !== undefined) updates.lastName = lastName;
+      if (email !== undefined) updates.email = email;
+      if (selectedAvatar !== undefined) updates.selectedAvatar = selectedAvatar;
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: "No fields to update" });
+      }
+
+      // Check for email uniqueness if email is being updated
+      if (email && email !== req.user.email) {
+        const existingUser = await storage.getUserByEmail(email);
+        if (existingUser && existingUser.id !== req.user.id) {
+          return res.status(400).json({ error: "Email is already in use by another account" });
+        }
+      }
+
+      const updatedUser = await storage.updateUserProfile(req.user.id, updates);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Profile update error:", error);
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
   
   app.get("/api/words/by-text/:word", async (req, res) => {
     try {

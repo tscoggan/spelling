@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { LogOut, Bell, Settings, Volume2, HelpCircle, Mail, BookOpen, Trophy, Gamepad2, List, Send } from "lucide-react";
+import { LogOut, Bell, Settings, Volume2, HelpCircle, Mail, BookOpen, Trophy, Gamepad2, List, Send, UserCircle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
@@ -46,10 +46,19 @@ export function UserHeader() {
   const [todoModalOpen, setTodoModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactMessage, setContactMessage] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
+  
+  // Profile form state
+  const [profileFirstName, setProfileFirstName] = useState("");
+  const [profileLastName, setProfileLastName] = useState("");
+  const [profileEmail, setProfileEmail] = useState("");
+  const [profileAvatar, setProfileAvatar] = useState("");
+  const [profileAvatarFile, setProfileAvatarFile] = useState<File | null>(null);
+  const [profileAvatarPreview, setProfileAvatarPreview] = useState<string | null>(null);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [showWordHints, setShowWordHints] = useState(() => {
     const saved = localStorage.getItem('showWordHints');
@@ -205,6 +214,119 @@ export function UserHeader() {
       });
     },
   });
+
+  // Avatar options for profile edit
+  const avatarOptions = [
+    { emoji: "🐶", label: "Dog" },
+    { emoji: "🐱", label: "Cat" },
+    { emoji: "🐻", label: "Bear" },
+    { emoji: "🦊", label: "Fox" },
+    { emoji: "🐼", label: "Panda" },
+    { emoji: "🦁", label: "Lion" },
+    { emoji: "🐯", label: "Tiger" },
+    { emoji: "🐸", label: "Frog" },
+    { emoji: "🐵", label: "Monkey" },
+    { emoji: "🦉", label: "Owl" },
+    { emoji: "🦄", label: "Unicorn" },
+    { emoji: "🐲", label: "Dragon" },
+  ];
+
+  // Profile update mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: { firstName?: string; lastName?: string; email?: string; selectedAvatar?: string }) => {
+      const response = await apiRequest("PATCH", "/api/user/profile", data);
+      return await response.json();
+    },
+    onSuccess: () => {
+      // Invalidate user query to refresh auth context with updated profile
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      setProfileOpen(false);
+      toast({
+        title: "Success!",
+        description: "Profile updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update profile",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Populate profile form when dialog opens
+  useEffect(() => {
+    if (profileOpen && user) {
+      setProfileFirstName(user.firstName || "");
+      setProfileLastName(user.lastName || "");
+      setProfileEmail(user.email || "");
+      setProfileAvatar(user.selectedAvatar || avatarOptions[0].emoji);
+      setProfileAvatarFile(null);
+      setProfileAvatarPreview(null);
+    }
+  }, [profileOpen, user]);
+
+  const handleProfileAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File Too Large",
+          description: "Avatar image must be less than 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setProfileAvatarFile(file);
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileAvatarPreview(reader.result as string);
+        setProfileAvatar("custom");
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    let avatarUrl = profileAvatar;
+    
+    // Upload custom avatar if selected
+    if (profileAvatarFile && profileAvatar === "custom") {
+      try {
+        const formData = new FormData();
+        formData.append('avatar', profileAvatarFile);
+        
+        const uploadRes = await fetch('/api/upload-avatar', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!uploadRes.ok) {
+          throw new Error('Failed to upload avatar');
+        }
+        
+        const uploadData = await uploadRes.json();
+        avatarUrl = uploadData.avatarUrl;
+      } catch (error) {
+        toast({
+          title: "Avatar Upload Failed",
+          description: "Failed to upload custom avatar. Keeping current avatar.",
+          variant: "destructive",
+        });
+        avatarUrl = user?.selectedAvatar || avatarOptions[0].emoji;
+      }
+    }
+    
+    updateProfileMutation.mutate({
+      firstName: profileFirstName,
+      lastName: profileLastName,
+      email: profileEmail,
+      selectedAvatar: avatarUrl,
+    });
+  };
 
   const handleLogout = () => {
     logoutMutation.mutate();
@@ -453,7 +575,11 @@ export function UserHeader() {
       <div className="flex justify-end mb-6">
         <Card className="px-4 py-2">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
+            <button 
+              className="flex items-center gap-2 hover-elevate active-elevate-2 rounded-md px-2 py-1 cursor-pointer"
+              onClick={() => setProfileOpen(true)}
+              data-testid="button-edit-profile"
+            >
               {user?.selectedAvatar && (
                 user.selectedAvatar.startsWith('/objects/') ? (
                   <img 
@@ -469,7 +595,7 @@ export function UserHeader() {
               <div className="font-bold text-gray-800" data-testid="text-username">
                 {user?.username}
               </div>
-            </div>
+            </button>
             <div className="flex items-center gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -952,6 +1078,141 @@ export function UserHeader() {
               </div>
             </div>
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserCircle className="w-5 h-5" />
+              Edit Profile
+            </DialogTitle>
+            <DialogDescription>
+              Update your profile information
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="profile-first-name">First Name</Label>
+                <Input
+                  id="profile-first-name"
+                  type="text"
+                  value={profileFirstName}
+                  onChange={(e) => setProfileFirstName(e.target.value)}
+                  placeholder="First name"
+                  data-testid="input-profile-firstname"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="profile-last-name">Last Name</Label>
+                <Input
+                  id="profile-last-name"
+                  type="text"
+                  value={profileLastName}
+                  onChange={(e) => setProfileLastName(e.target.value)}
+                  placeholder="Last name"
+                  data-testid="input-profile-lastname"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="profile-email">Email</Label>
+              <Input
+                id="profile-email"
+                type="email"
+                value={profileEmail}
+                onChange={(e) => setProfileEmail(e.target.value)}
+                placeholder="your.email@example.com"
+                data-testid="input-profile-email"
+              />
+              <p className="text-sm text-gray-500">Used for password reset requests</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Choose Your Avatar</Label>
+              <div className="grid grid-cols-6 gap-2">
+                {avatarOptions.map((avatar) => (
+                  <button
+                    key={avatar.emoji}
+                    type="button"
+                    onClick={() => {
+                      setProfileAvatar(avatar.emoji);
+                      setProfileAvatarFile(null);
+                      setProfileAvatarPreview(null);
+                    }}
+                    className={`
+                      aspect-square rounded-lg text-3xl flex items-center justify-center
+                      transition-all hover-elevate active-elevate-2
+                      ${profileAvatar === avatar.emoji
+                        ? "bg-purple-100 border-2 border-purple-600"
+                        : "bg-white border border-gray-200"
+                      }
+                    `}
+                    data-testid={`button-profile-avatar-${avatar.label.toLowerCase()}`}
+                    aria-label={avatar.label}
+                  >
+                    {avatar.emoji}
+                  </button>
+                ))}
+              </div>
+              <div className="pt-2">
+                <Label htmlFor="profile-avatar-upload" className="cursor-pointer">
+                  <div 
+                    className={`
+                      border-2 border-dashed rounded-lg p-4 flex items-center justify-center gap-3 transition-all hover-elevate active-elevate-2
+                      ${profileAvatar === "custom"
+                        ? "border-purple-600 bg-purple-50"
+                        : "border-gray-300 bg-white"
+                      }
+                    `}
+                  >
+                    {profileAvatarPreview ? (
+                      <>
+                        <img 
+                          src={profileAvatarPreview} 
+                          alt="Custom avatar preview" 
+                          className="w-12 h-12 rounded-full object-cover"
+                        />
+                        <span className="text-sm font-medium">Custom Avatar Selected</span>
+                      </>
+                    ) : user?.selectedAvatar?.startsWith('/objects/') ? (
+                      <>
+                        <img 
+                          src={user.selectedAvatar} 
+                          alt="Current avatar" 
+                          className="w-12 h-12 rounded-full object-cover"
+                        />
+                        <span className="text-sm font-medium">Upload New Avatar</span>
+                      </>
+                    ) : (
+                      <>
+                        <UserCircle className="w-6 h-6 text-gray-400" />
+                        <span className="text-sm font-medium">Upload Custom Avatar</span>
+                      </>
+                    )}
+                  </div>
+                  <Input
+                    id="profile-avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleProfileAvatarFileChange}
+                    className="hidden"
+                    data-testid="input-profile-custom-avatar"
+                  />
+                </Label>
+                <p className="text-sm text-gray-500 mt-1">Max 5MB, JPG/PNG/GIF</p>
+              </div>
+            </div>
+            <Button
+              onClick={handleSaveProfile}
+              className="w-full"
+              disabled={updateProfileMutation.isPending}
+              data-testid="button-save-profile"
+            >
+              {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </>

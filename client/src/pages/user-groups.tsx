@@ -767,7 +767,8 @@ export default function UserGroupsPage() {
                               <Lock className="w-3 h-3 text-gray-600 flex-shrink-0" />
                             )}
                           </div>
-                          <p className="text-xs text-gray-600 mb-2">Member</p>
+                          <p className="text-xs text-gray-600 mb-1">Member</p>
+                          <p className="text-xs text-gray-500 mb-2" data-testid={`text-owner-${group.id}`}>Owner: {group.ownerUsername}</p>
                           <Button
                             variant="outline"
                             size="sm"

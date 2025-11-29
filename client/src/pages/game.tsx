@@ -3,7 +3,7 @@ import { useLocation, useSearch } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Volume2, Home, ArrowRight, CheckCircle2, XCircle, Sparkles, Flame, Clock, SkipForward, Trophy, Settings, BookOpen, MessageSquare, Globe } from "lucide-react";
+import { Volume2, Home, ArrowRight, CheckCircle2, XCircle, Sparkles, Flame, Clock, SkipForward, Trophy, Settings, BookOpen, MessageSquare, Globe, RotateCcw } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Word, GameMode } from "@shared/schema";
@@ -110,6 +110,14 @@ export default function Game() {
   const virtualWords = params.get("virtualWords");
   const gameMode = (params.get("mode") || "practice") as GameMode;
   const quizCount = params.get("quizCount") || "all";
+  
+  // Key for forcing GameContent remount on restart (resets all game state cleanly)
+  const [gameResetKey, setGameResetKey] = useState(0);
+  
+  // Handler to restart game by incrementing key (causes full remount with fresh state)
+  const handleRestart = useCallback(() => {
+    setGameResetKey(prev => prev + 1);
+  }, []);
 
   // Defense-in-depth: Redirect if no listId and no virtualWords
   useEffect(() => {
@@ -133,12 +141,13 @@ export default function Game() {
 
   // Only render game content when listId or virtualWords is confirmed
   // Pass all parameters as props to avoid GameContent parsing them
-  return <GameContent listId={listId || undefined} virtualWords={virtualWords || undefined} gameMode={gameMode} quizCount={quizCount} />;
+  // Key prop forces complete remount when gameResetKey changes (clean restart)
+  return <GameContent key={gameResetKey} listId={listId || undefined} virtualWords={virtualWords || undefined} gameMode={gameMode} quizCount={quizCount} onRestart={handleRestart} />;
 }
 
 // Actual game component with all the hooks - only rendered when listId or virtualWords exists
 // Receives all parameters as props to ensure hooks always have valid data
-function GameContent({ listId, virtualWords, gameMode, quizCount }: { listId?: string; virtualWords?: string; gameMode: GameMode; quizCount: string }) {
+function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: { listId?: string; virtualWords?: string; gameMode: GameMode; quizCount: string; onRestart: () => void }) {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   
@@ -3342,7 +3351,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount }: { listId?: s
                 variant="default"
                 size="lg"
                 className="flex-1 text-lg h-12"
-                onClick={() => window.location.reload()}
+                onClick={onRestart}
                 data-testid="button-play-again"
               >
                 Play Again
@@ -3979,7 +3988,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount }: { listId?: s
                           disabled={gameMode === "scramble" ? placedLetters.some(l => l === null) : !userInput.trim()}
                           data-testid="button-submit"
                         >
-                          {gameMode === "quiz" ? "Submit" : "Check"}
+                          {gameMode === "quiz" || gameMode === "timed" ? "Submit" : "Check"}
                           <ArrowRight className="w-5 h-5 ml-2" />
                         </Button>
                       )}
@@ -4084,6 +4093,22 @@ function GameContent({ listId, virtualWords, gameMode, quizCount }: { listId?: s
               </motion.div>
             )}
           </AnimatePresence>
+          
+          {/* Restart button - shown during active gameplay only */}
+          {!gameComplete && (
+            <div className="mt-4 flex justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onRestart}
+                data-testid="button-restart"
+                className="text-gray-600 hover:text-gray-800"
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Restart
+              </Button>
+            </div>
+          )}
         </div>
         )}
       </main>
