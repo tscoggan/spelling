@@ -10,7 +10,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { UserHeader } from "@/components/user-header";
-import shopBackground from "@assets/Star shop - landscape (colorful)_1764451136278.png";
+import shopBackground from "@assets/Star shop - landscape (no title)_1764452486174.png";
+import shopTitle from "@assets/Star Shop title_1764452486174.png";
 import doOverImage from "@assets/Do Over (1 Word) item_1764449029422.png";
 import secondChanceImage from "@assets/2nd Chance (All Mistakes) item_1764449029422.png";
 import { SHOP_ITEMS, ShopItem, ShopItemId } from "@shared/schema";
@@ -101,7 +102,7 @@ export default function StarShop() {
         <img 
           src={shopBackground} 
           alt="" 
-          className="w-full h-full object-contain object-top bg-[#5FBCD3]"
+          className="w-full h-full object-cover"
         />
       </div>
 
@@ -120,11 +121,21 @@ export default function StarShop() {
           <UserHeader />
         </header>
 
-        <main className="flex-1 flex flex-col items-center pt-4 px-4">
+        <main className="flex-1 flex flex-col items-center pt-2 px-4">
+          <motion.img
+            src={shopTitle}
+            alt="Star Shop"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="h-12 object-contain mb-3"
+            data-testid="img-shop-title"
+          />
+          
           <div className="w-full max-w-md flex items-center justify-center mb-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.1 }}
               className="flex items-center justify-center gap-2 px-5 py-2 rounded-xl bg-[#4A9FD4] border-4 border-[#3A7FAA] shadow-lg"
               data-testid="star-counter"
             >
