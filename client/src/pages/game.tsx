@@ -278,6 +278,12 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
   const [secondChanceWords, setSecondChanceWords] = useState<Word[]>([]);
   const [secondChanceIndex, setSecondChanceIndex] = useState(0);
   const [secondChanceAnswers, setSecondChanceAnswers] = useState<QuizAnswer[]>([]);
+  // Store original game metrics before 2nd Chance to merge results
+  const [originalGameMetrics, setOriginalGameMetrics] = useState<{
+    totalWords: number;
+    correctCount: number;
+    incorrectWords: string[];
+  } | null>(null);
   
   // Ref for crossword overflow container to center grid
   const crosswordScrollRef = useRef<HTMLDivElement>(null);
@@ -1417,12 +1423,39 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
       }
       // For practice/quiz/scramble: activeWords?.length is already the actual game words count
       
-      // Calculate accuracy using actual words attempted
-      const accuracy = gameMode === "crossword"
-        ? finalAccuracy
-        : Math.round((correctCount / (actualWordsCount || 1)) * 100);
+      // If in second chance mode, merge with original game metrics
+      // Example: Original game had 10 words, 7 correct, 3 wrong
+      // 2nd Chance: user retries 3 wrong words, gets 2 right
+      // Final result: 10 total, 9 correct (7 original + 2 from 2nd chance), 1 still wrong
+      let mergedTotalWords = actualWordsCount;
+      let mergedCorrectCount = correctCount;
+      let mergedIncorrectWords = incorrectWords;
       
-      console.log("Saving score to leaderboard:", { score, accuracy, gameMode, sessionId, correctCount, actualWordsCount });
+      if (originalGameMetrics) {
+        // Use original total words count (not just 2nd chance words)
+        mergedTotalWords = originalGameMetrics.totalWords;
+        // Combine original correct count with 2nd chance correct count
+        mergedCorrectCount = originalGameMetrics.correctCount + correctCount;
+        // Only the words still wrong after 2nd chance
+        mergedIncorrectWords = incorrectWords;
+        
+        console.log("🔄 Merging 2nd Chance results:", {
+          originalTotal: originalGameMetrics.totalWords,
+          originalCorrect: originalGameMetrics.correctCount,
+          originalIncorrect: originalGameMetrics.incorrectWords.length,
+          secondChanceCorrect: correctCount,
+          mergedTotal: mergedTotalWords,
+          mergedCorrect: mergedCorrectCount,
+          stillIncorrect: mergedIncorrectWords.length
+        });
+      }
+      
+      // Calculate accuracy using merged values
+      const accuracy = gameMode === "crossword"
+        ? (mergedTotalWords > 0 ? Math.round((mergedCorrectCount / mergedTotalWords) * 100) : finalAccuracy)
+        : Math.round((mergedCorrectCount / (mergedTotalWords || 1)) * 100);
+      
+      console.log("Saving score to leaderboard:", { score, accuracy, gameMode, sessionId, correctCount: mergedCorrectCount, actualWordsCount: mergedTotalWords });
       
       // Update game session with final stats first, then save score
       const updateAndSave = async () => {
@@ -1431,10 +1464,10 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
           await updateSessionMutation.mutateAsync({
             sessionId,
             score,
-            totalWords: actualWordsCount,
-            correctWords: correctCount,
+            totalWords: mergedTotalWords,
+            correctWords: mergedCorrectCount,
             bestStreak: streak,
-            incorrectWords,
+            incorrectWords: mergedIncorrectWords,
             isComplete: true,
             completedAt: new Date(),
           });
@@ -1475,7 +1508,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
       updateAndSave();
       setScoreSaved(true);
     }
-  }, [gameComplete, scoreSaved, score, gameMode, correctCount, finalAccuracy, words, sessionId, user, streak, virtualWords]);
+  }, [gameComplete, scoreSaved, score, gameMode, correctCount, finalAccuracy, words, sessionId, user, streak, virtualWords, originalGameMetrics]);
 
   // Timed mode: Single 60-second timer for entire game
   useEffect(() => {
@@ -2586,6 +2619,15 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
     
     // Crossword mode has special handling - keep grid, highlight mistakes
     if (gameMode === "crossword") {
+      // Store original crossword metrics before 2nd Chance
+      const originalTotal = crosswordGrid?.entries.length || 0;
+      const originalCorrect = originalTotal - incorrectWords.length;
+      setOriginalGameMetrics({
+        totalWords: originalTotal,
+        correctCount: originalCorrect,
+        incorrectWords: [...incorrectWords],
+      });
+      
       // CROSSWORD 2ND CHANCE: Keep grid intact, highlight mistakes, allow corrections
       setGameComplete(false);  // Exit results screen
       setScoreSaved(false);    // Allow new score to be saved
@@ -2604,6 +2646,22 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
     const incorrectWordObjects = words.filter(w => incorrectWords.includes(w.word));
     
     if (incorrectWordObjects.length === 0) return;
+    
+    // Store original game metrics before 2nd Chance to merge results later
+    // Calculate original totalWords based on game mode
+    let originalTotal = words.length;
+    if (gameMode === "timed") {
+      // Timed mode: only count words that were actually attempted
+      originalTotal = timeLeft === 0 ? currentWordIndex : currentWordIndex + 1;
+    } else if (gameMode === "mistake") {
+      originalTotal = currentWordIndex + 1;
+    }
+    
+    setOriginalGameMetrics({
+      totalWords: originalTotal,
+      correctCount: correctCount,
+      incorrectWords: [...incorrectWords],
+    });
     
     // Set second chance words FIRST before setting mode (order matters for activeWords)
     setSecondChanceWords(incorrectWordObjects);
