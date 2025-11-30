@@ -3623,12 +3623,12 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
                   src={accuracy === 100 ? themeAssets.mascotTrophy : themeAssets.mascotGoodTry} 
                   alt={accuracy === 100 ? "Trophy Mascot" : "Good Try Mascot"}
                   className="w-32 h-32 md:w-40 md:h-40 mx-auto mb-2 object-contain"
-                  animate={{ y: [0, -8, 0] }}
-                  transition={{ 
+                  animate={currentTheme === "default" ? { y: [0, -8, 0] } : undefined}
+                  transition={currentTheme === "default" ? { 
                     duration: 2.5, 
                     repeat: Infinity, 
                     ease: "easeInOut" 
-                  }}
+                  } : undefined}
                 />
                 <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-2 font-crayon" data-testid="text-game-complete">
                   {accuracy === 100 ? "Amazing Work!" : 
@@ -3648,12 +3648,12 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
                   src={accuracy === 100 ? themeAssets.mascotTrophy : themeAssets.mascotGoodTry} 
                   alt={accuracy === 100 ? "Trophy Mascot" : "Good Try Mascot"}
                   className="w-32 h-32 md:w-40 md:h-40 object-contain"
-                  animate={{ y: [0, -8, 0] }}
-                  transition={{ 
+                  animate={currentTheme === "default" ? { y: [0, -8, 0] } : undefined}
+                  transition={currentTheme === "default" ? { 
                     duration: 2.5, 
                     repeat: Infinity, 
                     ease: "easeInOut" 
-                  }}
+                  } : undefined}
                 />
               </div>
             ) : (
