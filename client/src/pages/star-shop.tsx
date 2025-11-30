@@ -14,7 +14,9 @@ import shopBackground from "@assets/Star shop - landscape (no title)_17644524861
 import shopTitle from "@assets/Star Shop title_1764452486174.png";
 import doOverImage from "@assets/Do Over (1 Word) item_1764449029422.png";
 import secondChanceImage from "@assets/2nd Chance (All Mistakes) item_1764449029422.png";
-import { SHOP_ITEMS, ShopItem, ShopItemId } from "@shared/schema";
+import pirateThemeImage from "@assets/Pirate with trophy_1764522894407.png";
+import { SHOP_ITEMS, ShopItem, ShopItemId, ThemeId } from "@shared/schema";
+import { useTheme } from "@/hooks/use-theme";
 
 interface UserItem {
   id: number;
@@ -32,6 +34,7 @@ interface ShopData {
 const ITEM_IMAGES: Record<ShopItemId, string> = {
   do_over: doOverImage,
   second_chance: secondChanceImage,
+  pirate_theme: pirateThemeImage,
 };
 
 export default function StarShop() {

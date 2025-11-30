@@ -167,17 +167,49 @@ export const SHOP_ITEMS = {
     name: "Do Over",
     description: "Retry one incorrect word during a game with no penalty",
     cost: 1,
+    type: "consumable" as const,
   },
   second_chance: {
     id: "second_chance",
     name: "2nd Chance",
     description: "Retry all incorrect words at the end of a game with no penalty",
     cost: 5,
+    type: "consumable" as const,
+  },
+  pirate_theme: {
+    id: "pirate_theme",
+    name: "Pirate Theme",
+    description: "Set sail for adventure with a pirate-themed background and captain character!",
+    cost: 5,
+    type: "theme" as const,
+    themeId: "pirate",
   },
 } as const;
 
 export type ShopItemId = keyof typeof SHOP_ITEMS;
 export type ShopItem = typeof SHOP_ITEMS[ShopItemId];
+
+export type ThemeId = "default" | "pirate";
+
+export interface ThemeAssets {
+  backgroundLandscape: string;
+  backgroundPortrait: string;
+  mascotTrophy: string;
+  mascotGoodTry: string;
+  name: string;
+}
+
+export const AVAILABLE_THEMES: Record<ThemeId, { name: string; requiresPurchase: boolean; shopItemId?: ShopItemId }> = {
+  default: {
+    name: "Outdoor Adventure",
+    requiresPurchase: false,
+  },
+  pirate: {
+    name: "Pirate Theme",
+    requiresPurchase: true,
+    shopItemId: "pirate_theme",
+  },
+};
 
 export const achievements = pgTable("achievements", {
   id: serial("id").primaryKey(),
