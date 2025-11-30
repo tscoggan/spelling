@@ -285,6 +285,13 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
     incorrectWords: string[];
   } | null>(null);
   
+  // Cache for mistake mode questions to preserve misspellings for Do Over and 2nd Chance
+  const mistakeQuestionCacheRef = useRef<Map<string, {
+    choices: string[];
+    misspelledIndex: number;
+    correctSpelling: string;
+  }>>(new Map());
+  
   // Ref for crossword overflow container to center grid
   const crosswordScrollRef = useRef<HTMLDivElement>(null);
   
@@ -2421,8 +2428,23 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
 
   // Mistake mode: Initialize 4 word choices when word changes
   useEffect(() => {
-    if (gameMode === "mistake" && words && words.length >= 4) {
+    if (gameMode === "mistake" && currentWord && words && words.length >= 4) {
       const initializeMistakeChoices = async () => {
+        // Check cache first - use the current word as the cache key
+        const cacheKey = currentWord.word;
+        const cached = mistakeQuestionCacheRef.current.get(cacheKey);
+        
+        console.log(`🔍 Mistake mode cache check: key="${cacheKey}", cacheSize=${mistakeQuestionCacheRef.current.size}, found=${!!cached}`);
+        
+        if (cached) {
+          // Use cached data for Do Over and 2nd Chance retries
+          console.log(`🔄 Mistake mode: Using cached question for "${cacheKey}"`);
+          setMistakeChoices(cached.choices);
+          setMisspelledIndex(cached.misspelledIndex);
+          setCorrectSpelling(cached.correctSpelling);
+          return;
+        }
+        
         // Get 4 random words from the word list (not just current word)
         const availableWords = [...words];
         const selectedWords: string[] = [];
@@ -2451,6 +2473,14 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
         console.log(`🎯 Mistake mode: Selected words:`, selectedWords);
         console.log(`❌ Misspelled word at index ${misspellIdx}:`, choices[misspellIdx], `(correct: ${correctWord})`);
         
+        // Cache the generated question using the misspelled word as key
+        // so 2nd Chance can look it up when replaying incorrect words
+        mistakeQuestionCacheRef.current.set(cacheKey, {
+          choices,
+          misspelledIndex: misspellIdx,
+          correctSpelling: correctWord,
+        });
+        
         setMistakeChoices(choices);
         setMisspelledIndex(misspellIdx);
         setCorrectSpelling(correctWord);
@@ -2458,7 +2488,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
       
       initializeMistakeChoices();
     }
-  }, [gameMode, currentWordIndex, words]);
+  }, [gameMode, currentWordIndex, words, currentWord]);
 
   // Set loading state immediately when entering crossword mode
   useEffect(() => {
