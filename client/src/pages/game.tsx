@@ -48,6 +48,33 @@ import goodTryBeeImage from "@assets/Bee with good try_1763852047680.png";
 // Import achievement star
 import achievementStar from "@assets/1 star_1763913172283.png";
 
+// Import Star Shop item images
+import doOverImage from "@assets/Do Over (1 Word) item_1764449029422.png";
+import secondChanceImage from "@assets/2nd Chance (All Mistakes) item_1764449029422.png";
+
+// Import dialog components
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+
+interface UserItem {
+  id: number;
+  userId: number;
+  itemId: string;
+  quantity: number;
+}
+
+interface ShopData {
+  stars: number;
+  inventory: UserItem[];
+  catalog: Record<string, any>;
+}
+
 interface QuizAnswer {
   word: Word;
   userAnswer: string;
@@ -240,6 +267,18 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
   const [completedGrid, setCompletedGrid] = useState<{inputs: {[key: string]: string}, grid: CrosswordGrid} | null>(null);
   const [finalAccuracy, setFinalAccuracy] = useState<number>(0);
   
+  // Do Over and 2nd Chance states
+  const [showDoOverDialog, setShowDoOverDialog] = useState(false);
+  const [doOverPendingResult, setDoOverPendingResult] = useState<{
+    userAnswer: string;
+    correctWord: string;
+    wordIndex: number;
+  } | null>(null);
+  const [secondChanceMode, setSecondChanceMode] = useState(false);
+  const [secondChanceWords, setSecondChanceWords] = useState<Word[]>([]);
+  const [secondChanceIndex, setSecondChanceIndex] = useState(0);
+  const [secondChanceAnswers, setSecondChanceAnswers] = useState<QuizAnswer[]>([]);
+  
   // Ref for crossword overflow container to center grid
   const crosswordScrollRef = useRef<HTMLDivElement>(null);
   
@@ -384,6 +423,32 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
     },
   });
 
+  // Fetch user's Star Shop items (Do Over, 2nd Chance)
+  const { data: shopData, refetch: refetchShopData } = useQuery<ShopData>({
+    queryKey: ["/api/user-items"],
+    enabled: !!user,
+  });
+
+  // Helper to get item quantity from inventory
+  const getItemQuantity = (itemId: string): number => {
+    if (!shopData?.inventory) return 0;
+    const item = shopData.inventory.find(i => i.itemId === itemId);
+    return item?.quantity || 0;
+  };
+
+  // Mutation for using Star Shop items
+  const useItemMutation = useMutation({
+    mutationFn: async ({ itemId, quantity = 1 }: { itemId: string; quantity?: number }) => {
+      const response = await apiRequest("POST", "/api/user-items/use", { itemId, quantity });
+      return await response.json();
+    },
+    onSuccess: () => {
+      // Refetch user items to update quantity display
+      refetchShopData();
+      queryClient.invalidateQueries({ queryKey: ["/api/user-items"] });
+    },
+  });
+
   const saveScoreMutation = useMutation({
     mutationFn: async (scoreData: { score: number; accuracy: number; gameMode: GameMode; userId: number | null; sessionId: number }) => {
       const response = await apiRequest("POST", "/api/leaderboard", scoreData);
@@ -414,7 +479,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
     // Determine if star should be awarded based on game mode and performance
     if (scoreData.gameMode === "timed") {
       // Timed: Need 10+ words correct (or all words for lists <10) with 100% accuracy on attempted words
-      const totalWords = words?.length || 0;
+      const totalWords = activeWords?.length || 0;
       const minRequired = Math.min(10, totalWords);
       earnedStar = correctCount >= minRequired && scoreData.accuracy === 100;
       console.log("🏆 Timed mode achievement check:", { correctCount, minRequired, accuracy: scoreData.accuracy, earnedStar });
@@ -737,7 +802,9 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
     localStorage.setItem('showWordHints', String(showWordHints));
   }, [showWordHints]);
 
-  const currentWord = words?.[currentWordIndex];
+  // Use secondChanceWords when in second chance mode, otherwise use regular words
+  const activeWords = secondChanceMode ? secondChanceWords : words;
+  const currentWord = activeWords?.[currentWordIndex];
 
   const speakWord = (word: string, onComplete?: () => void) => {
     if ('speechSynthesis' in window) {
@@ -1333,7 +1400,8 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
     
     if (gameComplete && !scoreSaved && sessionId && user) {
       // Calculate actual words used based on game mode
-      let actualWordsCount = words?.length || 0;
+      // Use activeWords for second chance mode, otherwise use words
+      let actualWordsCount = activeWords?.length || 0;
       if (gameMode === "mistake") {
         // Mistake: Use actual number of questions attempted (answered + current if answered)
         // currentWordIndex tracks current question being shown, so +1 for total attempted
@@ -1347,7 +1415,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
         // If all words checked (timeLeft > 0): currentWordIndex + 1 = words checked
         actualWordsCount = timeLeft === 0 ? currentWordIndex : currentWordIndex + 1;
       }
-      // For practice/quiz/scramble: words?.length is already the actual game words count
+      // For practice/quiz/scramble: activeWords?.length is already the actual game words count
       
       // Calculate accuracy using actual words attempted
       const accuracy = gameMode === "crossword"
@@ -2462,6 +2530,183 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
     setGameComplete(true);
   };
 
+  // Helper function to check if Do Over should be offered
+  const shouldOfferDoOver = (mode: GameMode): boolean => {
+    // Do Over is not available in Practice or Crossword modes
+    return mode !== "practice" && mode !== "crossword" && getItemQuantity("do_over") > 0;
+  };
+
+  // Process incorrect answer (common logic extracted)
+  const processIncorrectAnswer = () => {
+    playIncorrectSound();
+    setStreak(0);
+    if (currentWord) {
+      setIncorrectWords([...incorrectWords, currentWord.word]);
+    }
+    resetWordStreakMutation.mutate();
+  };
+
+  // Handle using Do Over item
+  const handleUseDoOver = () => {
+    if (!doOverPendingResult) return;
+    
+    // Use the Do Over item
+    useItemMutation.mutate({ itemId: "do_over", quantity: 1 });
+    
+    // Close dialog
+    setShowDoOverDialog(false);
+    setDoOverPendingResult(null);
+    
+    // Handle based on game mode
+    if (gameMode === "scramble" && currentWord) {
+      // Reset placed letters to allow retry
+      setPlacedLetters(new Array(currentWord.word.length).fill(null));
+    } else if (gameMode === "mistake") {
+      // Reset selection to allow retry
+      setSelectedChoiceIndex(-1);
+    } else {
+      // Quiz, Timed, Standard modes - reset input and allow retry
+      setUserInput("");
+      
+      // Keep focus on input
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      }, 100);
+    }
+  };
+
+  // Handle using 2nd Chance item
+  const handleUseSecondChance = () => {
+    if (!words) return;
+    
+    // Use the 2nd Chance item
+    useItemMutation.mutate({ itemId: "second_chance", quantity: 1 });
+    
+    // Crossword mode has special handling - keep grid, highlight mistakes
+    if (gameMode === "crossword") {
+      // CROSSWORD 2ND CHANCE: Keep grid intact, highlight mistakes, allow corrections
+      setGameComplete(false);  // Exit results screen
+      setScoreSaved(false);    // Allow new score to be saved
+      setCompletedGrid(null);  // Clear completed grid to return to editing mode
+      setIncorrectWords([]);   // Clear for fresh tracking on re-submit
+      setAchievementEarned(false);
+      setSecondChanceMode(true);
+      
+      // Highlight the incorrect cells
+      handleShowMistakes();
+      
+      return;
+    }
+    
+    // For other modes: Filter words to only include incorrect ones
+    const incorrectWordObjects = words.filter(w => incorrectWords.includes(w.word));
+    
+    if (incorrectWordObjects.length === 0) return;
+    
+    // Set second chance words FIRST before setting mode (order matters for activeWords)
+    setSecondChanceWords(incorrectWordObjects);
+    
+    // Reset ALL game state for second chance round
+    // CRITICAL: Reset these in the right order to avoid race conditions
+    setGameComplete(false);  // Must be first to exit results screen
+    setScoreSaved(false);    // Allow new score to be saved
+    setCurrentWordIndex(0);
+    setScore(0);
+    setCorrectCount(0);
+    setStreak(0);
+    setBestStreak(0);
+    setUserInput("");
+    setShowFeedback(false);
+    setIsCorrect(false);
+    setIncorrectWords([]);
+    setQuizAnswers([]);
+    setSecondChanceAnswers([]);
+    setDoOverPendingResult(null);
+    setShowDoOverDialog(false);
+    setAchievementEarned(false);
+    
+    // Enter second chance mode AFTER resetting state
+    setSecondChanceMode(true);
+    
+    // For scramble mode, reset placed letters and scramble the first word
+    if (gameMode === "scramble" && incorrectWordObjects[0]) {
+      const word = incorrectWordObjects[0].word;
+      setPlacedLetters(new Array(word.length).fill(null));
+      // Shuffle letters for the first word
+      const letters = word.split('');
+      for (let i = letters.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [letters[i], letters[j]] = [letters[j], letters[i]];
+      }
+      setScrambledLetters(letters);
+    }
+    
+    // For mistake mode, reset selection
+    if (gameMode === "mistake") {
+      setSelectedChoiceIndex(-1);
+    }
+    
+    // Focus input for typing modes
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 100);
+  };
+
+  // Handle declining Do Over
+  const handleDeclineDoOver = () => {
+    if (!doOverPendingResult) return;
+    
+    // Process the incorrect answer (sound, streak reset, add to incorrectWords)
+    processIncorrectAnswer();
+    
+    // Close dialog
+    setShowDoOverDialog(false);
+    setDoOverPendingResult(null);
+    
+    // Continue with normal flow based on game mode
+    if (gameMode === "quiz") {
+      const newAnswer: QuizAnswer = {
+        word: currentWord!,
+        userAnswer: doOverPendingResult.userAnswer,
+        isCorrect: false,
+      };
+      setQuizAnswers([...quizAnswers, newAnswer]);
+      setUserInput("");
+      
+      if (currentWordIndex < (activeWords?.length || 10) - 1) {
+        setCurrentWordIndex(currentWordIndex + 1);
+      } else {
+        const allAnswers = [...quizAnswers, newAnswer];
+        const totalCorrect = allAnswers.filter(a => a.isCorrect).length;
+        setScore(totalCorrect * 20);
+        setGameComplete(true);
+      }
+    } else if (gameMode === "timed") {
+      setUserInput("");
+      if (activeWords && currentWordIndex < activeWords.length - 1) {
+        setCurrentWordIndex(currentWordIndex + 1);
+      } else {
+        setGameComplete(true);
+      }
+    } else if (gameMode === "scramble") {
+      // Show feedback for scramble mode
+      setIsCorrect(false);
+      setShowFeedback(true);
+    } else if (gameMode === "mistake") {
+      // Show feedback for mistake mode
+      setIsCorrect(false);
+      setShowFeedback(true);
+    } else {
+      // Standard mode with feedback
+      setIsCorrect(false);
+      setShowFeedback(true);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentWord || !userInput.trim()) return;
@@ -2469,15 +2714,14 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
     const correct = userInput.trim().toLowerCase() === currentWord.word.toLowerCase();
     
     if (gameMode === "quiz") {
-      const newAnswer: QuizAnswer = {
-        word: currentWord,
-        userAnswer: userInput.trim(),
-        isCorrect: correct,
-      };
-      
-      setQuizAnswers([...quizAnswers, newAnswer]);
-      
       if (correct) {
+        const newAnswer: QuizAnswer = {
+          word: currentWord,
+          userAnswer: userInput.trim(),
+          isCorrect: true,
+        };
+        setQuizAnswers([...quizAnswers, newAnswer]);
+        
         playCorrectSound();
         setCorrectCount(correctCount + 1);
         const newStreak = streak + 1;
@@ -2486,29 +2730,47 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
           setBestStreak(newStreak);
         }
         incrementWordStreakMutation.mutate();
-      } else {
-        playIncorrectSound();
-        setStreak(0);
-        setIncorrectWords([...incorrectWords, currentWord.word]);
-        resetWordStreakMutation.mutate();
-      }
-      
-      setUserInput("");
-      
-      if (currentWordIndex < (words?.length || 10) - 1) {
-        setCurrentWordIndex(currentWordIndex + 1);
-      } else {
-        const allAnswers = [...quizAnswers, { word: currentWord, userAnswer: userInput.trim(), isCorrect: correct }];
-        const totalCorrect = allAnswers.filter(a => a.isCorrect).length;
-        const points = 20;
-        setScore(totalCorrect * points);
         
-        // Play celebration sound if all answers correct
-        if (totalCorrect === allAnswers.length) {
+        setUserInput("");
+        
+        if (currentWordIndex < (activeWords?.length || 10) - 1) {
+          setCurrentWordIndex(currentWordIndex + 1);
+        } else {
+          const allAnswers = [...quizAnswers, newAnswer];
+          const totalCorrect = allAnswers.filter(a => a.isCorrect).length;
+          setScore(totalCorrect * 20);
           playCelebrationSound();
+          setGameComplete(true);
         }
-        
-        setGameComplete(true);
+      } else {
+        // Incorrect - check for Do Over
+        if (shouldOfferDoOver(gameMode)) {
+          setDoOverPendingResult({
+            userAnswer: userInput.trim(),
+            correctWord: currentWord.word,
+            wordIndex: currentWordIndex,
+          });
+          setShowDoOverDialog(true);
+        } else {
+          processIncorrectAnswer();
+          
+          const newAnswer: QuizAnswer = {
+            word: currentWord,
+            userAnswer: userInput.trim(),
+            isCorrect: false,
+          };
+          setQuizAnswers([...quizAnswers, newAnswer]);
+          setUserInput("");
+          
+          if (currentWordIndex < (activeWords?.length || 10) - 1) {
+            setCurrentWordIndex(currentWordIndex + 1);
+          } else {
+            const allAnswers = [...quizAnswers, newAnswer];
+            const totalCorrect = allAnswers.filter(a => a.isCorrect).length;
+            setScore(totalCorrect * 20);
+            setGameComplete(true);
+          }
+        }
       }
     } else if (gameMode === "timed") {
       // Timed mode: No feedback, immediate next word
@@ -2523,26 +2785,37 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
           setBestStreak(newStreak);
         }
         incrementWordStreakMutation.mutate();
+        
+        setUserInput("");
+        
+        if (activeWords && currentWordIndex < activeWords.length - 1) {
+          setCurrentWordIndex(currentWordIndex + 1);
+        } else {
+          setGameComplete(true);
+        }
       } else {
-        playIncorrectSound();
-        setStreak(0);
-        setIncorrectWords([...incorrectWords, currentWord.word]);
-        resetWordStreakMutation.mutate();
-      }
-      
-      setUserInput("");
-      
-      // Move to next word if available
-      if (words && currentWordIndex < words.length - 1) {
-        setCurrentWordIndex(currentWordIndex + 1);
-      } else {
-        // If we run out of words before timer, end game
-        setGameComplete(true);
+        // Incorrect - check for Do Over
+        if (shouldOfferDoOver(gameMode)) {
+          setDoOverPendingResult({
+            userAnswer: userInput.trim(),
+            correctWord: currentWord.word,
+            wordIndex: currentWordIndex,
+          });
+          setShowDoOverDialog(true);
+        } else {
+          processIncorrectAnswer();
+          setUserInput("");
+          
+          if (activeWords && currentWordIndex < activeWords.length - 1) {
+            setCurrentWordIndex(currentWordIndex + 1);
+          } else {
+            setGameComplete(true);
+          }
+        }
       }
     } else {
       // Standard and Practice modes: Show feedback
       setIsCorrect(correct);
-      setShowFeedback(true);
 
       if (correct) {
         playCorrectSound();
@@ -2555,11 +2828,20 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
           setBestStreak(newStreak);
         }
         incrementWordStreakMutation.mutate();
+        setShowFeedback(true);
       } else {
-        playIncorrectSound();
-        setStreak(0);
-        setIncorrectWords([...incorrectWords, currentWord.word]);
-        resetWordStreakMutation.mutate();
+        // Incorrect - check for Do Over (but not in practice mode)
+        if (shouldOfferDoOver(gameMode)) {
+          setDoOverPendingResult({
+            userAnswer: userInput.trim(),
+            correctWord: currentWord.word,
+            wordIndex: currentWordIndex,
+          });
+          setShowDoOverDialog(true);
+        } else {
+          processIncorrectAnswer();
+          setShowFeedback(true);
+        }
       }
     }
   };
@@ -2578,7 +2860,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
       }
     }, 100);
     
-    if (words && currentWordIndex < words.length - 1) {
+    if (activeWords && currentWordIndex < activeWords.length - 1) {
       setCurrentWordIndex(currentWordIndex + 1);
     } else {
       setGameComplete(true);
@@ -2595,7 +2877,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
 
   const handleSkip = () => {
     setUserInput("");
-    if (words && currentWordIndex < words.length - 1) {
+    if (activeWords && currentWordIndex < activeWords.length - 1) {
       setCurrentWordIndex(currentWordIndex + 1);
     } else {
       setGameComplete(true);
@@ -2775,10 +3057,9 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
     const userAnswer = placedLetters.map(l => l!.letter).join('');
     const correct = userAnswer.toLowerCase() === currentWord.word.toLowerCase();
 
-    setIsCorrect(correct);
-    setShowFeedback(true);
-
     if (correct) {
+      setIsCorrect(true);
+      setShowFeedback(true);
       playCorrectSound();
       const points = 20;
       setScore(score + points + (streak * 5));
@@ -2790,10 +3071,22 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
       }
       incrementWordStreakMutation.mutate();
     } else {
-      playIncorrectSound();
-      setStreak(0);
-      setIncorrectWords([...incorrectWords, currentWord.word]);
-      resetWordStreakMutation.mutate();
+      // Incorrect - check for Do Over
+      if (shouldOfferDoOver("scramble")) {
+        setDoOverPendingResult({
+          userAnswer: userAnswer,
+          correctWord: currentWord.word,
+          wordIndex: currentWordIndex,
+        });
+        setShowDoOverDialog(true);
+      } else {
+        setIsCorrect(false);
+        setShowFeedback(true);
+        playIncorrectSound();
+        setStreak(0);
+        setIncorrectWords([...incorrectWords, currentWord.word]);
+        resetWordStreakMutation.mutate();
+      }
     }
   };
 
@@ -2802,10 +3095,10 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
     const correct = choiceIndex === misspelledIndex;
     
     setSelectedChoiceIndex(choiceIndex);
-    setIsCorrect(correct);
-    setShowFeedback(true);
 
     if (correct) {
+      setIsCorrect(true);
+      setShowFeedback(true);
       playCorrectSound();
       const points = 20;
       setScore(score + points + (streak * 5));
@@ -2817,10 +3110,22 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
       }
       incrementWordStreakMutation.mutate();
     } else {
-      playIncorrectSound();
-      setStreak(0);
-      // Note: Don't track incorrect words for mistake mode as it's a multiple-choice question about finding mistakes
-      resetWordStreakMutation.mutate();
+      // Incorrect - check for Do Over
+      if (shouldOfferDoOver("mistake")) {
+        setDoOverPendingResult({
+          userAnswer: mistakeChoices[choiceIndex] || "",
+          correctWord: correctSpelling,
+          wordIndex: currentWordIndex,
+        });
+        setShowDoOverDialog(true);
+      } else {
+        setIsCorrect(false);
+        setShowFeedback(true);
+        playIncorrectSound();
+        setStreak(0);
+        // Note: Don't track incorrect words for mistake mode as it's a multiple-choice question about finding mistakes
+        resetWordStreakMutation.mutate();
+      }
     }
   };
 
@@ -3184,9 +3489,10 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
     // For timed mode, only count words where Check button was pressed (correct + incorrect)
     // If timer expired (timeLeft === 0): currentWordIndex = words checked
     // If all words checked (timeLeft > 0): currentWordIndex + 1 = words checked
+    // Use activeWords.length for second chance mode
     const totalWords = gameMode === "timed" 
       ? (timeLeft === 0 ? currentWordIndex : currentWordIndex + 1)
-      : (words?.length || 10);
+      : (activeWords?.length || 10);
     // Use stored accuracy for crossword mode, calculate for other modes
     const accuracy = gameMode === "crossword" 
       ? finalAccuracy 
@@ -3291,9 +3597,12 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
                 ) : gameMode === "timed" ? (
                   <>You spelled <span className="font-bold text-gray-900" data-testid="text-correct-count">{correctCount}</span> out of{" "}
                   <span className="font-bold text-gray-900">{totalWords}</span> words correctly in 60 seconds!</>
+                ) : secondChanceMode ? (
+                  <>2nd Chance: You spelled <span className="font-bold text-gray-900" data-testid="text-correct-count">{correctCount}</span> out of{" "}
+                  <span className="font-bold text-gray-900">{activeWords?.length}</span> words correctly!</>
                 ) : (
                   <>You spelled <span className="font-bold text-gray-900" data-testid="text-correct-count">{correctCount}</span> out of{" "}
-                  <span className="font-bold text-gray-900">{words?.length}</span> words correctly!</>
+                  <span className="font-bold text-gray-900">{activeWords?.length}</span> words correctly!</>
                 )}
               </p>
               {achievementEarned && (
@@ -3413,6 +3722,44 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
               </div>
             )}
 
+            {/* 2nd Chance Button - only show when user has items and has incorrect words */}
+            {gameMode !== "practice" && getItemQuantity("second_chance") > 0 && incorrectWords.length > 0 && !secondChanceMode && (
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.4, type: "spring" }}
+                className="flex flex-col items-center gap-3 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/30 dark:to-indigo-900/30 rounded-lg border border-purple-200 dark:border-purple-700"
+              >
+                <div className="flex items-center gap-3">
+                  <img 
+                    src={secondChanceImage} 
+                    alt="2nd Chance" 
+                    className="w-16 h-16 object-contain"
+                  />
+                  <div className="text-left">
+                    <p className="font-bold text-gray-800 dark:text-gray-100">Want a 2nd Chance?</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      {gameMode === "crossword" 
+                        ? "Fix the highlighted mistakes and re-submit"
+                        : `Retry the ${incorrectWords.length} word${incorrectWords.length !== 1 ? 's' : ''} you missed`
+                      }
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      You have {getItemQuantity("second_chance")} 2nd Chance{getItemQuantity("second_chance") !== 1 ? 's' : ''} available
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={handleUseSecondChance}
+                  disabled={useItemMutation.isPending}
+                  className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white"
+                  data-testid="button-use-second-chance"
+                >
+                  {useItemMutation.isPending ? "Using..." : "Use 2nd Chance"}
+                </Button>
+              </motion.div>
+            )}
+
             <div className="flex gap-3 flex-col sm:flex-row">
               <Button
                 variant="outline"
@@ -3454,7 +3801,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
     );
   }
 
-  const progress = ((currentWordIndex + 1) / words.length) * 100;
+  const progress = activeWords ? ((currentWordIndex + 1) / activeWords.length) * 100 : 0;
 
   return (
     <div 
@@ -3599,11 +3946,33 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
         ) : gameMode === "crossword" && crosswordGrid ? (
           <div className="w-full max-w-6xl">
             <Card className="p-6 md:p-8 space-y-6 bg-white">
+              {/* 2nd Chance Mode Banner */}
+              {secondChanceMode && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-gradient-to-r from-purple-100 to-indigo-100 dark:from-purple-900/30 dark:to-indigo-900/30 border border-purple-300 dark:border-purple-600 rounded-lg p-4 text-center"
+                >
+                  <div className="flex items-center justify-center gap-3">
+                    <img src={secondChanceImage} alt="2nd Chance" className="w-10 h-10 object-contain" />
+                    <div>
+                      <p className="font-bold text-purple-800 dark:text-purple-200">2nd Chance Mode</p>
+                      <p className="text-sm text-purple-600 dark:text-purple-300">Fix the highlighted mistakes and re-submit</p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+              
               <div className="text-center">
                 <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2" data-testid="text-instruction">
-                  Solve the Crossword Puzzle
+                  {secondChanceMode ? "Fix Your Mistakes" : "Solve the Crossword Puzzle"}
                 </h2>
-                <p className="text-gray-600">Click the play icon at the start of each word to hear the word</p>
+                <p className="text-gray-600">
+                  {secondChanceMode 
+                    ? "Correct the red highlighted cells and submit again"
+                    : "Click the play icon at the start of each word to hear the word"
+                  }
+                </p>
               </div>
 
               <div ref={crosswordScrollRef} className="overflow-x-auto px-4">
@@ -3672,20 +4041,23 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
               </div>
 
               <div className="flex justify-center gap-3 pt-4">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  onClick={handleShowMistakes}
-                  data-testid="button-show-mistakes"
-                >
-                  Show Mistakes
-                </Button>
+                {!secondChanceMode && (
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    onClick={handleShowMistakes}
+                    data-testid="button-show-mistakes"
+                  >
+                    Show Mistakes
+                  </Button>
+                )}
                 <Button
                   size="lg"
                   onClick={handleCrosswordSubmit}
+                  className={secondChanceMode ? "bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white" : ""}
                   data-testid="button-submit-crossword"
                 >
-                  Check Puzzle
+                  {secondChanceMode ? "Re-submit Puzzle" : "Check Puzzle"}
                 </Button>
               </div>
             </Card>
@@ -3696,7 +4068,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
               <div ref={progressBarRef} className="space-y-4 md:space-y-1 md:mt-2 md:mb-2">
                 <div className="flex items-center justify-between text-base md:text-sm font-semibold">
                   <span className="text-gray-600" data-testid="text-word-progress">
-                    Word {currentWordIndex + 1} of {words.length}
+                    {secondChanceMode ? "2nd Chance: " : ""}Word {currentWordIndex + 1} of {activeWords?.length || 0}
                   </span>
                 </div>
                 <Progress value={progress} className="h-3 md:h-2" data-testid="progress-game" />
@@ -4162,7 +4534,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
                       onClick={handleNext}
                       data-testid="button-next"
                     >
-                      {currentWordIndex < words.length - 1 ? 'Next Word' : 'See Results'}
+                      {activeWords && currentWordIndex < activeWords.length - 1 ? 'Next Word' : 'See Results'}
                       <ArrowRight className="w-5 h-5 ml-2" />
                     </Button>
                   </div>
@@ -4189,6 +4561,47 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
         </div>
         )}
       </main>
+
+      {/* Do Over Dialog */}
+      <Dialog open={showDoOverDialog} onOpenChange={setShowDoOverDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-xl">Oops! That's not quite right</DialogTitle>
+            <DialogDescription className="text-center">
+              Would you like to use a Do Over to try again?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-4">
+            <img 
+              src={doOverImage} 
+              alt="Do Over" 
+              className="w-24 h-24 object-contain"
+            />
+            <div className="text-center">
+              <p className="text-lg font-medium">You have {getItemQuantity("do_over")} Do Over{getItemQuantity("do_over") !== 1 ? 's' : ''}</p>
+              <p className="text-sm text-muted-foreground">Using one lets you retry this word</p>
+            </div>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={handleDeclineDoOver}
+              className="w-full sm:w-auto"
+              data-testid="button-decline-doover"
+            >
+              No thanks
+            </Button>
+            <Button
+              onClick={handleUseDoOver}
+              disabled={useItemMutation.isPending}
+              className="w-full sm:w-auto"
+              data-testid="button-use-doover"
+            >
+              {useItemMutation.isPending ? "Using..." : "Use Do Over"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Floating letter element for touch dragging */}
       {touchDragging && touchPosition && draggedLetterElement && (

@@ -297,7 +297,7 @@ export default function Home() {
             className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-full"
             data-testid="button-view-stats"
           >
-            <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-white/90 flex items-center justify-center p-2">
+            <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-white/90 border-2 border-purple-400 flex items-center justify-center p-2">
               <img 
                 src={myStatsButton} 
                 alt="My Stats" 
@@ -310,7 +310,7 @@ export default function Home() {
             className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-full"
             data-testid="button-user-groups"
           >
-            <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-white/90 flex items-center justify-center p-2">
+            <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-white/90 border-2 border-blue-400 flex items-center justify-center p-2">
               <img 
                 src={userGroupsButton} 
                 alt="User Groups" 
@@ -334,7 +334,7 @@ export default function Home() {
             className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-full"
             data-testid="button-view-achievements"
           >
-            <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-white/90 flex items-center justify-center p-2">
+            <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-white/90 border-2 border-yellow-400 flex items-center justify-center p-2">
               <img 
                 src={achievementsButton} 
                 alt="Achievements" 
@@ -347,7 +347,7 @@ export default function Home() {
             className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-full"
             data-testid="button-star-shop"
           >
-            <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-white/90 flex items-center justify-center p-2">
+            <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-white/90 border-2 border-orange-400 flex items-center justify-center p-2">
               <img 
                 src={starShopButton} 
                 alt="Star Shop" 
