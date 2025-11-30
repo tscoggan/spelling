@@ -174,7 +174,7 @@ export default function Game() {
 function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: { listId?: string; virtualWords?: string; gameMode: GameMode; quizCount: string; onRestart: () => void }) {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
-  const { themeAssets } = useTheme();
+  const { themeAssets, currentTheme, setTheme, unlockedThemes, allThemes } = useTheme();
   
   const [userInput, setUserInput] = useState("");
   const [showFeedback, setShowFeedback] = useState(false);
@@ -4009,6 +4009,27 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
                       />
                     </div>
                   </div>
+
+                  {unlockedThemes.length > 1 && (
+                    <div className="space-y-3">
+                      <Label htmlFor="theme-select">Visual Theme</Label>
+                      <Select value={currentTheme} onValueChange={(value) => setTheme(value as typeof currentTheme)}>
+                        <SelectTrigger id="theme-select" data-testid="select-theme">
+                          <SelectValue placeholder="Select a theme" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {unlockedThemes.map((themeId) => (
+                            <SelectItem key={themeId} value={themeId} data-testid={`theme-option-${themeId}`}>
+                              {allThemes[themeId]?.name || themeId}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-sm text-muted-foreground">
+                        Purchase more themes in the Star Shop
+                      </p>
+                    </div>
+                  )}
                 </div>
               </SheetContent>
             </Sheet>
