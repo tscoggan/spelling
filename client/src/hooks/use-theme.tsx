@@ -9,7 +9,7 @@ import defaultBackgroundPortrait from "@assets/Colorful_background_portrait_1763
 import defaultMascotTrophy from "@assets/Bee with trophy_1763852047681.png";
 import defaultMascotGoodTry from "@assets/Bee with good try_1764525113983.png";
 
-import pirateBackgroundLandscape from "@assets/Pirate background - landscape_1764522894408.png";
+import pirateBackgroundLandscape from "@assets/Pirate background - landscape_1764527590672.png";
 import pirateBackgroundPortrait from "@assets/Pirate background - portrait_1764522894408.png";
 import pirateMascotTrophy from "@assets/Pirate with trophy_1764527120328.png";
 import pirateMascotGoodTry from "@assets/Pirate with good try_1764527120328.png";
