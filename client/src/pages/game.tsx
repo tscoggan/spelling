@@ -3179,10 +3179,8 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
       } else {
         setIsCorrect(false);
         setShowFeedback(true);
-        playIncorrectSound();
-        setStreak(0);
-        // Note: Don't track incorrect words for mistake mode as it's a multiple-choice question about finding mistakes
-        resetWordStreakMutation.mutate();
+        // Use common incorrect answer processing to track for 2nd Chance
+        processIncorrectAnswer();
       }
     }
   };
