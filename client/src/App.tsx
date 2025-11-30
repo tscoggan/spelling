@@ -14,7 +14,6 @@ import Achievements from "@/pages/achievements";
 import WordListsPage from "@/pages/word-lists";
 import UserGroupsPage from "@/pages/user-groups";
 import StarShop from "@/pages/star-shop";
-import Settings from "@/pages/settings";
 import AdminPage from "@/pages/admin";
 import AuthPage from "@/pages/auth-page";
 import ResetPasswordPage from "@/pages/reset-password";
@@ -70,7 +69,6 @@ function Router() {
       <ProtectedRoute path="/word-lists" component={WordListsPage} />
       <ProtectedRoute path="/user-groups" component={UserGroupsPage} />
       <ProtectedRoute path="/star-shop" component={StarShop} />
-      <ProtectedRoute path="/settings" component={Settings} />
       <ProtectedRoute path="/admin" component={AdminPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />

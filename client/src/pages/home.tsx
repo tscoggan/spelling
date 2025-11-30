@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Sparkles, Trophy, Clock, Target, List, ChevronRight, Shuffle, AlertCircle, Grid3x3, Users, BarChart3, Settings } from "lucide-react";
+import { BookOpen, Sparkles, Trophy, Clock, Target, List, ChevronRight, Shuffle, AlertCircle, Grid3x3, Users, BarChart3 } from "lucide-react";
 import type { GameMode } from "@shared/schema";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -353,16 +353,6 @@ export default function Home() {
                 alt="Star Shop" 
                 className="h-full w-full object-contain"
               />
-            </div>
-          </button>
-          <button
-            onClick={() => setLocation("/settings")}
-            className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-full"
-            data-testid="button-settings"
-          >
-            <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-white/90 border-2 border-gray-400 flex flex-col items-center justify-center p-2">
-              <Settings className="h-10 w-10 md:h-12 md:w-12 text-gray-600" />
-              <span className="text-xs font-medium text-gray-600 mt-1">Settings</span>
             </div>
           </button>
         </div>

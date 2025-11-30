@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { LogOut, Bell, Settings, Volume2, HelpCircle, Mail, BookOpen, Trophy, Gamepad2, List, Send, UserCircle } from "lucide-react";
+import { LogOut, Bell, Settings, Volume2, HelpCircle, Mail, BookOpen, Trophy, Gamepad2, List, Send, UserCircle, Palette, Lock, ShoppingCart } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useTheme } from "@/hooks/use-theme";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
 import {
@@ -34,6 +35,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { appConfig } from "@/lib/config";
+import { useLocation } from "wouter";
 import {
   Accordion,
   AccordionContent,
@@ -43,6 +45,8 @@ import {
 
 export function UserHeader() {
   const { user, logoutMutation } = useAuth();
+  const { currentTheme, themeAssets, setTheme, unlockedThemes, allThemes, isLoading: isThemeLoading } = useTheme();
+  const [, setLocation] = useLocation();
   const [todoModalOpen, setTodoModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -800,6 +804,82 @@ export function UserHeader() {
                   data-testid="switch-word-hints"
                 />
               </div>
+            </div>
+
+            <div className="space-y-3 pt-4 border-t">
+              <div className="flex items-center gap-2">
+                <Palette className="w-4 h-4" />
+                <Label>Visual Theme</Label>
+              </div>
+              <Select 
+                value={currentTheme} 
+                onValueChange={(value) => setTheme(value as typeof currentTheme)}
+                disabled={isThemeLoading}
+              >
+                <SelectTrigger data-testid="select-theme">
+                  <SelectValue placeholder="Select a theme" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(allThemes).map(([themeId, themeInfo]) => {
+                    const isUnlocked = unlockedThemes.includes(themeId as typeof currentTheme);
+                    return (
+                      <SelectItem 
+                        key={themeId} 
+                        value={themeId} 
+                        disabled={!isUnlocked}
+                        data-testid={`theme-option-${themeId}`}
+                      >
+                        <span className="flex items-center gap-2">
+                          {themeInfo.name}
+                          {!isUnlocked && <Lock className="h-3 w-3 text-muted-foreground" />}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Theme Preview</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground text-center">Mascot</p>
+                    <div className="flex justify-center bg-muted/30 rounded-md p-2">
+                      <img 
+                        src={themeAssets.mascotTrophy} 
+                        alt="Theme mascot" 
+                        className="w-12 h-12 object-contain"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground text-center">Background</p>
+                    <div className="flex justify-center bg-muted/30 rounded-md p-2">
+                      <img 
+                        src={themeAssets.backgroundLandscape} 
+                        alt="Theme background" 
+                        className="w-16 h-12 object-cover rounded"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSettingsOpen(false);
+                  setLocation("/star-shop");
+                }}
+                className="w-full"
+                data-testid="button-go-to-star-shop"
+              >
+                <ShoppingCart className="w-4 h-4 mr-2" />
+                {unlockedThemes.length === 1 
+                  ? "Get More Themes in Star Shop" 
+                  : "Visit Star Shop"}
+              </Button>
             </div>
           </div>
         </DialogContent>

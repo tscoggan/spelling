@@ -7,7 +7,7 @@ import { ThemeId, ThemeAssets, AVAILABLE_THEMES, ShopItemId } from "@shared/sche
 import defaultBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
 import defaultBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
 import defaultMascotTrophy from "@assets/Bee with trophy_1763852047681.png";
-import defaultMascotGoodTry from "@assets/Bee with good try_1763852047680.png";
+import defaultMascotGoodTry from "@assets/Bee with good try_1764525113983.png";
 
 import pirateBackgroundLandscape from "@assets/Pirate background - landscape_1764522894408.png";
 import pirateBackgroundPortrait from "@assets/Pirate background - portrait_1764522894408.png";
@@ -20,7 +20,7 @@ const THEME_ASSETS: Record<ThemeId, ThemeAssets> = {
     backgroundPortrait: defaultBackgroundPortrait,
     mascotTrophy: defaultMascotTrophy,
     mascotGoodTry: defaultMascotGoodTry,
-    name: "Outdoor Adventure",
+    name: "Outdoor Theme",
   },
   pirate: {
     backgroundLandscape: pirateBackgroundLandscape,
