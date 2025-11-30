@@ -69,8 +69,11 @@ export default function StarShop() {
       setSelectedItem(null);
       setPurchaseQuantity(1);
       
-      if (purchasedItem?.item.isTheme && purchasedItem.item.themeId) {
-        setPurchasedThemeId(purchasedItem.item.themeId);
+      const isThemeItem = purchasedItem?.item.type === "theme";
+      const themeId = isThemeItem && "themeId" in purchasedItem.item ? (purchasedItem.item as { themeId: ThemeId }).themeId : null;
+      
+      if (isThemeItem && themeId) {
+        setPurchasedThemeId(themeId);
         setApplyThemeDialogOpen(true);
       } else {
         toast({
@@ -191,7 +194,7 @@ export default function StarShop() {
               const inventoryQty = getInventoryQuantity(itemId);
               const affordable = (shopData?.stars || 0) >= item.cost;
               const itemImage = ITEM_IMAGES[itemId as ShopItemId];
-              const isTheme = item.isTheme;
+              const isTheme = item.type === "theme";
               const isThemeOwned = isTheme && inventoryQty > 0;
               
               return (
@@ -298,7 +301,7 @@ export default function StarShop() {
           )}
           
           <div className="space-y-4 py-2">
-            {selectedItem?.item.isTheme ? (
+            {selectedItem?.item.type === "theme" ? (
               <div className="text-center">
                 <p className="text-muted-foreground mb-2">This is a permanent unlock</p>
                 <div className="flex items-center justify-center gap-2 text-lg">
@@ -343,7 +346,7 @@ export default function StarShop() {
             
             {!canAfford(selectedItem?.item.cost || 0) && (
               <p className="text-center text-destructive text-sm">
-                You need {(selectedItem?.item.isTheme ? selectedItem.item.cost : totalCost) - (shopData?.stars || 0)} more stars
+                You need {(selectedItem?.item.type === "theme" ? selectedItem.item.cost : totalCost) - (shopData?.stars || 0)} more stars
               </p>
             )}
           </div>
