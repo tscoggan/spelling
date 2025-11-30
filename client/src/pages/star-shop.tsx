@@ -41,9 +41,12 @@ export default function StarShop() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { setTheme } = useTheme();
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<{ id: ShopItemId; item: ShopItem } | null>(null);
   const [purchaseQuantity, setPurchaseQuantity] = useState(1);
+  const [applyThemeDialogOpen, setApplyThemeDialogOpen] = useState(false);
+  const [purchasedThemeId, setPurchasedThemeId] = useState<ThemeId | null>(null);
 
   const { data: shopData, isLoading } = useQuery<ShopData>({
     queryKey: ["/api/user-items"],
@@ -56,16 +59,25 @@ export default function StarShop() {
       const response = await apiRequest("POST", "/api/user-items/purchase", { itemId, quantity });
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/user-items"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-items/list"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      toast({
-        title: "Purchase Successful!",
-        description: `You now have ${data.newItemQuantity} ${selectedItem?.item.name}${data.newItemQuantity > 1 ? 's' : ''}!`,
-      });
+      
+      const purchasedItem = selectedItem;
       setPurchaseDialogOpen(false);
       setSelectedItem(null);
       setPurchaseQuantity(1);
+      
+      if (purchasedItem?.item.isTheme && purchasedItem.item.themeId) {
+        setPurchasedThemeId(purchasedItem.item.themeId);
+        setApplyThemeDialogOpen(true);
+      } else {
+        toast({
+          title: "Purchase Successful!",
+          description: `You now have ${data.newItemQuantity} ${purchasedItem?.item.name}${data.newItemQuantity > 1 ? 's' : ''}!`,
+        });
+      }
     },
     onError: (error: any) => {
       toast({
@@ -75,6 +87,27 @@ export default function StarShop() {
       });
     },
   });
+
+  const handleApplyTheme = () => {
+    if (purchasedThemeId) {
+      setTheme(purchasedThemeId);
+      toast({
+        title: "Theme Applied!",
+        description: "Your new theme is now active.",
+      });
+    }
+    setApplyThemeDialogOpen(false);
+    setPurchasedThemeId(null);
+  };
+
+  const handleSkipApplyTheme = () => {
+    toast({
+      title: "Theme Purchased!",
+      description: "You can apply it anytime from the Settings menu in-game.",
+    });
+    setApplyThemeDialogOpen(false);
+    setPurchasedThemeId(null);
+  };
 
   const getInventoryQuantity = (itemId: string): number => {
     if (!shopData?.inventory) return 0;
@@ -158,6 +191,8 @@ export default function StarShop() {
               const inventoryQty = getInventoryQuantity(itemId);
               const affordable = (shopData?.stars || 0) >= item.cost;
               const itemImage = ITEM_IMAGES[itemId as ShopItemId];
+              const isTheme = item.isTheme;
+              const isThemeOwned = isTheme && inventoryQty > 0;
               
               return (
                 <motion.div
@@ -182,12 +217,14 @@ export default function StarShop() {
                         <h3 className="font-bold text-lg text-foreground leading-tight">
                           {item.name}
                         </h3>
-                        <div className="flex items-center gap-1 bg-amber-500/20 px-2 py-0.5 rounded-lg">
-                          <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
-                          <span className="font-bold text-sm text-amber-700 dark:text-amber-300">
-                            {item.cost}
-                          </span>
-                        </div>
+                        {!isThemeOwned && (
+                          <div className="flex items-center gap-1 bg-amber-500/20 px-2 py-0.5 rounded-lg">
+                            <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                            <span className="font-bold text-sm text-amber-700 dark:text-amber-300">
+                              {item.cost}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">
                         {item.description}
@@ -195,19 +232,43 @@ export default function StarShop() {
                     </div>
                     
                     <div className="flex items-center justify-between mt-2">
-                      <Badge variant="secondary" className="text-xs">
-                        Owned: {inventoryQty}
-                      </Badge>
+                      {isTheme ? (
+                        isThemeOwned ? (
+                          <Badge variant="default" className="text-xs bg-green-500 hover:bg-green-500">
+                            Owned
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">
+                            Theme
+                          </Badge>
+                        )
+                      ) : (
+                        <Badge variant="secondary" className="text-xs">
+                          Owned: {inventoryQty}
+                        </Badge>
+                      )}
                       
-                      <Button
-                        size="sm"
-                        disabled={!affordable}
-                        onClick={() => handlePurchaseClick(itemId as ShopItemId, item)}
-                        className="ml-auto"
-                        data-testid={`button-buy-${itemId}`}
-                      >
-                        {affordable ? 'Buy' : 'Need More Stars'}
-                      </Button>
+                      {isThemeOwned ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled
+                          className="ml-auto"
+                          data-testid={`button-owned-${itemId}`}
+                        >
+                          Already Owned
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          disabled={!affordable}
+                          onClick={() => handlePurchaseClick(itemId as ShopItemId, item)}
+                          className="ml-auto"
+                          data-testid={`button-buy-${itemId}`}
+                        >
+                          {affordable ? 'Buy' : 'Need More Stars'}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </motion.div>
@@ -237,39 +298,52 @@ export default function StarShop() {
           )}
           
           <div className="space-y-4 py-2">
-            <div className="flex items-center justify-center gap-4">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setPurchaseQuantity(Math.max(1, purchaseQuantity - 1))}
-                disabled={purchaseQuantity <= 1}
-                data-testid="button-decrease-quantity"
-              >
-                <Minus className="h-4 w-4" />
-              </Button>
-              <span className="text-2xl font-bold w-12 text-center" data-testid="text-purchase-quantity">
-                {purchaseQuantity}
-              </span>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setPurchaseQuantity(purchaseQuantity + 1)}
-                disabled={!canAfford(selectedItem?.item.cost || 0)}
-                data-testid="button-increase-quantity"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <div className="flex items-center justify-center gap-2 text-lg">
-              <span>Total:</span>
-              <Star className="h-5 w-5 text-amber-500 fill-amber-500" />
-              <span className="font-bold" data-testid="text-total-cost">{totalCost}</span>
-            </div>
+            {selectedItem?.item.isTheme ? (
+              <div className="text-center">
+                <p className="text-muted-foreground mb-2">This is a permanent unlock</p>
+                <div className="flex items-center justify-center gap-2 text-lg">
+                  <span>Cost:</span>
+                  <Star className="h-5 w-5 text-amber-500 fill-amber-500" />
+                  <span className="font-bold" data-testid="text-total-cost">{selectedItem.item.cost}</span>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-center gap-4">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setPurchaseQuantity(Math.max(1, purchaseQuantity - 1))}
+                    disabled={purchaseQuantity <= 1}
+                    data-testid="button-decrease-quantity"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                  <span className="text-2xl font-bold w-12 text-center" data-testid="text-purchase-quantity">
+                    {purchaseQuantity}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setPurchaseQuantity(purchaseQuantity + 1)}
+                    disabled={!canAfford(selectedItem?.item.cost || 0)}
+                    data-testid="button-increase-quantity"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                <div className="flex items-center justify-center gap-2 text-lg">
+                  <span>Total:</span>
+                  <Star className="h-5 w-5 text-amber-500 fill-amber-500" />
+                  <span className="font-bold" data-testid="text-total-cost">{totalCost}</span>
+                </div>
+              </>
+            )}
             
             {!canAfford(selectedItem?.item.cost || 0) && (
               <p className="text-center text-destructive text-sm">
-                You need {totalCost - (shopData?.stars || 0)} more stars
+                You need {(selectedItem?.item.isTheme ? selectedItem.item.cost : totalCost) - (shopData?.stars || 0)} more stars
               </p>
             )}
           </div>
@@ -288,6 +362,43 @@ export default function StarShop() {
               data-testid="button-confirm-purchase"
             >
               {purchaseMutation.isPending ? 'Purchasing...' : 'Buy'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={applyThemeDialogOpen} onOpenChange={setApplyThemeDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-center">Theme Purchased!</DialogTitle>
+            <DialogDescription className="text-center">
+              Would you like to apply your new theme now?
+            </DialogDescription>
+          </DialogHeader>
+          
+          {purchasedThemeId && ITEM_IMAGES[`${purchasedThemeId}_theme` as ShopItemId] && (
+            <div className="flex justify-center py-4">
+              <img 
+                src={ITEM_IMAGES[`${purchasedThemeId}_theme` as ShopItemId]} 
+                alt="Theme preview"
+                className="w-28 h-28 object-contain"
+              />
+            </div>
+          )}
+          
+          <DialogFooter className="flex-row gap-2 sm:justify-center">
+            <Button 
+              variant="outline" 
+              onClick={handleSkipApplyTheme}
+              data-testid="button-skip-apply-theme"
+            >
+              Maybe Later
+            </Button>
+            <Button
+              onClick={handleApplyTheme}
+              data-testid="button-apply-theme"
+            >
+              Apply Now
             </Button>
           </DialogFooter>
         </DialogContent>
