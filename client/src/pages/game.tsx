@@ -29,10 +29,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import type { WordIllustration } from "@shared/schema";
 import { generateCrossword, type CrosswordGrid, type CrosswordEntry } from "@/lib/crosswordGenerator";
-
-// Import background pattern
-import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
-import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
+import { useTheme } from "@/hooks/use-theme";
 
 // Import sound effects
 import incorrectSoundUrl from "@assets/Incorrect spelling_1763574108566.mp3";
@@ -177,6 +174,7 @@ export default function Game() {
 function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: { listId?: string; virtualWords?: string; gameMode: GameMode; quizCount: string; onRestart: () => void }) {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { themeAssets } = useTheme();
   
   const [userInput, setUserInput] = useState("");
   const [showFeedback, setShowFeedback] = useState(false);
@@ -3590,7 +3588,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
         <div 
           className="fixed inset-0 portrait:block landscape:hidden pointer-events-none"
           style={{
-            backgroundImage: `url(${rainbowBackgroundPortrait})`,
+            backgroundImage: `url(${themeAssets.backgroundPortrait})`,
             backgroundSize: 'cover',
             backgroundRepeat: 'no-repeat',
             backgroundPosition: 'center top',
@@ -3600,7 +3598,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
         <div 
           className="fixed inset-0 portrait:hidden landscape:block pointer-events-none"
           style={{
-            backgroundImage: `url(${rainbowBackgroundLandscape})`,
+            backgroundImage: `url(${themeAssets.backgroundLandscape})`,
             backgroundSize: 'cover',
             backgroundRepeat: 'no-repeat',
             backgroundPosition: 'center top',
@@ -3622,8 +3620,8 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
                 className="text-center"
               >
                 <motion.img 
-                  src={accuracy === 100 ? trophyBeeImage : goodTryBeeImage} 
-                  alt={accuracy === 100 ? "Trophy Bee" : "Good Try Bee"}
+                  src={accuracy === 100 ? themeAssets.mascotTrophy : themeAssets.mascotGoodTry} 
+                  alt={accuracy === 100 ? "Trophy Mascot" : "Good Try Mascot"}
                   className="w-32 h-32 md:w-40 md:h-40 mx-auto mb-2 object-contain"
                   animate={{ y: [0, -8, 0] }}
                   transition={{ 
@@ -3647,8 +3645,8 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
             {gameMode === "crossword" ? (
               <div className="flex justify-center my-2">
                 <motion.img 
-                  src={accuracy === 100 ? trophyBeeImage : goodTryBeeImage} 
-                  alt={accuracy === 100 ? "Trophy Bee" : "Good Try Bee"}
+                  src={accuracy === 100 ? themeAssets.mascotTrophy : themeAssets.mascotGoodTry} 
+                  alt={accuracy === 100 ? "Trophy Mascot" : "Good Try Mascot"}
                   className="w-32 h-32 md:w-40 md:h-40 object-contain"
                   animate={{ y: [0, -8, 0] }}
                   transition={{ 
@@ -3897,7 +3895,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
       <div 
         className="fixed inset-0 portrait:block landscape:hidden"
         style={{
-          backgroundImage: `url(${rainbowBackgroundPortrait})`,
+          backgroundImage: `url(${themeAssets.backgroundPortrait})`,
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center top',
@@ -3907,7 +3905,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
       <div 
         className="fixed inset-0 portrait:hidden landscape:block"
         style={{
-          backgroundImage: `url(${rainbowBackgroundLandscape})`,
+          backgroundImage: `url(${themeAssets.backgroundLandscape})`,
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center top',

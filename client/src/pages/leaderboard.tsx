@@ -6,11 +6,11 @@ import { Trophy, Medal, Home, Crown, Award } from "lucide-react";
 import type { LeaderboardScore } from "@shared/schema";
 import { motion } from "framer-motion";
 import { UserHeader } from "@/components/user-header";
-import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
-import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
+import { useTheme } from "@/hooks/use-theme";
 
 export default function Leaderboard() {
   const [, setLocation] = useLocation();
+  const { themeAssets } = useTheme();
 
   const { data: topScores, isLoading } = useQuery<LeaderboardScore[]>({
     queryKey: [`/api/leaderboard`],
@@ -41,7 +41,7 @@ export default function Leaderboard() {
       <div 
         className="fixed inset-0 portrait:block landscape:hidden"
         style={{
-          backgroundImage: `url(${rainbowBackgroundPortrait})`,
+          backgroundImage: `url(${themeAssets.backgroundPortrait})`,
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center top',
@@ -51,7 +51,7 @@ export default function Leaderboard() {
       <div 
         className="fixed inset-0 portrait:hidden landscape:block"
         style={{
-          backgroundImage: `url(${rainbowBackgroundLandscape})`,
+          backgroundImage: `url(${themeAssets.backgroundLandscape})`,
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center top',

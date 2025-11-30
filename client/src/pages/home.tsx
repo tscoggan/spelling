@@ -26,9 +26,8 @@ import {
 } from "@/components/ui/select";
 import { UserHeader } from "@/components/user-header";
 import { AccuracyCard } from "@/components/accuracy-card";
+import { useTheme } from "@/hooks/use-theme";
 import titleBanner from "@assets/image_1763494070680.png";
-import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
-import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
 import oneStar from "@assets/1 star_1763916010555.png";
 import missingStar from "@assets/Missing star (grey)_1763916010554.png";
 import wordListsButton from "@assets/Word Lists button_1764442517980.png";
@@ -50,6 +49,7 @@ interface CustomWordList {
 export default function Home() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { themeAssets } = useTheme();
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [wordListDialogOpen, setWordListDialogOpen] = useState(false);
   const [filterGradeLevel, setFilterGradeLevel] = useState<string>("all");
@@ -247,7 +247,7 @@ export default function Home() {
       <div 
         className="fixed inset-0 portrait:block landscape:hidden"
         style={{
-          backgroundImage: `url(${rainbowBackgroundPortrait})`,
+          backgroundImage: `url(${themeAssets.backgroundPortrait})`,
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center top',
@@ -257,7 +257,7 @@ export default function Home() {
       <div 
         className="fixed inset-0 portrait:hidden landscape:block"
         style={{
-          backgroundImage: `url(${rainbowBackgroundLandscape})`,
+          backgroundImage: `url(${themeAssets.backgroundLandscape})`,
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center top',

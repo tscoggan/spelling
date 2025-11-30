@@ -11,8 +11,7 @@ import { UserCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
-import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
+import { useTheme } from "@/hooks/use-theme";
 import titleBanner from "@assets/image_1763494070680.png";
 
 const avatarOptions = [
@@ -34,6 +33,7 @@ export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { user, loginMutation, registerMutation } = useAuth();
   const { toast } = useToast();
+  const { themeAssets } = useTheme();
 
   const [loginData, setLoginData] = useState({ username: "", password: "" });
   const [registerData, setRegisterData] = useState({
@@ -161,7 +161,7 @@ export default function AuthPage() {
       <div 
         className="fixed inset-0 portrait:block landscape:hidden"
         style={{
-          backgroundImage: `url(${rainbowBackgroundPortrait})`,
+          backgroundImage: `url(${themeAssets.backgroundPortrait})`,
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center top',
@@ -171,7 +171,7 @@ export default function AuthPage() {
       <div 
         className="fixed inset-0 portrait:hidden landscape:block"
         style={{
-          backgroundImage: `url(${rainbowBackgroundLandscape})`,
+          backgroundImage: `url(${themeAssets.backgroundLandscape})`,
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center top',

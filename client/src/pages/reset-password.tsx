@@ -8,13 +8,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
-import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
-import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
+import { useTheme } from "@/hooks/use-theme";
 import titleBanner from "@assets/image_1763494070680.png";
 
 export default function ResetPasswordPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { themeAssets } = useTheme();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [resetSuccess, setResetSuccess] = useState(false);
@@ -103,7 +103,7 @@ export default function ResetPasswordPage() {
       <div 
         className="fixed inset-0 portrait:block landscape:hidden"
         style={{
-          backgroundImage: `url(${rainbowBackgroundPortrait})`,
+          backgroundImage: `url(${themeAssets.backgroundPortrait})`,
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center top',
@@ -113,7 +113,7 @@ export default function ResetPasswordPage() {
       <div 
         className="fixed inset-0 portrait:hidden landscape:block"
         style={{
-          backgroundImage: `url(${rainbowBackgroundLandscape})`,
+          backgroundImage: `url(${themeAssets.backgroundLandscape})`,
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center top',

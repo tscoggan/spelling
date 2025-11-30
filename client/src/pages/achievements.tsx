@@ -11,8 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
 import { UserHeader } from "@/components/user-header";
 import { AccuracyCard } from "@/components/accuracy-card";
-import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
-import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
+import { useTheme } from "@/hooks/use-theme";
 import oneStar from "@assets/1 star_1763916010555.png";
 import twoStars from "@assets/2 stars_1763915441808.png";
 import threeStars from "@assets/3 stars_1763915441807.png";
@@ -46,6 +45,7 @@ function getVisibility(list: any): "public" | "private" | "groups" {
 export default function Achievements() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { themeAssets } = useTheme();
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
 
   const { data: achievements } = useQuery<Achievement[]>({
@@ -102,7 +102,7 @@ export default function Achievements() {
         {/* Landscape background for desktop/wide screens */}
         <div className="hidden md:block absolute inset-0">
           <img 
-            src={rainbowBackgroundLandscape} 
+            src={themeAssets.backgroundLandscape} 
             alt="" 
             className="w-full h-full object-cover object-[center_top]"
           />
@@ -111,7 +111,7 @@ export default function Achievements() {
         {/* Portrait background for mobile */}
         <div className="md:hidden absolute inset-0">
           <img 
-            src={rainbowBackgroundPortrait} 
+            src={themeAssets.backgroundPortrait} 
             alt="" 
             className="w-full h-full object-cover object-[center_top]"
           />

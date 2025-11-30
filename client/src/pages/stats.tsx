@@ -6,8 +6,7 @@ import { Home, Target, Trophy, Flame, TrendingUp, Award, Calendar, Play, Shuffle
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { UserHeader } from "@/components/user-header";
-import rainbowBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
-import rainbowBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
+import { useTheme } from "@/hooks/use-theme";
 import { useState } from "react";
 import {
   Dialog,
@@ -34,6 +33,7 @@ interface UserStats {
 export default function Stats() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { themeAssets } = useTheme();
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [showGameModeDialog, setShowGameModeDialog] = useState(false);
 
@@ -88,14 +88,14 @@ export default function Stats() {
       <div className="fixed inset-0 z-0 pointer-events-none">
         <div className="hidden md:block absolute inset-0">
           <img 
-            src={rainbowBackgroundLandscape} 
+            src={themeAssets.backgroundLandscape} 
             alt="" 
             className="w-full h-full object-cover object-[center_top]"
           />
         </div>
         <div className="md:hidden absolute inset-0">
           <img 
-            src={rainbowBackgroundPortrait} 
+            src={themeAssets.backgroundPortrait} 
             alt="" 
             className="w-full h-full object-cover object-[center_top]"
           />
