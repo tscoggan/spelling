@@ -45,6 +45,7 @@ export default function StarShop() {
   const { data: shopData, isLoading } = useQuery<ShopData>({
     queryKey: ["/api/user-items"],
     enabled: !!user,
+    refetchOnMount: "always",  // Always refetch when page opens to get fresh star balance
   });
 
   const purchaseMutation = useMutation({
