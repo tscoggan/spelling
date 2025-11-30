@@ -41,7 +41,7 @@ export default function StarShop() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { setTheme } = useTheme();
+  const { forceSetTheme } = useTheme();
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<{ id: ShopItemId; item: ShopItem } | null>(null);
   const [purchaseQuantity, setPurchaseQuantity] = useState(1);
@@ -90,7 +90,7 @@ export default function StarShop() {
 
   const handleApplyTheme = () => {
     if (purchasedThemeId) {
-      setTheme(purchasedThemeId);
+      forceSetTheme(purchasedThemeId);
       toast({
         title: "Theme Applied!",
         description: "Your new theme is now active.",

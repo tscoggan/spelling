@@ -42,6 +42,7 @@ interface ThemeContextValue {
   currentTheme: ThemeId;
   themeAssets: ThemeAssets;
   setTheme: (themeId: ThemeId) => void;
+  forceSetTheme: (themeId: ThemeId) => void;
   isThemeUnlocked: (themeId: ThemeId) => boolean;
   unlockedThemes: ThemeId[];
   isLoading: boolean;
@@ -110,12 +111,22 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const forceSetTheme = (themeId: ThemeId) => {
+    if (THEME_ASSETS[themeId]) {
+      setCurrentTheme(themeId);
+      if (user) {
+        updateThemeMutation.mutate(themeId);
+      }
+    }
+  };
+
   const themeAssets = THEME_ASSETS[currentTheme] || THEME_ASSETS.default;
 
   const value: ThemeContextValue = {
     currentTheme,
     themeAssets,
     setTheme,
+    forceSetTheme,
     isThemeUnlocked,
     unlockedThemes,
     isLoading: isLoadingItems,
