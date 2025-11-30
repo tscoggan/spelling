@@ -137,7 +137,7 @@ export default function StarShop() {
   const totalCost = selectedItem ? selectedItem.item.cost * purchaseQuantity : 0;
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="h-screen flex flex-col overflow-hidden">
       <div className="fixed inset-0 z-0">
         <img 
           src={shopBackground} 
@@ -146,8 +146,8 @@ export default function StarShop() {
         />
       </div>
 
-      <div className="relative z-10 flex flex-col min-h-screen">
-        <header className="flex items-center justify-between p-2 relative z-20">
+      <div className="relative z-10 flex flex-col h-full overflow-hidden">
+        <header className="flex-shrink-0 flex items-center justify-between p-2 relative z-20">
           <Button
             variant="default"
             onClick={() => setLocation("/")}
@@ -161,7 +161,7 @@ export default function StarShop() {
           <UserHeader />
         </header>
 
-        <main className="flex-1 flex flex-col items-center pt-2 px-4">
+        <div className="flex-shrink-0 flex flex-col items-center pt-2 px-4">
           <motion.img
             src={shopTitle}
             alt="Star Shop"
@@ -188,8 +188,10 @@ export default function StarShop() {
               </span>
             </motion.div>
           </div>
+        </div>
 
-          <div className="w-full max-w-md flex-1 overflow-y-auto pb-8 space-y-4">
+        <main className="flex-1 overflow-y-auto px-4 pb-8">
+          <div className="w-full max-w-md mx-auto space-y-4">
             {Object.entries(SHOP_ITEMS).map(([itemId, item], index) => {
               const inventoryQty = getInventoryQuantity(itemId);
               const affordable = (shopData?.stars || 0) >= item.cost;
