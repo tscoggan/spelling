@@ -275,7 +275,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUserPreferences(userId: number, preferences: { preferredVoice?: string | null }): Promise<User> {
+  async updateUserPreferences(userId: number, preferences: { preferredVoice?: string | null; selectedTheme?: string }): Promise<User> {
     const [user] = await db
       .update(users)
       .set(preferences)

@@ -99,14 +99,31 @@ export function setupAuth(app: Express) {
     
     try {
       const user = req.user as SelectUser;
-      const { preferredVoice } = req.body;
+      const { preferredVoice, selectedTheme } = req.body;
       
-      // Validate that only preferredVoice is being updated
-      if (typeof preferredVoice !== 'string' && preferredVoice !== null) {
-        return res.status(400).json({ error: "Invalid preferredVoice value" });
+      const updates: { preferredVoice?: string | null; selectedTheme?: string } = {};
+      
+      // Validate preferredVoice if provided
+      if (preferredVoice !== undefined) {
+        if (typeof preferredVoice !== 'string' && preferredVoice !== null) {
+          return res.status(400).json({ error: "Invalid preferredVoice value" });
+        }
+        updates.preferredVoice = preferredVoice;
       }
       
-      const updatedUser = await storage.updateUserPreferences(user.id, { preferredVoice });
+      // Validate selectedTheme if provided
+      if (selectedTheme !== undefined) {
+        if (typeof selectedTheme !== 'string') {
+          return res.status(400).json({ error: "Invalid selectedTheme value" });
+        }
+        updates.selectedTheme = selectedTheme;
+      }
+      
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: "No valid updates provided" });
+      }
+      
+      const updatedUser = await storage.updateUserPreferences(user.id, updates);
       
       // Update session with new user data
       req.login(updatedUser, (err) => {

@@ -544,6 +544,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/user-items/list", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const user = req.user as any;
+      const items = await storage.getUserItems(user.id);
+      
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching user items list:", error);
+      res.status(500).json({ error: "Failed to fetch user items list" });
+    }
+  });
+
   app.post("/api/user-items/purchase", async (req, res) => {
     try {
       if (!req.isAuthenticated()) {
