@@ -264,12 +264,12 @@ export default function StarShop() {
                       ) : (
                         <Button
                           size="sm"
-                          disabled={!affordable}
+                          disabled={isLoading || !affordable}
                           onClick={() => handlePurchaseClick(itemId as ShopItemId, item)}
                           className="ml-auto"
                           data-testid={`button-buy-${itemId}`}
                         >
-                          {affordable ? 'Buy' : 'Need More Stars'}
+                          {isLoading ? 'Loading...' : (affordable ? 'Buy' : 'Need More Stars')}
                         </Button>
                       )}
                     </div>

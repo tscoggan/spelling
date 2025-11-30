@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,8 +14,17 @@ export default function Settings() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { themeAssets, currentTheme, setTheme, unlockedThemes, allThemes, isLoading } = useTheme();
+  const [isLandscape, setIsLandscape] = useState(false);
 
-  const isLandscape = typeof window !== 'undefined' && window.innerWidth > window.innerHeight;
+  useEffect(() => {
+    const updateOrientation = () => {
+      setIsLandscape(window.innerWidth > window.innerHeight);
+    };
+    updateOrientation();
+    window.addEventListener("resize", updateOrientation);
+    return () => window.removeEventListener("resize", updateOrientation);
+  }, []);
+
   const backgroundImage = isLandscape ? themeAssets.backgroundLandscape : themeAssets.backgroundPortrait;
 
   return (
