@@ -33,7 +33,7 @@ interface UserStats {
 export default function Stats() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
-  const { themeAssets } = useTheme();
+  const { themeAssets, currentTheme } = useTheme();
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [showGameModeDialog, setShowGameModeDialog] = useState(false);
 
@@ -125,10 +125,10 @@ export default function Stats() {
           >
             {/* Header */}
             <div className="mb-8">
-              <h1 className="text-4xl md:text-5xl font-bold text-foreground">
+              <h1 className={`text-4xl md:text-5xl font-bold ${currentTheme === 'space' ? 'text-white' : 'text-foreground'}`}>
                 My Stats
               </h1>
-              <p className="text-lg text-muted-foreground mt-1">Your spelling journey</p>
+              <p className={`text-lg mt-1 ${currentTheme === 'space' ? 'text-white/80' : 'text-muted-foreground'}`}>Your spelling journey</p>
             </div>
 
             {/* Date Filter */}

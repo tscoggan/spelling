@@ -45,7 +45,7 @@ function getVisibility(list: any): "public" | "private" | "groups" {
 export default function Achievements() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
-  const { themeAssets } = useTheme();
+  const { themeAssets, currentTheme } = useTheme();
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
 
   const { data: achievements } = useQuery<Achievement[]>({
@@ -145,15 +145,15 @@ export default function Achievements() {
           >
             {/* Header */}
             <div className="mb-8">
-              <h1 className="text-4xl md:text-5xl font-bold text-foreground">
+              <h1 className={`text-4xl md:text-5xl font-bold ${currentTheme === 'space' ? 'text-white' : 'text-foreground'}`}>
                 My Achievements
               </h1>
-              <p className="text-lg text-muted-foreground mt-1">Your spelling accomplishments</p>
+              <p className={`text-lg mt-1 ${currentTheme === 'space' ? 'text-white/80' : 'text-muted-foreground'}`}>Your spelling accomplishments</p>
             </div>
 
             {/* Word List Mastery Section */}
             <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-2xl font-bold text-foreground">Word List Mastery</h2>
+              <h2 className={`text-2xl font-bold ${currentTheme === 'space' ? 'text-white' : 'text-foreground'}`}>Word List Mastery</h2>
               <Button
                 variant="outline"
                 size="icon"

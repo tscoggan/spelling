@@ -39,7 +39,7 @@ export default function WordListsPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { themeAssets } = useTheme();
+  const { themeAssets, currentTheme } = useTheme();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingList, setEditingList] = useState<CustomWordList | null>(null);
   const [gradeFilter, setGradeFilter] = useState<string>("all");
@@ -751,10 +751,10 @@ export default function WordListsPage() {
         
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <div>
-            <h1 className="text-4xl md:text-5xl font-bold text-foreground">
+            <h1 className={`text-4xl md:text-5xl font-bold ${currentTheme === 'space' ? 'text-white' : 'text-foreground'}`}>
               Word Lists
             </h1>
-            <p className="text-lg text-muted-foreground mt-1">
+            <p className={`text-lg mt-1 ${currentTheme === 'space' ? 'text-white/80' : 'text-muted-foreground'}`}>
               Create your own spelling word lists and share them with others
             </p>
           </div>

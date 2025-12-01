@@ -23,7 +23,7 @@ export default function UserGroupsPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { themeAssets } = useTheme();
+  const { themeAssets, currentTheme } = useTheme();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [membersDialogOpen, setMembersDialogOpen] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
@@ -540,8 +540,8 @@ export default function UserGroupsPage() {
         
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl md:text-5xl font-bold text-foreground">User Groups</h1>
-            <p className="text-lg text-muted-foreground mt-1">Create and manage groups to share word lists</p>
+            <h1 className={`text-4xl md:text-5xl font-bold ${currentTheme === 'space' ? 'text-white' : 'text-foreground'}`}>User Groups</h1>
+            <p className={`text-lg mt-1 ${currentTheme === 'space' ? 'text-white/80' : 'text-muted-foreground'}`}>Create and manage groups to share word lists</p>
           </div>
           <div className="flex gap-2">
             <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
