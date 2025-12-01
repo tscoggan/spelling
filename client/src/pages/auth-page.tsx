@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { UserCircle } from "lucide-react";
+import { UserCircle, GraduationCap, BookOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -43,6 +43,7 @@ export default function AuthPage() {
     lastName: "",
     email: "",
     selectedAvatar: avatarOptions[0].emoji,
+    role: "student" as "student" | "teacher",
   });
   
   const [customAvatarFile, setCustomAvatarFile] = useState<File | null>(null);
@@ -354,6 +355,43 @@ export default function AuthPage() {
                   minLength={6}
                   data-testid="input-register-password"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>I am a...</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setRegisterData({ ...registerData, role: "student" })}
+                    className={`
+                      p-4 rounded-lg flex flex-col items-center gap-2
+                      transition-all hover-elevate active-elevate-2
+                      ${registerData.role === "student"
+                        ? "bg-blue-100 border-2 border-blue-600"
+                        : "bg-white border border-gray-200"
+                      }
+                    `}
+                    data-testid="button-role-student"
+                  >
+                    <GraduationCap className={`w-8 h-8 ${registerData.role === "student" ? "text-blue-600" : "text-gray-400"}`} />
+                    <span className={`font-medium ${registerData.role === "student" ? "text-blue-600" : "text-gray-600"}`}>Student</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRegisterData({ ...registerData, role: "teacher" })}
+                    className={`
+                      p-4 rounded-lg flex flex-col items-center gap-2
+                      transition-all hover-elevate active-elevate-2
+                      ${registerData.role === "teacher"
+                        ? "bg-green-100 border-2 border-green-600"
+                        : "bg-white border border-gray-200"
+                      }
+                    `}
+                    data-testid="button-role-teacher"
+                  >
+                    <BookOpen className={`w-8 h-8 ${registerData.role === "teacher" ? "text-green-600" : "text-gray-400"}`} />
+                    <span className={`font-medium ${registerData.role === "teacher" ? "text-green-600" : "text-gray-600"}`}>Teacher</span>
+                  </button>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Choose Your Avatar</Label>

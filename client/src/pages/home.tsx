@@ -198,7 +198,7 @@ export default function Home() {
     {
       id: "practice" as GameMode,
       name: "Practice",
-      description: "Practice spelling words with immediate feedback",
+      description: "Practice spelling words (cannot earn stars or use items in this mode)",
       icon: Target,
       color: "text-blue-600",
     },

@@ -15,6 +15,7 @@ export const users = pgTable("users", {
   selectedTheme: text("selected_theme").default("default"),
   preferredVoice: text("preferred_voice"),
   stars: integer("stars").notNull().default(0),
+  role: text("role").notNull().default("student"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
