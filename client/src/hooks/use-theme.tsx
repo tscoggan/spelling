@@ -14,6 +14,11 @@ import pirateBackgroundPortrait from "@assets/Pirate background - portrait_17645
 import pirateMascotTrophy from "@assets/Pirate with trophy_1764527120328.png";
 import pirateMascotGoodTry from "@assets/Pirate with good try_1764527120328.png";
 
+import spaceBackgroundLandscape from "@assets/Space background - landscape_1764592131991.png";
+import spaceBackgroundPortrait from "@assets/Space background - portrait_1764592131992.png";
+import spaceMascotTrophy from "@assets/Astronaut with trophy_1764592131993.png";
+import spaceMascotGoodTry from "@assets/Astronaut with good try_1764592131993.png";
+
 const THEME_ASSETS: Record<ThemeId, ThemeAssets> = {
   default: {
     backgroundLandscape: defaultBackgroundLandscape,
@@ -28,6 +33,13 @@ const THEME_ASSETS: Record<ThemeId, ThemeAssets> = {
     mascotTrophy: pirateMascotTrophy,
     mascotGoodTry: pirateMascotGoodTry,
     name: "Pirate Theme",
+  },
+  space: {
+    backgroundLandscape: spaceBackgroundLandscape,
+    backgroundPortrait: spaceBackgroundPortrait,
+    mascotTrophy: spaceMascotTrophy,
+    mascotGoodTry: spaceMascotGoodTry,
+    name: "Space Theme",
   },
 };
 

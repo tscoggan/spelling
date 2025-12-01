@@ -311,7 +311,7 @@ export default function Stats() {
                     <div className="space-y-2">
                       {stats.mostMisspelledWords.map(({ word, mistakes }, index) => (
                         <div key={word} className="flex items-center justify-between" data-testid={`misspelled-word-${index}`}>
-                          <span className="text-base font-medium capitalize">{word}</span>
+                          <span className="text-base font-medium uppercase">{word}</span>
                           <span className="text-sm text-muted-foreground">{mistakes} {mistakes === 1 ? 'mistake' : 'mistakes'}</span>
                         </div>
                       ))}

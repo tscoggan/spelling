@@ -184,12 +184,20 @@ export const SHOP_ITEMS = {
     type: "theme" as const,
     themeId: "pirate",
   },
+  space_theme: {
+    id: "space_theme",
+    name: "Space Theme",
+    description: "Blast off to the stars with a space-themed background and astronaut character!",
+    cost: 5,
+    type: "theme" as const,
+    themeId: "space",
+  },
 } as const;
 
 export type ShopItemId = keyof typeof SHOP_ITEMS;
 export type ShopItem = typeof SHOP_ITEMS[ShopItemId];
 
-export type ThemeId = "default" | "pirate";
+export type ThemeId = "default" | "pirate" | "space";
 
 export interface ThemeAssets {
   backgroundLandscape: string;
@@ -208,6 +216,11 @@ export const AVAILABLE_THEMES: Record<ThemeId, { name: string; requiresPurchase:
     name: "Pirate Theme",
     requiresPurchase: true,
     shopItemId: "pirate_theme",
+  },
+  space: {
+    name: "Space Theme",
+    requiresPurchase: true,
+    shopItemId: "space_theme",
   },
 };
 
