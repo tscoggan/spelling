@@ -106,6 +106,10 @@ export interface IStorage {
   
   searchUsers(query: string): Promise<any[]>;
   
+  getUserOwnedGroups(userId: number): Promise<any[]>;
+  getUserWordLists(userId: number): Promise<CustomWordList[]>;
+  getGameSessionsByUserAndList(userId: number, wordListId: number): Promise<GameSession[]>;
+  
   getWordListSharedGroupIds(wordListId: number): Promise<number[]>;
   setWordListSharedGroups(wordListId: number, groupIds: number[]): Promise<void>;
   isUserMemberOfWordListGroups(userId: number, wordListId: number): Promise<boolean>;
@@ -914,6 +918,34 @@ export class DatabaseStorage implements IStorage {
       .limit(10);
     
     return results;
+  }
+
+  async getUserOwnedGroups(userId: number): Promise<any[]> {
+    return await db
+      .select()
+      .from(userGroups)
+      .where(eq(userGroups.ownerUserId, userId));
+  }
+
+  async getUserWordLists(userId: number): Promise<CustomWordList[]> {
+    return await db
+      .select()
+      .from(customWordLists)
+      .where(eq(customWordLists.userId, userId))
+      .orderBy(desc(customWordLists.createdAt));
+  }
+
+  async getGameSessionsByUserAndList(userId: number, wordListId: number): Promise<GameSession[]> {
+    return await db
+      .select()
+      .from(gameSessions)
+      .where(
+        and(
+          eq(gameSessions.userId, userId),
+          eq(gameSessions.wordListId, wordListId)
+        )
+      )
+      .orderBy(desc(gameSessions.createdAt));
   }
 
   async getWordListSharedGroupIds(wordListId: number): Promise<number[]> {

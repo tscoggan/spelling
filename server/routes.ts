@@ -2094,6 +2094,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Teacher Dashboard endpoint
+  app.get("/api/teacher/dashboard", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const user = req.user as any;
+      if (user.role !== "teacher") {
+        return res.status(403).json({ error: "Teacher access required" });
+      }
+
+      // Get groups owned by this teacher
+      const groups = await storage.getUserOwnedGroups(user.id);
+      
+      // Get word lists created by this teacher
+      const wordLists = await storage.getUserWordLists(user.id);
+      
+      // For each word list, get statistics for students in the teacher's groups
+      const wordListsWithStats = await Promise.all(wordLists.map(async (list) => {
+        // Get all members from the teacher's groups
+        const allStudents: Set<number> = new Set();
+        for (const group of groups) {
+          const members = await storage.getGroupMembers(group.id);
+          members.forEach(member => {
+            if (member.userId !== user.id) { // Exclude the teacher
+              allStudents.add(member.userId);
+            }
+          });
+        }
+
+        // Get statistics for each student on this word list
+        const studentStats = await Promise.all(Array.from(allStudents).map(async (studentId) => {
+          const studentUser = await storage.getUser(studentId);
+          if (!studentUser) return null;
+
+          // Get game sessions for this student on this word list
+          const sessions = await storage.getGameSessionsByUserAndList(studentId, list.id);
+          
+          const totalGames = sessions.length;
+          const correctWords = sessions.reduce((sum, s) => sum + (s.correctWords || 0), 0);
+          const totalWords = sessions.reduce((sum, s) => sum + (s.totalWords || 0), 0);
+          const averageAccuracy = totalWords > 0 ? Math.round((correctWords / totalWords) * 100) : 0;
+          const bestStreak = sessions.reduce((max, s) => Math.max(max, s.bestStreak || 0), 0);
+
+          return {
+            id: studentUser.id,
+            username: studentUser.username,
+            firstName: studentUser.firstName,
+            lastName: studentUser.lastName,
+            totalGames,
+            correctWords,
+            totalWords,
+            averageAccuracy,
+            bestStreak,
+          };
+        }));
+
+        return {
+          id: list.id,
+          name: list.name,
+          wordCount: list.words.length,
+          students: studentStats.filter(s => s !== null && s.totalGames > 0),
+        };
+      }));
+
+      // Get group info with member counts
+      const groupsWithCounts = await Promise.all(groups.map(async (group) => {
+        const members = await storage.getGroupMembers(group.id);
+        return {
+          id: group.id,
+          name: group.name,
+          memberCount: members.length,
+        };
+      }));
+
+      res.json({
+        wordLists: wordListsWithStats,
+        groups: groupsWithCounts,
+      });
+    } catch (error) {
+      console.error("Error fetching teacher dashboard:", error);
+      res.status(500).json({ error: "Failed to fetch teacher dashboard" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

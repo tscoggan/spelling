@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Sparkles, Trophy, Clock, Target, List, ChevronRight, Shuffle, AlertCircle, Grid3x3, Users, BarChart3 } from "lucide-react";
+import { BookOpen, Sparkles, Trophy, Clock, Target, List, ChevronRight, Shuffle, AlertCircle, Grid3x3, Users, BarChart3, LayoutDashboard } from "lucide-react";
 import type { GameMode } from "@shared/schema";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -36,6 +36,116 @@ import myStatsButton from "@assets/My Stats button 2_1764445093611.png";
 import achievementsButton from "@assets/Achievements button 3_1764446032415.png";
 import starShopButton from "@assets/Star Shops button 2_1764445093610.png";
 
+function TeacherHome() {
+  const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  const { themeAssets, currentTheme } = useTheme();
+  
+  const needsWhiteText = currentTheme === "space" || currentTheme === "skiing" || currentTheme === "basketball";
+
+  return (
+    <div className="min-h-screen p-4 md:p-8 relative overflow-hidden">
+      <div 
+        className="fixed inset-0 portrait:block landscape:hidden"
+        style={{
+          backgroundImage: `url(${themeAssets.backgroundPortrait})`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center top',
+        }}
+      ></div>
+      <div 
+        className="fixed inset-0 portrait:hidden landscape:block"
+        style={{
+          backgroundImage: `url(${themeAssets.backgroundLandscape})`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center top',
+        }}
+      ></div>
+      <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="max-w-4xl mx-auto relative z-10 space-y-6"
+      >
+        <UserHeader />
+
+        <div className="text-center mb-8">
+          <motion.div
+            className="mb-2 flex justify-center overflow-hidden"
+            initial={{ scale: 0.9 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            <img 
+              src={titleBanner} 
+              alt="Spelling Champions" 
+              className="w-full max-w-sm md:max-w-xl h-auto rounded-md"
+              data-testid="img-title-banner"
+            />
+          </motion.div>
+          <p className={`text-lg md:text-xl font-semibold ${needsWhiteText ? 'text-white' : 'text-foreground'}`}>
+            Welcome, Teacher {user?.firstName || user?.username}!
+          </p>
+        </div>
+
+        <Card className="p-6 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm">
+          <h2 className="text-xl font-bold mb-6 text-center">Teacher Navigation</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Button
+              variant="outline"
+              className="h-auto py-6 flex flex-col items-center gap-3 text-lg"
+              onClick={() => setLocation("/user-groups")}
+              data-testid="button-teacher-groups"
+            >
+              <Users className="w-10 h-10 text-blue-600" />
+              <span className="font-semibold">User Groups</span>
+              <span className="text-sm text-muted-foreground font-normal">Manage your student groups</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-auto py-6 flex flex-col items-center gap-3 text-lg"
+              onClick={() => setLocation("/word-lists")}
+              data-testid="button-teacher-wordlists"
+            >
+              <BookOpen className="w-10 h-10 text-green-600" />
+              <span className="font-semibold">Word Lists</span>
+              <span className="text-sm text-muted-foreground font-normal">Create and manage word lists</span>
+            </Button>
+
+            <Button
+              variant="default"
+              className="h-auto py-6 flex flex-col items-center gap-3 text-lg bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600"
+              onClick={() => setLocation("/teacher-dashboard")}
+              data-testid="button-teacher-dashboard"
+            >
+              <LayoutDashboard className="w-10 h-10" />
+              <span className="font-semibold">Teacher Dashboard</span>
+              <span className="text-sm font-normal opacity-90">View student performance</span>
+            </Button>
+          </div>
+        </Card>
+
+        <Card className="p-6 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <BarChart3 className="w-6 h-6 text-primary" />
+            <h2 className="text-lg font-bold">Quick Overview</h2>
+          </div>
+          <p className="text-muted-foreground">
+            Access your Teacher Dashboard to view detailed performance metrics for your students. 
+            Create word lists and share them with your groups to track student progress.
+          </p>
+        </Card>
+      </motion.div>
+    </div>
+  );
+}
+
 interface CustomWordList {
   id: number;
   name: string;
@@ -58,6 +168,11 @@ export default function Home() {
   const [quizWordCount, setQuizWordCount] = useState<"10" | "all">("all");
   const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
   const iOSKeyboardInput = useIOSKeyboardTrigger();
+
+  // Show Teacher Home for teachers
+  if (user?.role === "teacher") {
+    return <TeacherHome />;
+  }
 
   const { data: customLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists"],
