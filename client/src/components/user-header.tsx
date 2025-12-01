@@ -622,21 +622,23 @@ export function UserHeader() {
                   <p>Notifications</p>
                 </TooltipContent>
               </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setSettingsOpen(true)}
-                    data-testid="button-settings"
-                  >
-                    <Settings className="w-4 h-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Settings</p>
-                </TooltipContent>
-              </Tooltip>
+              {user?.role !== "teacher" && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setSettingsOpen(true)}
+                      data-testid="button-settings"
+                    >
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Settings</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -1047,6 +1049,56 @@ export function UserHeader() {
                         <li>Best streaks and favorite game modes</li>
                         <li>Most misspelled words to practice</li>
                         <li>Filter by date range to see recent progress</li>
+                      </ul>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="for-teachers">
+                  <AccordionTrigger className="text-left">
+                    <div className="flex items-center gap-2">
+                      <UserCircle className="w-4 h-4 text-orange-500" />
+                      For Teachers
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-3 text-sm">
+                    <p className="text-muted-foreground">
+                      As a teacher, you can create word lists and groups for your students to practice!
+                    </p>
+                    <div>
+                      <strong>Step 1: Create a User Group</strong>
+                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                        <li>Go to "User Groups" from the main menu</li>
+                        <li>Click "Create Group" and name it after your class</li>
+                        <li>Set a password so only your students can join</li>
+                        <li>You can also add co-owners (other teachers) to help manage the group</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <strong>Step 2: Invite Students</strong>
+                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                        <li>Share the group password with your students</li>
+                        <li>Students join by going to User Groups and entering the password</li>
+                        <li>You can also invite students by searching their username</li>
+                        <li>Manage members from the "Manage Members" button on your group</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <strong>Step 3: Create Word Lists</strong>
+                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                        <li>Go to "Word Lists" and click "Create New List"</li>
+                        <li>Add your spelling words (one per line)</li>
+                        <li>Set visibility to "Groups" and select your class group</li>
+                        <li>Enable cartoon images to make learning more engaging</li>
+                        <li>You can add co-owners to allow other teachers to edit the list</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <strong>Monitor Progress</strong>
+                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                        <li>Use the Teacher Dashboard to see student performance</li>
+                        <li>View accuracy and progress for each word list</li>
+                        <li>Identify which words students are struggling with</li>
                       </ul>
                     </div>
                   </AccordionContent>

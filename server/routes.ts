@@ -1195,6 +1195,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Search teachers by name, email, or username
+  app.get("/api/teachers/search", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      // Only teachers can search for other teachers
+      if (req.user!.role !== "teacher") {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const query = req.query.q as string;
+      if (!query || query.length < 2) {
+        return res.json([]);
+      }
+
+      const teachers = await storage.searchTeachers(query);
+      
+      // Filter out current user and return minimal info
+      const teacherList = teachers
+        .filter(t => t.id !== req.user!.id)
+        .map(t => ({
+          id: t.id,
+          username: t.username,
+          email: t.email,
+          firstName: t.firstName,
+          lastName: t.lastName,
+        }));
+
+      res.json(teacherList);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to search teachers" });
+    }
+  });
+
   // Pixabay preview endpoint - fetch top results without downloading
   app.get("/api/pixabay/previews", async (req, res) => {
     try {

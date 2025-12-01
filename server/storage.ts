@@ -46,7 +46,7 @@ import {
   type ShopItemId,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql, inArray, not } from "drizzle-orm";
+import { eq, desc, and, sql, inArray, not, or } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -130,6 +130,7 @@ export interface IStorage {
   isGroupCoOwner(groupId: number, userId: number): Promise<boolean>;
   
   getTeachers(): Promise<User[]>;
+  searchTeachers(query: string): Promise<User[]>;
   
   createPasswordResetToken(token: InsertPasswordResetToken): Promise<PasswordResetToken>;
   getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
@@ -1116,6 +1117,26 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(users)
       .where(eq(users.role, "teacher"));
+  }
+
+  async searchTeachers(query: string): Promise<User[]> {
+    const searchTerm = `%${query.toLowerCase()}%`;
+    return await db
+      .select()
+      .from(users)
+      .where(
+        and(
+          eq(users.role, "teacher"),
+          or(
+            sql`LOWER(${users.username}) LIKE ${searchTerm}`,
+            sql`LOWER(${users.email}) LIKE ${searchTerm}`,
+            sql`LOWER(${users.firstName}) LIKE ${searchTerm}`,
+            sql`LOWER(${users.lastName}) LIKE ${searchTerm}`,
+            sql`LOWER(CONCAT(${users.firstName}, ' ', ${users.lastName})) LIKE ${searchTerm}`
+          )
+        )
+      )
+      .limit(10);
   }
 
   async createPasswordResetToken(insertToken: InsertPasswordResetToken): Promise<PasswordResetToken> {

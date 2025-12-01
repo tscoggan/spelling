@@ -57,6 +57,7 @@ export default function WordListsPage() {
   const [selectedListForPlay, setSelectedListForPlay] = useState<CustomWordList | null>(null);
   const [coOwnersDialogOpen, setCoOwnersDialogOpen] = useState(false);
   const [selectedListForCoOwners, setSelectedListForCoOwners] = useState<CustomWordList | null>(null);
+  const [teacherSearchQuery, setTeacherSearchQuery] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     words: "",
@@ -134,14 +135,15 @@ export default function WordListsPage() {
   });
 
   // Co-owner management queries and mutations
-  const { data: teachers = [] } = useQuery<any[]>({
-    queryKey: ["/api/teachers"],
+  const { data: teacherSearchResults = [], isLoading: isSearchingTeachers } = useQuery<any[]>({
+    queryKey: ["/api/teachers/search", teacherSearchQuery],
     queryFn: async () => {
-      const response = await fetch("/api/teachers", { credentials: "include" });
-      if (!response.ok) throw new Error("Failed to fetch teachers");
+      if (teacherSearchQuery.length < 2) return [];
+      const response = await fetch(`/api/teachers/search?q=${encodeURIComponent(teacherSearchQuery)}`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to search teachers");
       return await response.json();
     },
-    enabled: !!user && user.role === "teacher" && coOwnersDialogOpen,
+    enabled: !!user && user.role === "teacher" && coOwnersDialogOpen && teacherSearchQuery.length >= 2,
   });
 
   const { data: coOwners = [], refetch: refetchCoOwners } = useQuery<any[]>({
@@ -163,6 +165,7 @@ export default function WordListsPage() {
     },
     onSuccess: () => {
       refetchCoOwners();
+      setTeacherSearchQuery("");
       toast({ title: "Success", description: "Co-owner added successfully" });
     },
     onError: (error: any) => {
@@ -1496,30 +1499,50 @@ export default function WordListsPage() {
               {/* Add New Co-owner */}
               <div>
                 <Label className="text-sm font-medium">Add Co-owner</Label>
-                <Select
-                  onValueChange={(value) => {
-                    addCoOwnerMutation.mutate(parseInt(value));
-                  }}
-                  disabled={addCoOwnerMutation.isPending}
-                >
-                  <SelectTrigger className="mt-2" data-testid="select-add-co-owner">
-                    <SelectValue placeholder="Select a teacher..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {teachers
-                      .filter((t: any) => !coOwners.some((co: any) => co.coOwnerUserId === t.id))
-                      .map((teacher: any) => (
-                        <SelectItem key={teacher.id} value={teacher.id.toString()}>
-                          {teacher.firstName && teacher.lastName 
-                            ? `${teacher.firstName} ${teacher.lastName}` 
-                            : teacher.username}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                {teachers.length === 0 && (
+                <Input
+                  className="mt-2"
+                  placeholder="Search by name, email, or username..."
+                  value={teacherSearchQuery}
+                  onChange={(e) => setTeacherSearchQuery(e.target.value)}
+                  data-testid="input-search-teacher"
+                />
+                {teacherSearchQuery.length >= 2 && (
+                  <div className="mt-2 border rounded-md max-h-40 overflow-y-auto">
+                    {isSearchingTeachers ? (
+                      <p className="text-sm text-muted-foreground p-2">Searching...</p>
+                    ) : teacherSearchResults.length === 0 ? (
+                      <p className="text-sm text-muted-foreground p-2">No teachers found</p>
+                    ) : (
+                      teacherSearchResults
+                        .filter((t: any) => !coOwners.some((co: any) => co.coOwnerUserId === t.id))
+                        .map((teacher: any) => (
+                          <div
+                            key={teacher.id}
+                            className="flex items-center justify-between p-2 hover:bg-muted cursor-pointer"
+                            onClick={() => addCoOwnerMutation.mutate(teacher.id)}
+                            data-testid={`search-result-teacher-${teacher.id}`}
+                          >
+                            <div>
+                              <p className="text-sm font-medium">
+                                {teacher.firstName && teacher.lastName 
+                                  ? `${teacher.firstName} ${teacher.lastName}` 
+                                  : teacher.username}
+                              </p>
+                              {teacher.email && (
+                                <p className="text-xs text-muted-foreground">{teacher.email}</p>
+                              )}
+                            </div>
+                            <Button size="sm" variant="ghost" disabled={addCoOwnerMutation.isPending}>
+                              <UserPlus className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))
+                    )}
+                  </div>
+                )}
+                {teacherSearchQuery.length > 0 && teacherSearchQuery.length < 2 && (
                   <p className="text-xs text-muted-foreground mt-1">
-                    No other teachers available
+                    Type at least 2 characters to search
                   </p>
                 )}
               </div>

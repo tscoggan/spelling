@@ -45,6 +45,7 @@ export default function UserGroupsPage() {
   const [viewingPasswordForGroup, setViewingPasswordForGroup] = useState<number | null>(null);
   const [coOwnersDialogOpen, setCoOwnersDialogOpen] = useState(false);
   const [selectedGroupForCoOwners, setSelectedGroupForCoOwners] = useState<any>(null);
+  const [groupTeacherSearchQuery, setGroupTeacherSearchQuery] = useState("");
 
   const { data: groups = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/user-groups", user?.id],
@@ -244,14 +245,15 @@ export default function UserGroupsPage() {
   });
 
   // Co-owner management queries and mutations
-  const { data: teachers = [] } = useQuery<any[]>({
-    queryKey: ["/api/teachers"],
+  const { data: groupTeacherSearchResults = [], isLoading: isSearchingGroupTeachers } = useQuery<any[]>({
+    queryKey: ["/api/teachers/search", groupTeacherSearchQuery],
     queryFn: async () => {
-      const response = await fetch("/api/teachers", { credentials: "include" });
-      if (!response.ok) throw new Error("Failed to fetch teachers");
+      if (groupTeacherSearchQuery.length < 2) return [];
+      const response = await fetch(`/api/teachers/search?q=${encodeURIComponent(groupTeacherSearchQuery)}`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to search teachers");
       return await response.json();
     },
-    enabled: !!user && user.role === "teacher" && coOwnersDialogOpen,
+    enabled: !!user && user.role === "teacher" && coOwnersDialogOpen && groupTeacherSearchQuery.length >= 2,
   });
 
   const { data: groupCoOwners = [], refetch: refetchGroupCoOwners } = useQuery<any[]>({
@@ -273,6 +275,7 @@ export default function UserGroupsPage() {
     },
     onSuccess: () => {
       refetchGroupCoOwners();
+      setGroupTeacherSearchQuery("");
       toast({ title: "Success", description: "Co-owner added successfully" });
     },
     onError: (error: any) => {
@@ -1306,31 +1309,50 @@ export default function UserGroupsPage() {
               {/* Add New Co-owner */}
               <div>
                 <Label className="text-sm font-medium">Add Co-owner</Label>
-                <select
-                  className="mt-2 w-full p-2 border rounded-md"
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      addGroupCoOwnerMutation.mutate(parseInt(e.target.value));
-                      e.target.value = "";
-                    }
-                  }}
-                  disabled={addGroupCoOwnerMutation.isPending}
-                  data-testid="select-add-group-co-owner"
-                >
-                  <option value="">Select a teacher...</option>
-                  {teachers
-                    .filter((t: any) => !groupCoOwners.some((co: any) => co.coOwnerUserId === t.id))
-                    .map((teacher: any) => (
-                      <option key={teacher.id} value={teacher.id}>
-                        {teacher.firstName && teacher.lastName 
-                          ? `${teacher.firstName} ${teacher.lastName}` 
-                          : teacher.username}
-                      </option>
-                    ))}
-                </select>
-                {teachers.length === 0 && (
+                <Input
+                  className="mt-2"
+                  placeholder="Search by name, email, or username..."
+                  value={groupTeacherSearchQuery}
+                  onChange={(e) => setGroupTeacherSearchQuery(e.target.value)}
+                  data-testid="input-search-group-teacher"
+                />
+                {groupTeacherSearchQuery.length >= 2 && (
+                  <div className="mt-2 border rounded-md max-h-40 overflow-y-auto">
+                    {isSearchingGroupTeachers ? (
+                      <p className="text-sm text-muted-foreground p-2">Searching...</p>
+                    ) : groupTeacherSearchResults.length === 0 ? (
+                      <p className="text-sm text-muted-foreground p-2">No teachers found</p>
+                    ) : (
+                      groupTeacherSearchResults
+                        .filter((t: any) => !groupCoOwners.some((co: any) => co.coOwnerUserId === t.id))
+                        .map((teacher: any) => (
+                          <div
+                            key={teacher.id}
+                            className="flex items-center justify-between p-2 hover:bg-muted cursor-pointer"
+                            onClick={() => addGroupCoOwnerMutation.mutate(teacher.id)}
+                            data-testid={`search-result-group-teacher-${teacher.id}`}
+                          >
+                            <div>
+                              <p className="text-sm font-medium">
+                                {teacher.firstName && teacher.lastName 
+                                  ? `${teacher.firstName} ${teacher.lastName}` 
+                                  : teacher.username}
+                              </p>
+                              {teacher.email && (
+                                <p className="text-xs text-muted-foreground">{teacher.email}</p>
+                              )}
+                            </div>
+                            <Button size="sm" variant="ghost" disabled={addGroupCoOwnerMutation.isPending}>
+                              <UserPlus className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))
+                    )}
+                  </div>
+                )}
+                {groupTeacherSearchQuery.length > 0 && groupTeacherSearchQuery.length < 2 && (
                   <p className="text-xs text-muted-foreground mt-1">
-                    No other teachers available
+                    Type at least 2 characters to search
                   </p>
                 )}
               </div>
