@@ -3806,6 +3806,32 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
               </div>
             )}
 
+            {/* Misspelled Words List - show for all modes except crossword */}
+            {gameMode !== "crossword" && incorrectWords.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-xl font-bold text-gray-800 text-center">Words to Practice</h3>
+                <div className="max-h-48 overflow-y-auto">
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {incorrectWords.map((word, index) => (
+                      <Card
+                        key={index}
+                        className="px-4 py-2 bg-red-50 border-red-200"
+                        data-testid={`misspelled-word-${index}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <XCircle className="w-4 h-4 text-red-500" />
+                          <span className="font-semibold text-gray-800">{word.toUpperCase()}</span>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-center text-sm text-gray-600">
+                  Practice these words to improve your spelling!
+                </p>
+              </div>
+            )}
+
             {/* 2nd Chance Button - only show when user has items and has incorrect words */}
             {gameMode !== "practice" && getItemQuantity("second_chance") > 0 && incorrectWords.length > 0 && !secondChanceMode && (
               <motion.div

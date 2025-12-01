@@ -173,7 +173,7 @@ export const SHOP_ITEMS = {
     id: "second_chance",
     name: "2nd Chance",
     description: "Retry all incorrect words at the end of a game with no penalty",
-    cost: 5,
+    cost: 3,
     type: "consumable" as const,
   },
   pirate_theme: {

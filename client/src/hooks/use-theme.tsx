@@ -29,7 +29,7 @@ import skiingBackgroundPortrait from "@assets/Ski background - portrait_17646253
 import skiingMascotTrophy from "@assets/Skier with trophy_1764625337440.png";
 import skiingMascotGoodTry from "@assets/Skier with good try_1764625337440.png";
 
-import basketballBackgroundLandscape from "@assets/Basketball background - landscape_1764625337443.png";
+import basketballBackgroundLandscape from "@assets/Basketball background - landscape_1764626634576.png";
 import basketballBackgroundPortrait from "@assets/Basketball background - portrait_1764625337443.png";
 import basketballMascotTrophy from "@assets/Basketball player with trophy_1764625337441.png";
 import basketballMascotGoodTry from "@assets/Backetball player with good try_1764625337440.png";
