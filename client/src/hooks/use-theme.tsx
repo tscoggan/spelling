@@ -19,6 +19,21 @@ import spaceBackgroundPortrait from "@assets/Space background - portrait_1764592
 import spaceMascotTrophy from "@assets/Astronaut with trophy_1764592131993.png";
 import spaceMascotGoodTry from "@assets/Astronaut with good try_1764592131993.png";
 
+import soccerBackgroundLandscape from "@assets/Soccer background - landscape_1764625337443.png";
+import soccerBackgroundPortrait from "@assets/Soccer background - portrait_1764625337442.png";
+import soccerMascotTrophy from "@assets/Soccer player with trophy_1764625337439.png";
+import soccerMascotGoodTry from "@assets/Soccer player with good try_1764625337439.png";
+
+import skiingBackgroundLandscape from "@assets/Ski background - landscape_1764625337442.png";
+import skiingBackgroundPortrait from "@assets/Ski background - portrait_1764625337442.png";
+import skiingMascotTrophy from "@assets/Skier with trophy_1764625337440.png";
+import skiingMascotGoodTry from "@assets/Skier with good try_1764625337440.png";
+
+import basketballBackgroundLandscape from "@assets/Basketball background - landscape_1764625337443.png";
+import basketballBackgroundPortrait from "@assets/Basketball background - portrait_1764625337443.png";
+import basketballMascotTrophy from "@assets/Basketball player with trophy_1764625337441.png";
+import basketballMascotGoodTry from "@assets/Backetball player with good try_1764625337440.png";
+
 const THEME_ASSETS: Record<ThemeId, ThemeAssets> = {
   default: {
     backgroundLandscape: defaultBackgroundLandscape,
@@ -40,6 +55,27 @@ const THEME_ASSETS: Record<ThemeId, ThemeAssets> = {
     mascotTrophy: spaceMascotTrophy,
     mascotGoodTry: spaceMascotGoodTry,
     name: "Space Theme",
+  },
+  soccer: {
+    backgroundLandscape: soccerBackgroundLandscape,
+    backgroundPortrait: soccerBackgroundPortrait,
+    mascotTrophy: soccerMascotTrophy,
+    mascotGoodTry: soccerMascotGoodTry,
+    name: "Soccer Theme",
+  },
+  skiing: {
+    backgroundLandscape: skiingBackgroundLandscape,
+    backgroundPortrait: skiingBackgroundPortrait,
+    mascotTrophy: skiingMascotTrophy,
+    mascotGoodTry: skiingMascotGoodTry,
+    name: "Skiing Theme",
+  },
+  basketball: {
+    backgroundLandscape: basketballBackgroundLandscape,
+    backgroundPortrait: basketballBackgroundPortrait,
+    mascotTrophy: basketballMascotTrophy,
+    mascotGoodTry: basketballMascotGoodTry,
+    name: "Basketball Theme",
   },
 };
 

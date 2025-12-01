@@ -192,12 +192,36 @@ export const SHOP_ITEMS = {
     type: "theme" as const,
     themeId: "space",
   },
+  soccer_theme: {
+    id: "soccer_theme",
+    name: "Soccer Theme",
+    description: "Score big with a soccer field background and player character!",
+    cost: 5,
+    type: "theme" as const,
+    themeId: "soccer",
+  },
+  skiing_theme: {
+    id: "skiing_theme",
+    name: "Skiing Theme",
+    description: "Hit the slopes with a snowy mountain background and skier character!",
+    cost: 5,
+    type: "theme" as const,
+    themeId: "skiing",
+  },
+  basketball_theme: {
+    id: "basketball_theme",
+    name: "Basketball Theme",
+    description: "Shoot for the stars with a basketball court background and player character!",
+    cost: 5,
+    type: "theme" as const,
+    themeId: "basketball",
+  },
 } as const;
 
 export type ShopItemId = keyof typeof SHOP_ITEMS;
 export type ShopItem = typeof SHOP_ITEMS[ShopItemId];
 
-export type ThemeId = "default" | "pirate" | "space";
+export type ThemeId = "default" | "pirate" | "space" | "soccer" | "skiing" | "basketball";
 
 export interface ThemeAssets {
   backgroundLandscape: string;
@@ -221,6 +245,21 @@ export const AVAILABLE_THEMES: Record<ThemeId, { name: string; requiresPurchase:
     name: "Space Theme",
     requiresPurchase: true,
     shopItemId: "space_theme",
+  },
+  soccer: {
+    name: "Soccer Theme",
+    requiresPurchase: true,
+    shopItemId: "soccer_theme",
+  },
+  skiing: {
+    name: "Skiing Theme",
+    requiresPurchase: true,
+    shopItemId: "skiing_theme",
+  },
+  basketball: {
+    name: "Basketball Theme",
+    requiresPurchase: true,
+    shopItemId: "basketball_theme",
   },
 };
 

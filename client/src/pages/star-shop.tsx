@@ -16,6 +16,9 @@ import doOverImage from "@assets/Do Over (1 Word) item_1764449029422.png";
 import secondChanceImage from "@assets/2nd Chance (All Mistakes) item_1764449029422.png";
 import pirateThemeImage from "@assets/Pirate with trophy_1764527120328.png";
 import spaceThemeImage from "@assets/Astronaut with trophy_1764592131993.png";
+import soccerThemeImage from "@assets/Soccer player with trophy_1764625337439.png";
+import skiingThemeImage from "@assets/Skier with trophy_1764625337440.png";
+import basketballThemeImage from "@assets/Basketball player with trophy_1764625337441.png";
 import { SHOP_ITEMS, ShopItem, ShopItemId, ThemeId } from "@shared/schema";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -37,6 +40,9 @@ const ITEM_IMAGES: Record<ShopItemId, string> = {
   second_chance: secondChanceImage,
   pirate_theme: pirateThemeImage,
   space_theme: spaceThemeImage,
+  soccer_theme: soccerThemeImage,
+  skiing_theme: skiingThemeImage,
+  basketball_theme: basketballThemeImage,
 };
 
 export default function StarShop() {
