@@ -12,7 +12,8 @@ import {
   ChevronRight,
   BarChart3,
   Target,
-  Trophy
+  Trophy,
+  Home
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { UserHeader } from "@/components/user-header";
@@ -99,44 +100,17 @@ export default function TeacherDashboard() {
         transition={{ duration: 0.5 }}
         className="relative z-10 max-w-6xl mx-auto space-y-6"
       >
-        <UserHeader />
-
-        <Card className="p-6 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm">
-          <div className="flex items-center gap-3 mb-6">
-            <LayoutDashboard className="w-8 h-8 text-primary" />
-            <h1 className="text-2xl md:text-3xl font-bold">Teacher Dashboard</h1>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <Button
-              variant="outline"
-              className="h-auto py-4 flex flex-col items-center gap-2"
-              onClick={() => setLocation("/user-groups")}
-              data-testid="button-user-groups"
-            >
-              <Users className="w-6 h-6" />
-              <span>User Groups</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-auto py-4 flex flex-col items-center gap-2"
-              onClick={() => setLocation("/word-lists")}
-              data-testid="button-word-lists"
-            >
-              <BookOpen className="w-6 h-6" />
-              <span>Word Lists</span>
-            </Button>
-            <Button
-              variant="default"
-              className="h-auto py-4 flex flex-col items-center gap-2"
-              onClick={() => setLocation("/teacher-dashboard")}
-              data-testid="button-teacher-dashboard"
-            >
-              <BarChart3 className="w-6 h-6" />
-              <span>Dashboard</span>
-            </Button>
-          </div>
-        </Card>
+        <div className="flex items-center justify-between">
+          <Button 
+            variant="outline" 
+            onClick={() => setLocation("/")}
+            data-testid="button-home"
+          >
+            <Home className="w-4 h-4 mr-2" />
+            Home
+          </Button>
+          <UserHeader />
+        </div>
 
         <Card className="p-6 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm">
           <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
@@ -243,34 +217,6 @@ export default function TeacherDashboard() {
           )}
         </Card>
 
-        {dashboardData?.groups && dashboardData.groups.length > 0 && (
-          <Card className="p-6 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              Your Groups
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {dashboardData.groups.map((group) => (
-                <Card 
-                  key={group.id} 
-                  className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
-                  onClick={() => setLocation("/user-groups")}
-                  data-testid={`group-card-${group.id}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Users className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <div className="font-medium">{group.name}</div>
-                      <div className="text-sm text-gray-500">{group.memberCount} members</div>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </Card>
-        )}
       </motion.div>
     </div>
   );

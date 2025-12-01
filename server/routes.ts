@@ -839,7 +839,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Word list not found" });
       }
 
-      if (existingList.userId !== req.user!.id) {
+      // Check if user is owner or co-owner
+      const isOwner = existingList.userId === req.user!.id;
+      const isCoOwner = await storage.isWordListCoOwner(id, req.user!.id);
+      
+      if (!isOwner && !isCoOwner) {
         return res.status(403).json({ error: "Access denied" });
       }
 
@@ -1004,7 +1008,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Word list not found" });
       }
 
-      if (existingList.userId !== req.user!.id) {
+      // Check if user is owner or co-owner
+      const isOwner = existingList.userId === req.user!.id;
+      const isCoOwner = await storage.isWordListCoOwner(id, req.user!.id);
+      
+      if (!isOwner && !isCoOwner) {
         return res.status(403).json({ error: "Access denied" });
       }
 
@@ -1012,6 +1020,178 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete word list" });
+    }
+  });
+
+  // Get co-owners for a word list
+  app.get("/api/word-lists/:id/co-owners", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid word list ID" });
+      }
+
+      const wordList = await storage.getCustomWordList(id);
+      if (!wordList) {
+        return res.status(404).json({ error: "Word list not found" });
+      }
+
+      // Only owner or co-owners can view co-owners
+      const isOwner = wordList.userId === req.user!.id;
+      const isCoOwner = await storage.isWordListCoOwner(id, req.user!.id);
+      
+      if (!isOwner && !isCoOwner) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const coOwners = await storage.getWordListCoOwners(id);
+      
+      // Get user details for each co-owner
+      const coOwnersWithDetails = await Promise.all(
+        coOwners.map(async (co) => {
+          const user = await storage.getUser(co.coOwnerUserId);
+          return {
+            ...co,
+            username: user?.username,
+            firstName: user?.firstName,
+            lastName: user?.lastName,
+          };
+        })
+      );
+
+      res.json(coOwnersWithDetails);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch co-owners" });
+    }
+  });
+
+  // Add a co-owner to a word list
+  app.post("/api/word-lists/:id/co-owners", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      // Only teachers can add co-owners
+      if (req.user!.role !== "teacher") {
+        return res.status(403).json({ error: "Only teachers can add co-owners" });
+      }
+
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid word list ID" });
+      }
+
+      const { coOwnerUserId } = req.body;
+      if (!coOwnerUserId || typeof coOwnerUserId !== "number") {
+        return res.status(400).json({ error: "Co-owner user ID is required" });
+      }
+
+      const wordList = await storage.getCustomWordList(id);
+      if (!wordList) {
+        return res.status(404).json({ error: "Word list not found" });
+      }
+
+      // Only owner or existing co-owners can add new co-owners
+      const isOwner = wordList.userId === req.user!.id;
+      const isCoOwner = await storage.isWordListCoOwner(id, req.user!.id);
+      
+      if (!isOwner && !isCoOwner) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Verify the new co-owner is a teacher
+      const newCoOwner = await storage.getUser(coOwnerUserId);
+      if (!newCoOwner) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      if (newCoOwner.role !== "teacher") {
+        return res.status(400).json({ error: "Co-owners must be teachers" });
+      }
+
+      // Cannot add owner as co-owner
+      if (coOwnerUserId === wordList.userId) {
+        return res.status(400).json({ error: "Cannot add owner as co-owner" });
+      }
+
+      // Check if already a co-owner
+      const isAlreadyCoOwner = await storage.isWordListCoOwner(id, coOwnerUserId);
+      if (isAlreadyCoOwner) {
+        return res.status(400).json({ error: "User is already a co-owner" });
+      }
+
+      const coOwner = await storage.addWordListCoOwner(id, coOwnerUserId);
+      res.json(coOwner);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to add co-owner" });
+    }
+  });
+
+  // Remove a co-owner from a word list
+  app.delete("/api/word-lists/:id/co-owners/:coOwnerUserId", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const id = parseInt(req.params.id);
+      const coOwnerUserId = parseInt(req.params.coOwnerUserId);
+      
+      if (isNaN(id) || isNaN(coOwnerUserId)) {
+        return res.status(400).json({ error: "Invalid IDs" });
+      }
+
+      const wordList = await storage.getCustomWordList(id);
+      if (!wordList) {
+        return res.status(404).json({ error: "Word list not found" });
+      }
+
+      // Only owner or co-owners can remove co-owners
+      const isOwner = wordList.userId === req.user!.id;
+      const isCoOwner = await storage.isWordListCoOwner(id, req.user!.id);
+      
+      if (!isOwner && !isCoOwner) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      await storage.removeWordListCoOwner(id, coOwnerUserId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to remove co-owner" });
+    }
+  });
+
+  // Get list of teachers for co-owner selection
+  app.get("/api/teachers", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      // Only teachers can view the teacher list
+      if (req.user!.role !== "teacher") {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const teachers = await storage.getTeachers();
+      
+      // Filter out current user and return minimal info
+      const teacherList = teachers
+        .filter(t => t.id !== req.user!.id)
+        .map(t => ({
+          id: t.id,
+          username: t.username,
+          firstName: t.firstName,
+          lastName: t.lastName,
+        }));
+
+      res.json(teacherList);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch teachers" });
     }
   });
 
@@ -1407,8 +1587,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Group not found" });
       }
 
-      if (group.ownerUserId !== user.id) {
-        return res.status(403).json({ error: "Only the group owner can update the group" });
+      // Check if user is owner or co-owner
+      const isOwner = group.ownerUserId === user.id;
+      const isCoOwner = await storage.isGroupCoOwner(groupId, user.id);
+      
+      if (!isOwner && !isCoOwner) {
+        return res.status(403).json({ error: "Only the group owner or co-owners can update the group" });
       }
 
       const updatedGroup = await storage.updateUserGroup(groupId, req.body);
@@ -1436,8 +1620,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Group not found" });
       }
       
-      if (group.ownerUserId !== user.id) {
-        return res.status(403).json({ error: "Only group owner can delete" });
+      // Check if user is owner or co-owner
+      const isOwner = group.ownerUserId === user.id;
+      const isCoOwner = await storage.isGroupCoOwner(groupId, user.id);
+      
+      if (!isOwner && !isCoOwner) {
+        return res.status(403).json({ error: "Only group owner or co-owners can delete" });
       }
 
       await storage.deleteUserGroup(groupId);
@@ -1495,8 +1683,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Group not found" });
       }
       
-      if (group.ownerUserId !== user.id) {
-        return res.status(403).json({ error: "Only group owner can remove members" });
+      // Check if user is owner or co-owner
+      const isOwner = group.ownerUserId === user.id;
+      const isCoOwner = await storage.isGroupCoOwner(groupId, user.id);
+      
+      if (!isOwner && !isCoOwner) {
+        return res.status(403).json({ error: "Only group owner or co-owners can remove members" });
       }
 
       await storage.removeGroupMember(groupId, userId);
@@ -1921,6 +2113,153 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error leaving group:", error);
       res.status(500).json({ error: "Failed to leave group" });
+    }
+  });
+
+  // Get co-owners for a user group
+  app.get("/api/user-groups/:id/co-owners", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const groupId = parseInt(req.params.id);
+      if (isNaN(groupId)) {
+        return res.status(400).json({ error: "Invalid group ID" });
+      }
+
+      const group = await storage.getUserGroup(groupId);
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+
+      // Only owner or co-owners can view co-owners
+      const user = req.user as any;
+      const isOwner = group.ownerUserId === user.id;
+      const isCoOwner = await storage.isGroupCoOwner(groupId, user.id);
+      
+      if (!isOwner && !isCoOwner) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const coOwners = await storage.getGroupCoOwners(groupId);
+      
+      // Get user details for each co-owner
+      const coOwnersWithDetails = await Promise.all(
+        coOwners.map(async (co) => {
+          const coOwnerUser = await storage.getUser(co.coOwnerUserId);
+          return {
+            ...co,
+            username: coOwnerUser?.username,
+            firstName: coOwnerUser?.firstName,
+            lastName: coOwnerUser?.lastName,
+          };
+        })
+      );
+
+      res.json(coOwnersWithDetails);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch co-owners" });
+    }
+  });
+
+  // Add a co-owner to a user group
+  app.post("/api/user-groups/:id/co-owners", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const user = req.user as any;
+      
+      // Only teachers can add co-owners
+      if (user.role !== "teacher") {
+        return res.status(403).json({ error: "Only teachers can add co-owners" });
+      }
+
+      const groupId = parseInt(req.params.id);
+      if (isNaN(groupId)) {
+        return res.status(400).json({ error: "Invalid group ID" });
+      }
+
+      const { coOwnerUserId } = req.body;
+      if (!coOwnerUserId || typeof coOwnerUserId !== "number") {
+        return res.status(400).json({ error: "Co-owner user ID is required" });
+      }
+
+      const group = await storage.getUserGroup(groupId);
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+
+      // Only owner or existing co-owners can add new co-owners
+      const isOwner = group.ownerUserId === user.id;
+      const isCoOwner = await storage.isGroupCoOwner(groupId, user.id);
+      
+      if (!isOwner && !isCoOwner) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Verify the new co-owner is a teacher
+      const newCoOwner = await storage.getUser(coOwnerUserId);
+      if (!newCoOwner) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      if (newCoOwner.role !== "teacher") {
+        return res.status(400).json({ error: "Co-owners must be teachers" });
+      }
+
+      // Cannot add owner as co-owner
+      if (coOwnerUserId === group.ownerUserId) {
+        return res.status(400).json({ error: "Cannot add owner as co-owner" });
+      }
+
+      // Check if already a co-owner
+      const isAlreadyCoOwner = await storage.isGroupCoOwner(groupId, coOwnerUserId);
+      if (isAlreadyCoOwner) {
+        return res.status(400).json({ error: "User is already a co-owner" });
+      }
+
+      const coOwner = await storage.addGroupCoOwner(groupId, coOwnerUserId);
+      res.json(coOwner);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to add co-owner" });
+    }
+  });
+
+  // Remove a co-owner from a user group
+  app.delete("/api/user-groups/:id/co-owners/:coOwnerUserId", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const groupId = parseInt(req.params.id);
+      const coOwnerUserId = parseInt(req.params.coOwnerUserId);
+      
+      if (isNaN(groupId) || isNaN(coOwnerUserId)) {
+        return res.status(400).json({ error: "Invalid IDs" });
+      }
+
+      const group = await storage.getUserGroup(groupId);
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+
+      const user = req.user as any;
+      
+      // Only owner or co-owners can remove co-owners
+      const isOwner = group.ownerUserId === user.id;
+      const isCoOwner = await storage.isGroupCoOwner(groupId, user.id);
+      
+      if (!isOwner && !isCoOwner) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      await storage.removeGroupCoOwner(groupId, coOwnerUserId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to remove co-owner" });
     }
   });
 

@@ -121,6 +121,24 @@ export const wordListUserGroups = pgTable("word_list_user_groups", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const wordListCoOwners = pgTable("word_list_co_owners", {
+  id: serial("id").primaryKey(),
+  wordListId: integer("word_list_id").notNull(),
+  coOwnerUserId: integer("co_owner_user_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  wordListCoOwnerUnique: unique("word_list_co_owner_unique").on(table.wordListId, table.coOwnerUserId),
+}));
+
+export const userGroupCoOwners = pgTable("user_group_co_owners", {
+  id: serial("id").primaryKey(),
+  groupId: integer("group_id").notNull(),
+  coOwnerUserId: integer("co_owner_user_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  groupCoOwnerUnique: unique("group_co_owner_unique").on(table.groupId, table.coOwnerUserId),
+}));
+
 export const userToDoItems = pgTable("user_to_do_items", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
@@ -448,6 +466,16 @@ export const insertWordListUserGroupSchema = createInsertSchema(wordListUserGrou
   createdAt: true,
 });
 
+export const insertWordListCoOwnerSchema = createInsertSchema(wordListCoOwners).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserGroupCoOwnerSchema = createInsertSchema(userGroupCoOwners).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertUserToDoItemSchema = createInsertSchema(userToDoItems).omit({
   id: true,
   createdAt: true,
@@ -493,6 +521,10 @@ export type InsertUserGroupMembership = z.infer<typeof insertUserGroupMembership
 export type UserGroupMembership = typeof userGroupMembership.$inferSelect;
 export type InsertWordListUserGroup = z.infer<typeof insertWordListUserGroupSchema>;
 export type WordListUserGroup = typeof wordListUserGroups.$inferSelect;
+export type InsertWordListCoOwner = z.infer<typeof insertWordListCoOwnerSchema>;
+export type WordListCoOwner = typeof wordListCoOwners.$inferSelect;
+export type InsertUserGroupCoOwner = z.infer<typeof insertUserGroupCoOwnerSchema>;
+export type UserGroupCoOwner = typeof userGroupCoOwners.$inferSelect;
 export type InsertUserToDoItem = z.infer<typeof insertUserToDoItemSchema>;
 export type UserToDoItem = typeof userToDoItems.$inferSelect;
 export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;

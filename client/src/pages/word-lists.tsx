@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload, Filter, Camera, X, Users, Target, Clock, Trophy, Shuffle, AlertCircle, Grid3x3 } from "lucide-react";
+import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload, Filter, Camera, X, Users, Target, Clock, Trophy, Shuffle, AlertCircle, Grid3x3, UserPlus } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
@@ -55,6 +55,8 @@ export default function WordListsPage() {
   }>({ removedWords: [], skippedWords: [] });
   const [gameModeDialogOpen, setGameModeDialogOpen] = useState(false);
   const [selectedListForPlay, setSelectedListForPlay] = useState<CustomWordList | null>(null);
+  const [coOwnersDialogOpen, setCoOwnersDialogOpen] = useState(false);
+  const [selectedListForCoOwners, setSelectedListForCoOwners] = useState<CustomWordList | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     words: "",
@@ -128,6 +130,58 @@ export default function WordListsPage() {
       const data = query.state.data;
       if (!data?.status || data.status === 'completed') return false;
       return 2000;
+    },
+  });
+
+  // Co-owner management queries and mutations
+  const { data: teachers = [] } = useQuery<any[]>({
+    queryKey: ["/api/teachers"],
+    queryFn: async () => {
+      const response = await fetch("/api/teachers", { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch teachers");
+      return await response.json();
+    },
+    enabled: !!user && user.role === "teacher" && coOwnersDialogOpen,
+  });
+
+  const { data: coOwners = [], refetch: refetchCoOwners } = useQuery<any[]>({
+    queryKey: ["/api/word-lists", selectedListForCoOwners?.id, "co-owners"],
+    queryFn: async () => {
+      if (!selectedListForCoOwners) return [];
+      const response = await fetch(`/api/word-lists/${selectedListForCoOwners.id}/co-owners`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch co-owners");
+      return await response.json();
+    },
+    enabled: !!selectedListForCoOwners && coOwnersDialogOpen,
+  });
+
+  const addCoOwnerMutation = useMutation({
+    mutationFn: async (coOwnerUserId: number) => {
+      if (!selectedListForCoOwners) throw new Error("No list selected");
+      const response = await apiRequest("POST", `/api/word-lists/${selectedListForCoOwners.id}/co-owners`, { coOwnerUserId });
+      return await response.json();
+    },
+    onSuccess: () => {
+      refetchCoOwners();
+      toast({ title: "Success", description: "Co-owner added successfully" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to add co-owner", variant: "destructive" });
+    },
+  });
+
+  const removeCoOwnerMutation = useMutation({
+    mutationFn: async (coOwnerUserId: number) => {
+      if (!selectedListForCoOwners) throw new Error("No list selected");
+      const response = await apiRequest("DELETE", `/api/word-lists/${selectedListForCoOwners.id}/co-owners/${coOwnerUserId}`);
+      return await response.json();
+    },
+    onSuccess: () => {
+      refetchCoOwners();
+      toast({ title: "Success", description: "Co-owner removed successfully" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to remove co-owner", variant: "destructive" });
     },
   });
 
@@ -697,6 +751,24 @@ export default function WordListsPage() {
                   </TooltipTrigger>
                   <TooltipContent>Delete List</TooltipContent>
                 </Tooltip>
+                {user?.role === "teacher" && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedListForCoOwners(list);
+                          setCoOwnersDialogOpen(true);
+                        }}
+                        data-testid={`button-co-owners-${list.id}`}
+                      >
+                        <UserPlus className="w-4 h-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Manage Co-owners</TooltipContent>
+                  </Tooltip>
+                )}
               </>
             )}
           </div>
@@ -787,20 +859,22 @@ export default function WordListsPage() {
                 ))}
               </SelectContent>
             </Select>
-            <div className="flex items-center space-x-2 bg-white/30 dark:bg-black/30 px-3 py-2 rounded-md backdrop-blur-sm">
-              <Checkbox 
-                id="hide-mastered-lists" 
-                checked={hideMastered}
-                onCheckedChange={(checked) => setHideMastered(checked === true)}
-                data-testid="checkbox-hide-mastered-lists"
-              />
-              <label 
-                htmlFor="hide-mastered-lists" 
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer whitespace-nowrap"
-              >
-                Hide Word Lists I've Mastered
-              </label>
-            </div>
+            {user?.role !== "teacher" && (
+              <div className="flex items-center space-x-2 bg-white/30 dark:bg-black/30 px-3 py-2 rounded-md backdrop-blur-sm">
+                <Checkbox 
+                  id="hide-mastered-lists" 
+                  checked={hideMastered}
+                  onCheckedChange={(checked) => setHideMastered(checked === true)}
+                  data-testid="checkbox-hide-mastered-lists"
+                />
+                <label 
+                  htmlFor="hide-mastered-lists" 
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer whitespace-nowrap"
+                >
+                  Hide Word Lists I've Mastered
+                </label>
+              </div>
+            )}
           </div>
           <div className="flex gap-2">
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -1054,6 +1128,35 @@ export default function WordListsPage() {
           </Card>
         )}
 
+        {user?.role === "teacher" ? (
+          <div className="space-y-4">
+            {loadingUserLists ? (
+              <div className="text-center py-12">
+                <div className="text-gray-600">Loading your word lists...</div>
+              </div>
+            ) : userLists.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-gray-600 mb-4">
+                    You haven't created any word lists yet
+                  </p>
+                  <Button onClick={() => setDialogOpen(true)} data-testid="button-create-first">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Your First List
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : filteredUserLists.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-gray-600">No word lists found for the selected grade level</p>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredUserLists.map((list) => renderWordList(list, true))
+            )}
+          </div>
+        ) : (
         <Tabs defaultValue="all" className="space-y-6">
           <TabsList className="grid w-full max-w-2xl grid-cols-4">
             <TabsTrigger value="all" data-testid="tab-all">All</TabsTrigger>
@@ -1160,6 +1263,7 @@ export default function WordListsPage() {
             )}
           </TabsContent>
         </Tabs>
+        )}
 
         {/* Edit Images Dialog */}
         {editingImagesList && (
@@ -1345,6 +1449,86 @@ export default function WordListsPage() {
                   </div>
                 </CardHeader>
               </Card>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Co-owners Management Dialog */}
+        <Dialog open={coOwnersDialogOpen} onOpenChange={setCoOwnersDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Manage Co-owners</DialogTitle>
+              <DialogDescription>
+                Add other teachers who can edit "{selectedListForCoOwners?.name}"
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              {/* Current Co-owners */}
+              <div>
+                <Label className="text-sm font-medium">Current Co-owners</Label>
+                {coOwners.length === 0 ? (
+                  <p className="text-sm text-muted-foreground mt-2">No co-owners yet</p>
+                ) : (
+                  <div className="mt-2 space-y-2">
+                    {coOwners.map((co: any) => (
+                      <div key={co.id} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                        <span className="text-sm">
+                          {co.firstName && co.lastName 
+                            ? `${co.firstName} ${co.lastName}` 
+                            : co.username}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeCoOwnerMutation.mutate(co.coOwnerUserId)}
+                          disabled={removeCoOwnerMutation.isPending}
+                          data-testid={`button-remove-co-owner-${co.coOwnerUserId}`}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Add New Co-owner */}
+              <div>
+                <Label className="text-sm font-medium">Add Co-owner</Label>
+                <Select
+                  onValueChange={(value) => {
+                    addCoOwnerMutation.mutate(parseInt(value));
+                  }}
+                  disabled={addCoOwnerMutation.isPending}
+                >
+                  <SelectTrigger className="mt-2" data-testid="select-add-co-owner">
+                    <SelectValue placeholder="Select a teacher..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teachers
+                      .filter((t: any) => !coOwners.some((co: any) => co.coOwnerUserId === t.id))
+                      .map((teacher: any) => (
+                        <SelectItem key={teacher.id} value={teacher.id.toString()}>
+                          {teacher.firstName && teacher.lastName 
+                            ? `${teacher.firstName} ${teacher.lastName}` 
+                            : teacher.username}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                {teachers.length === 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    No other teachers available
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            <div className="flex justify-end mt-4">
+              <Button onClick={() => setCoOwnersDialogOpen(false)} data-testid="button-close-co-owners">
+                Done
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

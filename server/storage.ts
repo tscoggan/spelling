@@ -24,6 +24,8 @@ import {
   type UserStreak,
   type InsertUserStreak,
   type UserItem,
+  type WordListCoOwner,
+  type UserGroupCoOwner,
   words,
   gameSessions,
   users,
@@ -34,6 +36,8 @@ import {
   userGroupMembership,
   userToDoItems,
   wordListUserGroups,
+  wordListCoOwners,
+  userGroupCoOwners,
   passwordResetTokens,
   achievements,
   userStreaks,
@@ -114,6 +118,18 @@ export interface IStorage {
   setWordListSharedGroups(wordListId: number, groupIds: number[]): Promise<void>;
   isUserMemberOfWordListGroups(userId: number, wordListId: number): Promise<boolean>;
   isUserGroupMember(userId: number, groupId: number): Promise<boolean>;
+  
+  getWordListCoOwners(wordListId: number): Promise<WordListCoOwner[]>;
+  addWordListCoOwner(wordListId: number, coOwnerUserId: number): Promise<WordListCoOwner>;
+  removeWordListCoOwner(wordListId: number, coOwnerUserId: number): Promise<boolean>;
+  isWordListCoOwner(wordListId: number, userId: number): Promise<boolean>;
+  
+  getGroupCoOwners(groupId: number): Promise<UserGroupCoOwner[]>;
+  addGroupCoOwner(groupId: number, coOwnerUserId: number): Promise<UserGroupCoOwner>;
+  removeGroupCoOwner(groupId: number, coOwnerUserId: number): Promise<boolean>;
+  isGroupCoOwner(groupId: number, userId: number): Promise<boolean>;
+  
+  getTeachers(): Promise<User[]>;
   
   createPasswordResetToken(token: InsertPasswordResetToken): Promise<PasswordResetToken>;
   getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
@@ -1011,6 +1027,95 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
     
     return !!membership;
+  }
+
+  async getWordListCoOwners(wordListId: number): Promise<WordListCoOwner[]> {
+    return await db
+      .select()
+      .from(wordListCoOwners)
+      .where(eq(wordListCoOwners.wordListId, wordListId));
+  }
+
+  async addWordListCoOwner(wordListId: number, coOwnerUserId: number): Promise<WordListCoOwner> {
+    const [coOwner] = await db
+      .insert(wordListCoOwners)
+      .values({ wordListId, coOwnerUserId })
+      .returning();
+    return coOwner;
+  }
+
+  async removeWordListCoOwner(wordListId: number, coOwnerUserId: number): Promise<boolean> {
+    const result = await db
+      .delete(wordListCoOwners)
+      .where(
+        and(
+          eq(wordListCoOwners.wordListId, wordListId),
+          eq(wordListCoOwners.coOwnerUserId, coOwnerUserId)
+        )
+      );
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async isWordListCoOwner(wordListId: number, userId: number): Promise<boolean> {
+    const [coOwner] = await db
+      .select()
+      .from(wordListCoOwners)
+      .where(
+        and(
+          eq(wordListCoOwners.wordListId, wordListId),
+          eq(wordListCoOwners.coOwnerUserId, userId)
+        )
+      )
+      .limit(1);
+    return !!coOwner;
+  }
+
+  async getGroupCoOwners(groupId: number): Promise<UserGroupCoOwner[]> {
+    return await db
+      .select()
+      .from(userGroupCoOwners)
+      .where(eq(userGroupCoOwners.groupId, groupId));
+  }
+
+  async addGroupCoOwner(groupId: number, coOwnerUserId: number): Promise<UserGroupCoOwner> {
+    const [coOwner] = await db
+      .insert(userGroupCoOwners)
+      .values({ groupId, coOwnerUserId })
+      .returning();
+    return coOwner;
+  }
+
+  async removeGroupCoOwner(groupId: number, coOwnerUserId: number): Promise<boolean> {
+    const result = await db
+      .delete(userGroupCoOwners)
+      .where(
+        and(
+          eq(userGroupCoOwners.groupId, groupId),
+          eq(userGroupCoOwners.coOwnerUserId, coOwnerUserId)
+        )
+      );
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async isGroupCoOwner(groupId: number, userId: number): Promise<boolean> {
+    const [coOwner] = await db
+      .select()
+      .from(userGroupCoOwners)
+      .where(
+        and(
+          eq(userGroupCoOwners.groupId, groupId),
+          eq(userGroupCoOwners.coOwnerUserId, userId)
+        )
+      )
+      .limit(1);
+    return !!coOwner;
+  }
+
+  async getTeachers(): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .where(eq(users.role, "teacher"));
   }
 
   async createPasswordResetToken(insertToken: InsertPasswordResetToken): Promise<PasswordResetToken> {

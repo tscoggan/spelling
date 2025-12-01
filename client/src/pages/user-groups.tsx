@@ -43,6 +43,8 @@ export default function UserGroupsPage() {
   const [selectedGroupForPassword, setSelectedGroupForPassword] = useState<any>(null);
   const [passwordInput, setPasswordInput] = useState("");
   const [viewingPasswordForGroup, setViewingPasswordForGroup] = useState<number | null>(null);
+  const [coOwnersDialogOpen, setCoOwnersDialogOpen] = useState(false);
+  const [selectedGroupForCoOwners, setSelectedGroupForCoOwners] = useState<any>(null);
 
   const { data: groups = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/user-groups", user?.id],
@@ -238,6 +240,58 @@ export default function UserGroupsPage() {
         description: error.message || "Failed to leave group",
         variant: "destructive",
       });
+    },
+  });
+
+  // Co-owner management queries and mutations
+  const { data: teachers = [] } = useQuery<any[]>({
+    queryKey: ["/api/teachers"],
+    queryFn: async () => {
+      const response = await fetch("/api/teachers", { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch teachers");
+      return await response.json();
+    },
+    enabled: !!user && user.role === "teacher" && coOwnersDialogOpen,
+  });
+
+  const { data: groupCoOwners = [], refetch: refetchGroupCoOwners } = useQuery<any[]>({
+    queryKey: ["/api/user-groups", selectedGroupForCoOwners?.id, "co-owners"],
+    queryFn: async () => {
+      if (!selectedGroupForCoOwners) return [];
+      const response = await fetch(`/api/user-groups/${selectedGroupForCoOwners.id}/co-owners`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch co-owners");
+      return await response.json();
+    },
+    enabled: !!selectedGroupForCoOwners && coOwnersDialogOpen,
+  });
+
+  const addGroupCoOwnerMutation = useMutation({
+    mutationFn: async (coOwnerUserId: number) => {
+      if (!selectedGroupForCoOwners) throw new Error("No group selected");
+      const response = await apiRequest("POST", `/api/user-groups/${selectedGroupForCoOwners.id}/co-owners`, { coOwnerUserId });
+      return await response.json();
+    },
+    onSuccess: () => {
+      refetchGroupCoOwners();
+      toast({ title: "Success", description: "Co-owner added successfully" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to add co-owner", variant: "destructive" });
+    },
+  });
+
+  const removeGroupCoOwnerMutation = useMutation({
+    mutationFn: async (coOwnerUserId: number) => {
+      if (!selectedGroupForCoOwners) throw new Error("No group selected");
+      const response = await apiRequest("DELETE", `/api/user-groups/${selectedGroupForCoOwners.id}/co-owners/${coOwnerUserId}`);
+      return await response.json();
+    },
+    onSuccess: () => {
+      refetchGroupCoOwners();
+      toast({ title: "Success", description: "Co-owner removed successfully" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to remove co-owner", variant: "destructive" });
     },
   });
 
@@ -723,6 +777,20 @@ export default function UserGroupsPage() {
                             >
                               <Trash2 className="w-3 h-3" />
                             </Button>
+                            {user?.role === "teacher" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedGroupForCoOwners(group);
+                                  setCoOwnersDialogOpen(true);
+                                }}
+                                data-testid={`button-co-owners-${group.id}`}
+                              >
+                                <Users className="w-3 h-3 mr-1" />
+                                Co-owners
+                              </Button>
+                            )}
                           </div>
                           {group.isPublic && group.plaintextPassword && viewingPasswordForGroup === group.id && (
                             <div className="mt-2 p-2 bg-gray-100 rounded text-sm font-mono" data-testid={`text-password-${group.id}`}>
@@ -748,7 +816,7 @@ export default function UserGroupsPage() {
               )}
             </div>
 
-            {memberGroups.length > 0 && (
+            {user?.role !== "teacher" && memberGroups.length > 0 && (
               <div>
                 <h2 className={`text-2xl font-bold mb-4 flex items-center gap-2 ${currentTheme === 'space' ? 'text-white' : 'text-gray-800'}`}>
                   <UserPlus className="w-6 h-6 text-blue-600" />
@@ -797,7 +865,7 @@ export default function UserGroupsPage() {
               </div>
             )}
 
-            {publicGroups.length > 0 && (
+            {user?.role !== "teacher" && publicGroups.length > 0 && (
               <div>
                 <h2 className={`text-2xl font-bold mb-4 flex items-center gap-2 ${currentTheme === 'space' ? 'text-white' : 'text-gray-800'}`}>
                   <Globe className="w-6 h-6 text-green-600" />
@@ -1191,6 +1259,87 @@ export default function UserGroupsPage() {
                   {joinWithPasswordMutation.isPending ? "Joining..." : "Join Group"}
                 </Button>
               </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Co-owners Management Dialog */}
+        <Dialog open={coOwnersDialogOpen} onOpenChange={setCoOwnersDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Manage Co-owners</DialogTitle>
+              <DialogDescription>
+                Add other teachers who can manage "{selectedGroupForCoOwners?.name}"
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              {/* Current Co-owners */}
+              <div>
+                <Label className="text-sm font-medium">Current Co-owners</Label>
+                {groupCoOwners.length === 0 ? (
+                  <p className="text-sm text-muted-foreground mt-2">No co-owners yet</p>
+                ) : (
+                  <div className="mt-2 space-y-2">
+                    {groupCoOwners.map((co: any) => (
+                      <div key={co.id} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                        <span className="text-sm">
+                          {co.firstName && co.lastName 
+                            ? `${co.firstName} ${co.lastName}` 
+                            : co.username}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeGroupCoOwnerMutation.mutate(co.coOwnerUserId)}
+                          disabled={removeGroupCoOwnerMutation.isPending}
+                          data-testid={`button-remove-group-co-owner-${co.coOwnerUserId}`}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Add New Co-owner */}
+              <div>
+                <Label className="text-sm font-medium">Add Co-owner</Label>
+                <select
+                  className="mt-2 w-full p-2 border rounded-md"
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      addGroupCoOwnerMutation.mutate(parseInt(e.target.value));
+                      e.target.value = "";
+                    }
+                  }}
+                  disabled={addGroupCoOwnerMutation.isPending}
+                  data-testid="select-add-group-co-owner"
+                >
+                  <option value="">Select a teacher...</option>
+                  {teachers
+                    .filter((t: any) => !groupCoOwners.some((co: any) => co.coOwnerUserId === t.id))
+                    .map((teacher: any) => (
+                      <option key={teacher.id} value={teacher.id}>
+                        {teacher.firstName && teacher.lastName 
+                          ? `${teacher.firstName} ${teacher.lastName}` 
+                          : teacher.username}
+                      </option>
+                    ))}
+                </select>
+                {teachers.length === 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    No other teachers available
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            <div className="flex justify-end mt-4">
+              <Button onClick={() => setCoOwnersDialogOpen(false)} data-testid="button-close-group-co-owners">
+                Done
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
