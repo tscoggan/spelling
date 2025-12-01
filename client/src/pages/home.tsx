@@ -49,7 +49,7 @@ interface CustomWordList {
 export default function Home() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
-  const { themeAssets } = useTheme();
+  const { themeAssets, currentTheme } = useTheme();
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [wordListDialogOpen, setWordListDialogOpen] = useState(false);
   const [filterGradeLevel, setFilterGradeLevel] = useState<string>("all");
@@ -286,7 +286,7 @@ export default function Home() {
               data-testid="img-title-banner"
             />
           </motion.div>
-          <p className="text-lg md:text-xl text-foreground font-semibold">
+          <p className={`text-lg md:text-xl font-semibold ${currentTheme === 'space' ? 'text-white' : 'text-foreground'}`}>
             Master your spelling skills with fun, interactive challenges!
           </p>
         </div>
@@ -358,7 +358,7 @@ export default function Home() {
         </div>
 
         <div className="flex justify-center mb-6">
-          <h2 className="text-2xl md:text-3xl font-bold text-center text-foreground">
+          <h2 className={`text-2xl md:text-3xl font-bold text-center ${currentTheme === 'space' ? 'text-white' : 'text-foreground'}`}>
             Choose Your Game Mode
           </h2>
         </div>

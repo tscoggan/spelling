@@ -630,7 +630,7 @@ export default function UserGroupsPage() {
         ) : (
           <div className="space-y-8">
             <div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <h2 className={`text-2xl font-bold mb-4 flex items-center gap-2 ${currentTheme === 'space' ? 'text-white' : 'text-gray-800'}`}>
                 <Users className="w-6 h-6 text-purple-600" />
                 My Groups
               </h2>
@@ -750,7 +750,7 @@ export default function UserGroupsPage() {
 
             {memberGroups.length > 0 && (
               <div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <h2 className={`text-2xl font-bold mb-4 flex items-center gap-2 ${currentTheme === 'space' ? 'text-white' : 'text-gray-800'}`}>
                   <UserPlus className="w-6 h-6 text-blue-600" />
                   Groups I'm In
                 </h2>
@@ -799,11 +799,11 @@ export default function UserGroupsPage() {
 
             {publicGroups.length > 0 && (
               <div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <h2 className={`text-2xl font-bold mb-4 flex items-center gap-2 ${currentTheme === 'space' ? 'text-white' : 'text-gray-800'}`}>
                   <Globe className="w-6 h-6 text-green-600" />
                   Public Groups
                 </h2>
-                <p className="text-gray-600 mb-4 text-sm">
+                <p className={`mb-4 text-sm ${currentTheme === 'space' ? 'text-white/80' : 'text-gray-600'}`}>
                   Join public groups to share and access word lists
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
