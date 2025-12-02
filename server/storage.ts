@@ -111,7 +111,9 @@ export interface IStorage {
   searchUsers(query: string): Promise<any[]>;
   
   getUserOwnedGroups(userId: number): Promise<any[]>;
+  getCoOwnedGroups(userId: number): Promise<any[]>;
   getUserWordLists(userId: number): Promise<CustomWordList[]>;
+  getWordListsSharedWithGroups(groupIds: number[]): Promise<CustomWordList[]>;
   getGameSessionsByUserAndList(userId: number, wordListId: number): Promise<GameSession[]>;
   
   getWordListSharedGroupIds(wordListId: number): Promise<number[]>;
@@ -969,11 +971,52 @@ export class DatabaseStorage implements IStorage {
       .where(eq(userGroups.ownerUserId, userId));
   }
 
+  async getCoOwnedGroups(userId: number): Promise<any[]> {
+    const coOwnedGroupIds = await db
+      .select({ groupId: userGroupCoOwners.groupId })
+      .from(userGroupCoOwners)
+      .where(eq(userGroupCoOwners.coOwnerUserId, userId));
+    
+    if (coOwnedGroupIds.length === 0) {
+      return [];
+    }
+    
+    return await db
+      .select()
+      .from(userGroups)
+      .where(inArray(userGroups.id, coOwnedGroupIds.map(c => c.groupId)));
+  }
+
   async getUserWordLists(userId: number): Promise<CustomWordList[]> {
     return await db
       .select()
       .from(customWordLists)
       .where(eq(customWordLists.userId, userId))
+      .orderBy(desc(customWordLists.createdAt));
+  }
+
+  async getWordListsSharedWithGroups(groupIds: number[]): Promise<CustomWordList[]> {
+    if (groupIds.length === 0) {
+      return [];
+    }
+    
+    // Get word list IDs that are shared with any of the specified groups
+    const sharedWordListIds = await db
+      .select({ wordListId: wordListUserGroups.wordListId })
+      .from(wordListUserGroups)
+      .where(inArray(wordListUserGroups.groupId, groupIds));
+    
+    if (sharedWordListIds.length === 0) {
+      return [];
+    }
+    
+    // Get unique word list IDs
+    const uniqueListIds = Array.from(new Set(sharedWordListIds.map(s => s.wordListId)));
+    
+    return await db
+      .select()
+      .from(customWordLists)
+      .where(inArray(customWordLists.id, uniqueListIds))
       .orderBy(desc(customWordLists.createdAt));
   }
 
