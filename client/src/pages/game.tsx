@@ -124,6 +124,28 @@ const isMobileDevice = (): boolean => {
   return isIOSDevice() || /Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 };
 
+// Helper function to render user's answer with incorrect letters highlighted in bold red
+const renderIncorrectLetters = (userAnswer: string, correctWord: string): JSX.Element => {
+  const userLetters = userAnswer.toUpperCase().split('');
+  const correctLetters = correctWord.toUpperCase().split('');
+  
+  return (
+    <span>
+      {userLetters.map((letter, index) => {
+        const isIncorrect = index >= correctLetters.length || letter !== correctLetters[index];
+        return (
+          <span 
+            key={index} 
+            className={isIncorrect ? 'font-bold text-red-600' : 'text-gray-700'}
+          >
+            {letter}
+          </span>
+        );
+      })}
+    </span>
+  );
+};
+
 // Wrapper component that validates listId or virtualWords before rendering game logic
 // This prevents React Query hooks from running when neither is present
 export default function Game() {
@@ -4635,8 +4657,8 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
                           ) : userInput ? (
                             <>
                               <p className="text-xl md:text-2xl text-gray-600">You wrote:</p>
-                              <div className="text-3xl md:text-4xl font-semibold text-gray-700 line-through" data-testid="text-user-answer">
-                                {userInput.toUpperCase()}
+                              <div className="text-3xl md:text-4xl font-semibold" data-testid="text-user-answer">
+                                {currentWord ? renderIncorrectLetters(userInput, currentWord.word) : userInput.toUpperCase()}
                               </div>
                               <p className="text-xl md:text-2xl text-gray-600">Correct spelling:</p>
                               <div className="text-4xl md:text-5xl font-bold text-gray-800" data-testid="text-correct-spelling">
