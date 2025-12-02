@@ -4693,7 +4693,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
                             <span className="text-lg font-bold" data-testid="text-timer-mobile-h2h">{Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')}</span>
                           </div>
                         )}
-                        {showWordHints && currentWord && gameMode !== "quiz" ? (
+                        {showWordHints && currentWord && gameMode !== "quiz" && gameMode !== "headtohead" ? (
                           (() => {
                             const hintSize = getHintLetterSize(currentWord.word.length);
                             const inputStyle = getInputFontSize(currentWord.word.length);

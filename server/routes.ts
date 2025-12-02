@@ -805,20 +805,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Public lists are accessible to everyone
       } else if (!req.isAuthenticated()) {
         return res.status(403).json({ error: "Authentication required" });
-      } else if (wordList.visibility === 'private' && req.user!.id !== wordList.userId) {
-        // Check if user is a participant in an active H2H challenge using this word list
+      } else {
+        // For private and groups visibility, first check if user is a participant in an H2H challenge
+        // This allows opponents to access word lists for challenges regardless of visibility
         const isH2HParticipant = await storage.isUserParticipantInActiveChallenge(req.user!.id, id);
-        if (!isH2HParticipant) {
-          return res.status(403).json({ error: "Access denied" });
-        }
-      } else if (wordList.visibility === 'groups') {
-        // Check if user is owner or member of any groups this list is shared with
-        const isOwner = req.user!.id === wordList.userId;
-        const isMember = await storage.isUserMemberOfWordListGroups(req.user!.id, id);
         
-        if (!isOwner && !isMember) {
-          return res.status(403).json({ error: "Access denied - group membership required" });
+        if (!isH2HParticipant) {
+          // Not an H2H participant, check normal visibility rules
+          if (wordList.visibility === 'private' && req.user!.id !== wordList.userId) {
+            return res.status(403).json({ error: "Access denied" });
+          } else if (wordList.visibility === 'groups') {
+            // Check if user is owner or member of any groups this list is shared with
+            const isOwner = req.user!.id === wordList.userId;
+            const isMember = await storage.isUserMemberOfWordListGroups(req.user!.id, id);
+            
+            if (!isOwner && !isMember) {
+              return res.status(403).json({ error: "Access denied - group membership required" });
+            }
+          }
         }
+        // H2H participants can access regardless of visibility
       }
 
       res.json(wordList);
