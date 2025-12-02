@@ -492,7 +492,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
       if (virtualWords) return;
       
       // Track achievements for Word List Mastery
-      if (variables.userId && listId && variables.gameMode !== "practice") {
+      if (variables.userId && listId) {
         await checkAndAwardAchievement(variables);
       }
     },
@@ -516,7 +516,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
       const minRequired = Math.min(10, totalWords);
       earnedStar = correctCount >= minRequired && scoreData.accuracy === 100;
       console.log("🏆 Timed mode achievement check:", { correctCount, minRequired, accuracy: scoreData.accuracy, earnedStar });
-    } else if (["quiz", "scramble", "mistake", "crossword"].includes(scoreData.gameMode)) {
+    } else if (["practice", "quiz", "scramble", "mistake", "crossword"].includes(scoreData.gameMode)) {
       // Other modes: Need 100% accuracy
       earnedStar = scoreData.accuracy === 100;
       console.log("🏆 Achievement check:", { gameMode: scoreData.gameMode, accuracy: scoreData.accuracy, earnedStar });
@@ -2615,8 +2615,8 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
 
   // Helper function to check if Do Over should be offered
   const shouldOfferDoOver = (mode: GameMode): boolean => {
-    // Do Over is not available in Practice or Crossword modes
-    return mode !== "practice" && mode !== "crossword" && getItemQuantity("do_over") > 0;
+    // Do Over is not available in Crossword mode
+    return mode !== "crossword" && getItemQuantity("do_over") > 0;
   };
 
   // Process incorrect answer (common logic extracted)
@@ -2640,6 +2640,11 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
     setShowDoOverDialog(false);
     setDoOverPendingResult(null);
     
+    // Remove the current word from incorrectWords to give a fresh chance
+    if (currentWord) {
+      setIncorrectWords(prev => prev.filter(w => w !== currentWord.word));
+    }
+    
     // Handle based on game mode
     if (gameMode === "scramble" && currentWord) {
       // Reset placed letters to allow retry
@@ -2648,7 +2653,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
       // Reset selection to allow retry
       setSelectedChoiceIndex(-1);
     } else {
-      // Quiz, Timed, Standard modes - reset input and allow retry
+      // Quiz, Timed, Standard, Practice modes - reset input and allow retry
       setUserInput("");
       
       // Keep focus on input

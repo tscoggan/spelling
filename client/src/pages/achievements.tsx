@@ -281,6 +281,13 @@ export default function Achievements() {
               
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
+                  <Badge variant="outline" className="mt-0.5">Practice</Badge>
+                  <p className="text-sm text-muted-foreground flex-1">
+                    Spell all words correctly with 100% accuracy (immediate feedback after each word)
+                  </p>
+                </div>
+
+                <div className="flex items-start gap-3">
                   <Badge variant="outline" className="mt-0.5">Timed Challenge</Badge>
                   <p className="text-sm text-muted-foreground flex-1">
                     Spell at least 10 words correctly (or all words for lists with fewer than 10) with 100% accuracy within 60 seconds
@@ -334,7 +341,7 @@ export default function Achievements() {
             </div>
 
             <p className="text-sm text-muted-foreground italic">
-              Note: Practice mode does not award achievement stars as it provides immediate feedback and hints.
+              Note: Practice mode provides immediate feedback after each word, and you can also earn stars by achieving 100% accuracy!
             </p>
           </div>
         </DialogContent>

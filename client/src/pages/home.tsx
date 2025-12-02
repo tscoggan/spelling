@@ -201,7 +201,7 @@ export default function Home() {
 
   // Helper function to check if current mode has been completed
   const hasModeAchievement = (wordListId: number, mode: GameMode | null) => {
-    if (!mode || mode === "practice") return false; // Practice mode doesn't award achievements
+    if (!mode) return false;
     const achievement = getAchievementForList(wordListId);
     if (!achievement) return false;
     return achievement.completedModes?.includes(mode) || false;
@@ -313,7 +313,7 @@ export default function Home() {
     {
       id: "practice" as GameMode,
       name: "Practice",
-      description: "Practice spelling words (cannot earn stars or use items in this mode)",
+      description: "Practice spelling words with immediate feedback",
       icon: Target,
       color: "text-blue-600",
     },
