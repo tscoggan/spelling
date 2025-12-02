@@ -5,6 +5,15 @@ import { useTheme } from "@/hooks/use-theme";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useLocation } from "wouter";
 import { 
   Users, 
@@ -17,7 +26,9 @@ import {
   Home,
   Printer,
   List,
-  User
+  User,
+  CheckSquare,
+  Square
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { UserHeader } from "@/components/user-header";
@@ -66,11 +77,21 @@ interface StudentWithWordLists {
 
 type GroupBy = "wordList" | "student";
 
+const formatStudentName = (student: { username: string; firstName: string | null; lastName: string | null }) => {
+  const fullName = [student.firstName, student.lastName].filter(Boolean).join(' ');
+  if (fullName) {
+    return { displayName: fullName, subtext: `(${student.username})` };
+  }
+  return { displayName: student.username, subtext: null };
+};
+
 export default function TeacherDashboard() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { themeAssets, currentTheme } = useTheme();
   const [groupBy, setGroupBy] = useState<GroupBy>("wordList");
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const printRef = useRef<HTMLDivElement>(null);
 
   const { data: dashboardData, isLoading, refetch } = useQuery<{
@@ -120,10 +141,40 @@ export default function TeacherDashboard() {
     );
   };
 
-  const handlePrint = () => {
-    const printContent = printRef.current;
-    if (!printContent) return;
+  const studentsGroupedData = getStudentsGroupedData();
 
+  const openPrintDialog = () => {
+    const allIds = groupBy === "wordList" 
+      ? (dashboardData?.wordLists || []).map(wl => wl.id)
+      : studentsGroupedData.map(s => s.id);
+    setSelectedItems(new Set(allIds));
+    setShowPrintDialog(true);
+  };
+
+  const handleSelectAll = () => {
+    const allIds = groupBy === "wordList" 
+      ? (dashboardData?.wordLists || []).map(wl => wl.id)
+      : studentsGroupedData.map(s => s.id);
+    setSelectedItems(new Set(allIds));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedItems(new Set());
+  };
+
+  const toggleItem = (id: number) => {
+    const newSelected = new Set(selectedItems);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedItems(newSelected);
+  };
+
+  const executePrint = () => {
+    setShowPrintDialog(false);
+    
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
@@ -156,12 +207,12 @@ export default function TeacherDashboard() {
     `;
 
     if (groupBy === "wordList") {
-      if (dashboardData?.wordLists && dashboardData.wordLists.length > 0) {
-        dashboardData.wordLists.forEach((wordList) => {
+      const filteredWordLists = (dashboardData?.wordLists || []).filter(wl => selectedItems.has(wl.id));
+      if (filteredWordLists.length > 0) {
+        filteredWordLists.forEach((wordList) => {
           content += `
             <div class="section">
               <h2>${wordList.name}</h2>
-              <p class="subtitle">${wordList.wordCount} words</p>
           `;
           
           if (wordList.students.length > 0) {
@@ -182,10 +233,10 @@ export default function TeacherDashboard() {
             wordList.students.forEach((student) => {
               const accuracyClass = student.averageAccuracy >= 80 ? 'accuracy-high' : 
                                    student.averageAccuracy >= 60 ? 'accuracy-medium' : 'accuracy-low';
-              const fullName = [student.firstName, student.lastName].filter(Boolean).join(' ');
+              const { displayName, subtext } = formatStudentName(student);
               content += `
                 <tr>
-                  <td>${student.username}${fullName ? ` (${fullName})` : ''}</td>
+                  <td>${displayName}${subtext ? ` ${subtext}` : ''}</td>
                   <td class="text-center">${student.totalGames}</td>
                   <td class="text-center">${student.correctWords} / ${student.totalWords}</td>
                   <td class="text-center ${accuracyClass}">${student.averageAccuracy}%</td>
@@ -202,16 +253,16 @@ export default function TeacherDashboard() {
           content += `</div>`;
         });
       } else {
-        content += `<p class="no-data">No word lists created yet.</p>`;
+        content += `<p class="no-data">No word lists selected for printing.</p>`;
       }
     } else {
-      const studentsData = getStudentsGroupedData();
-      if (studentsData.length > 0) {
-        studentsData.forEach((student) => {
-          const fullName = [student.firstName, student.lastName].filter(Boolean).join(' ');
+      const filteredStudents = studentsGroupedData.filter(s => selectedItems.has(s.id));
+      if (filteredStudents.length > 0) {
+        filteredStudents.forEach((student) => {
+          const { displayName, subtext } = formatStudentName(student);
           content += `
             <div class="section">
-              <h2>${student.username}${fullName ? ` (${fullName})` : ''}</h2>
+              <h2>${displayName}${subtext ? ` ${subtext}` : ''}</h2>
               <table>
                 <thead>
                   <tr>
@@ -230,7 +281,7 @@ export default function TeacherDashboard() {
                                  wl.averageAccuracy >= 60 ? 'accuracy-medium' : 'accuracy-low';
             content += `
               <tr>
-                <td>${wl.name} (${wl.wordCount} words)</td>
+                <td>${wl.name}</td>
                 <td class="text-center">${wl.totalGames}</td>
                 <td class="text-center">${wl.correctWords} / ${wl.totalWords}</td>
                 <td class="text-center ${accuracyClass}">${wl.averageAccuracy}%</td>
@@ -242,7 +293,7 @@ export default function TeacherDashboard() {
           content += `</tbody></table></div>`;
         });
       } else {
-        content += `<p class="no-data">No student activity recorded yet.</p>`;
+        content += `<p class="no-data">No students selected for printing.</p>`;
       }
     }
 
@@ -279,8 +330,6 @@ export default function TeacherDashboard() {
       </div>
     );
   }
-
-  const studentsGroupedData = getStudentsGroupedData();
 
   return (
     <div className="min-h-screen p-4 md:p-8 relative overflow-hidden">
@@ -363,7 +412,7 @@ export default function TeacherDashboard() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handlePrint}
+                onClick={openPrintDialog}
                 className="gap-1"
                 data-testid="button-print"
               >
@@ -412,42 +461,43 @@ export default function TeacherDashboard() {
                             </tr>
                           </thead>
                           <tbody>
-                            {wordList.students.map((student) => (
-                              <tr key={student.id} className="border-b last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800" data-testid={`student-row-${student.id}`}>
-                                <td className="py-2 px-3">
-                                  <div className="font-medium">{student.username}</div>
-                                  {(student.firstName || student.lastName) && (
-                                    <div className="text-xs text-gray-500">
-                                      {[student.firstName, student.lastName].filter(Boolean).join(' ')}
+                            {wordList.students.map((student) => {
+                              const { displayName, subtext } = formatStudentName(student);
+                              return (
+                                <tr key={student.id} className="border-b last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800" data-testid={`student-row-${student.id}`}>
+                                  <td className="py-2 px-3">
+                                    <div className="font-medium">{displayName}</div>
+                                    {subtext && (
+                                      <div className="text-xs text-gray-500">{subtext}</div>
+                                    )}
+                                  </td>
+                                  <td className="text-center py-2 px-3">
+                                    <div className="flex items-center justify-center gap-1">
+                                      <Target className="w-4 h-4 text-blue-500" />
+                                      {student.totalGames}
                                     </div>
-                                  )}
-                                </td>
-                                <td className="text-center py-2 px-3">
-                                  <div className="flex items-center justify-center gap-1">
-                                    <Target className="w-4 h-4 text-blue-500" />
-                                    {student.totalGames}
-                                  </div>
-                                </td>
-                                <td className="text-center py-2 px-3">
-                                  {student.correctWords} / {student.totalWords}
-                                </td>
-                                <td className="text-center py-2 px-3">
-                                  <span className={`font-semibold ${
-                                    student.averageAccuracy >= 80 ? 'text-green-600' :
-                                    student.averageAccuracy >= 60 ? 'text-yellow-600' :
-                                    'text-red-600'
-                                  }`}>
-                                    {student.averageAccuracy}%
-                                  </span>
-                                </td>
-                                <td className="text-center py-2 px-3">
-                                  <div className="flex items-center justify-center gap-1">
-                                    {student.starsEarned}
-                                    <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
+                                  </td>
+                                  <td className="text-center py-2 px-3">
+                                    {student.correctWords} / {student.totalWords}
+                                  </td>
+                                  <td className="text-center py-2 px-3">
+                                    <span className={`font-semibold ${
+                                      student.averageAccuracy >= 80 ? 'text-green-600' :
+                                      student.averageAccuracy >= 60 ? 'text-yellow-600' :
+                                      'text-red-600'
+                                    }`}>
+                                      {student.averageAccuracy}%
+                                    </span>
+                                  </td>
+                                  <td className="text-center py-2 px-3">
+                                    <div className="flex items-center justify-center gap-1">
+                                      {student.starsEarned}
+                                      <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
@@ -474,71 +524,72 @@ export default function TeacherDashboard() {
           ) : (
             studentsGroupedData.length > 0 ? (
               <div className="space-y-6">
-                {studentsGroupedData.map((student) => (
-                  <Card key={student.id} className="p-4 border-2" data-testid={`student-stats-${student.id}`}>
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h3 className="text-lg font-semibold flex items-center gap-2">
-                          <User className="w-5 h-5" />
-                          {student.username}
-                        </h3>
-                        {(student.firstName || student.lastName) && (
-                          <p className="text-sm text-gray-500">
-                            {[student.firstName, student.lastName].filter(Boolean).join(' ')}
-                          </p>
-                        )}
+                {studentsGroupedData.map((student) => {
+                  const { displayName, subtext } = formatStudentName(student);
+                  return (
+                    <Card key={student.id} className="p-4 border-2" data-testid={`student-stats-${student.id}`}>
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h3 className="text-lg font-semibold flex items-center gap-2">
+                            <User className="w-5 h-5" />
+                            {displayName}
+                          </h3>
+                          {subtext && (
+                            <p className="text-sm text-gray-500">{subtext}</p>
+                          )}
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left py-2 px-3">Word List</th>
-                            <th className="text-center py-2 px-3">Games</th>
-                            <th className="text-center py-2 px-3">Words Correct</th>
-                            <th className="text-center py-2 px-3">Accuracy</th>
-                            <th className="text-center py-2 px-3">Stars Earned</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {student.wordLists.map((wl) => (
-                            <tr key={wl.id} className="border-b last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800" data-testid={`wordlist-row-${wl.id}`}>
-                              <td className="py-2 px-3">
-                                <div className="font-medium">{wl.name}</div>
-                                <div className="text-xs text-gray-500">{wl.wordCount} words</div>
-                              </td>
-                              <td className="text-center py-2 px-3">
-                                <div className="flex items-center justify-center gap-1">
-                                  <Target className="w-4 h-4 text-blue-500" />
-                                  {wl.totalGames}
-                                </div>
-                              </td>
-                              <td className="text-center py-2 px-3">
-                                {wl.correctWords} / {wl.totalWords}
-                              </td>
-                              <td className="text-center py-2 px-3">
-                                <span className={`font-semibold ${
-                                  wl.averageAccuracy >= 80 ? 'text-green-600' :
-                                  wl.averageAccuracy >= 60 ? 'text-yellow-600' :
-                                  'text-red-600'
-                                }`}>
-                                  {wl.averageAccuracy}%
-                                </span>
-                              </td>
-                              <td className="text-center py-2 px-3">
-                                <div className="flex items-center justify-center gap-1">
-                                  {wl.starsEarned}
-                                  <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                                </div>
-                              </td>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="text-left py-2 px-3">Word List</th>
+                              <th className="text-center py-2 px-3">Games</th>
+                              <th className="text-center py-2 px-3">Words Correct</th>
+                              <th className="text-center py-2 px-3">Accuracy</th>
+                              <th className="text-center py-2 px-3">Stars Earned</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </Card>
-                ))}
+                          </thead>
+                          <tbody>
+                            {student.wordLists.map((wl) => (
+                              <tr key={wl.id} className="border-b last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800" data-testid={`wordlist-row-${wl.id}`}>
+                                <td className="py-2 px-3">
+                                  <div className="font-medium">{wl.name}</div>
+                                  <div className="text-xs text-gray-500">{wl.wordCount} words</div>
+                                </td>
+                                <td className="text-center py-2 px-3">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <Target className="w-4 h-4 text-blue-500" />
+                                    {wl.totalGames}
+                                  </div>
+                                </td>
+                                <td className="text-center py-2 px-3">
+                                  {wl.correctWords} / {wl.totalWords}
+                                </td>
+                                <td className="text-center py-2 px-3">
+                                  <span className={`font-semibold ${
+                                    wl.averageAccuracy >= 80 ? 'text-green-600' :
+                                    wl.averageAccuracy >= 60 ? 'text-yellow-600' :
+                                    'text-red-600'
+                                  }`}>
+                                    {wl.averageAccuracy}%
+                                  </span>
+                                </td>
+                                <td className="text-center py-2 px-3">
+                                  <div className="flex items-center justify-center gap-1">
+                                    {wl.starsEarned}
+                                    <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </Card>
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8">
@@ -553,6 +604,119 @@ export default function TeacherDashboard() {
         </Card>
 
       </motion.div>
+
+      <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select Items to Print</DialogTitle>
+            <DialogDescription>
+              Choose which {groupBy === "wordList" ? "word lists" : "students"} to include in the printed report.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex gap-2 mb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSelectAll}
+              className="gap-1"
+              data-testid="button-select-all"
+            >
+              <CheckSquare className="w-4 h-4" />
+              Select All
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDeselectAll}
+              className="gap-1"
+              data-testid="button-deselect-all"
+            >
+              <Square className="w-4 h-4" />
+              Deselect All
+            </Button>
+          </div>
+
+          <div className="max-h-64 overflow-y-auto space-y-2 border rounded-md p-3">
+            {groupBy === "wordList" ? (
+              dashboardData?.wordLists && dashboardData.wordLists.length > 0 ? (
+                dashboardData.wordLists.map((wordList) => (
+                  <div
+                    key={wordList.id}
+                    className="flex items-center space-x-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
+                    <Checkbox
+                      id={`wl-${wordList.id}`}
+                      checked={selectedItems.has(wordList.id)}
+                      onCheckedChange={() => toggleItem(wordList.id)}
+                      data-testid={`checkbox-wordlist-${wordList.id}`}
+                    />
+                    <label
+                      htmlFor={`wl-${wordList.id}`}
+                      className="flex-1 cursor-pointer"
+                    >
+                      <div className="font-medium">{wordList.name}</div>
+                      <div className="text-xs text-gray-500">
+                        {wordList.students.length} student{wordList.students.length !== 1 ? 's' : ''} with activity
+                      </div>
+                    </label>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-center py-4">No word lists available</p>
+              )
+            ) : (
+              studentsGroupedData.length > 0 ? (
+                studentsGroupedData.map((student) => {
+                  const { displayName, subtext } = formatStudentName(student);
+                  return (
+                    <div
+                      key={student.id}
+                      className="flex items-center space-x-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
+                    >
+                      <Checkbox
+                        id={`student-${student.id}`}
+                        checked={selectedItems.has(student.id)}
+                        onCheckedChange={() => toggleItem(student.id)}
+                        data-testid={`checkbox-student-${student.id}`}
+                      />
+                      <label
+                        htmlFor={`student-${student.id}`}
+                        className="flex-1 cursor-pointer"
+                      >
+                        <div className="font-medium">{displayName}</div>
+                        {subtext && (
+                          <div className="text-xs text-gray-500">{subtext}</div>
+                        )}
+                      </label>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-gray-500 text-center py-4">No students available</p>
+              )
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setShowPrintDialog(false)}
+              data-testid="button-cancel-print"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={executePrint}
+              disabled={selectedItems.size === 0}
+              data-testid="button-confirm-print"
+            >
+              <Printer className="w-4 h-4 mr-2" />
+              Print ({selectedItems.size})
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
