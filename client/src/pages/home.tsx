@@ -591,7 +591,7 @@ export default function Home() {
             >
               {/* Head to Head Challenge Button */}
               <Card
-                className="hover:scale-105 transition-transform cursor-pointer shadow-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 w-full sm:w-auto"
+                className="hover:scale-105 transition-transform cursor-pointer shadow-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 w-full sm:w-auto"
                 onClick={() => {
                   setH2hSelectedWordList(null);
                   setH2hSelectedOpponent(null);
@@ -606,9 +606,12 @@ export default function Home() {
                   <div className="flex items-center gap-3">
                     <Swords className="w-10 h-10 text-orange-600" />
                     <div>
-                      <CardTitle className="text-xl text-gray-800">Head to Head Challenge</CardTitle>
+                      <CardTitle className="text-xl text-gray-800">
+                        <span className="block">Head to Head</span>
+                        <span className="block">Challenge</span>
+                      </CardTitle>
                       <CardDescription className="text-sm text-gray-600">
-                        Challenge a friend to a spelling duel!
+                        Challenge a friend to a timed spelling duel!
                       </CardDescription>
                     </div>
                   </div>
@@ -617,7 +620,7 @@ export default function Home() {
 
               {/* H2H Challenge Results Button */}
               <div
-                className="hover:scale-105 transition-transform cursor-pointer bg-white rounded-lg border border-gray-200 shadow-lg p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                className="hover:scale-105 transition-transform cursor-pointer bg-white rounded-lg border border-gray-300 dark:border-gray-600 shadow-lg p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                 onClick={() => setLocation("/head-to-head")}
                 role="button"
                 tabIndex={0}

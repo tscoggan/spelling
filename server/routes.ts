@@ -806,7 +806,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (!req.isAuthenticated()) {
         return res.status(403).json({ error: "Authentication required" });
       } else if (wordList.visibility === 'private' && req.user!.id !== wordList.userId) {
-        return res.status(403).json({ error: "Access denied" });
+        // Check if user is a participant in an active H2H challenge using this word list
+        const isH2HParticipant = await storage.isUserParticipantInActiveChallenge(req.user!.id, id);
+        if (!isH2HParticipant) {
+          return res.status(403).json({ error: "Access denied" });
+        }
       } else if (wordList.visibility === 'groups') {
         // Check if user is owner or member of any groups this list is shared with
         const isOwner = req.user!.id === wordList.userId;
@@ -2719,7 +2723,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return {
           ...challenge,
           initiatorUsername: initiator?.username || 'Unknown',
+          initiatorFirstName: initiator?.firstName || null,
+          initiatorLastName: initiator?.lastName || null,
           opponentUsername: opponent?.username || 'Unknown',
+          opponentFirstName: opponent?.firstName || null,
+          opponentLastName: opponent?.lastName || null,
           wordListName: wordList?.name || 'Unknown',
           wordCount: wordList?.words.length || 0,
         };

@@ -33,8 +33,19 @@ interface Challenge {
   opponentCompletedAt?: string;
   completedAt?: string;
   initiatorUsername?: string;
+  initiatorFirstName?: string | null;
+  initiatorLastName?: string | null;
   opponentUsername?: string;
+  opponentFirstName?: string | null;
+  opponentLastName?: string | null;
   wordListName?: string;
+}
+
+function formatPlayerName(firstName?: string | null, lastName?: string | null, username?: string): string {
+  if (firstName && lastName) {
+    return `${firstName} ${lastName} (${username || 'Unknown'})`;
+  }
+  return username || 'Unknown';
 }
 
 interface ChallengeRecord {
@@ -276,7 +287,7 @@ export default function HeadToHead() {
                       <CardHeader className="pb-2">
                         <div className="flex items-center justify-between">
                           <CardTitle className="text-lg">
-                            {challenge.initiatorUsername || 'Unknown'} challenged you!
+                            {formatPlayerName(challenge.initiatorFirstName, challenge.initiatorLastName, challenge.initiatorUsername)} challenged you!
                           </CardTitle>
                           <Badge variant="outline">
                             {formatDistanceToNow(new Date(challenge.createdAt), { addSuffix: true })}
@@ -325,7 +336,9 @@ export default function HeadToHead() {
                       <CardHeader className="pb-2">
                         <div className="flex items-center justify-between">
                           <CardTitle className="text-lg">
-                            vs {challenge.initiatorId === user?.id ? challenge.opponentUsername : challenge.initiatorUsername}
+                            vs {challenge.initiatorId === user?.id 
+                              ? formatPlayerName(challenge.opponentFirstName, challenge.opponentLastName, challenge.opponentUsername)
+                              : formatPlayerName(challenge.initiatorFirstName, challenge.initiatorLastName, challenge.initiatorUsername)}
                           </CardTitle>
                           <Badge variant="secondary">Active</Badge>
                         </div>
@@ -356,7 +369,7 @@ export default function HeadToHead() {
                       <CardHeader className="pb-2">
                         <div className="flex items-center justify-between">
                           <CardTitle className="text-lg">
-                            You challenged {challenge.opponentUsername || 'Unknown'}
+                            You challenged {formatPlayerName(challenge.opponentFirstName, challenge.opponentLastName, challenge.opponentUsername)}
                           </CardTitle>
                           <Badge variant="outline">Waiting...</Badge>
                         </div>
@@ -386,14 +399,16 @@ export default function HeadToHead() {
                   const myTime = isInitiator ? challenge.initiatorTime : challenge.opponentTime;
                   const myCorrect = isInitiator ? challenge.initiatorCorrect : challenge.opponentCorrect;
                   const myIncorrect = isInitiator ? challenge.initiatorIncorrect : challenge.opponentIncorrect;
-                  const opponentName = isInitiator ? challenge.opponentUsername : challenge.initiatorUsername;
+                  const opponentDisplayName = isInitiator 
+                    ? formatPlayerName(challenge.opponentFirstName, challenge.opponentLastName, challenge.opponentUsername)
+                    : formatPlayerName(challenge.initiatorFirstName, challenge.initiatorLastName, challenge.initiatorUsername);
 
                   return (
                     <Card key={challenge.id} className="border-blue-300 dark:border-blue-800">
                       <CardHeader className="pb-2">
                         <div className="flex items-center justify-between">
                           <CardTitle className="text-lg flex items-center gap-2">
-                            vs {opponentName || 'Unknown'}
+                            vs {opponentDisplayName}
                             <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                               <Clock className="w-3 h-3 mr-1" />
                               Waiting for opponent
@@ -444,14 +459,16 @@ export default function HeadToHead() {
                   const myIncorrect = isInitiator ? challenge.initiatorIncorrect : challenge.opponentIncorrect;
                   const opponentScore = isInitiator ? challenge.opponentScore : challenge.initiatorScore;
                   const opponentTime = isInitiator ? challenge.opponentTime : challenge.initiatorTime;
-                  const opponentName = isInitiator ? challenge.opponentUsername : challenge.initiatorUsername;
+                  const opponentDisplayName = isInitiator 
+                    ? formatPlayerName(challenge.opponentFirstName, challenge.opponentLastName, challenge.opponentUsername)
+                    : formatPlayerName(challenge.initiatorFirstName, challenge.initiatorLastName, challenge.initiatorUsername);
 
                   return (
                     <Card key={challenge.id}>
                       <CardHeader className="pb-2">
                         <div className="flex items-center justify-between">
                           <CardTitle className="text-lg flex items-center gap-2">
-                            vs {opponentName || 'Unknown'}
+                            vs {opponentDisplayName}
                             {getResultBadge(challenge)}
                           </CardTitle>
                           <Badge variant="outline">
@@ -478,7 +495,7 @@ export default function HeadToHead() {
                             )}
                           </div>
                           <div className="text-center p-3 bg-muted/50 rounded-lg">
-                            <div className="text-sm text-muted-foreground mb-1">{opponentName || 'Opponent'}</div>
+                            <div className="text-sm text-muted-foreground mb-1">{opponentDisplayName}</div>
                             <div className="text-2xl font-bold">{opponentScore ?? '-'}</div>
                             {opponentTime !== undefined && opponentTime !== null && (
                               <div className="text-xs text-muted-foreground flex items-center justify-center gap-1 mt-1">

@@ -170,6 +170,7 @@ export interface IStorage {
   getUserCompletedChallenges(userId: number): Promise<HeadToHeadChallenge[]>;
   updateChallenge(id: number, updates: Partial<HeadToHeadChallenge>): Promise<HeadToHeadChallenge | undefined>;
   getUserChallengeRecord(userId: number): Promise<{ wins: number; losses: number; ties: number }>;
+  isUserParticipantInActiveChallenge(userId: number, wordListId: number): Promise<boolean>;
   
   sessionStore: session.Store;
 }
@@ -1671,6 +1672,27 @@ export class DatabaseStorage implements IStorage {
     }
     
     return { wins, losses, ties };
+  }
+
+  async isUserParticipantInActiveChallenge(userId: number, wordListId: number): Promise<boolean> {
+    const challenges = await db
+      .select()
+      .from(headToHeadChallenges)
+      .where(
+        and(
+          eq(headToHeadChallenges.wordListId, wordListId),
+          or(
+            eq(headToHeadChallenges.initiatorId, userId),
+            eq(headToHeadChallenges.opponentId, userId)
+          ),
+          or(
+            eq(headToHeadChallenges.status, "pending"),
+            eq(headToHeadChallenges.status, "accepted"),
+            eq(headToHeadChallenges.status, "in_progress")
+          )
+        )
+      );
+    return challenges.length > 0;
   }
 }
 
