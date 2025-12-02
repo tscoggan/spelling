@@ -34,6 +34,16 @@ import basketballBackgroundPortrait from "@assets/Basketball background - portra
 import basketballMascotTrophy from "@assets/Basketball player with trophy_1764625337441.png";
 import basketballMascotGoodTry from "@assets/Backetball player with good try_1764625337440.png";
 
+import robotBackgroundLandscape from "@assets/Robot_background_-_landscape_1764681809727.png";
+import robotBackgroundPortrait from "@assets/Robot_background_-_portrait_1764681809727.png";
+import robotMascotTrophy from "@assets/Robot_with_trophy_1764681809726.png";
+import robotMascotGoodTry from "@assets/Robot_with_good_try_1764681809726.png";
+
+import unicornBackgroundLandscape from "@assets/Unicorn_background_-_landscape_1764681809728.png";
+import unicornBackgroundPortrait from "@assets/Unicorn_background_-_portrait_1764681809729.png";
+import unicornMascotTrophy from "@assets/Unicorn_with_trophy_1764681809727.png";
+import unicornMascotGoodTry from "@assets/Unicorn_with_good_try_1764681809728.png";
+
 const THEME_ASSETS: Record<ThemeId, ThemeAssets> = {
   default: {
     backgroundLandscape: defaultBackgroundLandscape,
@@ -76,6 +86,20 @@ const THEME_ASSETS: Record<ThemeId, ThemeAssets> = {
     mascotTrophy: basketballMascotTrophy,
     mascotGoodTry: basketballMascotGoodTry,
     name: "Basketball Theme",
+  },
+  robot: {
+    backgroundLandscape: robotBackgroundLandscape,
+    backgroundPortrait: robotBackgroundPortrait,
+    mascotTrophy: robotMascotTrophy,
+    mascotGoodTry: robotMascotGoodTry,
+    name: "Robot Theme",
+  },
+  unicorn: {
+    backgroundLandscape: unicornBackgroundLandscape,
+    backgroundPortrait: unicornBackgroundPortrait,
+    mascotTrophy: unicornMascotTrophy,
+    mascotGoodTry: unicornMascotGoodTry,
+    name: "Unicorn Theme",
   },
 };
 

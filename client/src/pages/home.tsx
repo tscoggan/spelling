@@ -41,7 +41,7 @@ function TeacherHome() {
   const { user } = useAuth();
   const { themeAssets, currentTheme } = useTheme();
   
-  const needsWhiteText = currentTheme === "space" || currentTheme === "skiing" || currentTheme === "basketball";
+  const needsWhiteText = currentTheme === "space" || currentTheme === "skiing" || currentTheme === "basketball" || currentTheme === "robot";
 
   return (
     <div className="min-h-screen p-4 md:p-8 relative overflow-hidden">

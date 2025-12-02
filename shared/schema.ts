@@ -235,12 +235,28 @@ export const SHOP_ITEMS = {
     type: "theme" as const,
     themeId: "basketball",
   },
+  robot_theme: {
+    id: "robot_theme",
+    name: "Robot Theme",
+    description: "Join the robots in their high-tech factory adventure!",
+    cost: 5,
+    type: "theme" as const,
+    themeId: "robot",
+  },
+  unicorn_theme: {
+    id: "unicorn_theme",
+    name: "Unicorn Theme",
+    description: "Explore a magical rainbow world with adorable unicorns!",
+    cost: 5,
+    type: "theme" as const,
+    themeId: "unicorn",
+  },
 } as const;
 
 export type ShopItemId = keyof typeof SHOP_ITEMS;
 export type ShopItem = typeof SHOP_ITEMS[ShopItemId];
 
-export type ThemeId = "default" | "pirate" | "space" | "soccer" | "skiing" | "basketball";
+export type ThemeId = "default" | "pirate" | "space" | "soccer" | "skiing" | "basketball" | "robot" | "unicorn";
 
 export interface ThemeAssets {
   backgroundLandscape: string;
@@ -279,6 +295,16 @@ export const AVAILABLE_THEMES: Record<ThemeId, { name: string; requiresPurchase:
     name: "Basketball Theme",
     requiresPurchase: true,
     shopItemId: "basketball_theme",
+  },
+  robot: {
+    name: "Robot Theme",
+    requiresPurchase: true,
+    shopItemId: "robot_theme",
+  },
+  unicorn: {
+    name: "Unicorn Theme",
+    requiresPurchase: true,
+    shopItemId: "unicorn_theme",
   },
 };
 

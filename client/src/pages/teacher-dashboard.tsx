@@ -114,7 +114,7 @@ export default function TeacherDashboard() {
     staleTime: 0,
   });
 
-  const needsWhiteText = currentTheme === "space" || currentTheme === "skiing" || currentTheme === "basketball";
+  const needsWhiteText = currentTheme === "space" || currentTheme === "skiing" || currentTheme === "basketball" || currentTheme === "robot";
 
   // Filter word lists based on selected group
   const getFilteredWordLists = (): WordListWithStats[] => {

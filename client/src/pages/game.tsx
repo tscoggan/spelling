@@ -78,6 +78,12 @@ interface QuizAnswer {
   isCorrect: boolean;
 }
 
+interface ScrambleAnswer {
+  word: Word;
+  userAnswer: string;
+  isCorrect: boolean;
+}
+
 // Helper function for robust iOS detection (including iPads requesting desktop sites)
 const isIOSDevice = (): boolean => {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') {
@@ -210,6 +216,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
   const [timeLeft, setTimeLeft] = useState(60);
   const [timerActive, setTimerActive] = useState(false);
   const [quizAnswers, setQuizAnswers] = useState<QuizAnswer[]>([]);
+  const [scrambleAnswers, setScrambleAnswers] = useState<ScrambleAnswer[]>([]);
   const [scoreSaved, setScoreSaved] = useState(false);
   const [incorrectWords, setIncorrectWords] = useState<string[]>([]);
   const [sessionId, setSessionId] = useState<number | null>(null);
@@ -2731,6 +2738,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
     setIsCorrect(false);
     setIncorrectWords([]);
     setQuizAnswers([]);
+    setScrambleAnswers([]);
     setSecondChanceAnswers([]);
     setDoOverPendingResult(null);
     setShowDoOverDialog(false);
@@ -2783,15 +2791,17 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
         userAnswer: doOverPendingResult.userAnswer,
         isCorrect: false,
       };
-      setQuizAnswers([...quizAnswers, newAnswer]);
+      setQuizAnswers(prev => [...prev, newAnswer]);
       setUserInput("");
       
       if (currentWordIndex < (activeWords?.length || 10) - 1) {
         setCurrentWordIndex(currentWordIndex + 1);
       } else {
-        const allAnswers = [...quizAnswers, newAnswer];
-        const totalCorrect = allAnswers.filter(a => a.isCorrect).length;
-        setScore(totalCorrect * 20);
+        // Calculate score based on the answers we're about to have
+        // Note: quizAnswers state hasn't updated yet, so we manually count
+        const currentCorrect = quizAnswers.filter(a => a.isCorrect).length;
+        // newAnswer is incorrect, so no additional correct count
+        setScore(currentCorrect * 20);
         setGameComplete(true);
       }
     } else if (gameMode === "timed") {
@@ -2802,6 +2812,14 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
         setGameComplete(true);
       }
     } else if (gameMode === "scramble") {
+      // Store the incorrect scramble answer for results display
+      const newAnswer: ScrambleAnswer = {
+        word: currentWord!,
+        userAnswer: doOverPendingResult.userAnswer,
+        isCorrect: false,
+      };
+      setScrambleAnswers(prev => [...prev, newAnswer]);
+      
       // Show feedback for scramble mode
       setIsCorrect(false);
       setShowFeedback(true);
@@ -3167,6 +3185,14 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
     const correct = userAnswer.toLowerCase() === currentWord.word.toLowerCase();
 
     if (correct) {
+      // Store the correct scramble answer for results display
+      const newAnswer: ScrambleAnswer = {
+        word: currentWord,
+        userAnswer: userAnswer,
+        isCorrect: true,
+      };
+      setScrambleAnswers(prev => [...prev, newAnswer]);
+      
       setIsCorrect(true);
       setShowFeedback(true);
       playCorrectSound();
@@ -3189,11 +3215,19 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
         });
         setShowDoOverDialog(true);
       } else {
+        // Store the incorrect scramble answer for results display (only when not using Do Over)
+        const newAnswer: ScrambleAnswer = {
+          word: currentWord,
+          userAnswer: userAnswer,
+          isCorrect: false,
+        };
+        setScrambleAnswers(prev => [...prev, newAnswer]);
+        
         setIsCorrect(false);
         setShowFeedback(true);
         playIncorrectSound();
         setStreak(0);
-        setIncorrectWords([...incorrectWords, currentWord.word]);
+        setIncorrectWords(prev => [...prev, currentWord.word]);
         resetWordStreakMutation.mutate();
       }
     }
@@ -3829,8 +3863,39 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
               </div>
             )}
 
-            {/* Misspelled Words List - show for all modes except crossword */}
-            {gameMode !== "crossword" && incorrectWords.length > 0 && (
+            {/* Scramble Review - show for scramble mode */}
+            {gameMode === "scramble" && scrambleAnswers.length > 0 && scrambleAnswers.some(a => !a.isCorrect) && (
+              <div className="space-y-3">
+                <h3 className="text-xl font-bold text-gray-800 text-center">Word Scramble Review</h3>
+                <div className="max-h-60 overflow-y-auto space-y-2">
+                  {scrambleAnswers.filter(answer => !answer.isCorrect).map((answer, index) => (
+                    <Card
+                      key={index}
+                      className="p-4 bg-red-50 border-red-200"
+                      data-testid={`scramble-review-${index}`}
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="text-sm text-gray-600 mb-1">Correct word:</div>
+                          <div className="font-semibold text-gray-800 text-lg">{answer.word.word.toUpperCase()}</div>
+                          <div className="text-sm text-gray-600 mt-2">Your answer:</div>
+                          <div className="text-lg">
+                            {renderIncorrectLetters(answer.userAnswer, answer.word.word)}
+                          </div>
+                        </div>
+                        <XCircle className="w-6 h-6 text-red-600 flex-shrink-0" />
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+                <p className="text-center text-sm text-gray-600">
+                  Practice these words to improve your spelling!
+                </p>
+              </div>
+            )}
+
+            {/* Misspelled Words List - show for modes except crossword and scramble (scramble has its own review) */}
+            {gameMode !== "crossword" && gameMode !== "scramble" && incorrectWords.length > 0 && (
               <div className="space-y-3">
                 <h3 className="text-xl font-bold text-gray-800 text-center">Words to Practice</h3>
                 <div className="max-h-48 overflow-y-auto">
