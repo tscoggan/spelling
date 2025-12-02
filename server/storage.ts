@@ -1688,6 +1688,7 @@ export class DatabaseStorage implements IStorage {
           or(
             eq(headToHeadChallenges.status, "pending"),
             eq(headToHeadChallenges.status, "accepted"),
+            eq(headToHeadChallenges.status, "active"),
             eq(headToHeadChallenges.status, "in_progress")
           )
         )
