@@ -2658,7 +2658,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: "challenge_invite",
         requesterId: initiatorId,
         requesterUsername: initiator?.username || 'Unknown',
-        groupId: challenge.id, // Reuse groupId field to store challengeId
+        challengeId: challenge.id,
         completed: false,
       });
 

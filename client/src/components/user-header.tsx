@@ -686,6 +686,7 @@ export function UserHeader() {
                   const metadata = todo.metadata ? JSON.parse(todo.metadata) : null;
                   const isInvite = todo.type === 'group_invite';
                   const isAccessRequest = todo.type === 'join_request';
+                  const isChallengeInvite = todo.type === 'challenge_invite';
 
                   return (
                     <Card key={todo.id} className="p-4" data-testid={`todo-item-${todo.id}`}>
@@ -694,6 +695,7 @@ export function UserHeader() {
                           <div className="flex items-start gap-2 mb-2">
                             {isInvite && <UserPlus className="w-4 h-4 text-blue-600 mt-1 flex-shrink-0" />}
                             {isAccessRequest && <Users className="w-4 h-4 text-green-600 mt-1 flex-shrink-0" />}
+                            {isChallengeInvite && <Gamepad2 className="w-4 h-4 text-orange-600 mt-1 flex-shrink-0" />}
                             <div>
                               <p className="text-sm font-medium">{todo.message}</p>
                               {metadata && (
@@ -727,6 +729,22 @@ export function UserHeader() {
                               Approve
                             </Button>
                           )}
+                          {isChallengeInvite && (
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                completeTodoMutation.mutate(todo.id);
+                                setTodoModalOpen(false);
+                                // Navigate to H2H page with challenge ID if available
+                                const challengeId = todo.challengeId || todo.groupId;
+                                setLocation(challengeId ? `/head-to-head?challengeId=${challengeId}` : '/head-to-head');
+                              }}
+                              data-testid={`button-view-challenge-${todo.id}`}
+                            >
+                              <Gamepad2 className="w-4 h-4 mr-1" />
+                              View
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="outline"
@@ -735,7 +753,7 @@ export function UserHeader() {
                             data-testid={`button-decline-${todo.id}`}
                           >
                             <X className="w-4 h-4 mr-1" />
-                            {isInvite || isAccessRequest ? 'Decline' : 'Dismiss'}
+                            {isInvite || isAccessRequest || isChallengeInvite ? 'Decline' : 'Dismiss'}
                           </Button>
                         </div>
                       </div>
@@ -994,6 +1012,47 @@ export function UserHeader() {
                             <li>Purchase colorful background themes to customize your experience</li>
                             <li>Themes range from 3 to 10 stars each</li>
                             <li>Apply purchased themes from the Star Shop</li>
+                          </ul>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+
+                    <AccordionItem value="head-to-head">
+                      <AccordionTrigger className="text-left">
+                        <div className="flex items-center gap-2">
+                          <Gamepad2 className="w-4 h-4 text-orange-500" />
+                          Head to Head Challenge
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="space-y-3 text-sm">
+                        <p className="text-muted-foreground">
+                          Challenge your friends to a spelling showdown! Compete on the same word list and see who spells best.
+                        </p>
+                        <div>
+                          <strong>How to start a challenge:</strong>
+                          <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                            <li>Click "H2H Challenge" on the home screen</li>
+                            <li>Select a word list to use</li>
+                            <li>Search for a friend by username</li>
+                            <li>Send your challenge!</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <strong>Scoring:</strong>
+                          <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                            <li><strong>+10 points</strong> for each correct word</li>
+                            <li><strong>-5 points</strong> for each incorrect word</li>
+                            <li><strong>-1 point</strong> for each second elapsed</li>
+                            <li>The winner earns a spendable star that counts toward your "Stars Earned" total</li>
+                            <li>Note: H2H wins do not count toward word list mastery achievements</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <strong>Important notes:</strong>
+                          <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                            <li>Power-ups (Do Over, 2nd Chance) are not allowed</li>
+                            <li>Speed matters - finish quickly for a higher score!</li>
+                            <li>View your challenge history in "View H2H Games"</li>
                           </ul>
                         </div>
                       </AccordionContent>

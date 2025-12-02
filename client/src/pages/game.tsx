@@ -1584,6 +1584,20 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
     }
   }, [timeLeft, timerActive, gameMode, gameComplete]);
 
+  // Head to Head mode: Reset power-up state on initialization to prevent bleed-over
+  useEffect(() => {
+    if (gameMode === "headtohead") {
+      // Clear any residual power-up state from previous sessions
+      setShowDoOverDialog(false);
+      setDoOverPendingResult(null);
+      setSecondChanceMode(false);
+      setSecondChanceWords([]);
+      setSecondChanceIndex(0);
+      setSecondChanceAnswers([]);
+      setOriginalGameMetrics(null);
+    }
+  }, [gameMode]);
+
   // Head to Head mode: Timer counts UP (elapsed time tracking)
   useEffect(() => {
     if (gameMode === "headtohead" && !gameComplete) {
@@ -1602,34 +1616,44 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
   }, [elapsedTime, timerActive, gameMode, gameComplete]);
 
   // Head to Head mode: Submit challenge results when game completes
-  const [challengeSubmitted, setChallengeSubmitted] = useState(false);
+  // Use ref to ensure we only submit once, even if effect runs multiple times
+  const challengeSubmittedRef = useRef(false);
   useEffect(() => {
-    if (gameMode === "headtohead" && gameComplete && challengeId && !challengeSubmitted && user) {
-      const totalWords = words?.length || 0;
-      const incorrectCount = totalWords - correctCount;
-      
-      // Calculate H2H score: +10 per correct, -5 per incorrect, -1 per second
-      const h2hScore = (correctCount * 10) - (incorrectCount * 5) - elapsedTime;
-      
-      console.log("📤 Submitting H2H challenge result:", {
-        challengeId,
-        score: h2hScore,
-        time: elapsedTime,
-        correct: correctCount,
-        incorrect: incorrectCount,
-      });
-      
-      submitChallengeMutation.mutate({
-        challengeId: parseInt(challengeId),
-        score: h2hScore,
-        time: elapsedTime,
-        correct: correctCount,
-        incorrect: incorrectCount,
-      });
-      
-      setChallengeSubmitted(true);
-    }
-  }, [gameComplete, gameMode, challengeId, challengeSubmitted, correctCount, elapsedTime, words, user, submitChallengeMutation]);
+    // Guard: Only submit once, not in-flight, and all required data present
+    if (gameMode !== "headtohead" || !gameComplete || !challengeId || !user) return;
+    if (challengeSubmittedRef.current || submitChallengeMutation.isPending) return;
+    
+    // Mark as submitted immediately to prevent re-entry
+    challengeSubmittedRef.current = true;
+    
+    const totalWords = words?.length || 0;
+    const incorrectCount = totalWords - correctCount;
+    
+    // Calculate H2H score: +10 per correct, -5 per incorrect, -1 per second
+    const h2hScore = (correctCount * 10) - (incorrectCount * 5) - elapsedTime;
+    
+    console.log("📤 Submitting H2H challenge result:", {
+      challengeId,
+      score: h2hScore,
+      time: elapsedTime,
+      correct: correctCount,
+      incorrect: incorrectCount,
+    });
+    
+    submitChallengeMutation.mutate({
+      challengeId: parseInt(challengeId),
+      score: h2hScore,
+      time: elapsedTime,
+      correct: correctCount,
+      incorrect: incorrectCount,
+    }, {
+      onError: (error) => {
+        console.error("Failed to submit H2H challenge result:", error);
+        // Reset ref on error to allow retry
+        challengeSubmittedRef.current = false;
+      }
+    });
+  }, [gameComplete, gameMode, challengeId, correctCount, elapsedTime, words, user, submitChallengeMutation]);
 
   // Scramble mode: Initialize scrambled letters when word changes
   useEffect(() => {
@@ -2907,7 +2931,8 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
 
     const correct = userInput.trim().toLowerCase() === currentWord.word.toLowerCase();
     
-    if (gameMode === "quiz") {
+    if (gameMode === "quiz" || gameMode === "headtohead") {
+      // Quiz and Head to Head modes: No feedback between words, no power-ups for H2H
       if (correct) {
         const newAnswer: QuizAnswer = {
           word: currentWord,
@@ -2937,7 +2962,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
           setGameComplete(true);
         }
       } else {
-        // Incorrect - check for Do Over
+        // Incorrect - check for Do Over (never offered for headtohead)
         if (shouldOfferDoOver(gameMode)) {
           setDoOverPendingResult({
             userAnswer: userInput.trim(),
@@ -4834,8 +4859,8 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
         )}
       </main>
 
-      {/* Do Over Dialog */}
-      <Dialog open={showDoOverDialog} onOpenChange={setShowDoOverDialog}>
+      {/* Do Over Dialog - never show in H2H mode */}
+      <Dialog open={showDoOverDialog && gameMode !== "headtohead"} onOpenChange={setShowDoOverDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-center text-xl">Oops! That's not quite right</DialogTitle>

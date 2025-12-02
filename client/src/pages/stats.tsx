@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Home, Target, Trophy, Flame, TrendingUp, Award, Calendar, Play, Shuffle, AlertCircle, Grid3x3, Clock, Star } from "lucide-react";
+import { Home, Target, Trophy, Flame, TrendingUp, Award, Calendar, Play, Shuffle, AlertCircle, Grid3x3, Clock, Star, Gamepad2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { UserHeader } from "@/components/user-header";
@@ -52,6 +52,18 @@ export default function Stats() {
     refetchOnMount: true,
     refetchOnWindowFocus: true,
     staleTime: 0,
+  });
+
+  // Fetch Head to Head record
+  const { data: h2hRecord } = useQuery<{ wins: number; losses: number; ties: number }>({
+    queryKey: ['/api/challenges/record', user?.id],
+    queryFn: async () => {
+      if (!user) return { wins: 0, losses: 0, ties: 0 };
+      const response = await fetch('/api/challenges/record', { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch H2H record');
+      return response.json();
+    },
+    enabled: !!user,
   });
 
   const gameModeNames: { [key: string]: string } = {
@@ -286,6 +298,26 @@ export default function Stats() {
                     <div className="text-2xl font-bold" data-testid="text-stars-earned">
                       {stats.starsEarned.toLocaleString()}
                     </div>
+                  </CardContent>
+                </Card>
+
+                {/* Head to Head Record */}
+                <Card className="backdrop-blur-sm bg-card/90" data-testid="card-h2h-record">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Head to Head Record
+                    </CardTitle>
+                    <Gamepad2 className="w-4 h-4 text-orange-500" />
+                  </CardHeader>
+                  <CardContent className="py-3">
+                    <div className="text-2xl font-bold" data-testid="text-h2h-record">
+                      {h2hRecord ? `${h2hRecord.wins}W - ${h2hRecord.losses}L` : "0W - 0L"}
+                    </div>
+                    {h2hRecord && h2hRecord.ties > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {h2hRecord.ties} tie{h2hRecord.ties !== 1 ? 's' : ''}
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               </div>
