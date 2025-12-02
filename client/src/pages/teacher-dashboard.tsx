@@ -12,7 +12,7 @@ import {
   ChevronRight,
   BarChart3,
   Target,
-  Trophy,
+  Star,
   Home
 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -27,7 +27,7 @@ interface StudentStats {
   correctWords: number;
   totalWords: number;
   averageAccuracy: number;
-  bestStreak: number;
+  starsEarned: number;
 }
 
 interface WordListWithStats {
@@ -161,7 +161,7 @@ export default function TeacherDashboard() {
                             <th className="text-center py-2 px-3">Games</th>
                             <th className="text-center py-2 px-3">Words Correct</th>
                             <th className="text-center py-2 px-3">Accuracy</th>
-                            <th className="text-center py-2 px-3">Best Streak</th>
+                            <th className="text-center py-2 px-3">Stars Earned</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -195,8 +195,8 @@ export default function TeacherDashboard() {
                               </td>
                               <td className="text-center py-2 px-3">
                                 <div className="flex items-center justify-center gap-1">
-                                  <Trophy className="w-4 h-4 text-orange-500" />
-                                  {student.bestStreak}
+                                  {student.starsEarned}
+                                  <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
                                 </div>
                               </td>
                             </tr>

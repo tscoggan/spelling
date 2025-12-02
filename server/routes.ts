@@ -2557,9 +2557,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const correctWords = sessions.reduce((sum, s) => sum + (s.correctWords || 0), 0);
           const totalWords = sessions.reduce((sum, s) => sum + (s.totalWords || 0), 0);
           const averageAccuracy = totalWords > 0 ? Math.round((correctWords / totalWords) * 100) : 0;
-          const bestStreak = sessions.reduce((max, s) => Math.max(max, s.bestStreak || 0), 0);
           
-          console.log(`[Teacher Dashboard] Student ${studentUser.username} (${studentId}) on list ${list.id}: ${totalGames} games, ${correctWords}/${totalWords} correct`);
+          // Get stars earned for this student on this word list from achievements
+          const achievement = await storage.getAchievement(studentId, list.id, "Word List Mastery");
+          const starsEarned = achievement?.completedModes?.length || 0;
+          
+          console.log(`[Teacher Dashboard] Student ${studentUser.username} (${studentId}) on list ${list.id}: ${totalGames} games, ${correctWords}/${totalWords} correct, ${starsEarned} stars`);
 
           return {
             id: studentUser.id,
@@ -2570,7 +2573,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             correctWords,
             totalWords,
             averageAccuracy,
-            bestStreak,
+            starsEarned,
           };
         }));
 
