@@ -682,6 +682,9 @@ export default function Home() {
                   setH2hSelectedWordList(null);
                   setH2hSelectedOpponent(null);
                   setH2hOpponentSearch("");
+                  queryClient.invalidateQueries({ queryKey: ["/api/challenges/pending"] });
+                  queryClient.invalidateQueries({ queryKey: ["/api/challenges/active"] });
+                  queryClient.invalidateQueries({ queryKey: ["/api/challenges/completed"] });
                   setH2hDialogOpen(true);
                 }}
                 role="button"

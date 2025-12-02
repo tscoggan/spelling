@@ -509,7 +509,7 @@ export default function HeadToHead() {
                             {getResultBadge(challenge)}
                             {challenge.winnerUserId === user?.id && challenge.starAwarded && (
                               <span className="flex items-center gap-1 text-yellow-600" data-testid={`text-star-won-${challenge.id}`}>
-                                <img src={oneStar} alt="Star" className="h-5 w-5 object-contain" data-testid={`img-star-won-${challenge.id}`} />
+                                <img src={oneStar} alt="Star" className="h-7 w-7 object-contain" data-testid={`img-star-won-${challenge.id}`} />
                                 <span className="text-sm font-semibold">You won a star!</span>
                               </span>
                             )}
