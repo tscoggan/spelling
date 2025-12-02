@@ -3,7 +3,7 @@ import { useLocation, useSearch } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Volume2, Home, ArrowRight, CheckCircle2, XCircle, Sparkles, Flame, Clock, SkipForward, Trophy, Settings, BookOpen, MessageSquare, Globe, RotateCcw } from "lucide-react";
+import { Volume2, Home, ArrowRight, CheckCircle2, XCircle, Sparkles, Flame, Clock, SkipForward, Trophy, Settings, BookOpen, MessageSquare, Globe, RotateCcw, Swords } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Word, GameMode } from "@shared/schema";
@@ -3773,6 +3773,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
                     gameMode === "quiz" ? "Quiz Complete!" :
                     gameMode === "scramble" ? "Word Scramble Complete!" :
                     gameMode === "mistake" ? "Find the Mistake Complete!" :
+                    gameMode === "headtohead" ? "Challenge Complete!" :
                     "Game Complete!"}
                 </h1>
               </motion.div>
@@ -3792,6 +3793,46 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
                   } : undefined}
                 />
               </div>
+            ) : gameMode === "headtohead" ? (
+              // Head to Head mode: Show H2H score with breakdown
+              (() => {
+                const totalWords = activeWords?.length || 0;
+                const incorrectCount = totalWords - correctCount;
+                const correctPoints = correctCount * 10;
+                const incorrectPoints = incorrectCount * 5;
+                const h2hScore = correctPoints - incorrectPoints - elapsedTime;
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Card className="p-6 bg-purple-50 border-purple-200">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <div className="text-4xl md:text-5xl font-bold text-purple-600" data-testid="text-final-score">
+                            {h2hScore}
+                          </div>
+                          <div className="text-lg text-gray-600 mt-2">Points</div>
+                        </div>
+                        <div className="text-right text-sm space-y-1">
+                          <div className="text-green-600" data-testid="text-h2h-correct-breakdown">
+                            {correctCount} correct = +{correctPoints} pts
+                          </div>
+                          <div className="text-red-600" data-testid="text-h2h-incorrect-breakdown">
+                            {incorrectCount} incorrect = -{incorrectPoints} pts
+                          </div>
+                          <div className="text-orange-600" data-testid="text-h2h-time-breakdown">
+                            {elapsedTime} seconds = -{elapsedTime} pts
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                    <Card className="p-6 bg-green-50 border-green-200">
+                      <div className="text-4xl md:text-5xl font-bold text-green-600" data-testid="text-accuracy">
+                        {accuracy}%
+                      </div>
+                      <div className="text-lg text-gray-600 mt-2">Accuracy</div>
+                    </Card>
+                  </div>
+                );
+              })()
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Card className="p-6 bg-purple-50 border-purple-200">
@@ -4011,12 +4052,24 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
                 variant="outline"
                 size="lg"
                 className="flex-1 text-lg h-12"
-                onClick={() => setLocation(gameMode === "headtohead" ? "/head-to-head" : "/")}
+                onClick={() => setLocation("/")}
                 data-testid="button-home"
               >
                 <Home className="w-5 h-5 mr-2" />
-                {gameMode === "headtohead" ? "View Challenge" : "Home"}
+                Home
               </Button>
+              {gameMode === "headtohead" && (
+                <Button
+                  variant="default"
+                  size="lg"
+                  className="flex-1 text-lg h-12"
+                  onClick={() => setLocation("/head-to-head")}
+                  data-testid="button-view-challenge"
+                >
+                  <Swords className="w-5 h-5 mr-2" />
+                  View Challenges
+                </Button>
+              )}
               {gameMode !== "headtohead" && (
                 <Button
                   variant="default"
