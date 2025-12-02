@@ -2481,10 +2481,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Teacher access required" });
       }
 
+      console.log(`[Teacher Dashboard] Teacher ID: ${user.id}, Username: ${user.username}`);
+
       // Get groups owned by this teacher (including co-owned groups)
       const ownedGroups = await storage.getUserOwnedGroups(user.id);
       const coOwnedGroups = await storage.getCoOwnedGroups(user.id);
       const allGroups = [...ownedGroups];
+      
+      console.log(`[Teacher Dashboard] Owned groups: ${ownedGroups.length}, Co-owned groups: ${coOwnedGroups.length}`);
       
       // Add co-owned groups that aren't already in the list
       for (const group of coOwnedGroups) {
@@ -2493,10 +2497,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      console.log(`[Teacher Dashboard] Total groups: ${allGroups.length}, Group IDs: ${allGroups.map(g => g.id).join(', ')}`);
+      
       // Get all students from the teacher's groups
       const allStudents: Set<number> = new Set();
       for (const group of allGroups) {
         const members = await storage.getGroupMembers(group.id);
+        console.log(`[Teacher Dashboard] Group ${group.id} (${group.name}) has ${members.length} members`);
         members.forEach(member => {
           if (member.userId !== user.id) { // Exclude the teacher
             allStudents.add(member.userId);
@@ -2504,13 +2511,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      console.log(`[Teacher Dashboard] Total unique students: ${allStudents.size}, Student IDs: ${Array.from(allStudents).join(', ')}`);
+      
       // Get word lists that are shared with the teacher's groups
       // This includes: lists created by teacher + lists shared with their groups
       const teacherWordLists = await storage.getUserWordLists(user.id);
       const groupIds = allGroups.map(g => g.id);
       
+      console.log(`[Teacher Dashboard] Teacher's own word lists: ${teacherWordLists.length}`);
+      teacherWordLists.forEach(list => console.log(`  - List ID ${list.id}: "${list.name}"`));
+      
       // Get all word lists shared with any of the teacher's groups
       const sharedWithGroupsLists = await storage.getWordListsSharedWithGroups(groupIds);
+      
+      console.log(`[Teacher Dashboard] Word lists shared with teacher's groups: ${sharedWithGroupsLists.length}`);
+      sharedWithGroupsLists.forEach(list => console.log(`  - List ID ${list.id}: "${list.name}"`));
       
       // Combine and deduplicate word lists
       const wordListMap = new Map<number, CustomWordList>();
@@ -2523,6 +2538,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       const wordLists = Array.from(wordListMap.values());
+      
+      console.log(`[Teacher Dashboard] Combined unique word lists: ${wordLists.length}`);
       
       // For each word list, get statistics for students in the teacher's groups
       const wordListsWithStats = await Promise.all(wordLists.map(async (list) => {
