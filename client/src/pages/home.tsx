@@ -228,16 +228,16 @@ export default function Home() {
       const response = await apiRequest("POST", "/api/challenges", data);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (challenge: any) => {
       toast({
         title: "Challenge sent!",
         description: "Your opponent will be notified. You can now play your round!",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
       setH2hDialogOpen(false);
-      // Navigate to game with challenge mode
-      if (h2hSelectedWordList) {
-        setLocation(`/game?listId=${h2hSelectedWordList}&mode=headtohead&isInitiator=true`);
+      // Navigate to game with challenge mode - include challengeId so results can be submitted
+      if (h2hSelectedWordList && challenge?.id) {
+        setLocation(`/game?listId=${h2hSelectedWordList}&mode=headtohead&isInitiator=true&challengeId=${challenge.id}`);
       }
     },
     onError: (error: any) => {
@@ -840,15 +840,34 @@ export default function Home() {
           </DialogHeader>
 
           <div className="space-y-6 pt-4 flex-1 overflow-y-auto">
-            {/* Scoring Info */}
-            <div className="bg-muted/50 rounded-lg p-4">
-              <h4 className="font-semibold mb-2">Scoring</h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>+10 points for each correctly spelled word</li>
-                <li>-5 points for each incorrectly spelled word</li>
-                <li>-1 point for every second of time taken</li>
-                <li className="font-medium text-foreground pt-2">Winner earns 1 star!</li>
-              </ul>
+            {/* Scoring Info and View Challenges - Side by Side */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Scoring Info - Left Half */}
+              <div className="bg-muted/50 rounded-lg p-4">
+                <h4 className="font-semibold mb-2">Scoring</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>+10 points for each correctly spelled word</li>
+                  <li>-5 points for each incorrectly spelled word</li>
+                  <li>-1 point for every second of time taken</li>
+                  <li className="font-medium text-foreground pt-2">Winner earns 1 star!</li>
+                </ul>
+              </div>
+              
+              {/* View All Challenges - Right Half */}
+              <div className="bg-muted/50 rounded-lg p-4 flex flex-col items-center justify-center">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    setH2hDialogOpen(false);
+                    setLocation("/head-to-head");
+                  }}
+                  data-testid="button-view-all-challenges"
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  View All Challenges
+                </Button>
+              </div>
             </div>
 
             {/* Step 1: Select Word List */}
@@ -950,20 +969,6 @@ export default function Home() {
                 </div>
               )}
             </div>
-
-            {/* View All Challenges Button */}
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => {
-                setH2hDialogOpen(false);
-                setLocation("/head-to-head");
-              }}
-              data-testid="button-view-all-challenges"
-            >
-              <Eye className="w-4 h-4 mr-2" />
-              View All Challenges
-            </Button>
           </div>
 
           {/* Start Challenge Button */}
