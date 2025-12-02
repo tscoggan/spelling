@@ -115,6 +115,7 @@ export interface IStorage {
   getUserWordLists(userId: number): Promise<CustomWordList[]>;
   getWordListsSharedWithGroups(groupIds: number[]): Promise<CustomWordList[]>;
   getGameSessionsByUserAndList(userId: number, wordListId: number): Promise<GameSession[]>;
+  getGameSessionsByWordList(wordListId: number): Promise<GameSession[]>;
   
   getWordListSharedGroupIds(wordListId: number): Promise<number[]>;
   setWordListSharedGroups(wordListId: number, groupIds: number[]): Promise<void>;
@@ -1030,6 +1031,14 @@ export class DatabaseStorage implements IStorage {
           eq(gameSessions.wordListId, wordListId)
         )
       )
+      .orderBy(desc(gameSessions.createdAt));
+  }
+
+  async getGameSessionsByWordList(wordListId: number): Promise<GameSession[]> {
+    return await db
+      .select()
+      .from(gameSessions)
+      .where(eq(gameSessions.wordListId, wordListId))
       .orderBy(desc(gameSessions.createdAt));
   }
 

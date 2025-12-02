@@ -2541,15 +2541,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[Teacher Dashboard] Combined unique word lists: ${wordLists.length}`);
       
-      // For each word list, get statistics for students in the teacher's groups
+      // For each word list, get statistics for ALL students who played on it
+      // This includes students from teacher's groups AND students who accessed the list through other means
       const wordListsWithStats = await Promise.all(wordLists.map(async (list) => {
+        // Get all game sessions for this word list
+        const allSessions = await storage.getGameSessionsByWordList(list.id);
+        
+        // Get unique student IDs who played on this list (filter out null userIds)
+        const studentIds = Array.from(new Set(
+          allSessions
+            .filter(s => s.userId !== null)
+            .map(s => s.userId as number)
+        ));
+        
+        console.log(`[Teacher Dashboard] Word list ${list.id} (${list.name}): ${allSessions.length} sessions from ${studentIds.length} unique students`);
+        
         // Get statistics for each student on this word list
-        const studentStats = await Promise.all(Array.from(allStudents).map(async (studentId) => {
+        const studentStats = await Promise.all(studentIds.map(async (studentId) => {
           const studentUser = await storage.getUser(studentId);
           if (!studentUser) return null;
+          
+          // Skip the teacher themselves
+          if (studentUser.id === user.id) return null;
 
           // Get game sessions for this student on this word list
-          const sessions = await storage.getGameSessionsByUserAndList(studentId, list.id);
+          const sessions = allSessions.filter(s => s.userId === studentId);
           
           const totalGames = sessions.length;
           const correctWords = sessions.reduce((sum, s) => sum + (s.correctWords || 0), 0);

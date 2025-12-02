@@ -4617,8 +4617,10 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
                         {gameMode === "mistake" ? (
                           <div className="space-y-3">
                             <p className="text-xl md:text-2xl text-gray-600">The misspelled word was:</p>
-                            <div className="text-3xl md:text-4xl font-semibold text-gray-700 line-through" data-testid="text-misspelled-word">
-                              {mistakeChoices[misspelledIndex]?.toUpperCase()}
+                            <div className="text-3xl md:text-4xl font-semibold" data-testid="text-misspelled-word">
+                              {mistakeChoices[misspelledIndex] && correctSpelling 
+                                ? renderIncorrectLetters(mistakeChoices[misspelledIndex], correctSpelling)
+                                : mistakeChoices[misspelledIndex]?.toUpperCase()}
                             </div>
                             <p className="text-xl md:text-2xl text-gray-600">Correct spelling:</p>
                             <div className="text-4xl md:text-5xl font-bold text-gray-800" data-testid="text-correct-word">
@@ -4647,8 +4649,10 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
                               <p className="text-lg md:text-xl text-gray-600">That word is spelled correctly!</p>
                               <div className="border-t border-gray-300 my-4"></div>
                               <p className="text-xl md:text-2xl text-gray-600">The misspelled word was:</p>
-                              <div className="text-3xl md:text-4xl font-semibold text-gray-700 line-through" data-testid="text-misspelled-word">
-                                {mistakeChoices[misspelledIndex]?.toUpperCase()}
+                              <div className="text-3xl md:text-4xl font-semibold" data-testid="text-misspelled-word">
+                                {mistakeChoices[misspelledIndex] && correctSpelling 
+                                  ? renderIncorrectLetters(mistakeChoices[misspelledIndex], correctSpelling)
+                                  : mistakeChoices[misspelledIndex]?.toUpperCase()}
                               </div>
                               <p className="text-xl md:text-2xl text-gray-600">Correct spelling:</p>
                               <div className="text-4xl md:text-5xl font-bold text-gray-800" data-testid="text-correct-spelling">
