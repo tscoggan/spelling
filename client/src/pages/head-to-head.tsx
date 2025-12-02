@@ -47,23 +47,31 @@ interface ChallengeRecord {
 export default function HeadToHead() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
-  const { currentTheme } = useTheme();
+  const { currentTheme, themeAssets } = useTheme();
   const { toast } = useToast();
 
   const { data: pendingChallenges, isLoading: loadingPending } = useQuery<Challenge[]>({
     queryKey: ["/api/challenges/pending"],
+    refetchOnMount: "always",
+    staleTime: 0,
   });
 
   const { data: activeChallenges, isLoading: loadingActive } = useQuery<Challenge[]>({
     queryKey: ["/api/challenges/active"],
+    refetchOnMount: "always",
+    staleTime: 0,
   });
 
   const { data: completedChallenges, isLoading: loadingCompleted } = useQuery<Challenge[]>({
     queryKey: ["/api/challenges/completed"],
+    refetchOnMount: "always",
+    staleTime: 0,
   });
 
   const { data: record } = useQuery<ChallengeRecord>({
     queryKey: ["/api/challenges/record"],
+    refetchOnMount: "always",
+    staleTime: 0,
   });
 
   const acceptMutation = useMutation({
@@ -148,15 +156,37 @@ export default function HeadToHead() {
   ) || [];
 
   return (
-    <div className={`min-h-screen ${currentTheme === 'space' ? 'bg-gradient-to-b from-slate-900 via-purple-900 to-slate-900' : 'bg-gradient-to-br from-orange-100 via-yellow-50 to-amber-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900'}`}>
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Portrait background */}
+      <div 
+        className="fixed inset-0 portrait:block landscape:hidden pointer-events-none"
+        style={{
+          backgroundImage: `url(${themeAssets.backgroundPortrait})`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center top',
+        }}
+      ></div>
+      {/* Landscape background */}
+      <div 
+        className="fixed inset-0 portrait:hidden landscape:block pointer-events-none"
+        style={{
+          backgroundImage: `url(${themeAssets.backgroundLandscape})`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center top',
+        }}
+      ></div>
+      <div className="fixed inset-0 bg-white/5 dark:bg-black/50 pointer-events-none"></div>
+      
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="container mx-auto px-4 py-8 max-w-4xl"
+        className="container mx-auto px-4 py-8 max-w-4xl relative z-10"
       >
         <div className="flex items-center justify-between mb-8">
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => setLocation("/")}
             className="flex items-center gap-2"
@@ -171,12 +201,9 @@ export default function HeadToHead() {
           <div className="flex items-center justify-center gap-3 mb-2">
             <Swords className="w-10 h-10 text-orange-600" />
             <h1 className={`text-4xl font-bold ${currentTheme === 'space' ? 'text-white' : 'text-foreground'}`}>
-              Head to Head
+              Head to Head Challenge Results
             </h1>
           </div>
-          <p className={`${currentTheme === 'space' ? 'text-gray-300' : 'text-muted-foreground'}`}>
-            Challenge your friends to spelling duels!
-          </p>
         </div>
 
         {record && (

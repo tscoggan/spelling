@@ -38,6 +38,7 @@ import userGroupsButton from "@assets/User Groups button 2_1764445093609.png";
 import myStatsButton from "@assets/My Stats button 2_1764445093611.png";
 import achievementsButton from "@assets/Achievements button 3_1764446032415.png";
 import starShopButton from "@assets/Star Shops button 2_1764445093610.png";
+import h2hChallengeResultsButton from "@assets/H2H_Challenge_Results_button_1764699075884.png";
 
 function TeacherHome() {
   const [, setLocation] = useLocation();
@@ -581,14 +582,16 @@ export default function Home() {
               Challenge a Friend
             </h2>
           </div>
-          <div className="max-w-md mx-auto">
+          <div className="max-w-2xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
+              className="flex flex-col sm:flex-row items-center justify-center gap-4"
             >
+              {/* Head to Head Challenge Button */}
               <Card
-                className="hover:scale-105 transition-transform cursor-pointer shadow-lg border-2 border-orange-400 bg-gradient-to-br from-orange-50 to-yellow-50 dark:from-orange-950 dark:to-yellow-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                className="hover:scale-105 transition-transform cursor-pointer shadow-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 w-full sm:w-auto"
                 onClick={() => {
                   setH2hSelectedWordList(null);
                   setH2hSelectedOpponent(null);
@@ -599,45 +602,39 @@ export default function Home() {
                 tabIndex={0}
                 data-testid="card-mode-headtohead"
               >
-                <CardHeader className="space-y-2">
+                <CardHeader className="space-y-2 p-4">
                   <div className="flex items-center gap-3">
                     <Swords className="w-10 h-10 text-orange-600" />
                     <div>
-                      <CardTitle className="text-2xl">Head to Head Challenge</CardTitle>
-                      <CardDescription className="text-base">
-                        Challenge a friend to a timed spelling duel. Winner earns a star!
+                      <CardTitle className="text-xl text-gray-800">Head to Head Challenge</CardTitle>
+                      <CardDescription className="text-sm text-gray-600">
+                        Challenge a friend to a spelling duel!
                       </CardDescription>
                     </div>
                   </div>
-                  <div className="flex gap-2 flex-wrap items-center justify-between">
-                    <div className="flex gap-2 flex-wrap">
-                      <Badge variant="secondary" className="text-xs">
-                        +10 pts per correct word
-                      </Badge>
-                      <Badge variant="secondary" className="text-xs">
-                        -5 pts per incorrect
-                      </Badge>
-                      <Badge variant="secondary" className="text-xs">
-                        -1 pt per second
-                      </Badge>
-                    </div>
-                    {completedChallenges && completedChallenges.length > 0 && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setLocation("/head-to-head");
-                        }}
-                        data-testid="button-view-completed-games"
-                      >
-                        <Eye className="w-4 h-4 mr-2" />
-                        View Games
-                      </Button>
-                    )}
-                  </div>
                 </CardHeader>
               </Card>
+
+              {/* H2H Challenge Results Button */}
+              <div
+                className="hover:scale-105 transition-transform cursor-pointer bg-white rounded-lg border border-gray-200 shadow-lg p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                onClick={() => setLocation("/head-to-head")}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setLocation("/head-to-head");
+                  }
+                }}
+                data-testid="button-h2h-challenge-results"
+              >
+                <img 
+                  src={h2hChallengeResultsButton} 
+                  alt="H2H Challenge Results" 
+                  className="w-28 h-auto"
+                />
+              </div>
             </motion.div>
           </div>
         </div>
@@ -840,34 +837,15 @@ export default function Home() {
           </DialogHeader>
 
           <div className="space-y-6 pt-4 flex-1 overflow-y-auto">
-            {/* Scoring Info and View Challenges - Side by Side */}
-            <div className="grid grid-cols-2 gap-4">
-              {/* Scoring Info - Left Half */}
-              <div className="bg-muted/50 rounded-lg p-4">
-                <h4 className="font-semibold mb-2">Scoring</h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>+10 points for each correct word</li>
-                  <li>-5 points for each incorrect word</li>
-                  <li>-1 point for every second of time taken</li>
-                  <li className="font-medium text-foreground pt-2">Winner earns 1 star!</li>
-                </ul>
-              </div>
-              
-              {/* View All Challenges - Right Half */}
-              <div className="bg-muted/50 rounded-lg p-4 flex flex-col items-center justify-center">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => {
-                    setH2hDialogOpen(false);
-                    setLocation("/head-to-head");
-                  }}
-                  data-testid="button-view-all-challenges"
-                >
-                  <Eye className="w-4 h-4 mr-2" />
-                  View All Challenges
-                </Button>
-              </div>
+            {/* Scoring Info */}
+            <div className="bg-muted/50 rounded-lg p-4">
+              <h4 className="font-semibold mb-2">Scoring</h4>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>+10 points for each correct word</li>
+                <li>-5 points for each incorrect word</li>
+                <li>-1 point for every second of time taken</li>
+                <li className="font-medium text-foreground pt-2">Winner earns 1 star!</li>
+              </ul>
             </div>
 
             {/* Step 1: Select Word List */}

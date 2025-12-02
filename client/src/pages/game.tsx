@@ -3773,9 +3773,14 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
                     gameMode === "quiz" ? "Quiz Complete!" :
                     gameMode === "scramble" ? "Word Scramble Complete!" :
                     gameMode === "mistake" ? "Find the Mistake Complete!" :
-                    gameMode === "headtohead" ? "Head to Head Challenge Results" :
+                    gameMode === "headtohead" ? "Game Complete!" :
                     "Game Complete!"}
                 </h1>
+                {gameMode === "headtohead" && isInitiator && (
+                  <p className="text-lg text-gray-600 dark:text-gray-400 mt-2">
+                    Now it's your opponent's turn to play...
+                  </p>
+                )}
               </motion.div>
             )}
 
@@ -4067,7 +4072,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
                   data-testid="button-view-challenge"
                 >
                   <Swords className="w-5 h-5 mr-2" />
-                  View Challenges
+                  H2H Challenge Results
                 </Button>
               )}
               {gameMode !== "headtohead" && (
