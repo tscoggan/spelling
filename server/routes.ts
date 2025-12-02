@@ -2540,38 +2540,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const wordLists = Array.from(wordListMap.values());
       
       console.log(`[Teacher Dashboard] Combined unique word lists: ${wordLists.length}`);
+      wordLists.forEach(list => console.log(`  - List ID ${list.id}: "${list.name}" (created by user ${list.userId})`));
       
-      // For each word list, get statistics for ALL students who played on it
-      // This includes students from teacher's groups AND students who accessed the list through other means
+      // For each word list, get statistics ONLY for students in the teacher's groups
       const wordListsWithStats = await Promise.all(wordLists.map(async (list) => {
-        // Get all game sessions for this word list
-        const allSessions = await storage.getGameSessionsByWordList(list.id);
-        
-        // Get unique student IDs who played on this list (filter out null userIds)
-        const studentIds = Array.from(new Set(
-          allSessions
-            .filter(s => s.userId !== null)
-            .map(s => s.userId as number)
-        ));
-        
-        console.log(`[Teacher Dashboard] Word list ${list.id} (${list.name}): ${allSessions.length} sessions from ${studentIds.length} unique students`);
-        
-        // Get statistics for each student on this word list
-        const studentStats = await Promise.all(studentIds.map(async (studentId) => {
+        // Get statistics for each student in the teacher's groups
+        const studentStats = await Promise.all(Array.from(allStudents).map(async (studentId) => {
           const studentUser = await storage.getUser(studentId);
           if (!studentUser) return null;
-          
-          // Skip the teacher themselves
-          if (studentUser.id === user.id) return null;
 
           // Get game sessions for this student on this word list
-          const sessions = allSessions.filter(s => s.userId === studentId);
+          const sessions = await storage.getGameSessionsByUserAndList(studentId, list.id);
           
           const totalGames = sessions.length;
           const correctWords = sessions.reduce((sum, s) => sum + (s.correctWords || 0), 0);
           const totalWords = sessions.reduce((sum, s) => sum + (s.totalWords || 0), 0);
           const averageAccuracy = totalWords > 0 ? Math.round((correctWords / totalWords) * 100) : 0;
           const bestStreak = sessions.reduce((max, s) => Math.max(max, s.bestStreak || 0), 0);
+          
+          console.log(`[Teacher Dashboard] Student ${studentUser.username} (${studentId}) on list ${list.id}: ${totalGames} games, ${correctWords}/${totalWords} correct`);
 
           return {
             id: studentUser.id,
@@ -2586,11 +2573,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         }));
 
+        const filteredStudents = studentStats.filter(s => s !== null && s.totalGames > 0);
+        console.log(`[Teacher Dashboard] List ${list.id} (${list.name}): ${filteredStudents.length} students with games`);
+
         return {
           id: list.id,
           name: list.name,
           wordCount: list.words.length,
-          students: studentStats.filter(s => s !== null && s.totalGames > 0),
+          students: filteredStudents,
         };
       }));
 
