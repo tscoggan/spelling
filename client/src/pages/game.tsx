@@ -510,14 +510,14 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
       challengeId: number; 
       score: number; 
       time: number; 
-      correct: number; 
-      incorrect: number; 
+      correctCount: number; 
+      incorrectCount: number; 
     }) => {
       const response = await apiRequest("POST", `/api/challenges/${data.challengeId}/submit`, {
         score: data.score,
         time: data.time,
-        correct: data.correct,
-        incorrect: data.incorrect,
+        correctCount: data.correctCount,
+        incorrectCount: data.incorrectCount,
       });
       return await response.json();
     },
@@ -1636,16 +1636,16 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
       challengeId,
       score: h2hScore,
       time: elapsedTime,
-      correct: correctCount,
-      incorrect: incorrectCount,
+      correctCount,
+      incorrectCount,
     });
     
     submitChallengeMutation.mutate({
       challengeId: parseInt(challengeId),
       score: h2hScore,
       time: elapsedTime,
-      correct: correctCount,
-      incorrect: incorrectCount,
+      correctCount,
+      incorrectCount,
     }, {
       onError: (error) => {
         console.error("Failed to submit H2H challenge result:", error);
@@ -3773,7 +3773,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
                     gameMode === "quiz" ? "Quiz Complete!" :
                     gameMode === "scramble" ? "Word Scramble Complete!" :
                     gameMode === "mistake" ? "Find the Mistake Complete!" :
-                    gameMode === "headtohead" ? "Challenge Complete!" :
+                    gameMode === "headtohead" ? "Head to Head Challenge Results" :
                     "Game Complete!"}
                 </h1>
               </motion.div>

@@ -846,8 +846,8 @@ export default function Home() {
               <div className="bg-muted/50 rounded-lg p-4">
                 <h4 className="font-semibold mb-2">Scoring</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>+10 points for each correctly spelled word</li>
-                  <li>-5 points for each incorrectly spelled word</li>
+                  <li>+10 points for each correct word</li>
+                  <li>-5 points for each incorrect word</li>
                   <li>-1 point for every second of time taken</li>
                   <li className="font-medium text-foreground pt-2">Winner earns 1 star!</li>
                 </ul>
