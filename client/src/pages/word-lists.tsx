@@ -343,11 +343,12 @@ export default function WordListsPage() {
   }, [jobStatus?.status, jobId, toast]);
 
   const resetForm = () => {
+    const isTeacher = user?.role === "teacher";
     setFormData({
       name: "",
       words: "",
-      visibility: "private",
-      assignImages: true,
+      visibility: isTeacher ? "groups" : "private",
+      assignImages: isTeacher ? false : true,
       gradeLevel: "",
       selectedGroupIds: [],
     });
@@ -963,13 +964,24 @@ export default function WordListsPage() {
                     <div>
                       <Label>Share with Groups</Label>
                       <div className="border rounded-md p-4 space-y-3 max-h-[200px] overflow-y-auto">
-                        {userGroups.length === 0 ? (
-                          <p className="text-sm text-gray-500 text-center py-4">
-                            No groups available. Create a group first!
-                          </p>
-                        ) : (
-                          userGroups.map((group: any) => {
-                            const isOwned = group.ownerId === user?.id;
+                        {(() => {
+                          const isTeacher = user?.role === "teacher";
+                          const filteredGroups = isTeacher 
+                            ? userGroups.filter((g: any) => 
+                                g.isOwner || g.isCoOwner || formData.selectedGroupIds.includes(g.id)
+                              )
+                            : userGroups;
+                          
+                          if (filteredGroups.length === 0) {
+                            return (
+                              <p className="text-sm text-gray-500 text-center py-4">
+                                No groups available. Create a group first!
+                              </p>
+                            );
+                          }
+                          
+                          return filteredGroups.map((group: any) => {
+                            const isOwned = group.ownerUserId === user?.id;
                             return (
                               <div key={group.id} className="flex items-start gap-3" data-testid={`group-checkbox-${group.id}`}>
                                 <Checkbox
@@ -1004,8 +1016,8 @@ export default function WordListsPage() {
                                 </div>
                               </div>
                             );
-                          })
-                        )}
+                          });
+                        })()}
                       </div>
                       {formData.selectedGroupIds.length > 0 && (
                         <p className="text-sm text-gray-600 mt-2" data-testid="text-selected-groups-count">

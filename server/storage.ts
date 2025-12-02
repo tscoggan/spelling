@@ -700,6 +700,22 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(users, eq(userGroups.ownerUserId, users.id))
       .where(eq(userGroups.ownerUserId, userId));
     
+    // Get co-owned groups with owner username
+    const coOwnedGroups = await db
+      .select({
+        id: userGroups.id,
+        name: userGroups.name,
+        ownerUserId: userGroups.ownerUserId,
+        isPublic: userGroups.isPublic,
+        createdAt: userGroups.createdAt,
+        plaintextPassword: userGroups.plaintextPassword,
+        ownerUsername: users.username,
+      })
+      .from(userGroupCoOwners)
+      .innerJoin(userGroups, eq(userGroupCoOwners.groupId, userGroups.id))
+      .innerJoin(users, eq(userGroups.ownerUserId, users.id))
+      .where(eq(userGroupCoOwners.coOwnerUserId, userId));
+    
     // Get member groups with owner username
     const memberGroups = await db
       .select({
@@ -741,11 +757,12 @@ export class DatabaseStorage implements IStorage {
     
     const memberCountMap = new Map(memberCounts.map(mc => [mc.groupId, mc.count]));
     
-    // Create sets for owned and member group IDs
+    // Create sets for owned, co-owned, and member group IDs
     const ownedGroupIds = new Set(ownedGroups.map(g => g.id));
+    const coOwnedGroupIds = new Set(coOwnedGroups.map(g => g.id));
     const memberGroupIds = new Set(memberGroups.map(g => g.id));
     
-    // Deduplicate by ID, prioritizing owned/member groups over public groups
+    // Deduplicate by ID, prioritizing owned/co-owned/member groups over public groups
     const groupMap = new Map();
     
     // Add owned groups first
@@ -753,7 +770,14 @@ export class DatabaseStorage implements IStorage {
       groupMap.set(group.id, group);
     }
     
-    // Add member groups (may overlap with owned)
+    // Add co-owned groups
+    for (const group of coOwnedGroups) {
+      if (!groupMap.has(group.id)) {
+        groupMap.set(group.id, group);
+      }
+    }
+    
+    // Add member groups (may overlap with owned/co-owned)
     for (const group of memberGroups) {
       if (!groupMap.has(group.id)) {
         groupMap.set(group.id, group);
@@ -769,11 +793,12 @@ export class DatabaseStorage implements IStorage {
     
     const uniqueGroups = Array.from(groupMap.values());
     
-    // Add isMember, isOwner flags, and memberCount to each group
+    // Add isMember, isOwner, isCoOwner flags, and memberCount to each group
     return uniqueGroups.map(group => ({
       ...group,
       isOwner: ownedGroupIds.has(group.id),
-      isMember: ownedGroupIds.has(group.id) || memberGroupIds.has(group.id),
+      isCoOwner: coOwnedGroupIds.has(group.id),
+      isMember: ownedGroupIds.has(group.id) || coOwnedGroupIds.has(group.id) || memberGroupIds.has(group.id),
       memberCount: memberCountMap.get(group.id) || 0,
     }));
   }

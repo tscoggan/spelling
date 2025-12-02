@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { UserHeader } from "@/components/user-header";
-import shopBackground from "@assets/Star shop - landscape (no title)_1764452486174.png";
+import shopBackground from "@assets/Ski background - landscape_1764633118023.png";
 import shopTitle from "@assets/Star Shop title_1764452486174.png";
 import doOverImage from "@assets/Do Over (1 Word) item_1764449029422.png";
 import secondChanceImage from "@assets/2nd Chance (All Mistakes) item_1764449029422.png";
@@ -169,17 +169,17 @@ export default function StarShop() {
           <UserHeader />
         </header>
 
-        <div className="flex-shrink-0 flex flex-col items-center pt-2 px-4">
+        <div className="flex-shrink-0 flex flex-col items-center pt-1 px-4">
           <motion.img
             src={shopTitle}
             alt="Star Shop"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="h-20 sm:h-24 object-contain mb-3"
+            className="h-16 sm:h-20 object-contain mb-2"
             data-testid="img-shop-title"
           />
           
-          <div className="w-full max-w-md flex items-center justify-center mb-4">
+          <div className="w-full max-w-md flex items-center justify-center mb-2">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
