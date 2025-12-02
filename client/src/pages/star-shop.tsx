@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { UserHeader } from "@/components/user-header";
-import shopBackground from "@assets/Ski background - landscape_1764633118023.png";
+import shopBackground from "@assets/Colorful_background_landscape_1763563266457.png";
 import shopTitle from "@assets/Star Shop title_1764452486174.png";
 import doOverImage from "@assets/Do Over (1 Word) item_1764449029422.png";
 import secondChanceImage from "@assets/2nd Chance (All Mistakes) item_1764449029422.png";
