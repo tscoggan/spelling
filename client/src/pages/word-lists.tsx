@@ -58,14 +58,29 @@ export default function WordListsPage() {
   const [coOwnersDialogOpen, setCoOwnersDialogOpen] = useState(false);
   const [selectedListForCoOwners, setSelectedListForCoOwners] = useState<CustomWordList | null>(null);
   const [teacherSearchQuery, setTeacherSearchQuery] = useState("");
-  const [formData, setFormData] = useState({
-    name: "",
-    words: "",
-    visibility: "private" as "public" | "private" | "groups",
-    assignImages: true,
-    gradeLevel: "",
-    selectedGroupIds: [] as number[],
+  const [formData, setFormData] = useState(() => {
+    const isTeacher = user?.role === "teacher";
+    return {
+      name: "",
+      words: "",
+      visibility: (isTeacher ? "groups" : "private") as "public" | "private" | "groups",
+      assignImages: isTeacher ? false : true,
+      gradeLevel: "",
+      selectedGroupIds: [] as number[],
+    };
   });
+
+  // Update form defaults when user role becomes available
+  useEffect(() => {
+    if (user && !editingList) {
+      const isTeacher = user.role === "teacher";
+      setFormData(prev => ({
+        ...prev,
+        visibility: isTeacher ? "groups" : prev.visibility,
+        assignImages: isTeacher ? false : prev.assignImages,
+      }));
+    }
+  }, [user?.role]);
 
   const { data: userLists = [], isLoading: loadingUserLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists", user?.id],
