@@ -140,6 +140,12 @@ export default function HeadToHead() {
     (c.initiatorId === user?.id && !c.initiatorCompletedAt) ||
     (c.opponentId === user?.id && !c.opponentCompletedAt)
   ) || [];
+  
+  // In Progress: Games where current user has completed but opponent hasn't
+  const inProgressGames = activeChallenges?.filter(c => 
+    (c.initiatorId === user?.id && c.initiatorCompletedAt && !c.opponentCompletedAt) ||
+    (c.opponentId === user?.id && c.opponentCompletedAt && !c.initiatorCompletedAt)
+  ) || [];
 
   return (
     <div className={`min-h-screen ${currentTheme === 'space' ? 'bg-gradient-to-b from-slate-900 via-purple-900 to-slate-900' : 'bg-gradient-to-br from-orange-100 via-yellow-50 to-amber-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900'}`}>
@@ -157,7 +163,7 @@ export default function HeadToHead() {
             data-testid="button-back-home"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Home
+            Home
           </Button>
         </div>
 
@@ -213,12 +219,20 @@ export default function HeadToHead() {
           </div>
         ) : (
           <Tabs defaultValue="pending" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsList className="grid w-full grid-cols-4 mb-6">
               <TabsTrigger value="pending" className="relative" data-testid="tab-pending">
                 Pending
                 {(challengesToRespond.length > 0 || challengesSent.length > 0 || myActiveGames.length > 0) && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                     {challengesToRespond.length + challengesSent.length + myActiveGames.length}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="in-progress" className="relative" data-testid="tab-in-progress">
+                In Progress
+                {inProgressGames.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {inProgressGames.length}
                   </span>
                 )}
               </TabsTrigger>
@@ -333,6 +347,62 @@ export default function HeadToHead() {
                   <Swords className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p>No pending challenges</p>
                   <p className="text-sm">Challenge a friend to start a spelling duel!</p>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="in-progress" className="space-y-4">
+              {inProgressGames.length > 0 ? (
+                inProgressGames.map((challenge) => {
+                  const isInitiator = challenge.initiatorId === user?.id;
+                  const myScore = isInitiator ? challenge.initiatorScore : challenge.opponentScore;
+                  const myTime = isInitiator ? challenge.initiatorTime : challenge.opponentTime;
+                  const myCorrect = isInitiator ? challenge.initiatorCorrect : challenge.opponentCorrect;
+                  const myIncorrect = isInitiator ? challenge.initiatorIncorrect : challenge.opponentIncorrect;
+                  const opponentName = isInitiator ? challenge.opponentUsername : challenge.initiatorUsername;
+
+                  return (
+                    <Card key={challenge.id} className="border-blue-300 dark:border-blue-800">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            vs {opponentName || 'Unknown'}
+                            <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                              <Clock className="w-3 h-3 mr-1" />
+                              Waiting for opponent
+                            </Badge>
+                          </CardTitle>
+                          <Badge variant="outline">
+                            {formatDistanceToNow(new Date(challenge.createdAt), { addSuffix: true })}
+                          </Badge>
+                        </div>
+                        <CardDescription>
+                          Word List: {challenge.wordListName || 'Unknown'}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="p-3 bg-muted/50 rounded-lg">
+                          <div className="text-sm text-muted-foreground mb-1">Your Score</div>
+                          <div className="text-2xl font-bold">{myScore ?? '-'}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {myCorrect ?? 0} correct, {myIncorrect ?? 0} incorrect
+                          </div>
+                          {myTime !== undefined && myTime !== null && (
+                            <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                              <Clock className="w-3 h-3" />
+                              {formatTime(myTime)}
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No games in progress</p>
+                  <p className="text-sm">When you complete a challenge, it will appear here until your opponent finishes</p>
                 </div>
               )}
             </TabsContent>

@@ -609,32 +609,33 @@ export default function Home() {
                       </CardDescription>
                     </div>
                   </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <Badge variant="secondary" className="text-xs">
-                      +10 pts per correct word
-                    </Badge>
-                    <Badge variant="secondary" className="text-xs">
-                      -5 pts per incorrect
-                    </Badge>
-                    <Badge variant="secondary" className="text-xs">
-                      -1 pt per second
-                    </Badge>
+                  <div className="flex gap-2 flex-wrap items-center justify-between">
+                    <div className="flex gap-2 flex-wrap">
+                      <Badge variant="secondary" className="text-xs">
+                        +10 pts per correct word
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        -5 pts per incorrect
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        -1 pt per second
+                      </Badge>
+                    </div>
+                    {completedChallenges && completedChallenges.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLocation("/head-to-head");
+                        }}
+                        data-testid="button-view-completed-games"
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        View Games
+                      </Button>
+                    )}
                   </div>
-                  {completedChallenges && completedChallenges.length > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-2"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setLocation("/head-to-head");
-                      }}
-                      data-testid="button-view-completed-games"
-                    >
-                      <Eye className="w-4 h-4 mr-2" />
-                      View Completed Games ({completedChallenges.length})
-                    </Button>
-                  )}
                 </CardHeader>
               </Card>
             </motion.div>
@@ -950,7 +951,7 @@ export default function Home() {
               )}
             </div>
 
-            {/* View Completed Games Button */}
+            {/* View All Challenges Button */}
             <Button
               variant="outline"
               className="w-full"
@@ -961,7 +962,7 @@ export default function Home() {
               data-testid="button-view-all-challenges"
             >
               <Eye className="w-4 h-4 mr-2" />
-              View Completed Games
+              View All Challenges
             </Button>
           </div>
 
