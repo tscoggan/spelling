@@ -88,7 +88,7 @@ function TeacherHome() {
             />
           </motion.div>
           <p className={`text-lg md:text-xl font-semibold ${needsWhiteText ? 'text-white' : 'text-foreground'}`}>
-            Welcome, Teacher {user?.firstName || user?.username}!
+            Welcome, {user?.firstName || user?.username}{user?.lastName ? ` ${user.lastName}` : ''}!
           </p>
         </div>
 
