@@ -78,11 +78,6 @@ interface QuizAnswer {
   isCorrect: boolean;
 }
 
-interface ScrambleAnswer {
-  word: Word;
-  userAnswer: string;
-  isCorrect: boolean;
-}
 
 // Helper function for robust iOS detection (including iPads requesting desktop sites)
 const isIOSDevice = (): boolean => {
@@ -216,7 +211,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
   const [timeLeft, setTimeLeft] = useState(60);
   const [timerActive, setTimerActive] = useState(false);
   const [quizAnswers, setQuizAnswers] = useState<QuizAnswer[]>([]);
-  const [scrambleAnswers, setScrambleAnswers] = useState<ScrambleAnswer[]>([]);
+  const [scrambleUserAnswer, setScrambleUserAnswer] = useState<string>("");
   const [scoreSaved, setScoreSaved] = useState(false);
   const [incorrectWords, setIncorrectWords] = useState<string[]>([]);
   const [sessionId, setSessionId] = useState<number | null>(null);
@@ -2738,7 +2733,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
     setIsCorrect(false);
     setIncorrectWords([]);
     setQuizAnswers([]);
-    setScrambleAnswers([]);
+    setScrambleUserAnswer("");
     setSecondChanceAnswers([]);
     setDoOverPendingResult(null);
     setShowDoOverDialog(false);
@@ -2812,14 +2807,8 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
         setGameComplete(true);
       }
     } else if (gameMode === "scramble") {
-      // Store the incorrect scramble answer for results display
-      const newAnswer: ScrambleAnswer = {
-        word: currentWord!,
-        userAnswer: doOverPendingResult.userAnswer,
-        isCorrect: false,
-      };
-      setScrambleAnswers(prev => [...prev, newAnswer]);
-      
+      // Store user answer for display on feedback screen
+      setScrambleUserAnswer(doOverPendingResult.userAnswer);
       // Show feedback for scramble mode
       setIsCorrect(false);
       setShowFeedback(true);
@@ -3184,15 +3173,10 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
     const userAnswer = placedLetters.map(l => l!.letter).join('');
     const correct = userAnswer.toLowerCase() === currentWord.word.toLowerCase();
 
+    // Store user answer for display on the individual feedback screen
+    setScrambleUserAnswer(userAnswer);
+
     if (correct) {
-      // Store the correct scramble answer for results display
-      const newAnswer: ScrambleAnswer = {
-        word: currentWord,
-        userAnswer: userAnswer,
-        isCorrect: true,
-      };
-      setScrambleAnswers(prev => [...prev, newAnswer]);
-      
       setIsCorrect(true);
       setShowFeedback(true);
       playCorrectSound();
@@ -3215,14 +3199,6 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
         });
         setShowDoOverDialog(true);
       } else {
-        // Store the incorrect scramble answer for results display (only when not using Do Over)
-        const newAnswer: ScrambleAnswer = {
-          word: currentWord,
-          userAnswer: userAnswer,
-          isCorrect: false,
-        };
-        setScrambleAnswers(prev => [...prev, newAnswer]);
-        
         setIsCorrect(false);
         setShowFeedback(true);
         playIncorrectSound();
@@ -3863,39 +3839,8 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
               </div>
             )}
 
-            {/* Scramble Review - show for scramble mode */}
-            {gameMode === "scramble" && scrambleAnswers.length > 0 && scrambleAnswers.some(a => !a.isCorrect) && (
-              <div className="space-y-3">
-                <h3 className="text-xl font-bold text-gray-800 text-center">Word Scramble Review</h3>
-                <div className="max-h-60 overflow-y-auto space-y-2">
-                  {scrambleAnswers.filter(answer => !answer.isCorrect).map((answer, index) => (
-                    <Card
-                      key={index}
-                      className="p-4 bg-red-50 border-red-200"
-                      data-testid={`scramble-review-${index}`}
-                    >
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="text-sm text-gray-600 mb-1">Correct word:</div>
-                          <div className="font-semibold text-gray-800 text-lg">{answer.word.word.toUpperCase()}</div>
-                          <div className="text-sm text-gray-600 mt-2">Your answer:</div>
-                          <div className="text-lg">
-                            {renderIncorrectLetters(answer.userAnswer, answer.word.word)}
-                          </div>
-                        </div>
-                        <XCircle className="w-6 h-6 text-red-600 flex-shrink-0" />
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-                <p className="text-center text-sm text-gray-600">
-                  Practice these words to improve your spelling!
-                </p>
-              </div>
-            )}
-
-            {/* Misspelled Words List - show for modes except crossword and scramble (scramble has its own review) */}
-            {gameMode !== "crossword" && gameMode !== "scramble" && incorrectWords.length > 0 && (
+            {/* Misspelled Words List - show for modes except crossword */}
+            {gameMode !== "crossword" && incorrectWords.length > 0 && (
               <div className="space-y-3">
                 <h3 className="text-xl font-bold text-gray-800 text-center">Words to Practice</h3>
                 <div className="max-h-48 overflow-y-auto">
@@ -4722,6 +4667,17 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
                               <p className="text-xl md:text-2xl text-gray-600">Correct spelling:</p>
                               <div className="text-4xl md:text-5xl font-bold text-gray-800" data-testid="text-correct-spelling">
                                 {correctSpelling.toUpperCase()}
+                              </div>
+                            </>
+                          ) : gameMode === "scramble" && scrambleUserAnswer ? (
+                            <>
+                              <p className="text-xl md:text-2xl text-gray-600">You wrote:</p>
+                              <div className="text-3xl md:text-4xl font-semibold" data-testid="text-user-answer">
+                                {currentWord ? renderIncorrectLetters(scrambleUserAnswer, currentWord.word) : scrambleUserAnswer.toUpperCase()}
+                              </div>
+                              <p className="text-xl md:text-2xl text-gray-600">Correct spelling:</p>
+                              <div className="text-4xl md:text-5xl font-bold text-gray-800" data-testid="text-correct-spelling">
+                                {currentWord?.word.toUpperCase()}
                               </div>
                             </>
                           ) : userInput ? (
