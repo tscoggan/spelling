@@ -3099,6 +3099,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await Promise.all(challengeTodosToComplete.map(todo => 
           storage.updateToDoItem(todo.id, { completed: true })
         ));
+        
+        // Create challenge_complete notifications for both participants
+        const wordList = await storage.getCustomWordList(updatedChallenge!.wordListId);
+        const initiatorUser = await storage.getUser(updatedChallenge!.initiatorId);
+        const opponentUser = await storage.getUser(updatedChallenge!.opponentId);
+        
+        // Determine result messages for each user
+        let initiatorMessage: string;
+        let opponentMessage: string;
+        
+        if (winnerUserId === updatedChallenge!.initiatorId) {
+          initiatorMessage = `You won your Head to Head challenge against ${opponentUser?.firstName || opponentUser?.username || 'your opponent'}! You earned a star.`;
+          opponentMessage = `${initiatorUser?.firstName || initiatorUser?.username || 'Your opponent'} won the Head to Head challenge. Better luck next time!`;
+        } else if (winnerUserId === updatedChallenge!.opponentId) {
+          initiatorMessage = `${opponentUser?.firstName || opponentUser?.username || 'Your opponent'} won the Head to Head challenge. Better luck next time!`;
+          opponentMessage = `You won your Head to Head challenge against ${initiatorUser?.firstName || initiatorUser?.username || 'your opponent'}! You earned a star.`;
+        } else {
+          // Tie
+          initiatorMessage = `Your Head to Head challenge against ${opponentUser?.firstName || opponentUser?.username || 'your opponent'} ended in a tie!`;
+          opponentMessage = `Your Head to Head challenge against ${initiatorUser?.firstName || initiatorUser?.username || 'your opponent'} ended in a tie!`;
+        }
+        
+        // Create notifications for both participants
+        await Promise.all([
+          storage.createToDoItem({
+            userId: updatedChallenge!.initiatorId,
+            message: initiatorMessage,
+            type: "challenge_complete",
+            requesterId: updatedChallenge!.opponentId,
+            requesterUsername: opponentUser?.username || 'Unknown',
+            groupId: challengeId,
+            completed: false,
+          }),
+          storage.createToDoItem({
+            userId: updatedChallenge!.opponentId,
+            message: opponentMessage,
+            type: "challenge_complete",
+            requesterId: updatedChallenge!.initiatorId,
+            requesterUsername: initiatorUser?.username || 'Unknown',
+            groupId: challengeId,
+            completed: false,
+          }),
+        ]);
       }
 
       // Fetch user names to include in response

@@ -687,6 +687,7 @@ export function UserHeader() {
                   const isInvite = todo.type === 'group_invite';
                   const isAccessRequest = todo.type === 'join_request';
                   const isChallengeInvite = todo.type === 'challenge_invite';
+                  const isChallengeComplete = todo.type === 'challenge_complete';
 
                   return (
                     <Card key={todo.id} className="p-4" data-testid={`todo-item-${todo.id}`}>
@@ -696,6 +697,7 @@ export function UserHeader() {
                             {isInvite && <UserPlus className="w-4 h-4 text-blue-600 mt-1 flex-shrink-0" />}
                             {isAccessRequest && <Users className="w-4 h-4 text-green-600 mt-1 flex-shrink-0" />}
                             {isChallengeInvite && <Gamepad2 className="w-4 h-4 text-orange-600 mt-1 flex-shrink-0" />}
+                            {isChallengeComplete && <Trophy className="w-4 h-4 text-yellow-600 mt-1 flex-shrink-0" />}
                             <div>
                               <p className="text-sm font-medium">{todo.message}</p>
                               {metadata && (
@@ -743,6 +745,21 @@ export function UserHeader() {
                             >
                               <Gamepad2 className="w-4 h-4 mr-1" />
                               View
+                            </Button>
+                          )}
+                          {isChallengeComplete && (
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                completeTodoMutation.mutate(todo.id);
+                                setTodoModalOpen(false);
+                                // Navigate to H2H results page with completed tab
+                                setLocation('/head-to-head?tab=completed');
+                              }}
+                              data-testid={`button-view-results-${todo.id}`}
+                            >
+                              <Trophy className="w-4 h-4 mr-1" />
+                              View Results
                             </Button>
                           )}
                           <Button

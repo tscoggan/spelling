@@ -29,10 +29,15 @@ import skiingBackgroundPortrait from "@assets/Ski background - portrait_17646253
 import skiingMascotTrophy from "@assets/Skier with trophy_1764625337440.png";
 import skiingMascotGoodTry from "@assets/Skier with good try_1764625337440.png";
 
-import basketballBackgroundLandscape from "@assets/Basketball background - landscape_1764626634576.png";
-import basketballBackgroundPortrait from "@assets/Basketball background - portrait_1764625337443.png";
-import basketballMascotTrophy from "@assets/Basketball player with trophy_1764625337441.png";
-import basketballMascotGoodTry from "@assets/Backetball player with good try_1764625337440.png";
+import basketballBackgroundLandscape from "@assets/Basketball_background_-_landscape_1764710715398.png";
+import basketballBackgroundPortrait from "@assets/Basketball_background_-_portrait_1764710715398.png";
+import basketballMascotTrophy from "@assets/Backetball_player_with_trophy_1764710715396.png";
+import basketballMascotGoodTry from "@assets/Backetball_player_with_good_try_1764710715397.png";
+
+import volleyballBackgroundLandscape from "@assets/Volleyball_background_-_landscape_1764710715400.png";
+import volleyballBackgroundPortrait from "@assets/Volleyball_background_-_portrait_1764710715400.png";
+import volleyballMascotTrophy from "@assets/Volleyball_player_with_trophy_1764710715399.png";
+import volleyballMascotGoodTry from "@assets/Volleyball_player_with_good_try_1764710715399.png";
 
 import robotBackgroundLandscape from "@assets/Robot_background_-_landscape_1764681809727.png";
 import robotBackgroundPortrait from "@assets/Robot_background_-_portrait_1764681809727.png";
@@ -100,6 +105,13 @@ const THEME_ASSETS: Record<ThemeId, ThemeAssets> = {
     mascotTrophy: unicornMascotTrophy,
     mascotGoodTry: unicornMascotGoodTry,
     name: "Unicorn Theme",
+  },
+  volleyball: {
+    backgroundLandscape: volleyballBackgroundLandscape,
+    backgroundPortrait: volleyballBackgroundPortrait,
+    mascotTrophy: volleyballMascotTrophy,
+    mascotGoodTry: volleyballMascotGoodTry,
+    name: "Volleyball Theme",
   },
 };
 

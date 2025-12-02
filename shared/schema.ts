@@ -274,12 +274,20 @@ export const SHOP_ITEMS = {
     type: "theme" as const,
     themeId: "unicorn",
   },
+  volleyball_theme: {
+    id: "volleyball_theme",
+    name: "Volleyball Theme",
+    description: "Spike your way to spelling success on the volleyball court!",
+    cost: 5,
+    type: "theme" as const,
+    themeId: "volleyball",
+  },
 } as const;
 
 export type ShopItemId = keyof typeof SHOP_ITEMS;
 export type ShopItem = typeof SHOP_ITEMS[ShopItemId];
 
-export type ThemeId = "default" | "pirate" | "space" | "soccer" | "skiing" | "basketball" | "robot" | "unicorn";
+export type ThemeId = "default" | "pirate" | "space" | "soccer" | "skiing" | "basketball" | "robot" | "unicorn" | "volleyball";
 
 export interface ThemeAssets {
   backgroundLandscape: string;
@@ -328,6 +336,11 @@ export const AVAILABLE_THEMES: Record<ThemeId, { name: string; requiresPurchase:
     name: "Unicorn Theme",
     requiresPurchase: true,
     shopItemId: "unicorn_theme",
+  },
+  volleyball: {
+    name: "Volleyball Theme",
+    requiresPurchase: true,
+    shopItemId: "volleyball_theme",
   },
 };
 

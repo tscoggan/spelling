@@ -1,5 +1,6 @@
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,9 +61,24 @@ interface ChallengeRecord {
 
 export default function HeadToHead() {
   const [, setLocation] = useLocation();
+  const searchString = useSearch();
   const { user } = useAuth();
   const { currentTheme, themeAssets } = useTheme();
   const { toast } = useToast();
+  
+  // Parse query parameters to get initial tab
+  const searchParams = new URLSearchParams(searchString);
+  const tabParam = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(tabParam === 'completed' ? 'completed' : 'in-progress');
+  
+  // Update tab when URL changes
+  useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    const tab = params.get('tab');
+    if (tab === 'completed') {
+      setActiveTab('completed');
+    }
+  }, [searchString]);
 
   const { data: pendingChallenges, isLoading: loadingPending } = useQuery<Challenge[]>({
     queryKey: ["/api/challenges/pending"],
@@ -290,7 +306,7 @@ export default function HeadToHead() {
             <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <Tabs defaultValue="in-progress" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3 mb-6">
               <TabsTrigger value="in-progress" className="relative" data-testid="tab-in-progress">
                 In Progress
