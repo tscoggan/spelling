@@ -88,6 +88,13 @@ export default function HeadToHead() {
     staleTime: 0,
   });
 
+  const refreshNotifications = () => {
+    if (user?.id) {
+      queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos/count", user.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos", user.id] });
+    }
+  };
+
   const acceptMutation = useMutation({
     mutationFn: async (challengeId: number) => {
       const response = await apiRequest("POST", `/api/challenges/${challengeId}/accept`);
@@ -99,6 +106,7 @@ export default function HeadToHead() {
         description: "Let's play!",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+      refreshNotifications();
       const challenge = pendingChallenges?.find(c => c.id === challengeId);
       if (challenge) {
         setLocation(`/game?listId=${challenge.wordListId}&mode=headtohead&challengeId=${challengeId}`);
@@ -123,6 +131,7 @@ export default function HeadToHead() {
         title: "Challenge declined",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+      refreshNotifications();
     },
     onError: (error: any) => {
       toast({
@@ -143,6 +152,7 @@ export default function HeadToHead() {
         title: "Challenge cancelled",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+      refreshNotifications();
     },
     onError: (error: any) => {
       toast({
@@ -493,10 +503,16 @@ export default function HeadToHead() {
                   return (
                     <Card key={challenge.id}>
                       <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg flex items-center gap-2">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <CardTitle className="text-lg flex items-center gap-2 flex-wrap">
                             vs {opponentDisplayName}
                             {getResultBadge(challenge)}
+                            {challenge.winnerUserId === user?.id && challenge.starAwarded && (
+                              <span className="flex items-center gap-1 text-yellow-600" data-testid={`text-star-won-${challenge.id}`}>
+                                <img src={oneStar} alt="Star" className="h-5 w-5 object-contain" data-testid={`img-star-won-${challenge.id}`} />
+                                <span className="text-sm font-semibold">You won a star!</span>
+                              </span>
+                            )}
                           </CardTitle>
                           <Badge variant="outline">
                             {formatDistanceToNow(new Date(challenge.completedAt || challenge.createdAt), { addSuffix: true })}
@@ -532,12 +548,6 @@ export default function HeadToHead() {
                             )}
                           </div>
                         </div>
-                        {challenge.winnerUserId === user?.id && challenge.starAwarded && (
-                          <div className="mt-4 text-center text-base text-yellow-600 flex flex-col items-center justify-center gap-2">
-                            <img src={oneStar} alt="Star" className="w-18 h-18 object-contain" />
-                            <span className="font-semibold">You won a star!</span>
-                          </div>
-                        )}
                       </CardContent>
                     </Card>
                   );

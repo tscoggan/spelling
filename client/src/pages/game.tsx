@@ -542,6 +542,11 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] }); // Refresh stars if awarded
+      // Refresh notifications when challenge completes
+      if (user?.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos/count", user.id] });
+        queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos", user.id] });
+      }
       
       // Store challenge result to display winner/scores on result screen
       if (data && data.status === "completed") {

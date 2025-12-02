@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, Sparkles, Trophy, Clock, Target, List, ChevronRight, Shuffle, AlertCircle, Grid3x3, Users, BarChart3, LayoutDashboard, Swords, Search, Eye, Loader2 } from "lucide-react";
 import type { GameMode, HeadToHeadChallenge } from "@shared/schema";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useIOSKeyboardTrigger } from "@/App";
@@ -39,6 +39,17 @@ import myStatsButton from "@assets/My Stats button 2_1764445093611.png";
 import achievementsButton from "@assets/Achievements button 3_1764446032415.png";
 import starShopButton from "@assets/Star Shops button 2_1764445093610.png";
 import h2hChallengeResultsButton from "@assets/H2H_Challenge_Results_button_1764699075884.png";
+
+const useRefreshNotifications = (userId: number | undefined) => {
+  const refresh = useCallback(() => {
+    if (userId) {
+      queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos/count", userId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos", userId] });
+    }
+  }, [userId]);
+  
+  return refresh;
+};
 
 function TeacherHome() {
   const [, setLocation] = useLocation();
@@ -180,6 +191,12 @@ export default function Home() {
   const [h2hOpponentSearch, setH2hOpponentSearch] = useState("");
   const [h2hSelectedOpponent, setH2hSelectedOpponent] = useState<any>(null);
 
+  // Refresh notifications when home page loads
+  const refreshNotifications = useRefreshNotifications(user?.id);
+  useEffect(() => {
+    refreshNotifications();
+  }, [refreshNotifications]);
+
   // Show Teacher Home for teachers
   if (user?.role === "teacher") {
     return <TeacherHome />;
@@ -250,6 +267,7 @@ export default function Home() {
         description: "Your opponent will be notified. You can now play your round!",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+      refreshNotifications();
       setH2hDialogOpen(false);
       // Navigate to game with challenge mode - include challengeId so results can be submitted
       if (h2hSelectedWordList && challenge?.id) {
@@ -276,6 +294,7 @@ export default function Home() {
         description: "Let's play!",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+      refreshNotifications();
       setH2hDialogOpen(false);
       setLocation(`/game?listId=${wordListId}&mode=headtohead&challengeId=${challengeId}`);
     },
@@ -298,6 +317,7 @@ export default function Home() {
         title: "Challenge declined",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+      refreshNotifications();
     },
     onError: (error: any) => {
       toast({
@@ -988,6 +1008,12 @@ export default function Home() {
                 ))}
               </div>
             )}
+
+            {/* Create a New Challenge Section */}
+            <h4 className="font-semibold text-orange-600 flex items-center gap-2" data-testid="text-create-challenge-heading">
+              <Swords className="w-4 h-4" />
+              Create a New Challenge
+            </h4>
 
             {/* Scoring Info */}
             <div className="bg-muted/50 rounded-lg p-4">
