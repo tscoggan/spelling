@@ -645,7 +645,7 @@ export default function Home() {
                   
                   <AccuracyCard wordListId={list.id} gameMode={selectedMode || undefined} />
                   
-                  {selectedMode && selectedMode !== "practice" && (
+                  {selectedMode && (
                     <div className="flex-shrink-0 flex justify-center items-center min-w-[80px]">
                       <img 
                         src={hasModeAchievement(list.id, selectedMode) ? oneStar : missingStar}

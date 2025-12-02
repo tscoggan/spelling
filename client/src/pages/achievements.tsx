@@ -339,10 +339,6 @@ export default function Achievements() {
                 <p className="text-sm text-muted-foreground">3 or more game modes completed with 100% accuracy (maximum)</p>
               </div>
             </div>
-
-            <p className="text-sm text-muted-foreground italic">
-              Note: Practice mode provides immediate feedback after each word, and you can also earn stars by achieving 100% accuracy!
-            </p>
           </div>
         </DialogContent>
       </Dialog>
