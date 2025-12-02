@@ -14,6 +14,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useLocation } from "wouter";
 import { 
   Users, 
@@ -28,7 +35,8 @@ import {
   List,
   User,
   CheckSquare,
-  Square
+  Square,
+  Filter
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { UserHeader } from "@/components/user-header";
@@ -43,6 +51,7 @@ interface StudentStats {
   totalWords: number;
   averageAccuracy: number;
   starsEarned: number;
+  groupIds: number[];
 }
 
 interface WordListWithStats {
@@ -90,6 +99,7 @@ export default function TeacherDashboard() {
   const { user } = useAuth();
   const { themeAssets, currentTheme } = useTheme();
   const [groupBy, setGroupBy] = useState<GroupBy>("wordList");
+  const [selectedGroupId, setSelectedGroupId] = useState<string>("all");
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const printRef = useRef<HTMLDivElement>(null);
@@ -106,12 +116,27 @@ export default function TeacherDashboard() {
 
   const needsWhiteText = currentTheme === "space" || currentTheme === "skiing" || currentTheme === "basketball";
 
-  const getStudentsGroupedData = (): StudentWithWordLists[] => {
+  // Filter word lists based on selected group
+  const getFilteredWordLists = (): WordListWithStats[] => {
     if (!dashboardData?.wordLists) return [];
+    if (selectedGroupId === "all") return dashboardData.wordLists;
+    
+    const groupIdNum = parseInt(selectedGroupId);
+    return dashboardData.wordLists.map(wordList => ({
+      ...wordList,
+      students: wordList.students.filter(student => 
+        student.groupIds.includes(groupIdNum)
+      )
+    })).filter(wordList => wordList.students.length > 0);
+  };
+
+  const getStudentsGroupedData = (): StudentWithWordLists[] => {
+    const filteredWordLists = getFilteredWordLists();
+    if (!filteredWordLists.length) return [];
     
     const studentMap = new Map<number, StudentWithWordLists>();
     
-    dashboardData.wordLists.forEach((wordList) => {
+    filteredWordLists.forEach((wordList) => {
       wordList.students.forEach((student) => {
         if (!studentMap.has(student.id)) {
           studentMap.set(student.id, {
@@ -384,6 +409,23 @@ export default function TeacherDashboard() {
             </h2>
             
             <div className="flex items-center gap-2 flex-wrap">
+              {dashboardData?.groups && dashboardData.groups.length > 1 && (
+                <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
+                  <SelectTrigger className="w-[160px] h-8" data-testid="select-group-filter">
+                    <Filter className="w-4 h-4 mr-1" />
+                    <SelectValue placeholder="Filter by group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" data-testid="select-group-all">All Groups</SelectItem>
+                    {dashboardData.groups.map((group) => (
+                      <SelectItem key={group.id} value={group.id.toString()} data-testid={`select-group-${group.id}`}>
+                        {group.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              
               <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
                 <Button
                   variant={groupBy === "wordList" ? "default" : "ghost"}
@@ -427,9 +469,9 @@ export default function TeacherDashboard() {
               ))}
             </div>
           ) : groupBy === "wordList" ? (
-            dashboardData?.wordLists && dashboardData.wordLists.length > 0 ? (
+            getFilteredWordLists().length > 0 ? (
               <div className="space-y-6">
-                {dashboardData.wordLists.map((wordList) => (
+                {getFilteredWordLists().map((wordList) => (
                   <Card key={wordList.id} className="p-4 border-2" data-testid={`wordlist-stats-${wordList.id}`}>
                     <div className="flex items-center justify-between mb-4">
                       <div>

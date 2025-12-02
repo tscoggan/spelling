@@ -2499,8 +2499,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[Teacher Dashboard] Total groups: ${allGroups.length}, Group IDs: ${allGroups.map(g => g.id).join(', ')}`);
       
-      // Get all students from the teacher's groups
+      // Get all students from the teacher's groups and track which groups they belong to
       const allStudents: Set<number> = new Set();
+      const studentGroupMap: Map<number, number[]> = new Map(); // studentId -> groupIds
       for (const group of allGroups) {
         const members = await storage.getGroupMembers(group.id);
         console.log(`[Teacher Dashboard] Group ${group.id} (${group.name}) has ${members.length} members:`, members.map(m => `${m.username}(${m.id})`).join(', '));
@@ -2508,6 +2509,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Note: getGroupMembers returns user objects with 'id', not 'userId'
           if (member.id !== user.id) { // Exclude the teacher
             allStudents.add(member.id);
+            if (!studentGroupMap.has(member.id)) {
+              studentGroupMap.set(member.id, []);
+            }
+            studentGroupMap.get(member.id)!.push(group.id);
           }
         });
       }
@@ -2574,6 +2579,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totalWords,
             averageAccuracy,
             starsEarned,
+            groupIds: studentGroupMap.get(studentId) || [],
           };
         }));
 
