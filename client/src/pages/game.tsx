@@ -1507,28 +1507,24 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
           // Invalidate user stats cache to refresh My Stats page
           queryClient.invalidateQueries({ queryKey: [`/api/stats/user/${user.id}`] });
           
-          // After session update succeeds, save score to leaderboard (except for practice mode)
-          if (gameMode !== "practice") {
-            saveScoreMutation.mutate({
-              score,
-              accuracy,
-              gameMode,
-              userId: user.id,
-              sessionId,
-            });
-          }
+          // After session update succeeds, save score to leaderboard and check achievements
+          saveScoreMutation.mutate({
+            score,
+            accuracy,
+            gameMode,
+            userId: user.id,
+            sessionId,
+          });
         } catch (error) {
           console.error("Failed to update game session:", error);
-          // Still save to leaderboard even if session update fails (except for practice mode)
-          if (gameMode !== "practice") {
-            saveScoreMutation.mutate({
-              score,
-              accuracy,
-              gameMode,
-              userId: user.id,
-              sessionId,
-            });
-          }
+          // Still save to leaderboard even if session update fails
+          saveScoreMutation.mutate({
+            score,
+            accuracy,
+            gameMode,
+            userId: user.id,
+            sessionId,
+          });
         }
       };
       
