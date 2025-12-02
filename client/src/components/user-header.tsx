@@ -911,7 +911,7 @@ export function UserHeader() {
                   <AccordionContent className="space-y-3 text-sm">
                     <div>
                       <strong>Practice Mode</strong>
-                      <p className="text-muted-foreground">Listen to a word and type the correct spelling. Take your time and learn at your own pace.</p>
+                      <p className="text-muted-foreground">Listen to a word and type the correct spelling. See how you did after each word.</p>
                     </div>
                     <div>
                       <strong>Timed Challenge</strong>
@@ -919,11 +919,11 @@ export function UserHeader() {
                     </div>
                     <div>
                       <strong>Quiz Mode</strong>
-                      <p className="text-muted-foreground">Choose the correct spelling from multiple options. Test your word recognition skills.</p>
+                      <p className="text-muted-foreground">Similar to Practice mode but you have to wait until all words are complete before seeing your results.</p>
                     </div>
                     <div>
                       <strong>Word Scramble</strong>
-                      <p className="text-muted-foreground">Unscramble the jumbled letters to spell the word correctly. Drag and drop letters into place.</p>
+                      <p className="text-muted-foreground">Unscramble the jumbled letters to spell the word correctly. Drag and drop or tap letters to move them into place.</p>
                     </div>
                     <div>
                       <strong>Find the Mistake</strong>
@@ -931,7 +931,7 @@ export function UserHeader() {
                     </div>
                     <div>
                       <strong>Crossword Puzzle</strong>
-                      <p className="text-muted-foreground">Listen to clues and fill in the crossword grid. A fun twist on spelling practice!</p>
+                      <p className="text-muted-foreground">Listen to word pronunciations and fill in the crossword grid. A fun twist on spelling practice!</p>
                     </div>
                   </AccordionContent>
                 </AccordionItem>
@@ -955,6 +955,43 @@ export function UserHeader() {
                         <li>Complete games with high accuracy</li>
                         <li>Try all different game modes</li>
                         <li>Practice consistently over time</li>
+                      </ul>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="star-shop">
+                  <AccordionTrigger className="text-left">
+                    <div className="flex items-center gap-2">
+                      <ShoppingCart className="w-4 h-4 text-amber-500" />
+                      Star Shop
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-3 text-sm">
+                    <p className="text-muted-foreground">
+                      Spend the stars you earn from achievements in the Star Shop!
+                    </p>
+                    <div>
+                      <strong>Earning stars:</strong>
+                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                        <li>Complete any game mode with 100% accuracy to earn a star</li>
+                        <li>Each word list can earn you one star per game mode</li>
+                        <li>Track your earned stars in the Achievements page</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <strong>Power-ups:</strong>
+                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                        <li><strong>Do Over (1 star):</strong> Retry one incorrect word during a game</li>
+                        <li><strong>2nd Chance (5 stars):</strong> Retry all incorrect words at the end of a game</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <strong>Themes:</strong>
+                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                        <li>Purchase colorful background themes to customize your experience</li>
+                        <li>Themes range from 3 to 10 stars each</li>
+                        <li>Apply purchased themes from the Star Shop</li>
                       </ul>
                     </div>
                   </AccordionContent>
