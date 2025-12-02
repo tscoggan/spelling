@@ -204,6 +204,13 @@ export default function Home() {
   // Head to Head Challenge queries
   const { data: searchResults, isLoading: isSearchingUsers } = useQuery<any[]>({
     queryKey: ["/api/users/search", h2hOpponentSearch],
+    queryFn: async () => {
+      const res = await fetch(`/api/users/search?query=${encodeURIComponent(h2hOpponentSearch)}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to search users");
+      return res.json();
+    },
     enabled: h2hOpponentSearch.length >= 2,
   });
 
