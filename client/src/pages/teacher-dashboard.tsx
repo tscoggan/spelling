@@ -48,12 +48,14 @@ export default function TeacherDashboard() {
   const { user } = useAuth();
   const { themeAssets, currentTheme } = useTheme();
 
-  const { data: dashboardData, isLoading } = useQuery<{
+  const { data: dashboardData, isLoading, refetch } = useQuery<{
     wordLists: WordListWithStats[];
     groups: TeacherGroup[];
   }>({
     queryKey: ["/api/teacher/dashboard"],
     enabled: !!user && user.role === "teacher",
+    refetchOnMount: "always",
+    staleTime: 0,
   });
 
   const needsWhiteText = currentTheme === "space" || currentTheme === "skiing" || currentTheme === "basketball";
@@ -110,6 +112,13 @@ export default function TeacherDashboard() {
             Home
           </Button>
           <UserHeader />
+        </div>
+
+        <div className="text-center mb-4">
+          <h1 className="text-3xl font-bold flex items-center justify-center gap-3">
+            <LayoutDashboard className="w-8 h-8" />
+            Teacher Dashboard
+          </h1>
         </div>
 
         <Card className="p-6 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm">

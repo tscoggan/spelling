@@ -901,195 +901,199 @@ export function UserHeader() {
           <ScrollArea className="max-h-[60vh] pr-4">
             <div className="space-y-6 mt-4">
               <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="game-modes">
-                  <AccordionTrigger className="text-left">
-                    <div className="flex items-center gap-2">
-                      <Gamepad2 className="w-4 h-4 text-primary" />
-                      Game Modes
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="space-y-3 text-sm">
-                    <div>
-                      <strong>Practice Mode</strong>
-                      <p className="text-muted-foreground">Listen to a word and type the correct spelling. See how you did after each word.</p>
-                    </div>
-                    <div>
-                      <strong>Timed Challenge</strong>
-                      <p className="text-muted-foreground">Race against the clock! Spell as many words correctly as you can before time runs out.</p>
-                    </div>
-                    <div>
-                      <strong>Quiz Mode</strong>
-                      <p className="text-muted-foreground">Similar to Practice mode but you have to wait until all words are complete before seeing your results.</p>
-                    </div>
-                    <div>
-                      <strong>Word Scramble</strong>
-                      <p className="text-muted-foreground">Unscramble the jumbled letters to spell the word correctly. Drag and drop or tap letters to move them into place.</p>
-                    </div>
-                    <div>
-                      <strong>Find the Mistake</strong>
-                      <p className="text-muted-foreground">Identify the misspelled word among the options. Watch out for tricky spelling errors!</p>
-                    </div>
-                    <div>
-                      <strong>Crossword Puzzle</strong>
-                      <p className="text-muted-foreground">Listen to word pronunciations and fill in the crossword grid. A fun twist on spelling practice!</p>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
+                {user?.role !== "teacher" && (
+                  <>
+                    <AccordionItem value="game-modes">
+                      <AccordionTrigger className="text-left">
+                        <div className="flex items-center gap-2">
+                          <Gamepad2 className="w-4 h-4 text-primary" />
+                          Game Modes
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="space-y-3 text-sm">
+                        <div>
+                          <strong>Practice Mode</strong>
+                          <p className="text-muted-foreground">Listen to a word and type the correct spelling. See how you did after each word.</p>
+                        </div>
+                        <div>
+                          <strong>Timed Challenge</strong>
+                          <p className="text-muted-foreground">Race against the clock! Spell as many words correctly as you can before time runs out.</p>
+                        </div>
+                        <div>
+                          <strong>Quiz Mode</strong>
+                          <p className="text-muted-foreground">Similar to Practice mode but you have to wait until all words are complete before seeing your results.</p>
+                        </div>
+                        <div>
+                          <strong>Word Scramble</strong>
+                          <p className="text-muted-foreground">Unscramble the jumbled letters to spell the word correctly. Drag and drop or tap letters to move them into place.</p>
+                        </div>
+                        <div>
+                          <strong>Find the Mistake</strong>
+                          <p className="text-muted-foreground">Identify the misspelled word among the options. Watch out for tricky spelling errors!</p>
+                        </div>
+                        <div>
+                          <strong>Crossword Puzzle</strong>
+                          <p className="text-muted-foreground">Listen to word pronunciations and fill in the crossword grid. A fun twist on spelling practice!</p>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
 
-                <AccordionItem value="achievements">
-                  <AccordionTrigger className="text-left">
-                    <div className="flex items-center gap-2">
-                      <Trophy className="w-4 h-4 text-yellow-500" />
-                      Achievements
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="space-y-3 text-sm">
-                    <p className="text-muted-foreground">
-                      Earn achievements as you play! Complete challenges like building streaks, 
-                      spelling words correctly on your first try, and mastering different game modes.
-                    </p>
-                    <div>
-                      <strong>How to earn achievements:</strong>
-                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
-                        <li>Build spelling streaks by getting words correct in a row</li>
-                        <li>Complete games with high accuracy</li>
-                        <li>Try all different game modes</li>
-                        <li>Practice consistently over time</li>
-                      </ul>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
+                    <AccordionItem value="achievements">
+                      <AccordionTrigger className="text-left">
+                        <div className="flex items-center gap-2">
+                          <Trophy className="w-4 h-4 text-yellow-500" />
+                          Achievements
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="space-y-3 text-sm">
+                        <p className="text-muted-foreground">
+                          Earn achievements as you play! Complete challenges like building streaks, 
+                          spelling words correctly on your first try, and mastering different game modes.
+                        </p>
+                        <div>
+                          <strong>How to earn achievements:</strong>
+                          <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                            <li>Build spelling streaks by getting words correct in a row</li>
+                            <li>Complete games with high accuracy</li>
+                            <li>Try all different game modes</li>
+                            <li>Practice consistently over time</li>
+                          </ul>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
 
-                <AccordionItem value="star-shop">
-                  <AccordionTrigger className="text-left">
-                    <div className="flex items-center gap-2">
-                      <ShoppingCart className="w-4 h-4 text-amber-500" />
-                      Star Shop
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="space-y-3 text-sm">
-                    <p className="text-muted-foreground">
-                      Spend the stars you earn from achievements in the Star Shop!
-                    </p>
-                    <div>
-                      <strong>Earning stars:</strong>
-                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
-                        <li>Complete any game mode with 100% accuracy to earn a star</li>
-                        <li>Each word list can earn you one star per game mode</li>
-                        <li>Track your earned stars in the Achievements page</li>
-                      </ul>
-                    </div>
-                    <div>
-                      <strong>Power-ups:</strong>
-                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
-                        <li><strong>Do Over (1 star):</strong> Retry one incorrect word during a game</li>
-                        <li><strong>2nd Chance (5 stars):</strong> Retry all incorrect words at the end of a game</li>
-                      </ul>
-                    </div>
-                    <div>
-                      <strong>Themes:</strong>
-                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
-                        <li>Purchase colorful background themes to customize your experience</li>
-                        <li>Themes range from 3 to 10 stars each</li>
-                        <li>Apply purchased themes from the Star Shop</li>
-                      </ul>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
+                    <AccordionItem value="star-shop">
+                      <AccordionTrigger className="text-left">
+                        <div className="flex items-center gap-2">
+                          <ShoppingCart className="w-4 h-4 text-amber-500" />
+                          Star Shop
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="space-y-3 text-sm">
+                        <p className="text-muted-foreground">
+                          Spend the stars you earn from achievements in the Star Shop!
+                        </p>
+                        <div>
+                          <strong>Earning stars:</strong>
+                          <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                            <li>Complete any game mode with 100% accuracy to earn a star</li>
+                            <li>Each word list can earn you one star per game mode</li>
+                            <li>Track your earned stars in the Achievements page</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <strong>Power-ups:</strong>
+                          <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                            <li><strong>Do Over (1 star):</strong> Retry one incorrect word during a game</li>
+                            <li><strong>2nd Chance (5 stars):</strong> Retry all incorrect words at the end of a game</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <strong>Themes:</strong>
+                          <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                            <li>Purchase colorful background themes to customize your experience</li>
+                            <li>Themes range from 3 to 10 stars each</li>
+                            <li>Apply purchased themes from the Star Shop</li>
+                          </ul>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
 
-                <AccordionItem value="word-lists">
-                  <AccordionTrigger className="text-left">
-                    <div className="flex items-center gap-2">
-                      <List className="w-4 h-4 text-blue-500" />
-                      Word Lists
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="space-y-3 text-sm">
-                    <p className="text-muted-foreground">
-                      Create custom word lists to practice the words you want to learn!
-                    </p>
-                    <div>
-                      <strong>Creating lists:</strong>
-                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
-                        <li>Go to "My Word Lists" from the main menu</li>
-                        <li>Click "Create New List" and add your words</li>
-                        <li>You can import words from text files, CSV, or PDF</li>
-                        <li>Enable cartoon images to make learning more fun</li>
-                      </ul>
-                    </div>
-                    <div>
-                      <strong>Sharing lists:</strong>
-                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
-                        <li>Make lists public for everyone to use</li>
-                        <li>Share with specific groups you create</li>
-                        <li>Keep lists private for personal practice</li>
-                      </ul>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
+                    <AccordionItem value="word-lists">
+                      <AccordionTrigger className="text-left">
+                        <div className="flex items-center gap-2">
+                          <List className="w-4 h-4 text-blue-500" />
+                          Word Lists
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="space-y-3 text-sm">
+                        <p className="text-muted-foreground">
+                          Create custom word lists to practice the words you want to learn!
+                        </p>
+                        <div>
+                          <strong>Creating lists:</strong>
+                          <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                            <li>Go to "My Word Lists" from the main menu</li>
+                            <li>Click "Create New List" and add your words</li>
+                            <li>You can import words from text files, CSV, or PDF</li>
+                            <li>Enable cartoon images to make learning more fun</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <strong>Sharing lists:</strong>
+                          <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                            <li>Make lists public for everyone to use</li>
+                            <li>Share with specific groups you create</li>
+                            <li>Keep lists private for personal practice</li>
+                          </ul>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
 
-                <AccordionItem value="user-groups">
-                  <AccordionTrigger className="text-left">
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4 text-purple-500" />
-                      User Groups
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="space-y-3 text-sm">
-                    <p className="text-muted-foreground">
-                      Create or join groups to share word lists with friends, classmates, or family!
-                    </p>
-                    <div>
-                      <strong>Creating a group:</strong>
-                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
-                        <li>Go to "My Groups" from the main menu</li>
-                        <li>Click "Create Group" and give it a name</li>
-                        <li>Set a password if you want members to join with a code</li>
-                        <li>Invite members by username or let them request access</li>
-                      </ul>
-                    </div>
-                    <div>
-                      <strong>Joining a group:</strong>
-                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
-                        <li>Accept an invitation from the notifications bell</li>
-                        <li>Request to join a group and wait for approval</li>
-                        <li>Enter a group password if you have one</li>
-                      </ul>
-                    </div>
-                    <div>
-                      <strong>Sharing with groups:</strong>
-                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
-                        <li>When creating a word list, choose "Groups" visibility</li>
-                        <li>Select which groups can access your list</li>
-                        <li>Group members can then practice with your shared lists</li>
-                      </ul>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
+                    <AccordionItem value="user-groups">
+                      <AccordionTrigger className="text-left">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4 text-purple-500" />
+                          User Groups
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="space-y-3 text-sm">
+                        <p className="text-muted-foreground">
+                          Create or join groups to share word lists with friends, classmates, or family!
+                        </p>
+                        <div>
+                          <strong>Creating a group:</strong>
+                          <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                            <li>Go to "My Groups" from the main menu</li>
+                            <li>Click "Create Group" and give it a name</li>
+                            <li>Set a password if you want members to join with a code</li>
+                            <li>Invite members by username or let them request access</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <strong>Joining a group:</strong>
+                          <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                            <li>Accept an invitation from the notifications bell</li>
+                            <li>Request to join a group and wait for approval</li>
+                            <li>Enter a group password if you have one</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <strong>Sharing with groups:</strong>
+                          <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                            <li>When creating a word list, choose "Groups" visibility</li>
+                            <li>Select which groups can access your list</li>
+                            <li>Group members can then practice with your shared lists</li>
+                          </ul>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
 
-                <AccordionItem value="stats">
-                  <AccordionTrigger className="text-left">
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-green-500" />
-                      My Stats
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="space-y-3 text-sm">
-                    <p className="text-muted-foreground">
-                      Track your progress over time with detailed statistics!
-                    </p>
-                    <div>
-                      <strong>Available stats:</strong>
-                      <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
-                        <li>Total games played and words practiced</li>
-                        <li>Overall accuracy percentage</li>
-                        <li>Best streaks and favorite game modes</li>
-                        <li>Most misspelled words to practice</li>
-                        <li>Filter by date range to see recent progress</li>
-                      </ul>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
+                    <AccordionItem value="stats">
+                      <AccordionTrigger className="text-left">
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="w-4 h-4 text-green-500" />
+                          My Stats
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="space-y-3 text-sm">
+                        <p className="text-muted-foreground">
+                          Track your progress over time with detailed statistics!
+                        </p>
+                        <div>
+                          <strong>Available stats:</strong>
+                          <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-1">
+                            <li>Total games played and words practiced</li>
+                            <li>Overall accuracy percentage</li>
+                            <li>Best streaks and favorite game modes</li>
+                            <li>Most misspelled words to practice</li>
+                            <li>Filter by date range to see recent progress</li>
+                          </ul>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </>
+                )}
 
                 <AccordionItem value="for-teachers">
                   <AccordionTrigger className="text-left">
