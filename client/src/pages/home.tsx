@@ -674,19 +674,14 @@ export default function Home() {
                     {totalPendingH2H}
                   </span>
                 )}
-                <CardHeader className="space-y-2 p-4">
+                <CardHeader className="space-y-1 flex-1 flex flex-col justify-center p-4">
                   <div className="flex items-center gap-3">
-                    <Swords className="w-10 h-10 text-orange-600" />
-                    <div>
-                      <CardTitle className="text-xl text-gray-800">
-                        <span className="block">Head to Head</span>
-                        <span className="block">Challenge</span>
-                      </CardTitle>
-                      <CardDescription className="text-sm text-gray-600">
-                        Challenge a friend to a timed spelling duel!
-                      </CardDescription>
-                    </div>
+                    <Swords className="w-8 h-8 text-orange-600" />
+                    <CardTitle className="text-2xl text-gray-800">Head to Head Challenge</CardTitle>
                   </div>
+                  <CardDescription className="text-base text-gray-600">
+                    Challenge a friend to a timed spelling duel.<br />The winner gets a star!
+                  </CardDescription>
                 </CardHeader>
               </Card>
 

@@ -133,6 +133,26 @@ export default function HeadToHead() {
     },
   });
 
+  const cancelMutation = useMutation({
+    mutationFn: async (challengeId: number) => {
+      const response = await apiRequest("POST", `/api/challenges/${challengeId}/cancel`);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Challenge cancelled",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to cancel challenge",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const getResultBadge = (challenge: Challenge) => {
     if (!challenge.completedAt || !challenge.winnerUserId) {
       if (challenge.initiatorScore !== null && challenge.opponentScore !== null && 
@@ -260,21 +280,13 @@ export default function HeadToHead() {
             <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <Tabs defaultValue="pending" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-6">
-              <TabsTrigger value="pending" className="relative" data-testid="tab-pending">
-                Pending
-                {challengesSent.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {challengesSent.length}
-                  </span>
-                )}
-              </TabsTrigger>
+          <Tabs defaultValue="in-progress" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 mb-6">
               <TabsTrigger value="in-progress" className="relative" data-testid="tab-in-progress">
                 In Progress
-                {inProgressGames.length > 0 && (
+                {(challengesToRespond.length + myActiveGames.length + challengesSent.length + inProgressGames.length) > 0 && (
                   <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {inProgressGames.length}
+                    {challengesToRespond.length + myActiveGames.length + challengesSent.length + inProgressGames.length}
                   </span>
                 )}
               </TabsTrigger>
@@ -282,91 +294,184 @@ export default function HeadToHead() {
               <TabsTrigger value="create" data-testid="tab-create">New Challenge</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="pending" className="space-y-4">
-              {challengesSent.length > 0 && (
+            <TabsContent value="in-progress" className="space-y-4">
+              {/* Incoming Challenges - respond to accept/decline */}
+              {challengesToRespond.length > 0 && (
                 <div className="space-y-3">
-                  <h3 className="font-semibold text-lg">Challenges Sent</h3>
-                  {challengesSent.map((challenge) => (
-                    <Card key={challenge.id} className="opacity-75">
+                  <h3 className="font-semibold text-lg text-green-600">Incoming Challenges</h3>
+                  {challengesToRespond.map((challenge) => (
+                    <Card key={challenge.id} className="border-green-300 dark:border-green-800">
                       <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg">
-                            You challenged {formatPlayerName(challenge.opponentFirstName, challenge.opponentLastName, challenge.opponentUsername)}
-                          </CardTitle>
-                          <Badge variant="outline">Waiting...</Badge>
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="min-w-0 flex-1">
+                            <CardTitle className="text-lg">
+                              {formatPlayerName(challenge.initiatorFirstName, challenge.initiatorLastName, challenge.initiatorUsername)} challenged you!
+                            </CardTitle>
+                            <CardDescription>
+                              Word List: {challenge.wordListName || 'Unknown'}
+                            </CardDescription>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => acceptMutation.mutate(challenge.id)}
+                              disabled={acceptMutation.isPending}
+                              data-testid={`button-accept-challenge-${challenge.id}`}
+                            >
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              Accept
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => declineMutation.mutate(challenge.id)}
+                              disabled={declineMutation.isPending}
+                              data-testid={`button-decline-challenge-${challenge.id}`}
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Decline
+                            </Button>
+                          </div>
                         </div>
-                        <CardDescription>
-                          Word List: {challenge.wordListName || 'Unknown'}
-                        </CardDescription>
                       </CardHeader>
                     </Card>
                   ))}
                 </div>
               )}
 
-              {challengesSent.length === 0 && (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Swords className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No challenges waiting</p>
-                  <p className="text-sm">Challenges you send will appear here until your opponent responds</p>
+              {/* My Turn - active games where user needs to play */}
+              {myActiveGames.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-lg text-purple-600">Your Turn to Play</h3>
+                  {myActiveGames.map((challenge) => {
+                    const isInitiator = challenge.initiatorId === user?.id;
+                    const opponentDisplayName = isInitiator 
+                      ? formatPlayerName(challenge.opponentFirstName, challenge.opponentLastName, challenge.opponentUsername)
+                      : formatPlayerName(challenge.initiatorFirstName, challenge.initiatorLastName, challenge.initiatorUsername);
+
+                    return (
+                      <Card key={challenge.id} className="border-purple-300 dark:border-purple-800">
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <div className="min-w-0 flex-1">
+                              <CardTitle className="text-lg">
+                                vs {opponentDisplayName}
+                              </CardTitle>
+                              <CardDescription>
+                                Word List: {challenge.wordListName || 'Unknown'}
+                              </CardDescription>
+                            </div>
+                            <Button
+                              size="sm"
+                              onClick={() => setLocation(`/game?listId=${challenge.wordListId}&mode=headtohead&challengeId=${challenge.id}`)}
+                              data-testid={`button-play-challenge-${challenge.id}`}
+                            >
+                              <Play className="w-4 h-4 mr-1" />
+                              Play Now
+                            </Button>
+                          </div>
+                        </CardHeader>
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
-            </TabsContent>
 
-            <TabsContent value="in-progress" className="space-y-4">
-              {inProgressGames.length > 0 ? (
-                inProgressGames.map((challenge) => {
-                  const isInitiator = challenge.initiatorId === user?.id;
-                  const myScore = isInitiator ? challenge.initiatorScore : challenge.opponentScore;
-                  const myTime = isInitiator ? challenge.initiatorTime : challenge.opponentTime;
-                  const myCorrect = isInitiator ? challenge.initiatorCorrect : challenge.opponentCorrect;
-                  const myIncorrect = isInitiator ? challenge.initiatorIncorrect : challenge.opponentIncorrect;
-                  const opponentDisplayName = isInitiator 
-                    ? formatPlayerName(challenge.opponentFirstName, challenge.opponentLastName, challenge.opponentUsername)
-                    : formatPlayerName(challenge.initiatorFirstName, challenge.initiatorLastName, challenge.initiatorUsername);
-
-                  return (
-                    <Card key={challenge.id} className="border-blue-300 dark:border-blue-800">
+              {/* Challenges Sent - waiting for opponent to accept */}
+              {challengesSent.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-lg text-orange-600">Challenges Sent</h3>
+                  {challengesSent.map((challenge) => (
+                    <Card key={challenge.id} className="border-orange-200 dark:border-orange-800">
                       <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg flex items-center gap-2">
-                            vs {opponentDisplayName}
-                            <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                              <Clock className="w-3 h-3 mr-1" />
-                              Waiting for opponent
-                            </Badge>
-                          </CardTitle>
-                          <Badge variant="outline">
-                            {formatDistanceToNow(new Date(challenge.createdAt), { addSuffix: true })}
-                          </Badge>
-                        </div>
-                        <CardDescription>
-                          Word List: {challenge.wordListName || 'Unknown'}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="p-3 bg-muted/50 rounded-lg">
-                          <div className="text-sm text-muted-foreground mb-1">Your Score</div>
-                          <div className="text-2xl font-bold">{myScore ?? '-'}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {myCorrect ?? 0} correct, {myIncorrect ?? 0} incorrect
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="min-w-0 flex-1">
+                            <CardTitle className="text-lg">
+                              You challenged {formatPlayerName(challenge.opponentFirstName, challenge.opponentLastName, challenge.opponentUsername)}
+                            </CardTitle>
+                            <CardDescription>
+                              Word List: {challenge.wordListName || 'Unknown'}
+                            </CardDescription>
                           </div>
-                          {myTime !== undefined && myTime !== null && (
-                            <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                              <Clock className="w-3 h-3" />
-                              {formatTime(myTime)}
-                            </div>
-                          )}
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">Waiting for response...</Badge>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => cancelMutation.mutate(challenge.id)}
+                              disabled={cancelMutation.isPending}
+                              data-testid={`button-cancel-challenge-${challenge.id}`}
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Cancel
+                            </Button>
+                          </div>
                         </div>
-                      </CardContent>
+                      </CardHeader>
                     </Card>
-                  );
-                })
-              ) : (
+                  ))}
+                </div>
+              )}
+
+              {/* Games where user completed and waiting for opponent to finish */}
+              {inProgressGames.length > 0 && (
+                <div className="space-y-3">
+                  {(challengesToRespond.length > 0 || challengesSent.length > 0) && <h3 className="font-semibold text-lg text-blue-600">Waiting for Opponent</h3>}
+                  {inProgressGames.map((challenge) => {
+                    const isInitiator = challenge.initiatorId === user?.id;
+                    const myScore = isInitiator ? challenge.initiatorScore : challenge.opponentScore;
+                    const myTime = isInitiator ? challenge.initiatorTime : challenge.opponentTime;
+                    const myCorrect = isInitiator ? challenge.initiatorCorrect : challenge.opponentCorrect;
+                    const myIncorrect = isInitiator ? challenge.initiatorIncorrect : challenge.opponentIncorrect;
+                    const opponentDisplayName = isInitiator 
+                      ? formatPlayerName(challenge.opponentFirstName, challenge.opponentLastName, challenge.opponentUsername)
+                      : formatPlayerName(challenge.initiatorFirstName, challenge.initiatorLastName, challenge.initiatorUsername);
+
+                    return (
+                      <Card key={challenge.id} className="border-blue-300 dark:border-blue-800">
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-lg flex items-center gap-2">
+                              vs {opponentDisplayName}
+                              <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                <Clock className="w-3 h-3 mr-1" />
+                                Waiting for opponent
+                              </Badge>
+                            </CardTitle>
+                            <Badge variant="outline">
+                              {formatDistanceToNow(new Date(challenge.createdAt), { addSuffix: true })}
+                            </Badge>
+                          </div>
+                          <CardDescription>
+                            Word List: {challenge.wordListName || 'Unknown'}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="p-3 bg-muted/50 rounded-lg">
+                            <div className="text-sm text-muted-foreground mb-1">Your Score</div>
+                            <div className="text-2xl font-bold">{myScore ?? '-'}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {myCorrect ?? 0} correct, {myIncorrect ?? 0} incorrect
+                            </div>
+                            {myTime !== undefined && myTime !== null && (
+                              <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                                <Clock className="w-3 h-3" />
+                                {formatTime(myTime)}
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+
+              {challengesToRespond.length === 0 && myActiveGames.length === 0 && challengesSent.length === 0 && inProgressGames.length === 0 && (
                 <div className="text-center py-12 text-muted-foreground">
                   <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No games in progress</p>
-                  <p className="text-sm">When you complete a challenge, it will appear here until your opponent finishes</p>
+                  <p>No active challenges</p>
+                  <p className="text-sm">Send or receive a challenge to get started!</p>
                 </div>
               )}
             </TabsContent>
@@ -428,9 +533,9 @@ export default function HeadToHead() {
                           </div>
                         </div>
                         {challenge.winnerUserId === user?.id && challenge.starAwarded && (
-                          <div className="mt-3 text-center text-sm text-yellow-600 flex items-center justify-center gap-1">
-                            <img src={oneStar} alt="Star" className="w-6 h-6 object-contain" />
-                            +1 Star earned!
+                          <div className="mt-4 text-center text-base text-yellow-600 flex flex-col items-center justify-center gap-2">
+                            <img src={oneStar} alt="Star" className="w-18 h-18 object-contain" />
+                            <span className="font-semibold">You won a star!</span>
                           </div>
                         )}
                       </CardContent>

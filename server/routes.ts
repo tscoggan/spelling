@@ -2925,6 +2925,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Cancel a pending challenge (initiator only)
+  app.post("/api/challenges/:id/cancel", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const challengeId = parseInt(req.params.id);
+      const userId = (req.user as any).id;
+      
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) {
+        return res.status(404).json({ error: "Challenge not found" });
+      }
+
+      // Verify user is the initiator
+      if (challenge.initiatorId !== userId) {
+        return res.status(403).json({ error: "Only the initiator can cancel the challenge" });
+      }
+
+      // Verify challenge is pending
+      if (challenge.status !== "pending") {
+        return res.status(400).json({ error: "Challenge is not pending" });
+      }
+
+      // Update challenge status to cancelled
+      const updated = await storage.updateChallenge(challengeId, {
+        status: "cancelled",
+      });
+
+      // Mark the opponent's to-do notification as complete
+      const opponentTodos = await storage.getUserToDoItems(challenge.opponentId);
+      const challengeTodo = opponentTodos.find(t => t.type === "challenge_invite" && (t.challengeId === challengeId || t.groupId === challengeId));
+      if (challengeTodo) {
+        await storage.updateToDoItem(challengeTodo.id, { completed: true });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error cancelling challenge:", error);
+      res.status(500).json({ error: "Failed to cancel challenge" });
+    }
+  });
+
   app.post("/api/challenges/:id/submit", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -3040,6 +3084,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         updatedChallenge = await storage.updateChallenge(challengeId, finalUpdates);
+        
+        // Mark all challenge-related todos as complete for both participants
+        const [initiatorTodos, opponentTodos] = await Promise.all([
+          storage.getUserToDoItems(updatedChallenge!.initiatorId),
+          storage.getUserToDoItems(updatedChallenge!.opponentId),
+        ]);
+        
+        const challengeTodosToComplete = [
+          ...initiatorTodos.filter(t => t.type === "challenge_invite" && (t.challengeId === challengeId || t.groupId === challengeId)),
+          ...opponentTodos.filter(t => t.type === "challenge_invite" && (t.challengeId === challengeId || t.groupId === challengeId)),
+        ];
+        
+        await Promise.all(challengeTodosToComplete.map(todo => 
+          storage.updateToDoItem(todo.id, { completed: true })
+        ));
       }
 
       // Fetch user names to include in response
