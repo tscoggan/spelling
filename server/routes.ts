@@ -2503,10 +2503,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allStudents: Set<number> = new Set();
       for (const group of allGroups) {
         const members = await storage.getGroupMembers(group.id);
-        console.log(`[Teacher Dashboard] Group ${group.id} (${group.name}) has ${members.length} members`);
+        console.log(`[Teacher Dashboard] Group ${group.id} (${group.name}) has ${members.length} members:`, members.map(m => `${m.username}(${m.id})`).join(', '));
         members.forEach(member => {
-          if (member.userId !== user.id) { // Exclude the teacher
-            allStudents.add(member.userId);
+          // Note: getGroupMembers returns user objects with 'id', not 'userId'
+          if (member.id !== user.id) { // Exclude the teacher
+            allStudents.add(member.id);
           }
         });
       }
