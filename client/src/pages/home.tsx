@@ -217,8 +217,23 @@ export default function Home() {
 
   const { data: pendingChallenges } = useQuery<any[]>({
     queryKey: ["/api/challenges/pending"],
-    enabled: h2hDialogOpen,
   });
+
+  // Filter to get pending invitations for the current user (as opponent)
+  const pendingInvitations = pendingChallenges?.filter((c: any) => c.opponentId === user?.id) || [];
+  
+  // Active challenges where it's the current user's turn to play
+  const { data: activeChallenges } = useQuery<any[]>({
+    queryKey: ["/api/challenges/active"],
+  });
+  
+  const myTurnChallenges = activeChallenges?.filter((c: any) => 
+    (c.initiatorId === user?.id && !c.initiatorCompletedAt) ||
+    (c.opponentId === user?.id && !c.opponentCompletedAt)
+  ) || [];
+  
+  // Total pending actions (invitations + my turn games)
+  const totalPendingH2H = pendingInvitations.length + myTurnChallenges.length;
 
   const { data: completedChallenges } = useQuery<any[]>({
     queryKey: ["/api/challenges/completed"],
@@ -249,6 +264,57 @@ export default function Home() {
       });
     },
   });
+
+  const acceptChallengeMutation = useMutation({
+    mutationFn: async ({ challengeId, wordListId }: { challengeId: number; wordListId: number }) => {
+      const response = await apiRequest("POST", `/api/challenges/${challengeId}/accept`);
+      return { data: await response.json(), wordListId, challengeId };
+    },
+    onSuccess: ({ wordListId, challengeId }) => {
+      toast({
+        title: "Challenge accepted!",
+        description: "Let's play!",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+      setH2hDialogOpen(false);
+      setLocation(`/game?listId=${wordListId}&mode=headtohead&challengeId=${challengeId}`);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to accept challenge",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const declineChallengeMutation = useMutation({
+    mutationFn: async (challengeId: number) => {
+      const response = await apiRequest("POST", `/api/challenges/${challengeId}/decline`);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Challenge declined",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to decline challenge",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Helper to format player name
+  const formatPlayerName = (firstName?: string | null, lastName?: string | null, username?: string) => {
+    if (firstName && lastName) {
+      return `${firstName} ${lastName} (${username || 'Unknown'})`;
+    }
+    return username || 'Unknown';
+  };
 
   // Helper function to get achievement for a word list
   const getAchievementForList = (wordListId: number) => {
@@ -591,7 +657,7 @@ export default function Home() {
             >
               {/* Head to Head Challenge Button */}
               <Card
-                className="hover:scale-105 transition-transform cursor-pointer shadow-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 w-full sm:w-auto"
+                className="hover:scale-105 transition-transform cursor-pointer shadow-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 w-full sm:w-auto relative"
                 onClick={() => {
                   setH2hSelectedWordList(null);
                   setH2hSelectedOpponent(null);
@@ -602,6 +668,12 @@ export default function Home() {
                 tabIndex={0}
                 data-testid="card-mode-headtohead"
               >
+                {/* Notification dot for pending challenges */}
+                {totalPendingH2H > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full min-w-[1.25rem] h-5 flex items-center justify-center px-1 z-10" data-testid="badge-pending-h2h">
+                    {totalPendingH2H}
+                  </span>
+                )}
                 <CardHeader className="space-y-2 p-4">
                   <div className="flex items-center gap-3">
                     <Swords className="w-10 h-10 text-orange-600" />
@@ -840,6 +912,88 @@ export default function Home() {
           </DialogHeader>
 
           <div className="space-y-6 pt-4 flex-1 overflow-y-auto">
+            {/* Pending Invitations - shown if there are any */}
+            {(pendingInvitations.length > 0 || myTurnChallenges.length > 0) && (
+              <div className="space-y-3">
+                <h4 className="font-semibold text-orange-600 flex items-center gap-2">
+                  <Swords className="w-4 h-4" />
+                  Pending Challenges
+                </h4>
+                
+                {/* Incoming invitations */}
+                {pendingInvitations.map((challenge: any) => (
+                  <Card key={challenge.id} className="border-orange-300 dark:border-orange-800">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium truncate">
+                            {formatPlayerName(challenge.initiatorFirstName, challenge.initiatorLastName, challenge.initiatorUsername)} challenged you!
+                          </div>
+                          <div className="text-sm text-muted-foreground truncate">
+                            Word List: {challenge.wordListName || 'Unknown'}
+                          </div>
+                        </div>
+                        <div className="flex gap-2 flex-shrink-0">
+                          <Button
+                            size="sm"
+                            onClick={() => acceptChallengeMutation.mutate({ challengeId: challenge.id, wordListId: challenge.wordListId })}
+                            disabled={acceptChallengeMutation.isPending}
+                            className="bg-green-600 hover:bg-green-700"
+                            data-testid={`button-accept-challenge-${challenge.id}`}
+                          >
+                            {acceptChallengeMutation.isPending ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              "Accept"
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => declineChallengeMutation.mutate(challenge.id)}
+                            disabled={declineChallengeMutation.isPending}
+                            data-testid={`button-decline-challenge-${challenge.id}`}
+                          >
+                            Decline
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                
+                {/* Active games - my turn to play */}
+                {myTurnChallenges.map((challenge: any) => (
+                  <Card key={challenge.id} className="border-blue-300 dark:border-blue-800">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium truncate">
+                            vs {challenge.initiatorId === user?.id 
+                              ? formatPlayerName(challenge.opponentFirstName, challenge.opponentLastName, challenge.opponentUsername)
+                              : formatPlayerName(challenge.initiatorFirstName, challenge.initiatorLastName, challenge.initiatorUsername)}
+                          </div>
+                          <div className="text-sm text-muted-foreground truncate">
+                            Word List: {challenge.wordListName || 'Unknown'}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setH2hDialogOpen(false);
+                            setLocation(`/game?listId=${challenge.wordListId}&mode=headtohead&challengeId=${challenge.id}`);
+                          }}
+                          data-testid={`button-play-challenge-${challenge.id}`}
+                        >
+                          Play Now
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
             {/* Scoring Info */}
             <div className="bg-muted/50 rounded-lg p-4">
               <h4 className="font-semibold mb-2">Scoring</h4>

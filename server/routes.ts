@@ -3004,6 +3004,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Refetch to check if both players have completed
       updatedChallenge = await storage.getChallenge(challengeId);
       
+      let starAwarded = false;
       if (updatedChallenge && 
           updatedChallenge.initiatorScore !== null && 
           updatedChallenge.opponentScore !== null) {
@@ -3029,12 +3030,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (winnerUserId) {
           await storage.incrementUserStars(winnerUserId, 1);
           finalUpdates.starAwarded = true;
+          starAwarded = true;
         }
         
         updatedChallenge = await storage.updateChallenge(challengeId, finalUpdates);
       }
 
-      res.json(updatedChallenge);
+      // Fetch user names to include in response
+      const [initiatorUser, opponentUser] = await Promise.all([
+        storage.getUser(updatedChallenge!.initiatorId),
+        storage.getUser(updatedChallenge!.opponentId),
+      ]);
+
+      // Return enriched challenge data with user names
+      res.json({
+        ...updatedChallenge,
+        initiatorFirstName: initiatorUser?.firstName || null,
+        initiatorLastName: initiatorUser?.lastName || null,
+        initiatorUsername: initiatorUser?.username || "Unknown",
+        opponentFirstName: opponentUser?.firstName || null,
+        opponentLastName: opponentUser?.lastName || null,
+        opponentUsername: opponentUser?.username || "Unknown",
+        starAwarded,
+      });
     } catch (error) {
       console.error("Error submitting challenge result:", error);
       if (error instanceof z.ZodError) {

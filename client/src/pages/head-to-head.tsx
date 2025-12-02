@@ -5,7 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Swords, Trophy, Clock, CheckCircle, XCircle, ArrowLeft, Play, Loader2, X, Crown, Award } from "lucide-react";
+import { Swords, Trophy, Clock, CheckCircle, XCircle, ArrowLeft, Play, Loader2, X, Award } from "lucide-react";
+
+// Import star image for earned stars display
+import oneStar from "@assets/1 star_1763916010555.png";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -240,11 +243,12 @@ export default function HeadToHead() {
                   <div className="text-sm text-muted-foreground">Ties</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-yellow-600 flex items-center justify-center gap-1">
-                    <Crown className="w-5 h-5" />
-                    {record.totalStarsEarned}
+                  <div className="text-2xl font-bold text-blue-600 flex items-center justify-center gap-1">
+                    {record.wins + record.losses > 0 
+                      ? Math.round((record.wins / (record.wins + record.losses)) * 100) 
+                      : 0}%
                   </div>
-                  <div className="text-sm text-muted-foreground">Stars Won</div>
+                  <div className="text-sm text-muted-foreground">Win %</div>
                 </div>
               </div>
             </CardContent>
@@ -260,9 +264,9 @@ export default function HeadToHead() {
             <TabsList className="grid w-full grid-cols-4 mb-6">
               <TabsTrigger value="pending" className="relative" data-testid="tab-pending">
                 Pending
-                {(challengesToRespond.length > 0 || challengesSent.length > 0 || myActiveGames.length > 0) && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {challengesToRespond.length + challengesSent.length + myActiveGames.length}
+                {challengesSent.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {challengesSent.length}
                   </span>
                 )}
               </TabsTrigger>
@@ -279,88 +283,6 @@ export default function HeadToHead() {
             </TabsList>
 
             <TabsContent value="pending" className="space-y-4">
-              {challengesToRespond.length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-lg">Incoming Challenges</h3>
-                  {challengesToRespond.map((challenge) => (
-                    <Card key={challenge.id} className="border-orange-300 dark:border-orange-800">
-                      <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg">
-                            {formatPlayerName(challenge.initiatorFirstName, challenge.initiatorLastName, challenge.initiatorUsername)} challenged you!
-                          </CardTitle>
-                          <Badge variant="outline">
-                            {formatDistanceToNow(new Date(challenge.createdAt), { addSuffix: true })}
-                          </Badge>
-                        </div>
-                        <CardDescription>
-                          Word List: {challenge.wordListName || 'Unknown'}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={() => acceptMutation.mutate(challenge.id)}
-                            disabled={acceptMutation.isPending}
-                            className="flex-1 bg-green-600 hover:bg-green-700"
-                            data-testid={`button-accept-${challenge.id}`}
-                          >
-                            {acceptMutation.isPending ? (
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            ) : (
-                              <Play className="w-4 h-4 mr-2" />
-                            )}
-                            Accept & Play
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() => declineMutation.mutate(challenge.id)}
-                            disabled={declineMutation.isPending}
-                            data-testid={`button-decline-${challenge.id}`}
-                          >
-                            <X className="w-4 h-4 mr-2" />
-                            Decline
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-
-              {myActiveGames.length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-lg">Your Turn to Play</h3>
-                  {myActiveGames.map((challenge) => (
-                    <Card key={challenge.id} className="border-blue-300 dark:border-blue-800">
-                      <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg">
-                            vs {challenge.initiatorId === user?.id 
-                              ? formatPlayerName(challenge.opponentFirstName, challenge.opponentLastName, challenge.opponentUsername)
-                              : formatPlayerName(challenge.initiatorFirstName, challenge.initiatorLastName, challenge.initiatorUsername)}
-                          </CardTitle>
-                          <Badge variant="secondary">Active</Badge>
-                        </div>
-                        <CardDescription>
-                          Word List: {challenge.wordListName || 'Unknown'}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <Button
-                          onClick={() => setLocation(`/game?listId=${challenge.wordListId}&mode=headtohead&challengeId=${challenge.id}`)}
-                          className="w-full"
-                          data-testid={`button-play-${challenge.id}`}
-                        >
-                          <Play className="w-4 h-4 mr-2" />
-                          Play Now
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-
               {challengesSent.length > 0 && (
                 <div className="space-y-3">
                   <h3 className="font-semibold text-lg">Challenges Sent</h3>
@@ -382,11 +304,11 @@ export default function HeadToHead() {
                 </div>
               )}
 
-              {challengesToRespond.length === 0 && challengesSent.length === 0 && myActiveGames.length === 0 && (
+              {challengesSent.length === 0 && (
                 <div className="text-center py-12 text-muted-foreground">
                   <Swords className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No pending challenges</p>
-                  <p className="text-sm">Challenge a friend to start a spelling duel!</p>
+                  <p>No challenges waiting</p>
+                  <p className="text-sm">Challenges you send will appear here until your opponent responds</p>
                 </div>
               )}
             </TabsContent>
@@ -507,7 +429,7 @@ export default function HeadToHead() {
                         </div>
                         {challenge.winnerUserId === user?.id && challenge.starAwarded && (
                           <div className="mt-3 text-center text-sm text-yellow-600 flex items-center justify-center gap-1">
-                            <Crown className="w-4 h-4" />
+                            <img src={oneStar} alt="Star" className="w-6 h-6 object-contain" />
                             +1 Star earned!
                           </div>
                         )}

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useLayoutEffect, useCallback } from "react
 import { useLocation, useSearch } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Volume2, Home, ArrowRight, CheckCircle2, XCircle, Sparkles, Flame, Clock, SkipForward, Trophy, Settings, BookOpen, MessageSquare, Globe, RotateCcw, Swords } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -504,6 +505,23 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
     },
   });
 
+  // State to track H2H challenge result after submission
+  const [h2hChallengeResult, setH2hChallengeResult] = useState<{
+    isComplete: boolean;
+    winnerUserId: number | null;
+    initiatorScore: number | null;
+    opponentScore: number | null;
+    initiatorId: number;
+    opponentId: number;
+    initiatorUsername?: string;
+    opponentUsername?: string;
+    initiatorFirstName?: string | null;
+    initiatorLastName?: string | null;
+    opponentFirstName?: string | null;
+    opponentLastName?: string | null;
+    starAwarded: boolean;
+  } | null>(null);
+
   // Challenge submission mutation for Head to Head mode
   const submitChallengeMutation = useMutation({
     mutationFn: async (data: { 
@@ -524,6 +542,25 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] }); // Refresh stars if awarded
+      
+      // Store challenge result to display winner/scores on result screen
+      if (data && data.status === "completed") {
+        setH2hChallengeResult({
+          isComplete: true,
+          winnerUserId: data.winnerUserId,
+          initiatorScore: data.initiatorScore,
+          opponentScore: data.opponentScore,
+          initiatorId: data.initiatorId,
+          opponentId: data.opponentId,
+          initiatorUsername: data.initiatorUsername,
+          opponentUsername: data.opponentUsername,
+          initiatorFirstName: data.initiatorFirstName,
+          initiatorLastName: data.initiatorLastName,
+          opponentFirstName: data.opponentFirstName,
+          opponentLastName: data.opponentLastName,
+          starAwarded: data.starAwarded || false,
+        });
+      }
     },
   });
 
@@ -3767,7 +3804,11 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
                   } : undefined}
                 />
                 <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-2 font-crayon" data-testid="text-game-complete">
-                  {accuracy === 100 ? "Amazing Work!" : 
+                  {gameMode === "headtohead" && h2hChallengeResult?.isComplete ? (
+                    h2hChallengeResult.winnerUserId === user?.id ? "You Won!" :
+                    h2hChallengeResult.winnerUserId === null ? "It's a Tie!" :
+                    "You Lost!"
+                  ) : accuracy === 100 ? "Amazing Work!" : 
                     gameMode === "practice" ? "Practice Complete!" :
                     gameMode === "timed" ? "Timed Challenge Complete!" :
                     gameMode === "quiz" ? "Quiz Complete!" :
@@ -3776,10 +3817,16 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
                     gameMode === "headtohead" ? "Game Complete!" :
                     "Game Complete!"}
                 </h1>
-                {gameMode === "headtohead" && isInitiator && (
+                {gameMode === "headtohead" && !h2hChallengeResult?.isComplete && isInitiator && (
                   <p className="text-lg text-gray-600 dark:text-gray-400 mt-2">
                     Now it's your opponent's turn to play...
                   </p>
+                )}
+                {gameMode === "headtohead" && h2hChallengeResult?.isComplete && h2hChallengeResult.winnerUserId === user?.id && h2hChallengeResult.starAwarded && (
+                  <div className="flex items-center justify-center gap-2 mt-2">
+                    <img src={achievementStar} alt="Star" className="w-8 h-8 object-contain" />
+                    <span className="text-lg font-semibold text-yellow-600">+1 Star earned!</span>
+                  </div>
                 )}
               </motion.div>
             )}
@@ -3806,35 +3853,83 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
                 const correctPoints = correctCount * 10;
                 const incorrectPoints = incorrectCount * 5;
                 const h2hScore = correctPoints - incorrectPoints - elapsedTime;
+                
+                // Helper to format player name
+                const formatPlayerName = (firstName?: string | null, lastName?: string | null, username?: string) => {
+                  if (firstName && lastName) {
+                    return `${firstName} ${lastName} (${username || 'Unknown'})`;
+                  }
+                  return username || 'Unknown';
+                };
+                
+                // Determine which player is which
+                const isUserInitiator = h2hChallengeResult?.initiatorId === user?.id;
+                const myScore = isUserInitiator ? h2hChallengeResult?.initiatorScore : h2hChallengeResult?.opponentScore;
+                const opponentScore = isUserInitiator ? h2hChallengeResult?.opponentScore : h2hChallengeResult?.initiatorScore;
+                const opponentName = isUserInitiator 
+                  ? formatPlayerName(h2hChallengeResult?.opponentFirstName, h2hChallengeResult?.opponentLastName, h2hChallengeResult?.opponentUsername)
+                  : formatPlayerName(h2hChallengeResult?.initiatorFirstName, h2hChallengeResult?.initiatorLastName, h2hChallengeResult?.initiatorUsername);
+                
                 return (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Card className="p-6 bg-purple-50 border-purple-200">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <div className="text-4xl md:text-5xl font-bold text-purple-600" data-testid="text-final-score">
-                            {h2hScore}
+                  <div className="space-y-4">
+                    {/* Show both player scores if challenge is complete */}
+                    {h2hChallengeResult?.isComplete && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <Card className={`p-4 ${h2hChallengeResult.winnerUserId === user?.id ? 'bg-green-100 border-green-400' : 'bg-gray-50 border-gray-200'}`}>
+                          <div className="text-center">
+                            <div className="text-sm text-muted-foreground mb-1">You</div>
+                            <div className={`text-3xl font-bold ${h2hChallengeResult.winnerUserId === user?.id ? 'text-green-600' : 'text-gray-700'}`}>
+                              {myScore ?? h2hScore}
+                            </div>
+                            {h2hChallengeResult.winnerUserId === user?.id && (
+                              <Badge className="mt-1 bg-green-600">Winner</Badge>
+                            )}
                           </div>
-                          <div className="text-lg text-gray-600 mt-2">Points</div>
-                        </div>
-                        <div className="text-right text-sm space-y-1">
-                          <div className="text-green-600" data-testid="text-h2h-correct-breakdown">
-                            {correctCount} correct = +{correctPoints} pts
+                        </Card>
+                        <Card className={`p-4 ${h2hChallengeResult.winnerUserId !== null && h2hChallengeResult.winnerUserId !== user?.id ? 'bg-green-100 border-green-400' : 'bg-gray-50 border-gray-200'}`}>
+                          <div className="text-center">
+                            <div className="text-sm text-muted-foreground mb-1 truncate">{opponentName}</div>
+                            <div className={`text-3xl font-bold ${h2hChallengeResult.winnerUserId !== null && h2hChallengeResult.winnerUserId !== user?.id ? 'text-green-600' : 'text-gray-700'}`}>
+                              {opponentScore ?? '-'}
+                            </div>
+                            {h2hChallengeResult.winnerUserId !== null && h2hChallengeResult.winnerUserId !== user?.id && (
+                              <Badge className="mt-1 bg-green-600">Winner</Badge>
+                            )}
                           </div>
-                          <div className="text-red-600" data-testid="text-h2h-incorrect-breakdown">
-                            {incorrectCount} incorrect = -{incorrectPoints} pts
-                          </div>
-                          <div className="text-orange-600" data-testid="text-h2h-time-breakdown">
-                            {elapsedTime} seconds = -{elapsedTime} pts
-                          </div>
-                        </div>
+                        </Card>
                       </div>
-                    </Card>
-                    <Card className="p-6 bg-green-50 border-green-200">
-                      <div className="text-4xl md:text-5xl font-bold text-green-600" data-testid="text-accuracy">
-                        {accuracy}%
-                      </div>
-                      <div className="text-lg text-gray-600 mt-2">Accuracy</div>
-                    </Card>
+                    )}
+                    
+                    {/* Score breakdown */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <Card className="p-6 bg-purple-50 border-purple-200">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="text-4xl md:text-5xl font-bold text-purple-600" data-testid="text-final-score">
+                              {h2hScore}
+                            </div>
+                            <div className="text-lg text-gray-600 mt-2">Your Score</div>
+                          </div>
+                          <div className="text-right text-sm space-y-1">
+                            <div className="text-green-600" data-testid="text-h2h-correct-breakdown">
+                              {correctCount} correct = +{correctPoints} pts
+                            </div>
+                            <div className="text-red-600" data-testid="text-h2h-incorrect-breakdown">
+                              {incorrectCount} incorrect = -{incorrectPoints} pts
+                            </div>
+                            <div className="text-orange-600" data-testid="text-h2h-time-breakdown">
+                              {elapsedTime} seconds = -{elapsedTime} pts
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                      <Card className="p-6 bg-green-50 border-green-200">
+                        <div className="text-4xl md:text-5xl font-bold text-green-600" data-testid="text-accuracy">
+                          {accuracy}%
+                        </div>
+                        <div className="text-lg text-gray-600 mt-2">Accuracy</div>
+                      </Card>
+                    </div>
                   </div>
                 );
               })()
