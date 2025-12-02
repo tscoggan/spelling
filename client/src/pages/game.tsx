@@ -157,6 +157,8 @@ export default function Game() {
   const virtualWords = params.get("virtualWords");
   const gameMode = (params.get("mode") || "practice") as GameMode;
   const quizCount = params.get("quizCount") || "all";
+  const challengeId = params.get("challengeId");
+  const isInitiator = params.get("isInitiator") === "true";
   
   // Key for forcing GameContent remount on restart (resets all game state cleanly)
   const [gameResetKey, setGameResetKey] = useState(0);
@@ -189,12 +191,12 @@ export default function Game() {
   // Only render game content when listId or virtualWords is confirmed
   // Pass all parameters as props to avoid GameContent parsing them
   // Key prop forces complete remount when gameResetKey changes (clean restart)
-  return <GameContent key={gameResetKey} listId={listId || undefined} virtualWords={virtualWords || undefined} gameMode={gameMode} quizCount={quizCount} onRestart={handleRestart} />;
+  return <GameContent key={gameResetKey} listId={listId || undefined} virtualWords={virtualWords || undefined} gameMode={gameMode} quizCount={quizCount} onRestart={handleRestart} challengeId={challengeId || undefined} isInitiator={isInitiator} />;
 }
 
 // Actual game component with all the hooks - only rendered when listId or virtualWords exists
 // Receives all parameters as props to ensure hooks always have valid data
-function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: { listId?: string; virtualWords?: string; gameMode: GameMode; quizCount: string; onRestart: () => void }) {
+function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, challengeId, isInitiator }: { listId?: string; virtualWords?: string; gameMode: GameMode; quizCount: string; onRestart: () => void; challengeId?: string; isInitiator?: boolean }) {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { themeAssets, currentTheme, setTheme, unlockedThemes, allThemes } = useTheme();
@@ -210,6 +212,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
   const [gameComplete, setGameComplete] = useState(false);
   const [timeLeft, setTimeLeft] = useState(60);
   const [timerActive, setTimerActive] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState(0); // For headtohead mode (counts UP)
   const [quizAnswers, setQuizAnswers] = useState<QuizAnswer[]>([]);
   const [scrambleUserAnswer, setScrambleUserAnswer] = useState<string>("");
   const [scoreSaved, setScoreSaved] = useState(false);
@@ -494,9 +497,33 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
       if (virtualWords) return;
       
       // Track achievements for Word List Mastery
-      if (variables.userId && listId) {
+      // Note: headtohead mode does NOT track achievements (only Stars Earned metric)
+      if (variables.userId && listId && variables.gameMode !== "headtohead") {
         await checkAndAwardAchievement(variables);
       }
+    },
+  });
+
+  // Challenge submission mutation for Head to Head mode
+  const submitChallengeMutation = useMutation({
+    mutationFn: async (data: { 
+      challengeId: number; 
+      score: number; 
+      time: number; 
+      correct: number; 
+      incorrect: number; 
+    }) => {
+      const response = await apiRequest("POST", `/api/challenges/${data.challengeId}/submit`, {
+        score: data.score,
+        time: data.time,
+        correct: data.correct,
+        incorrect: data.incorrect,
+      });
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] }); // Refresh stars if awarded
     },
   });
 
@@ -1557,6 +1584,53 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
     }
   }, [timeLeft, timerActive, gameMode, gameComplete]);
 
+  // Head to Head mode: Timer counts UP (elapsed time tracking)
+  useEffect(() => {
+    if (gameMode === "headtohead" && !gameComplete) {
+      // Start timer on first mount
+      if (!timerActive) {
+        setTimerActive(true);
+        setElapsedTime(0);
+      }
+      
+      // Count up
+      if (timerActive) {
+        const timer = setTimeout(() => setElapsedTime(prev => prev + 1), 1000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [elapsedTime, timerActive, gameMode, gameComplete]);
+
+  // Head to Head mode: Submit challenge results when game completes
+  const [challengeSubmitted, setChallengeSubmitted] = useState(false);
+  useEffect(() => {
+    if (gameMode === "headtohead" && gameComplete && challengeId && !challengeSubmitted && user) {
+      const totalWords = words?.length || 0;
+      const incorrectCount = totalWords - correctCount;
+      
+      // Calculate H2H score: +10 per correct, -5 per incorrect, -1 per second
+      const h2hScore = (correctCount * 10) - (incorrectCount * 5) - elapsedTime;
+      
+      console.log("📤 Submitting H2H challenge result:", {
+        challengeId,
+        score: h2hScore,
+        time: elapsedTime,
+        correct: correctCount,
+        incorrect: incorrectCount,
+      });
+      
+      submitChallengeMutation.mutate({
+        challengeId: parseInt(challengeId),
+        score: h2hScore,
+        time: elapsedTime,
+        correct: correctCount,
+        incorrect: incorrectCount,
+      });
+      
+      setChallengeSubmitted(true);
+    }
+  }, [gameComplete, gameMode, challengeId, challengeSubmitted, correctCount, elapsedTime, words, user, submitChallengeMutation]);
+
   // Scramble mode: Initialize scrambled letters when word changes
   useEffect(() => {
     if (gameMode === "scramble" && currentWord) {
@@ -2613,8 +2687,8 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
 
   // Helper function to check if Do Over should be offered
   const shouldOfferDoOver = (mode: GameMode): boolean => {
-    // Do Over is not available in Crossword mode
-    return mode !== "crossword" && getItemQuantity("do_over") > 0;
+    // Do Over is not available in Crossword mode or Head to Head mode
+    return mode !== "crossword" && mode !== "headtohead" && getItemQuantity("do_over") > 0;
   };
 
   // Process incorrect answer (common logic extracted)
@@ -2629,6 +2703,8 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
 
   // Handle using Do Over item
   const handleUseDoOver = () => {
+    // Power-ups not allowed in Head to Head mode
+    if (gameMode === "headtohead") return;
     if (!doOverPendingResult) return;
     
     // Use the Do Over item
@@ -2665,6 +2741,8 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
 
   // Handle using 2nd Chance item
   const handleUseSecondChance = () => {
+    // Power-ups not allowed in Head to Head mode
+    if (gameMode === "headtohead") return;
     if (!words) return;
     
     // Use the 2nd Chance item
@@ -3865,8 +3943,8 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
               </div>
             )}
 
-            {/* 2nd Chance Button - only show when user has items and has incorrect words */}
-            {gameMode !== "practice" && getItemQuantity("second_chance") > 0 && incorrectWords.length > 0 && !secondChanceMode && (
+            {/* 2nd Chance Button - only show when user has items and has incorrect words (not for practice or headtohead) */}
+            {gameMode !== "practice" && gameMode !== "headtohead" && getItemQuantity("second_chance") > 0 && incorrectWords.length > 0 && !secondChanceMode && (
               <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
@@ -3908,21 +3986,23 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
                 variant="outline"
                 size="lg"
                 className="flex-1 text-lg h-12"
-                onClick={() => setLocation("/")}
+                onClick={() => setLocation(gameMode === "headtohead" ? "/head-to-head" : "/")}
                 data-testid="button-home"
               >
                 <Home className="w-5 h-5 mr-2" />
-                Home
+                {gameMode === "headtohead" ? "View Challenge" : "Home"}
               </Button>
-              <Button
-                variant="default"
-                size="lg"
-                className="flex-1 text-lg h-12"
-                onClick={onRestart}
-                data-testid="button-play-again"
-              >
-                Play Again
-              </Button>
+              {gameMode !== "headtohead" && (
+                <Button
+                  variant="default"
+                  size="lg"
+                  className="flex-1 text-lg h-12"
+                  onClick={onRestart}
+                  data-testid="button-play-again"
+                >
+                  Play Again
+                </Button>
+              )}
             </div>
           </Card>
         </motion.div>
@@ -4256,8 +4336,14 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
                           <span className="text-2xl font-bold" data-testid="text-timer">{timeLeft}s</span>
                         </div>
                       )}
+                      {gameMode === "headtohead" && !showFeedback && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 hidden md:flex items-center gap-2 text-orange-600">
+                          <Clock className="w-8 h-8" />
+                          <span className="text-2xl font-bold" data-testid="text-timer-h2h">{Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')}</span>
+                        </div>
+                      )}
                       <h2 className="text-2xl md:text-3xl font-bold text-gray-800" data-testid="text-instruction">
-                        {gameMode === "quiz" ? "Spell the word" : gameMode === "scramble" ? "Unscramble the letters" : gameMode === "mistake" ? "Find the misspelled word" : "Listen and spell the word"}
+                        {gameMode === "quiz" ? "Spell the word" : gameMode === "scramble" ? "Unscramble the letters" : gameMode === "mistake" ? "Find the misspelled word" : gameMode === "headtohead" ? "Spell the word" : "Listen and spell the word"}
                       </h2>
                     </div>
                     
@@ -4420,6 +4506,13 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
                           <div className={`flex md:hidden items-center gap-2 mb-3 ${timeLeft <= 10 ? 'text-red-600' : 'text-gray-700'}`}>
                             <Clock className="w-5 h-5" />
                             <span className="text-lg font-bold" data-testid="text-timer-mobile">{timeLeft}s</span>
+                          </div>
+                        )}
+                        {/* Mobile timer for Head to Head mode */}
+                        {gameMode === "headtohead" && !showFeedback && (
+                          <div className="flex md:hidden items-center gap-2 mb-3 text-orange-600">
+                            <Clock className="w-5 h-5" />
+                            <span className="text-lg font-bold" data-testid="text-timer-mobile-h2h">{Math.floor(elapsedTime / 60)}:{(elapsedTime % 60).toString().padStart(2, '0')}</span>
                           </div>
                         )}
                         {showWordHints && currentWord && gameMode !== "quiz" ? (
@@ -4722,8 +4815,8 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart }: {
             )}
           </AnimatePresence>
           
-          {/* Restart button - shown during active gameplay only */}
-          {!gameComplete && (
+          {/* Restart button - shown during active gameplay only, not for Head to Head mode */}
+          {!gameComplete && gameMode !== "headtohead" && (
             <div className="mt-4 flex justify-center">
               <Button
                 variant="outline"

@@ -26,6 +26,8 @@ import {
   type UserItem,
   type WordListCoOwner,
   type UserGroupCoOwner,
+  type HeadToHeadChallenge,
+  type InsertHeadToHeadChallenge,
   words,
   gameSessions,
   users,
@@ -42,6 +44,7 @@ import {
   achievements,
   userStreaks,
   userItems,
+  headToHeadChallenges,
   SHOP_ITEMS,
   type ShopItemId,
 } from "@shared/schema";
@@ -159,6 +162,14 @@ export interface IStorage {
   getUserItems(userId: number): Promise<UserItem[]>;
   purchaseItem(userId: number, itemId: ShopItemId, quantity?: number): Promise<{ success: boolean; newStarBalance: number; newItemQuantity: number; error?: string }>;
   useItem(userId: number, itemId: ShopItemId, quantity?: number): Promise<{ success: boolean; remainingQuantity: number; error?: string }>;
+  
+  createChallenge(challenge: InsertHeadToHeadChallenge): Promise<HeadToHeadChallenge>;
+  getChallenge(id: number): Promise<HeadToHeadChallenge | undefined>;
+  getUserPendingChallenges(userId: number): Promise<HeadToHeadChallenge[]>;
+  getUserActiveChallenges(userId: number): Promise<HeadToHeadChallenge[]>;
+  getUserCompletedChallenges(userId: number): Promise<HeadToHeadChallenge[]>;
+  updateChallenge(id: number, updates: Partial<HeadToHeadChallenge>): Promise<HeadToHeadChallenge | undefined>;
+  getUserChallengeRecord(userId: number): Promise<{ wins: number; losses: number; ties: number }>;
   
   sessionStore: session.Store;
 }
@@ -1570,6 +1581,96 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(userItems.userId, userId), eq(userItems.itemId, itemId)));
 
     return { success: true, remainingQuantity };
+  }
+
+  async createChallenge(challenge: InsertHeadToHeadChallenge): Promise<HeadToHeadChallenge> {
+    const [created] = await db
+      .insert(headToHeadChallenges)
+      .values(challenge)
+      .returning();
+    return created;
+  }
+
+  async getChallenge(id: number): Promise<HeadToHeadChallenge | undefined> {
+    const [challenge] = await db
+      .select()
+      .from(headToHeadChallenges)
+      .where(eq(headToHeadChallenges.id, id));
+    return challenge || undefined;
+  }
+
+  async getUserPendingChallenges(userId: number): Promise<HeadToHeadChallenge[]> {
+    return await db
+      .select()
+      .from(headToHeadChallenges)
+      .where(
+        and(
+          eq(headToHeadChallenges.opponentId, userId),
+          eq(headToHeadChallenges.status, "pending")
+        )
+      )
+      .orderBy(desc(headToHeadChallenges.createdAt));
+  }
+
+  async getUserActiveChallenges(userId: number): Promise<HeadToHeadChallenge[]> {
+    return await db
+      .select()
+      .from(headToHeadChallenges)
+      .where(
+        and(
+          or(
+            eq(headToHeadChallenges.initiatorId, userId),
+            eq(headToHeadChallenges.opponentId, userId)
+          ),
+          eq(headToHeadChallenges.status, "active")
+        )
+      )
+      .orderBy(desc(headToHeadChallenges.createdAt));
+  }
+
+  async getUserCompletedChallenges(userId: number): Promise<HeadToHeadChallenge[]> {
+    return await db
+      .select()
+      .from(headToHeadChallenges)
+      .where(
+        and(
+          or(
+            eq(headToHeadChallenges.initiatorId, userId),
+            eq(headToHeadChallenges.opponentId, userId)
+          ),
+          eq(headToHeadChallenges.status, "completed")
+        )
+      )
+      .orderBy(desc(headToHeadChallenges.completedAt));
+  }
+
+  async updateChallenge(id: number, updates: Partial<HeadToHeadChallenge>): Promise<HeadToHeadChallenge | undefined> {
+    const [updated] = await db
+      .update(headToHeadChallenges)
+      .set(updates)
+      .where(eq(headToHeadChallenges.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async getUserChallengeRecord(userId: number): Promise<{ wins: number; losses: number; ties: number }> {
+    const completed = await this.getUserCompletedChallenges(userId);
+    
+    let wins = 0;
+    let losses = 0;
+    let ties = 0;
+    
+    for (const challenge of completed) {
+      if (challenge.winnerUserId === null) {
+        ties++;
+      } else if (challenge.winnerUserId === userId) {
+        wins++;
+      } else {
+        losses++;
+      }
+    }
+    
+    return { wins, losses, ties };
   }
 }
 

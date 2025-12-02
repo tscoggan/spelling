@@ -2614,6 +2614,428 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Head to Head Challenge routes
+  app.post("/api/challenges", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const schema = z.object({
+        opponentId: z.number(),
+        wordListId: z.number(),
+      });
+
+      const { opponentId, wordListId } = schema.parse(req.body);
+      const initiatorId = (req.user as any).id;
+
+      // Verify opponent exists
+      const opponent = await storage.getUser(opponentId);
+      if (!opponent) {
+        return res.status(404).json({ error: "Opponent not found" });
+      }
+
+      // Verify word list exists
+      const wordList = await storage.getCustomWordList(wordListId);
+      if (!wordList) {
+        return res.status(404).json({ error: "Word list not found" });
+      }
+
+      // Create the challenge
+      const challenge = await storage.createChallenge({
+        initiatorId,
+        opponentId,
+        wordListId,
+        status: "pending",
+        starAwarded: false,
+      });
+
+      // Create a to-do notification for the opponent
+      const initiator = await storage.getUser(initiatorId);
+      await storage.createToDoItem({
+        userId: opponentId,
+        message: `${initiator?.username || 'Someone'} has challenged you to a Head to Head match using the "${wordList.name}" word list!`,
+        type: "challenge_invite",
+        requesterId: initiatorId,
+        requesterUsername: initiator?.username || 'Unknown',
+        groupId: challenge.id, // Reuse groupId field to store challengeId
+        completed: false,
+      });
+
+      res.json(challenge);
+    } catch (error) {
+      console.error("Error creating challenge:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create challenge" });
+    }
+  });
+
+  app.get("/api/challenges/pending", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const userId = (req.user as any).id;
+      const challenges = await storage.getUserPendingChallenges(userId);
+      
+      // Enrich with user and word list info
+      const enrichedChallenges = await Promise.all(challenges.map(async (challenge) => {
+        const initiator = await storage.getUser(challenge.initiatorId);
+        const wordList = await storage.getCustomWordList(challenge.wordListId);
+        return {
+          ...challenge,
+          initiatorUsername: initiator?.username || 'Unknown',
+          initiatorFirstName: initiator?.firstName || null,
+          initiatorLastName: initiator?.lastName || null,
+          wordListName: wordList?.name || 'Unknown',
+          wordCount: wordList?.words.length || 0,
+        };
+      }));
+      
+      res.json(enrichedChallenges);
+    } catch (error) {
+      console.error("Error fetching pending challenges:", error);
+      res.status(500).json({ error: "Failed to fetch pending challenges" });
+    }
+  });
+
+  app.get("/api/challenges/active", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const userId = (req.user as any).id;
+      const challenges = await storage.getUserActiveChallenges(userId);
+      
+      // Enrich with user and word list info
+      const enrichedChallenges = await Promise.all(challenges.map(async (challenge) => {
+        const initiator = await storage.getUser(challenge.initiatorId);
+        const opponent = await storage.getUser(challenge.opponentId);
+        const wordList = await storage.getCustomWordList(challenge.wordListId);
+        return {
+          ...challenge,
+          initiatorUsername: initiator?.username || 'Unknown',
+          opponentUsername: opponent?.username || 'Unknown',
+          wordListName: wordList?.name || 'Unknown',
+          wordCount: wordList?.words.length || 0,
+        };
+      }));
+      
+      res.json(enrichedChallenges);
+    } catch (error) {
+      console.error("Error fetching active challenges:", error);
+      res.status(500).json({ error: "Failed to fetch active challenges" });
+    }
+  });
+
+  app.get("/api/challenges/completed", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const userId = (req.user as any).id;
+      const challenges = await storage.getUserCompletedChallenges(userId);
+      
+      // Enrich with user and word list info
+      const enrichedChallenges = await Promise.all(challenges.map(async (challenge) => {
+        const initiator = await storage.getUser(challenge.initiatorId);
+        const opponent = await storage.getUser(challenge.opponentId);
+        const winner = challenge.winnerUserId ? await storage.getUser(challenge.winnerUserId) : null;
+        const wordList = await storage.getCustomWordList(challenge.wordListId);
+        return {
+          ...challenge,
+          initiatorUsername: initiator?.username || 'Unknown',
+          initiatorFirstName: initiator?.firstName || null,
+          initiatorLastName: initiator?.lastName || null,
+          opponentUsername: opponent?.username || 'Unknown',
+          opponentFirstName: opponent?.firstName || null,
+          opponentLastName: opponent?.lastName || null,
+          winnerUsername: winner?.username || null,
+          wordListName: wordList?.name || 'Unknown',
+          wordCount: wordList?.words.length || 0,
+        };
+      }));
+      
+      res.json(enrichedChallenges);
+    } catch (error) {
+      console.error("Error fetching completed challenges:", error);
+      res.status(500).json({ error: "Failed to fetch completed challenges" });
+    }
+  });
+
+  app.get("/api/challenges/record", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const userId = (req.user as any).id;
+      const record = await storage.getUserChallengeRecord(userId);
+      res.json(record);
+    } catch (error) {
+      console.error("Error fetching challenge record:", error);
+      res.status(500).json({ error: "Failed to fetch challenge record" });
+    }
+  });
+
+  app.get("/api/challenges/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const challengeId = parseInt(req.params.id);
+      const userId = (req.user as any).id;
+      
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) {
+        return res.status(404).json({ error: "Challenge not found" });
+      }
+
+      // Verify user is part of this challenge
+      if (challenge.initiatorId !== userId && challenge.opponentId !== userId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Enrich with user and word list info
+      const initiator = await storage.getUser(challenge.initiatorId);
+      const opponent = await storage.getUser(challenge.opponentId);
+      const wordList = await storage.getCustomWordList(challenge.wordListId);
+      
+      res.json({
+        ...challenge,
+        initiatorUsername: initiator?.username || 'Unknown',
+        initiatorFirstName: initiator?.firstName || null,
+        initiatorLastName: initiator?.lastName || null,
+        opponentUsername: opponent?.username || 'Unknown',
+        opponentFirstName: opponent?.firstName || null,
+        opponentLastName: opponent?.lastName || null,
+        wordListName: wordList?.name || 'Unknown',
+        wordCount: wordList?.words.length || 0,
+        words: wordList?.words || [],
+      });
+    } catch (error) {
+      console.error("Error fetching challenge:", error);
+      res.status(500).json({ error: "Failed to fetch challenge" });
+    }
+  });
+
+  app.post("/api/challenges/:id/accept", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const challengeId = parseInt(req.params.id);
+      const userId = (req.user as any).id;
+      
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) {
+        return res.status(404).json({ error: "Challenge not found" });
+      }
+
+      // Verify user is the opponent
+      if (challenge.opponentId !== userId) {
+        return res.status(403).json({ error: "Only the opponent can accept the challenge" });
+      }
+
+      // Verify challenge is pending
+      if (challenge.status !== "pending") {
+        return res.status(400).json({ error: "Challenge is not pending" });
+      }
+
+      // Update challenge status to active
+      const updated = await storage.updateChallenge(challengeId, {
+        status: "active",
+      });
+
+      // Mark the to-do notification as complete
+      const todos = await storage.getUserToDoItems(userId);
+      const challengeTodo = todos.find(t => t.type === "challenge_invite" && t.groupId === challengeId);
+      if (challengeTodo) {
+        await storage.updateToDoItem(challengeTodo.id, { completed: true });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error accepting challenge:", error);
+      res.status(500).json({ error: "Failed to accept challenge" });
+    }
+  });
+
+  app.post("/api/challenges/:id/decline", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const challengeId = parseInt(req.params.id);
+      const userId = (req.user as any).id;
+      
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) {
+        return res.status(404).json({ error: "Challenge not found" });
+      }
+
+      // Verify user is the opponent
+      if (challenge.opponentId !== userId) {
+        return res.status(403).json({ error: "Only the opponent can decline the challenge" });
+      }
+
+      // Verify challenge is pending
+      if (challenge.status !== "pending") {
+        return res.status(400).json({ error: "Challenge is not pending" });
+      }
+
+      // Update challenge status to declined
+      const updated = await storage.updateChallenge(challengeId, {
+        status: "declined",
+      });
+
+      // Mark the to-do notification as complete
+      const todos = await storage.getUserToDoItems(userId);
+      const challengeTodo = todos.find(t => t.type === "challenge_invite" && t.groupId === challengeId);
+      if (challengeTodo) {
+        await storage.updateToDoItem(challengeTodo.id, { completed: true });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error declining challenge:", error);
+      res.status(500).json({ error: "Failed to decline challenge" });
+    }
+  });
+
+  app.post("/api/challenges/:id/submit", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const challengeId = parseInt(req.params.id);
+      const userId = (req.user as any).id;
+      
+      const schema = z.object({
+        score: z.number(),
+        time: z.number(),
+        correctCount: z.number(),
+        incorrectCount: z.number(),
+      });
+
+      const { score, time, correctCount, incorrectCount } = schema.parse(req.body);
+      
+      const challenge = await storage.getChallenge(challengeId);
+      if (!challenge) {
+        return res.status(404).json({ error: "Challenge not found" });
+      }
+
+      // Verify user is part of this challenge
+      const isInitiator = challenge.initiatorId === userId;
+      const isOpponent = challenge.opponentId === userId;
+      
+      if (!isInitiator && !isOpponent) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Verify challenge is active or pending (initiator can submit when pending)
+      if (challenge.status !== "active" && challenge.status !== "pending") {
+        return res.status(400).json({ error: "Challenge is not active" });
+      }
+
+      // Prepare updates
+      const updates: any = {};
+      
+      if (isInitiator) {
+        // Check if initiator already submitted
+        if (challenge.initiatorScore !== null) {
+          return res.status(400).json({ error: "You have already submitted your result" });
+        }
+        updates.initiatorScore = score;
+        updates.initiatorTime = time;
+        updates.initiatorCorrect = correctCount;
+        updates.initiatorIncorrect = incorrectCount;
+        updates.initiatorCompletedAt = new Date();
+        
+        // If challenge was pending, now it's active (waiting for opponent)
+        if (challenge.status === "pending") {
+          updates.status = "active";
+        }
+        
+        // Notify opponent that it's their turn
+        const initiator = await storage.getUser(userId);
+        const wordList = await storage.getCustomWordList(challenge.wordListId);
+        await storage.createToDoItem({
+          userId: challenge.opponentId,
+          message: `${initiator?.username || 'Someone'} has completed their Head to Head challenge! It's your turn to play using the "${wordList?.name}" word list.`,
+          type: "challenge_invite",
+          requesterId: userId,
+          requesterUsername: initiator?.username || 'Unknown',
+          groupId: challengeId,
+          completed: false,
+        });
+      } else {
+        // Check if opponent already submitted
+        if (challenge.opponentScore !== null) {
+          return res.status(400).json({ error: "You have already submitted your result" });
+        }
+        updates.opponentScore = score;
+        updates.opponentTime = time;
+        updates.opponentCorrect = correctCount;
+        updates.opponentIncorrect = incorrectCount;
+        updates.opponentCompletedAt = new Date();
+      }
+
+      // Update the challenge
+      let updatedChallenge = await storage.updateChallenge(challengeId, updates);
+
+      // Refetch to check if both players have completed
+      updatedChallenge = await storage.getChallenge(challengeId);
+      
+      if (updatedChallenge && 
+          updatedChallenge.initiatorScore !== null && 
+          updatedChallenge.opponentScore !== null) {
+        // Both players completed - determine winner
+        const initiatorScore = updatedChallenge.initiatorScore;
+        const opponentScore = updatedChallenge.opponentScore;
+        
+        let winnerUserId: number | null = null;
+        if (initiatorScore > opponentScore) {
+          winnerUserId = updatedChallenge.initiatorId;
+        } else if (opponentScore > initiatorScore) {
+          winnerUserId = updatedChallenge.opponentId;
+        }
+        // If tied, winnerUserId stays null
+        
+        const finalUpdates: any = {
+          status: "completed",
+          completedAt: new Date(),
+          winnerUserId,
+        };
+        
+        // Award star to winner (only if there is one)
+        if (winnerUserId) {
+          await storage.incrementUserStars(winnerUserId, 1);
+          finalUpdates.starAwarded = true;
+        }
+        
+        updatedChallenge = await storage.updateChallenge(challengeId, finalUpdates);
+      }
+
+      res.json(updatedChallenge);
+    } catch (error) {
+      console.error("Error submitting challenge result:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to submit challenge result" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

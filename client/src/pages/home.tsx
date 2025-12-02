@@ -2,10 +2,10 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Sparkles, Trophy, Clock, Target, List, ChevronRight, Shuffle, AlertCircle, Grid3x3, Users, BarChart3, LayoutDashboard } from "lucide-react";
-import type { GameMode } from "@shared/schema";
+import { BookOpen, Sparkles, Trophy, Clock, Target, List, ChevronRight, Shuffle, AlertCircle, Grid3x3, Users, BarChart3, LayoutDashboard, Swords, Search, Eye, Loader2 } from "lucide-react";
+import type { GameMode, HeadToHeadChallenge } from "@shared/schema";
 import { useState, useMemo, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useIOSKeyboardTrigger } from "@/App";
 import {
@@ -24,9 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { UserHeader } from "@/components/user-header";
 import { AccuracyCard } from "@/components/accuracy-card";
 import { useTheme } from "@/hooks/use-theme";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import titleBanner from "@assets/image_1763494070680.png";
 import oneStar from "@assets/1 star_1763916010555.png";
 import missingStar from "@assets/Missing star (grey)_1763916010554.png";
@@ -168,6 +171,13 @@ export default function Home() {
   const [quizWordCount, setQuizWordCount] = useState<"10" | "all">("all");
   const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
   const iOSKeyboardInput = useIOSKeyboardTrigger();
+  const { toast } = useToast();
+  
+  // Head to Head Challenge state
+  const [h2hDialogOpen, setH2hDialogOpen] = useState(false);
+  const [h2hSelectedWordList, setH2hSelectedWordList] = useState<number | null>(null);
+  const [h2hOpponentSearch, setH2hOpponentSearch] = useState("");
+  const [h2hSelectedOpponent, setH2hSelectedOpponent] = useState<any>(null);
 
   // Show Teacher Home for teachers
   if (user?.role === "teacher") {
@@ -189,6 +199,47 @@ export default function Home() {
   const { data: achievements } = useQuery<any[]>({
     queryKey: ["/api/achievements/user", user?.id],
     enabled: !!user,
+  });
+
+  // Head to Head Challenge queries
+  const { data: searchResults, isLoading: isSearchingUsers } = useQuery<any[]>({
+    queryKey: ["/api/users/search", h2hOpponentSearch],
+    enabled: h2hOpponentSearch.length >= 2,
+  });
+
+  const { data: pendingChallenges } = useQuery<any[]>({
+    queryKey: ["/api/challenges/pending"],
+    enabled: h2hDialogOpen,
+  });
+
+  const { data: completedChallenges } = useQuery<any[]>({
+    queryKey: ["/api/challenges/completed"],
+  });
+
+  const createChallengeMutation = useMutation({
+    mutationFn: async (data: { opponentId: number; wordListId: number }) => {
+      const response = await apiRequest("POST", "/api/challenges", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Challenge sent!",
+        description: "Your opponent will be notified. You can now play your round!",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+      setH2hDialogOpen(false);
+      // Navigate to game with challenge mode
+      if (h2hSelectedWordList) {
+        setLocation(`/game?listId=${h2hSelectedWordList}&mode=headtohead&isInitiator=true`);
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to create challenge",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   // Helper function to get achievement for a word list
@@ -515,6 +566,73 @@ export default function Home() {
             );
           })}
         </div>
+
+        {/* Head to Head Challenge Card */}
+        <div className="mt-8">
+          <div className="flex justify-center mb-6">
+            <h2 className={`text-2xl md:text-3xl font-bold text-center ${currentTheme === 'space' ? 'text-white' : 'text-foreground'}`}>
+              Challenge a Friend
+            </h2>
+          </div>
+          <div className="max-w-md mx-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+            >
+              <Card
+                className="hover:scale-105 transition-transform cursor-pointer shadow-lg border-2 border-orange-400 bg-gradient-to-br from-orange-50 to-yellow-50 dark:from-orange-950 dark:to-yellow-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                onClick={() => {
+                  setH2hSelectedWordList(null);
+                  setH2hSelectedOpponent(null);
+                  setH2hOpponentSearch("");
+                  setH2hDialogOpen(true);
+                }}
+                role="button"
+                tabIndex={0}
+                data-testid="card-mode-headtohead"
+              >
+                <CardHeader className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <Swords className="w-10 h-10 text-orange-600" />
+                    <div>
+                      <CardTitle className="text-2xl">Head to Head Challenge</CardTitle>
+                      <CardDescription className="text-base">
+                        Challenge a friend to a timed spelling duel. Winner earns a star!
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    <Badge variant="secondary" className="text-xs">
+                      +10 pts per correct word
+                    </Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      -5 pts per incorrect
+                    </Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      -1 pt per second
+                    </Badge>
+                  </div>
+                  {completedChallenges && completedChallenges.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLocation("/head-to-head");
+                      }}
+                      data-testid="button-view-completed-games"
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      View Completed Games ({completedChallenges.length})
+                    </Button>
+                  )}
+                </CardHeader>
+              </Card>
+            </motion.div>
+          </div>
+        </div>
       </motion.div>
 
       <Dialog open={wordListDialogOpen} onOpenChange={setWordListDialogOpen}>
@@ -696,6 +814,177 @@ export default function Home() {
                 Maybe Later
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Head to Head Challenge Setup Dialog */}
+      <Dialog open={h2hDialogOpen} onOpenChange={setH2hDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-2xl flex items-center gap-2">
+              <Swords className="w-6 h-6 text-orange-600" />
+              Head to Head Challenge
+            </DialogTitle>
+            <DialogDescription>
+              Challenge a friend to a spelling duel! Select a word list and opponent to begin.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 pt-4 flex-1 overflow-y-auto">
+            {/* Scoring Info */}
+            <div className="bg-muted/50 rounded-lg p-4">
+              <h4 className="font-semibold mb-2">Scoring</h4>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>+10 points for each correctly spelled word</li>
+                <li>-5 points for each incorrectly spelled word</li>
+                <li>-1 point for every second of time taken</li>
+                <li className="font-medium text-foreground pt-2">Winner earns 1 star!</li>
+              </ul>
+            </div>
+
+            {/* Step 1: Select Word List */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium">1. Select Word List</label>
+              <Select 
+                value={h2hSelectedWordList?.toString() || ""} 
+                onValueChange={(val) => setH2hSelectedWordList(parseInt(val))}
+              >
+                <SelectTrigger data-testid="select-h2h-wordlist">
+                  <SelectValue placeholder="Choose a word list..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {allLists.map((list) => (
+                    <SelectItem key={list.id} value={list.id.toString()}>
+                      {list.name} ({list.words.length} words)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Step 2: Search for Opponent */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium">2. Search for Opponent</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by username..."
+                  value={h2hOpponentSearch}
+                  onChange={(e) => {
+                    setH2hOpponentSearch(e.target.value);
+                    setH2hSelectedOpponent(null);
+                  }}
+                  className="pl-10"
+                  data-testid="input-h2h-opponent-search"
+                />
+              </div>
+
+              {/* Search Results */}
+              {h2hOpponentSearch.length >= 2 && (
+                <div className="border rounded-lg max-h-48 overflow-y-auto">
+                  {isSearchingUsers ? (
+                    <div className="p-4 text-center text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin mx-auto mb-2" />
+                      Searching...
+                    </div>
+                  ) : searchResults && searchResults.length > 0 ? (
+                    <div className="divide-y">
+                      {searchResults
+                        .filter((u: any) => u.id !== user?.id)
+                        .map((result: any) => (
+                          <button
+                            key={result.id}
+                            onClick={() => setH2hSelectedOpponent(result)}
+                            className={`w-full p-3 text-left hover-elevate flex items-center justify-between ${
+                              h2hSelectedOpponent?.id === result.id ? 'bg-primary/10' : ''
+                            }`}
+                            data-testid={`button-select-opponent-${result.id}`}
+                          >
+                            <div>
+                              <div className="font-medium">{result.username}</div>
+                              {(result.firstName || result.lastName) && (
+                                <div className="text-sm text-muted-foreground">
+                                  {result.firstName} {result.lastName}
+                                </div>
+                              )}
+                            </div>
+                            {h2hSelectedOpponent?.id === result.id && (
+                              <Badge variant="default">Selected</Badge>
+                            )}
+                          </button>
+                        ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 text-center text-muted-foreground">
+                      No users found matching "{h2hOpponentSearch}"
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Selected Opponent Display */}
+              {h2hSelectedOpponent && (
+                <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm text-muted-foreground">Challenging:</div>
+                      <div className="font-semibold">{h2hSelectedOpponent.username}</div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setH2hSelectedOpponent(null)}
+                    >
+                      Change
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* View Completed Games Button */}
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                setH2hDialogOpen(false);
+                setLocation("/head-to-head");
+              }}
+              data-testid="button-view-all-challenges"
+            >
+              <Eye className="w-4 h-4 mr-2" />
+              View Completed Games
+            </Button>
+          </div>
+
+          {/* Start Challenge Button */}
+          <div className="pt-4 border-t">
+            <Button
+              className="w-full bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600"
+              disabled={!h2hSelectedWordList || !h2hSelectedOpponent || createChallengeMutation.isPending}
+              onClick={() => {
+                if (h2hSelectedWordList && h2hSelectedOpponent) {
+                  createChallengeMutation.mutate({
+                    opponentId: h2hSelectedOpponent.id,
+                    wordListId: h2hSelectedWordList,
+                  });
+                }
+              }}
+              data-testid="button-start-challenge"
+            >
+              {createChallengeMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Creating Challenge...
+                </>
+              ) : (
+                <>
+                  <Swords className="w-4 h-4 mr-2" />
+                  Start Challenge
+                </>
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

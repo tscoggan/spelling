@@ -14,6 +14,7 @@ import Achievements from "@/pages/achievements";
 import WordListsPage from "@/pages/word-lists";
 import UserGroupsPage from "@/pages/user-groups";
 import StarShop from "@/pages/star-shop";
+import HeadToHead from "@/pages/head-to-head";
 import TeacherDashboard from "@/pages/teacher-dashboard";
 import AdminPage from "@/pages/admin";
 import AuthPage from "@/pages/auth-page";
@@ -70,6 +71,7 @@ function Router() {
       <ProtectedRoute path="/word-lists" component={WordListsPage} />
       <ProtectedRoute path="/user-groups" component={UserGroupsPage} />
       <ProtectedRoute path="/star-shop" component={StarShop} />
+      <ProtectedRoute path="/head-to-head" component={HeadToHead} />
       <ProtectedRoute path="/teacher-dashboard" component={TeacherDashboard} />
       <ProtectedRoute path="/admin" component={AdminPage} />
       <Route path="/auth" component={AuthPage} />

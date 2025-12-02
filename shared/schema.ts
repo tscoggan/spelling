@@ -169,6 +169,28 @@ export const userStreaks = pgTable("user_streaks", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const headToHeadChallenges = pgTable("head_to_head_challenges", {
+  id: serial("id").primaryKey(),
+  initiatorId: integer("initiator_id").notNull(),
+  opponentId: integer("opponent_id").notNull(),
+  wordListId: integer("word_list_id").notNull(),
+  status: text("status").notNull().default("pending"),
+  initiatorScore: integer("initiator_score"),
+  initiatorTime: integer("initiator_time"),
+  initiatorCorrect: integer("initiator_correct"),
+  initiatorIncorrect: integer("initiator_incorrect"),
+  opponentScore: integer("opponent_score"),
+  opponentTime: integer("opponent_time"),
+  opponentCorrect: integer("opponent_correct"),
+  opponentIncorrect: integer("opponent_incorrect"),
+  winnerUserId: integer("winner_user_id"),
+  starAwarded: boolean("star_awarded").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  initiatorCompletedAt: timestamp("initiator_completed_at"),
+  opponentCompletedAt: timestamp("opponent_completed_at"),
+  completedAt: timestamp("completed_at"),
+});
+
 export const userItems = pgTable("user_items", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
@@ -441,6 +463,25 @@ export const userStreaksRelations = relations(userStreaks, ({ one }) => ({
   }),
 }));
 
+export const headToHeadChallengesRelations = relations(headToHeadChallenges, ({ one }) => ({
+  initiator: one(users, {
+    fields: [headToHeadChallenges.initiatorId],
+    references: [users.id],
+  }),
+  opponent: one(users, {
+    fields: [headToHeadChallenges.opponentId],
+    references: [users.id],
+  }),
+  wordList: one(customWordLists, {
+    fields: [headToHeadChallenges.wordListId],
+    references: [customWordLists.id],
+  }),
+  winner: one(users, {
+    fields: [headToHeadChallenges.winnerUserId],
+    references: [users.id],
+  }),
+}));
+
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
@@ -529,6 +570,14 @@ export const insertUserItemSchema = createInsertSchema(userItems).omit({
   updatedAt: true,
 });
 
+export const insertHeadToHeadChallengeSchema = createInsertSchema(headToHeadChallenges).omit({
+  id: true,
+  createdAt: true,
+  initiatorCompletedAt: true,
+  opponentCompletedAt: true,
+  completedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertWord = z.infer<typeof insertWordSchema>;
@@ -561,8 +610,12 @@ export type InsertUserStreak = z.infer<typeof insertUserStreakSchema>;
 export type UserStreak = typeof userStreaks.$inferSelect;
 export type InsertUserItem = z.infer<typeof insertUserItemSchema>;
 export type UserItem = typeof userItems.$inferSelect;
+export type InsertHeadToHeadChallenge = z.infer<typeof insertHeadToHeadChallengeSchema>;
+export type HeadToHeadChallenge = typeof headToHeadChallenges.$inferSelect;
 
-export type GameMode = "practice" | "timed" | "quiz" | "scramble" | "mistake" | "crossword";
+export type GameMode = "practice" | "timed" | "quiz" | "scramble" | "mistake" | "crossword" | "headtohead";
+
+export type ChallengeStatus = "pending" | "active" | "completed" | "declined";
 
 export interface GameState {
   sessionId: number;
