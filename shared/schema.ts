@@ -104,6 +104,7 @@ export const userGroups = pgTable("user_groups", {
   ownerUserId: integer("owner_user_id").notNull(),
   isPublic: boolean("is_public").notNull().default(false),
   plaintextPassword: text("plaintext_password"),
+  membersCanShareWordLists: boolean("members_can_share_word_lists").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
