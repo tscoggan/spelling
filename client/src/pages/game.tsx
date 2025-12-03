@@ -1493,6 +1493,21 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
     }
   }, [showFeedback, gameMode]);
 
+  // Handle Enter key to advance to next word in Practice mode when showing feedback
+  useEffect(() => {
+    if (!showFeedback || gameMode !== "practice") return;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleNext();
+      }
+    };
+    
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showFeedback, gameMode]);
+
   useEffect(() => {
     // Skip score saving and session updates for virtual word lists
     if (virtualWords) {
@@ -1553,15 +1568,21 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
         ? (mergedTotalWords > 0 ? Math.round((mergedCorrectCount / mergedTotalWords) * 100) : finalAccuracy)
         : Math.round((mergedCorrectCount / (mergedTotalWords || 1)) * 100);
       
-      console.log("Saving score to leaderboard:", { score, accuracy, gameMode, sessionId, correctCount: mergedCorrectCount, actualWordsCount: mergedTotalWords });
+      // Calculate unified score using H2H formula: +10 per correct, -5 per incorrect, -1 per second
+      // For timed mode, use (60 - timeLeft) as elapsed time since it counts down
+      const finalElapsedTime = gameMode === "timed" ? (60 - timeLeft) : elapsedTime;
+      const incorrectCount = mergedTotalWords - mergedCorrectCount;
+      const unifiedScore = (mergedCorrectCount * 10) - (incorrectCount * 5) - finalElapsedTime;
+      
+      console.log("Saving score to leaderboard:", { unifiedScore, accuracy, gameMode, sessionId, correctCount: mergedCorrectCount, actualWordsCount: mergedTotalWords, elapsedTime: finalElapsedTime });
       
       // Update game session with final stats first, then save score
       const updateAndSave = async () => {
         try {
-          // Update game session with final stats
+          // Update game session with final stats using unified score
           await updateSessionMutation.mutateAsync({
             sessionId,
-            score,
+            score: unifiedScore,
             totalWords: mergedTotalWords,
             correctWords: mergedCorrectCount,
             bestStreak: streak,
@@ -1580,7 +1601,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
           
           // After session update succeeds, save score to leaderboard and check achievements
           saveScoreMutation.mutate({
-            score,
+            score: unifiedScore,
             accuracy,
             gameMode,
             userId: user.id,
@@ -1590,7 +1611,7 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
           console.error("Failed to update game session:", error);
           // Still save to leaderboard even if session update fails
           saveScoreMutation.mutate({
-            score,
+            score: unifiedScore,
             accuracy,
             gameMode,
             userId: user.id,
@@ -1640,9 +1661,11 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
     }
   }, [gameMode]);
 
-  // Head to Head mode: Timer counts UP (elapsed time tracking)
+  // All game modes: Track elapsed time in background (not displayed except for H2H)
+  // This is used for the unified scoring system: +10 correct, -5 incorrect, -1/second
   useEffect(() => {
-    if (gameMode === "headtohead" && !gameComplete) {
+    // Track elapsed time for all game modes except timed (which has its own countdown)
+    if (gameMode !== "timed" && !gameComplete) {
       // Start timer on first mount
       if (!timerActive) {
         setTimerActive(true);
@@ -2758,9 +2781,12 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
   };
 
   // Process incorrect answer (common logic extracted)
+  // Applies -5 penalty for incorrect answers (H2H scoring formula)
   const processIncorrectAnswer = () => {
     playIncorrectSound();
     setStreak(0);
+    // Apply -5 penalty for incorrect answer (H2H scoring formula)
+    setScore(prev => prev - 5);
     if (currentWord) {
       setIncorrectWords([...incorrectWords, currentWord.word]);
     }
@@ -3037,8 +3063,8 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
       // Timed mode: No feedback, immediate next word
       if (correct) {
         playCorrectSound();
-        const points = 20;
-        setScore(score + points + (streak * 5));
+        // H2H scoring formula: +10 per correct word
+        setScore(score + 10);
         setCorrectCount(correctCount + 1);
         const newStreak = streak + 1;
         setStreak(newStreak);
@@ -3080,8 +3106,8 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
 
       if (correct) {
         playCorrectSound();
-        const points = 20;
-        setScore(score + points + (streak * 5));
+        // H2H scoring formula: +10 per correct word
+        setScore(score + 10);
         setCorrectCount(correctCount + 1);
         const newStreak = streak + 1;
         setStreak(newStreak);
@@ -3325,8 +3351,8 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
       setIsCorrect(true);
       setShowFeedback(true);
       playCorrectSound();
-      const points = 20;
-      setScore(score + points + (streak * 5));
+      // H2H scoring formula: +10 per correct word
+      setScore(score + 10);
       setCorrectCount(correctCount + 1);
       const newStreak = streak + 1;
       setStreak(newStreak);
@@ -3364,8 +3390,8 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
       setIsCorrect(true);
       setShowFeedback(true);
       playCorrectSound();
-      const points = 20;
-      setScore(score + points + (streak * 5));
+      // H2H scoring formula: +10 per correct word
+      setScore(score + 10);
       setCorrectCount(correctCount + 1);
       const newStreak = streak + 1;
       setStreak(newStreak);
@@ -3599,8 +3625,6 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
     
     let correctWords = 0;
     let incorrectWords = 0;
-    let totalScore = 0;
-    const points = 20;
     
     // Check each entry
     crosswordGrid.entries.forEach(entry => {
@@ -3620,7 +3644,6 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
       
       if (entryCorrect) {
         correctWords++;
-        totalScore += points;
         incrementWordStreakMutation.mutate();
       } else {
         incorrectWords++;
@@ -3634,15 +3657,18 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
     const totalWords = crosswordGrid.entries.length;
     const accuracy = totalWords > 0 ? Math.round((correctWords / totalWords) * 100) : 0;
     
+    // H2H scoring formula: +10 per correct, -5 per incorrect
+    // Time penalty will be applied when saving - don't include it in live score
+    const totalScore = (correctWords * 10) - (incorrectWords * 5);
+    
     setCorrectCount(correctWords);
     setScore(totalScore);
     setFinalAccuracy(accuracy);
     
-    // Add completion bonus if all words correct
+    // Play celebration sound if all words correct (no bonus to avoid save/display mismatch)
     if (correctWords === totalWords) {
       playCelebrationSound();
-      setScore(totalScore + points * 2); // 2x bonus for completing puzzle
-      console.log('🎉 Crossword complete! Bonus applied');
+      console.log('🎉 Crossword complete!');
     }
     
     // Save completed grid state (deep copy to avoid mutations)
@@ -3938,21 +3964,98 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
                   </div>
                 );
               })()
+            ) : gameMode === "mistake" ? (
+              // Find the Mistake mode: Show unified score with breakdown
+              (() => {
+                const totalWordsForScore = currentWordIndex + 1;
+                const incorrectCountForScore = totalWordsForScore - correctCount;
+                const correctPointsForScore = correctCount * 10;
+                const incorrectPenalty = incorrectCountForScore * 5;
+                const timeUsed = elapsedTime;
+                const calculatedScore = correctPointsForScore - incorrectPenalty - timeUsed;
+                
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Card className="p-6 bg-purple-50 border-purple-200">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <div className="text-4xl md:text-5xl font-bold text-purple-600" data-testid="text-final-score">
+                            {calculatedScore}
+                          </div>
+                          <div className="text-lg text-gray-600 mt-2">Score</div>
+                        </div>
+                        <div className="text-right text-sm space-y-1">
+                          <div className="text-green-600" data-testid="text-correct-breakdown">
+                            {correctCount} correct = +{correctPointsForScore} pts
+                          </div>
+                          <div className="text-red-600" data-testid="text-incorrect-breakdown">
+                            {incorrectCountForScore} incorrect = -{incorrectPenalty} pts
+                          </div>
+                          <div className="text-orange-600" data-testid="text-time-breakdown">
+                            {timeUsed} seconds = -{timeUsed} pts
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                    <Card className="p-6 bg-green-50 border-green-200">
+                      <div className="text-4xl md:text-5xl font-bold text-green-600" data-testid="text-accuracy">
+                        {accuracy}%
+                      </div>
+                      <div className="text-lg text-gray-600 mt-2">Accuracy</div>
+                    </Card>
+                  </div>
+                );
+              })()
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Card className="p-6 bg-purple-50 border-purple-200">
-                  <div className="text-4xl md:text-5xl font-bold text-purple-600" data-testid="text-final-score">
-                    {score}
+              // Other game modes (practice, quiz, scramble, timed, crossword): Show unified score with breakdown
+              (() => {
+                // Calculate total words based on game mode
+                let totalWordsForScore = activeWords?.length || 0;
+                if (gameMode === "timed") {
+                  totalWordsForScore = timeLeft === 0 ? currentWordIndex : currentWordIndex + 1;
+                } else if (gameMode === "crossword") {
+                  totalWordsForScore = crosswordGrid?.entries.length || 0;
+                }
+                
+                const incorrectCountForScore = totalWordsForScore - correctCount;
+                const correctPointsForScore = correctCount * 10;
+                const incorrectPenalty = incorrectCountForScore * 5;
+                // For timed mode, use (60 - timeLeft) as elapsed time
+                const timeUsed = gameMode === "timed" ? (60 - timeLeft) : elapsedTime;
+                const calculatedScore = correctPointsForScore - incorrectPenalty - timeUsed;
+                
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Card className="p-6 bg-purple-50 border-purple-200">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <div className="text-4xl md:text-5xl font-bold text-purple-600" data-testid="text-final-score">
+                            {calculatedScore}
+                          </div>
+                          <div className="text-lg text-gray-600 mt-2">Score</div>
+                        </div>
+                        <div className="text-right text-sm space-y-1">
+                          <div className="text-green-600" data-testid="text-correct-breakdown">
+                            {correctCount} correct = +{correctPointsForScore} pts
+                          </div>
+                          <div className="text-red-600" data-testid="text-incorrect-breakdown">
+                            {incorrectCountForScore} incorrect = -{incorrectPenalty} pts
+                          </div>
+                          <div className="text-orange-600" data-testid="text-time-breakdown">
+                            {timeUsed} seconds = -{timeUsed} pts
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                    <Card className="p-6 bg-green-50 border-green-200">
+                      <div className="text-4xl md:text-5xl font-bold text-green-600" data-testid="text-accuracy">
+                        {accuracy}%
+                      </div>
+                      <div className="text-lg text-gray-600 mt-2">Accuracy</div>
+                    </Card>
                   </div>
-                  <div className="text-lg text-gray-600 mt-2">Points</div>
-                </Card>
-                <Card className="p-6 bg-green-50 border-green-200">
-                  <div className="text-4xl md:text-5xl font-bold text-green-600" data-testid="text-accuracy">
-                    {accuracy}%
-                  </div>
-                  <div className="text-lg text-gray-600 mt-2">Accuracy</div>
-                </Card>
-              </div>
+                );
+              })()
             )}
 
             <div className="space-y-3 text-center">

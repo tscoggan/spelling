@@ -2789,7 +2789,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const userId = (req.user as any).id;
-      const record = await storage.getUserChallengeRecord(userId);
+      const dateFilter = req.query.dateFilter as string;
+      const timezone = req.query.timezone as string || "UTC";
+      
+      // Calculate date range based on filter
+      let startDate: Date | undefined;
+      let endDate: Date | undefined;
+      
+      if (dateFilter && dateFilter !== "all") {
+        const now = new Date();
+        endDate = new Date(now);
+        
+        if (dateFilter === "today") {
+          // Start of today in user's timezone
+          const todayStart = new Date(now.toLocaleString("en-US", { timeZone: timezone }));
+          todayStart.setHours(0, 0, 0, 0);
+          startDate = todayStart;
+        } else if (dateFilter === "week") {
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 7);
+        } else if (dateFilter === "month") {
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 30);
+        }
+      }
+      
+      const record = await storage.getUserChallengeRecord(userId, startDate, endDate);
       res.json(record);
     } catch (error) {
       console.error("Error fetching challenge record:", error);

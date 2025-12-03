@@ -56,16 +56,19 @@ export default function Stats() {
     staleTime: 0,
   });
 
-  // Fetch Head to Head record
+  // Fetch Head to Head record (respects date filter)
   const { data: h2hRecord } = useQuery<{ wins: number; losses: number; ties: number }>({
-    queryKey: ['/api/challenges/record', user?.id],
+    queryKey: ['/api/challenges/record', user?.id, dateFilter, userTimezone],
     queryFn: async () => {
       if (!user) return { wins: 0, losses: 0, ties: 0 };
-      const response = await fetch('/api/challenges/record', { credentials: 'include' });
+      const response = await fetch(`/api/challenges/record?dateFilter=${dateFilter}&timezone=${encodeURIComponent(userTimezone)}`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch H2H record');
       return response.json();
     },
     enabled: !!user,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const gameModeNames: { [key: string]: string } = {

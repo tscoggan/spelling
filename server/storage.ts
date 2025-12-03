@@ -169,7 +169,7 @@ export interface IStorage {
   getUserActiveChallenges(userId: number): Promise<HeadToHeadChallenge[]>;
   getUserCompletedChallenges(userId: number): Promise<HeadToHeadChallenge[]>;
   updateChallenge(id: number, updates: Partial<HeadToHeadChallenge>): Promise<HeadToHeadChallenge | undefined>;
-  getUserChallengeRecord(userId: number): Promise<{ wins: number; losses: number; ties: number }>;
+  getUserChallengeRecord(userId: number, startDate?: Date, endDate?: Date): Promise<{ wins: number; losses: number; ties: number }>;
   isUserParticipantInActiveChallenge(userId: number, wordListId: number): Promise<boolean>;
   
   sessionStore: session.Store;
@@ -1658,7 +1658,7 @@ export class DatabaseStorage implements IStorage {
     return updated || undefined;
   }
 
-  async getUserChallengeRecord(userId: number): Promise<{ wins: number; losses: number; ties: number }> {
+  async getUserChallengeRecord(userId: number, startDate?: Date, endDate?: Date): Promise<{ wins: number; losses: number; ties: number }> {
     const completed = await this.getUserCompletedChallenges(userId);
     
     let wins = 0;
@@ -1666,6 +1666,16 @@ export class DatabaseStorage implements IStorage {
     let ties = 0;
     
     for (const challenge of completed) {
+      // Filter by date range if provided
+      if (startDate && challenge.completedAt) {
+        const completedDate = new Date(challenge.completedAt);
+        if (completedDate < startDate) continue;
+      }
+      if (endDate && challenge.completedAt) {
+        const completedDate = new Date(challenge.completedAt);
+        if (completedDate > endDate) continue;
+      }
+      
       if (challenge.winnerUserId === null) {
         ties++;
       } else if (challenge.winnerUserId === userId) {
