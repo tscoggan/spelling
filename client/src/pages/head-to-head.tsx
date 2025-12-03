@@ -6,7 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Swords, Trophy, Clock, CheckCircle, XCircle, ArrowLeft, Play, Loader2, X, Award } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Swords, Trophy, Clock, CheckCircle, XCircle, ArrowLeft, Play, Loader2, X, Award, Search, User, BookOpen } from "lucide-react";
 
 // Import star image for earned stars display
 import oneStar from "@assets/1 star_1763916010555.png";
@@ -72,6 +76,10 @@ export default function HeadToHead() {
   const searchParams = new URLSearchParams(searchString);
   const tabParam = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(tabParam === 'completed' ? 'completed' : 'in-progress');
+  const [h2hDialogOpen, setH2hDialogOpen] = useState(false);
+  const [h2hSelectedWordList, setH2hSelectedWordList] = useState<number | null>(null);
+  const [h2hOpponentSearch, setH2hOpponentSearch] = useState("");
+  const [h2hSelectedOpponent, setH2hSelectedOpponent] = useState<any>(null);
   
   // Update tab when URL changes
   useEffect(() => {
@@ -104,6 +112,73 @@ export default function HeadToHead() {
     queryKey: ["/api/challenges/record"],
     refetchOnMount: "always",
     staleTime: 0,
+  });
+
+  // Word lists for H2H challenge creation
+  const { data: customLists } = useQuery<any[]>({
+    queryKey: ["/api/word-lists"],
+    enabled: h2hDialogOpen,
+  });
+
+  const { data: publicLists } = useQuery<any[]>({
+    queryKey: ["/api/word-lists/public"],
+    enabled: h2hDialogOpen,
+  });
+
+  const { data: sharedLists } = useQuery<any[]>({
+    queryKey: ["/api/word-lists/shared-with-me"],
+    enabled: h2hDialogOpen,
+  });
+
+  // Combine all available word lists
+  const allWordLists = (() => {
+    const myLists = (customLists || []).map(list => ({ ...list, isMine: true }));
+    const pubLists = (publicLists || []).map(list => ({ ...list, isMine: false }));
+    const shared = (sharedLists || []).map(list => ({ ...list, isMine: false, isShared: true }));
+    const combined = [...myLists, ...pubLists, ...shared];
+    return combined.filter((list, index, self) => 
+      index === self.findIndex(l => l.id === list.id)
+    );
+  })();
+
+  // User search for opponent selection
+  const { data: searchResults, isLoading: isSearchingUsers } = useQuery<any[]>({
+    queryKey: ["/api/users/search", h2hOpponentSearch],
+    queryFn: async () => {
+      const res = await fetch(`/api/users/search?query=${encodeURIComponent(h2hOpponentSearch)}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to search users");
+      return res.json();
+    },
+    enabled: h2hOpponentSearch.length >= 2,
+  });
+
+  // Create challenge mutation
+  const createChallengeMutation = useMutation({
+    mutationFn: async (data: { opponentId: number; wordListId: number }) => {
+      const response = await apiRequest("POST", "/api/challenges", data);
+      return response.json();
+    },
+    onSuccess: (challenge: any) => {
+      toast({
+        title: "Challenge sent!",
+        description: "Your opponent will be notified. You can now play your round!",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+      refreshNotifications();
+      setH2hDialogOpen(false);
+      if (h2hSelectedWordList && challenge?.id) {
+        setLocation(`/game?listId=${h2hSelectedWordList}&mode=headtohead&isInitiator=true&challengeId=${challenge.id}`);
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to create challenge",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const refreshNotifications = () => {
@@ -584,12 +659,12 @@ export default function HeadToHead() {
                 <CardHeader>
                   <CardTitle>Start a New Challenge</CardTitle>
                   <CardDescription>
-                    Go back to the home screen to create a new challenge
+                    Challenge a friend to a timed spelling duel
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Button
-                    onClick={() => setLocation("/")}
+                    onClick={() => setH2hDialogOpen(true)}
                     className="w-full bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600"
                     data-testid="button-create-challenge"
                   >
@@ -602,6 +677,169 @@ export default function HeadToHead() {
           </Tabs>
         )}
       </motion.div>
+
+      {/* Head to Head Challenge Dialog */}
+      <Dialog open={h2hDialogOpen} onOpenChange={(open) => {
+        setH2hDialogOpen(open);
+        if (!open) {
+          setH2hSelectedWordList(null);
+          setH2hSelectedOpponent(null);
+          setH2hOpponentSearch("");
+        }
+      }}>
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Swords className="w-5 h-5 text-orange-600" />
+              Head to Head Challenge
+            </DialogTitle>
+            <DialogDescription>
+              Challenge a friend to a timed spelling duel. The winner earns a star!
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 flex-1 overflow-y-auto">
+            {/* Step 1: Select Word List */}
+            <div>
+              <Label className="flex items-center gap-2 mb-2">
+                <BookOpen className="w-4 h-4" />
+                1. Select Word List
+              </Label>
+              <ScrollArea className="h-[120px] border rounded-md p-2">
+                <div className="space-y-1">
+                  {allWordLists.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-4">
+                      No word lists available. Create one first!
+                    </p>
+                  ) : (
+                    allWordLists.map((list: any) => (
+                      <div
+                        key={list.id}
+                        className={`p-2 rounded cursor-pointer transition-colors ${
+                          h2hSelectedWordList === list.id
+                            ? "bg-orange-100 border border-orange-300"
+                            : "hover:bg-gray-100"
+                        }`}
+                        onClick={() => setH2hSelectedWordList(list.id)}
+                        data-testid={`h2h-wordlist-${list.id}`}
+                      >
+                        <div className="font-medium text-sm">{list.name}</div>
+                        <div className="text-xs text-gray-500">
+                          {list.words?.length || 0} words
+                          {list.isMine && " • My List"}
+                          {list.isShared && " • Shared"}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+
+            {/* Step 2: Search for Opponent */}
+            <div>
+              <Label className="flex items-center gap-2 mb-2">
+                <User className="w-4 h-4" />
+                2. Find Your Opponent
+              </Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  placeholder="Search by username or name..."
+                  value={h2hOpponentSearch}
+                  onChange={(e) => setH2hOpponentSearch(e.target.value)}
+                  className="pl-10"
+                  data-testid="input-h2h-opponent-search"
+                />
+              </div>
+              
+              {/* Search Results */}
+              {h2hOpponentSearch.length >= 2 && (
+                <div className="mt-2 border rounded-md max-h-[150px] overflow-y-auto">
+                  {isSearchingUsers ? (
+                    <div className="p-4 text-center">
+                      <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                    </div>
+                  ) : searchResults && searchResults.length > 0 ? (
+                    <div className="p-1">
+                      {searchResults.map((result: any) => (
+                        <div
+                          key={result.id}
+                          className={`p-2 rounded cursor-pointer transition-colors ${
+                            h2hSelectedOpponent?.id === result.id
+                              ? "bg-orange-100 border border-orange-300"
+                              : "hover:bg-gray-100"
+                          }`}
+                          onClick={() => setH2hSelectedOpponent(result)}
+                          data-testid={`h2h-opponent-${result.id}`}
+                        >
+                          <div className="font-medium text-sm">
+                            {result.firstName && result.lastName
+                              ? `${result.firstName} ${result.lastName} (${result.username})`
+                              : result.username}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="p-4 text-sm text-gray-500 text-center">
+                      No users found
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Selected Opponent Display */}
+              {h2hSelectedOpponent && (
+                <div className="mt-2 p-2 bg-orange-50 rounded-md flex items-center justify-between">
+                  <span className="text-sm font-medium">
+                    Challenging: {h2hSelectedOpponent.firstName && h2hSelectedOpponent.lastName
+                      ? `${h2hSelectedOpponent.firstName} ${h2hSelectedOpponent.lastName} (${h2hSelectedOpponent.username})`
+                      : h2hSelectedOpponent.username}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => setH2hSelectedOpponent(null)}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Send Challenge Button */}
+          <div className="pt-4 border-t">
+            <Button
+              className="w-full bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600"
+              disabled={!h2hSelectedWordList || !h2hSelectedOpponent || createChallengeMutation.isPending}
+              onClick={() => {
+                if (h2hSelectedWordList && h2hSelectedOpponent) {
+                  createChallengeMutation.mutate({
+                    opponentId: h2hSelectedOpponent.id,
+                    wordListId: h2hSelectedWordList,
+                  });
+                }
+              }}
+              data-testid="button-send-challenge"
+            >
+              {createChallengeMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Swords className="w-4 h-4 mr-2" />
+                  Send Challenge
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

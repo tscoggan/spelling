@@ -913,8 +913,11 @@ export default function WordListsPage() {
                   <DialogDescription>
                     {editingList
                       ? "Update your word list details"
-                      : "Create a custom list of spelling words (minimum 5 words, maximum 5000)"}
+                      : "Create a custom list of spelling words (minimum 5 words, maximum 500)"}
                   </DialogDescription>
+                  <p className="text-sm text-amber-600 mt-2">
+                    Tip: For the best learning experience, keep word lists to about 25 words or less.
+                  </p>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
                   <div className="space-y-4 overflow-y-auto flex-1 pr-2">
@@ -982,12 +985,17 @@ export default function WordListsPage() {
                       <Label>Share with Groups</Label>
                       <div className="border rounded-md p-4 space-y-3 max-h-[200px] overflow-y-auto">
                         {(() => {
-                          const isTeacher = user?.role === "teacher";
-                          const filteredGroups = isTeacher 
-                            ? userGroups.filter((g: any) => 
-                                g.isOwner || g.isCoOwner || formData.selectedGroupIds.includes(g.id)
-                              )
-                            : userGroups;
+                          // Filter groups to only show ones where user can share:
+                          // 1. User owns the group
+                          // 2. User is a co-owner
+                          // 3. User is a member AND membersCanShareWordLists is true
+                          // Also include groups that are already selected (to preserve existing selections)
+                          const filteredGroups = userGroups.filter((g: any) => 
+                            g.isOwner || 
+                            g.isCoOwner || 
+                            g.membersCanShareWordLists !== false ||
+                            formData.selectedGroupIds.includes(g.id)
+                          );
                           
                           if (filteredGroups.length === 0) {
                             return (
@@ -1086,7 +1094,7 @@ export default function WordListsPage() {
                   </div>
                   <div>
                     <Label htmlFor="words">
-                      Words (one per line, min 5, max 5000)
+                      Words (one per line, min 5, max 500)
                     </Label>
                     <Textarea
                       id="words"

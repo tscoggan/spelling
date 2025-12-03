@@ -38,6 +38,7 @@ export default function UserGroupsPage() {
     name: "",
     isPublic: false,
     plaintextPassword: "",
+    membersCanShareWordLists: true,
   });
   const [editingGroup, setEditingGroup] = useState<any>(null);
   const [pendingRequestsDialogOpen, setPendingRequestsDialogOpen] = useState(false);
@@ -417,6 +418,7 @@ export default function UserGroupsPage() {
       name: "",
       isPublic: false,
       plaintextPassword: "",
+      membersCanShareWordLists: true,
     });
     setEditingGroup(null);
   };
@@ -436,6 +438,7 @@ export default function UserGroupsPage() {
       name: group.name,
       isPublic: group.isPublic,
       plaintextPassword: group.plaintextPassword || "",
+      membersCanShareWordLists: group.membersCanShareWordLists !== false,
     });
     setCreateDialogOpen(true);
   };
@@ -654,6 +657,17 @@ export default function UserGroupsPage() {
                       <p className="text-xs text-gray-600 mt-1">Add an optional password for users to join immediately without approval</p>
                     </div>
                   )}
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="membersCanShare"
+                      checked={formData.membersCanShareWordLists}
+                      onCheckedChange={(checked) => setFormData({ ...formData, membersCanShareWordLists: checked })}
+                      data-testid="switch-members-can-share"
+                    />
+                    <Label htmlFor="membersCanShare" className="cursor-pointer">
+                      Allow members to share word lists with this group
+                    </Label>
+                  </div>
                   <div className="flex gap-2 justify-end pt-4">
                     <Button
                       type="button"
