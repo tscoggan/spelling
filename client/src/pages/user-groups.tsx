@@ -18,12 +18,14 @@ import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { UserHeader } from "@/components/user-header";
 import { useTheme } from "@/hooks/use-theme";
+import { getThemedTextClasses } from "@/lib/themeText";
 
 export default function UserGroupsPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { themeAssets, currentTheme } = useTheme();
+  const { themeAssets, hasDarkBackground } = useTheme();
+  const textClasses = getThemedTextClasses(hasDarkBackground);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [membersDialogOpen, setMembersDialogOpen] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
@@ -597,8 +599,8 @@ export default function UserGroupsPage() {
         
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className={`text-4xl md:text-5xl font-bold ${currentTheme === 'space' ? 'text-white' : 'text-foreground'}`}>User Groups</h1>
-            <p className={`text-lg mt-1 ${currentTheme === 'space' ? 'text-white/80' : 'text-muted-foreground'}`}>Create and manage groups to share word lists</p>
+            <h1 className={`text-4xl md:text-5xl font-bold ${textClasses.headline}`}>User Groups</h1>
+            <p className={`text-lg mt-1 ${textClasses.subtitle}`}>Create and manage groups to share word lists</p>
           </div>
           <div className="flex gap-2">
             <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
@@ -687,7 +689,7 @@ export default function UserGroupsPage() {
         ) : (
           <div className="space-y-8">
             <div>
-              <h2 className={`text-2xl font-bold mb-4 flex items-center gap-2 ${currentTheme === 'space' ? 'text-white' : 'text-gray-800'}`}>
+              <h2 className={`text-2xl font-bold mb-4 flex items-center gap-2 ${textClasses.sectionTitle}`}>
                 <Users className="w-6 h-6 text-purple-600" />
                 My Groups
               </h2>
@@ -821,7 +823,7 @@ export default function UserGroupsPage() {
 
             {user?.role !== "teacher" && memberGroups.length > 0 && (
               <div>
-                <h2 className={`text-2xl font-bold mb-4 flex items-center gap-2 ${currentTheme === 'space' ? 'text-white' : 'text-gray-800'}`}>
+                <h2 className={`text-2xl font-bold mb-4 flex items-center gap-2 ${textClasses.sectionTitle}`}>
                   <UserPlus className="w-6 h-6 text-blue-600" />
                   Groups I'm In
                 </h2>
@@ -870,11 +872,11 @@ export default function UserGroupsPage() {
 
             {user?.role !== "teacher" && publicGroups.length > 0 && (
               <div>
-                <h2 className={`text-2xl font-bold mb-4 flex items-center gap-2 ${currentTheme === 'space' ? 'text-white' : 'text-gray-800'}`}>
+                <h2 className={`text-2xl font-bold mb-4 flex items-center gap-2 ${textClasses.sectionTitle}`}>
                   <Globe className="w-6 h-6 text-green-600" />
                   Public Groups
                 </h2>
-                <p className={`mb-4 text-sm ${currentTheme === 'space' ? 'text-white/80' : 'text-gray-600'}`}>
+                <p className={`mb-4 text-sm ${textClasses.subtitle}`}>
                   Join public groups to share and access word lists
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

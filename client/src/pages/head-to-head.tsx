@@ -12,6 +12,7 @@ import { Swords, Trophy, Clock, CheckCircle, XCircle, ArrowLeft, Play, Loader2, 
 import oneStar from "@assets/1 star_1763916010555.png";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
+import { getThemedTextClasses } from "@/lib/themeText";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
@@ -63,7 +64,8 @@ export default function HeadToHead() {
   const [, setLocation] = useLocation();
   const searchString = useSearch();
   const { user } = useAuth();
-  const { currentTheme, themeAssets } = useTheme();
+  const { themeAssets, hasDarkBackground } = useTheme();
+  const textClasses = getThemedTextClasses(hasDarkBackground);
   const { toast } = useToast();
   
   // Parse query parameters to get initial tab
@@ -260,7 +262,7 @@ export default function HeadToHead() {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-2">
             <Swords className="w-10 h-10 text-orange-600" />
-            <h1 className={`text-4xl font-bold ${currentTheme === 'space' ? 'text-white' : 'text-foreground'}`}>
+            <h1 className={`text-4xl font-bold ${textClasses.headline}`}>
               Head to Head Challenge Results
             </h1>
           </div>

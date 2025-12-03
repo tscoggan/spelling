@@ -7,10 +7,12 @@ import type { LeaderboardScore } from "@shared/schema";
 import { motion } from "framer-motion";
 import { UserHeader } from "@/components/user-header";
 import { useTheme } from "@/hooks/use-theme";
+import { getThemedTextClasses } from "@/lib/themeText";
 
 export default function Leaderboard() {
   const [, setLocation] = useLocation();
-  const { themeAssets } = useTheme();
+  const { themeAssets, hasDarkBackground } = useTheme();
+  const textClasses = getThemedTextClasses(hasDarkBackground);
 
   const { data: topScores, isLoading } = useQuery<LeaderboardScore[]>({
     queryKey: [`/api/leaderboard`],
@@ -76,10 +78,10 @@ export default function Leaderboard() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
           >
-            <h1 className="text-4xl md:text-5xl font-bold text-foreground">
+            <h1 className={`text-4xl md:text-5xl font-bold ${textClasses.headline}`}>
               Leaderboard
             </h1>
-            <p className="text-lg text-muted-foreground mt-1">Top 10 Champions</p>
+            <p className={`text-lg mt-1 ${textClasses.subtitle}`}>Top 10 Champions</p>
           </motion.div>
         </div>
 

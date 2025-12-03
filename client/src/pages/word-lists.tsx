@@ -26,6 +26,7 @@ type CustomWordList = BaseCustomWordList & {
 import { useToast } from "@/hooks/use-toast";
 import { UserHeader } from "@/components/user-header";
 import { useTheme } from "@/hooks/use-theme";
+import { getThemedTextClasses } from "@/lib/themeText";
 import * as pdfjsLib from "pdfjs-dist";
 
 const GRADE_LEVELS = ["K", "1", "2", "3", "4", "5", "6", "7", "8", "9-12"];
@@ -39,7 +40,8 @@ export default function WordListsPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { themeAssets, currentTheme } = useTheme();
+  const { themeAssets, hasDarkBackground } = useTheme();
+  const textClasses = getThemedTextClasses(hasDarkBackground);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingList, setEditingList] = useState<CustomWordList | null>(null);
   const [gradeFilter, setGradeFilter] = useState<string>("all");
@@ -842,10 +844,10 @@ export default function WordListsPage() {
         
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <div>
-            <h1 className={`text-4xl md:text-5xl font-bold ${currentTheme === 'space' ? 'text-white' : 'text-foreground'}`}>
+            <h1 className={`text-4xl md:text-5xl font-bold ${textClasses.headline}`}>
               Word Lists
             </h1>
-            <p className={`text-lg mt-1 ${currentTheme === 'space' ? 'text-white/80' : 'text-muted-foreground'}`}>
+            <p className={`text-lg mt-1 ${textClasses.subtitle}`}>
               Create your own spelling word lists and share them with others
             </p>
           </div>

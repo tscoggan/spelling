@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, Sparkles, Trophy, Clock, Target, List, ChevronRight, Shuffle, AlertCircle, Grid3x3, Users, BarChart3, LayoutDashboard, Swords, Search, Eye, Loader2 } from "lucide-react";
 import type { GameMode, HeadToHeadChallenge } from "@shared/schema";
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useIOSKeyboardTrigger } from "@/App";
@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { UserHeader } from "@/components/user-header";
 import { AccuracyCard } from "@/components/accuracy-card";
 import { useTheme } from "@/hooks/use-theme";
+import { getThemedTextClasses } from "@/lib/themeText";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import titleBanner from "@assets/image_1763494070680.png";
@@ -54,9 +55,9 @@ const useRefreshNotifications = (userId: number | undefined) => {
 function TeacherHome() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
-  const { themeAssets, currentTheme } = useTheme();
+  const { themeAssets, currentTheme, hasDarkBackground } = useTheme();
   
-  const needsWhiteText = currentTheme === "space" || currentTheme === "skiing" || currentTheme === "basketball" || currentTheme === "robot";
+  const textClasses = getThemedTextClasses(hasDarkBackground);
 
   return (
     <div className="min-h-screen p-4 md:p-8 relative overflow-hidden">
@@ -102,7 +103,7 @@ function TeacherHome() {
               data-testid="img-title-banner"
             />
           </motion.div>
-          <p className={`text-lg md:text-xl font-semibold ${needsWhiteText ? 'text-white' : 'text-foreground'}`}>
+          <p className={`text-lg md:text-xl font-semibold ${textClasses.subtitle}`}>
             Welcome, {user?.firstName || user?.username}{user?.lastName ? ` ${user.lastName}` : ''}!
           </p>
         </div>
@@ -190,6 +191,7 @@ export default function Home() {
   const [h2hSelectedWordList, setH2hSelectedWordList] = useState<number | null>(null);
   const [h2hOpponentSearch, setH2hOpponentSearch] = useState("");
   const [h2hSelectedOpponent, setH2hSelectedOpponent] = useState<any>(null);
+  const searchResultsRef = useRef<HTMLDivElement>(null);
 
   // Refresh notifications when home page loads
   const refreshNotifications = useRefreshNotifications(user?.id);
@@ -231,6 +233,13 @@ export default function Home() {
     },
     enabled: h2hOpponentSearch.length >= 2,
   });
+
+  // Auto-scroll to search results when they appear
+  useEffect(() => {
+    if (searchResults && searchResults.length > 0 && searchResultsRef.current) {
+      searchResultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [searchResults]);
 
   const { data: pendingChallenges } = useQuery<any[]>({
     queryKey: ["/api/challenges/pending"],
@@ -1068,7 +1077,7 @@ export default function Home() {
 
               {/* Search Results */}
               {h2hOpponentSearch.length >= 2 && (
-                <div className="border rounded-lg max-h-48 overflow-y-auto">
+                <div ref={searchResultsRef} className="border rounded-lg max-h-48 overflow-y-auto">
                   {isSearchingUsers ? (
                     <div className="p-4 text-center text-muted-foreground">
                       <Loader2 className="w-4 h-4 animate-spin mx-auto mb-2" />

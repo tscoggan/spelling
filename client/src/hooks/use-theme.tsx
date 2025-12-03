@@ -131,6 +131,7 @@ interface ThemeContextValue {
   unlockedThemes: ThemeId[];
   isLoading: boolean;
   allThemes: typeof AVAILABLE_THEMES;
+  hasDarkBackground: boolean;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -205,6 +206,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   };
 
   const themeAssets = THEME_ASSETS[currentTheme] || THEME_ASSETS.default;
+  
+  // Themes with dark backgrounds that need white text
+  const hasDarkBackground = currentTheme === "space" || currentTheme === "robot" || currentTheme === "skiing" || currentTheme === "basketball";
 
   const value: ThemeContextValue = {
     currentTheme,
@@ -215,6 +219,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     unlockedThemes,
     isLoading: isLoadingItems,
     allThemes: AVAILABLE_THEMES,
+    hasDarkBackground,
   };
 
   return (

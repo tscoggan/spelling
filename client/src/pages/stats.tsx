@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { UserHeader } from "@/components/user-header";
 import { useTheme } from "@/hooks/use-theme";
+import { getThemedTextClasses } from "@/lib/themeText";
 import { useState } from "react";
 import {
   Dialog,
@@ -33,7 +34,8 @@ interface UserStats {
 export default function Stats() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
-  const { themeAssets, currentTheme } = useTheme();
+  const { themeAssets, hasDarkBackground } = useTheme();
+  const textClasses = getThemedTextClasses(hasDarkBackground);
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [showGameModeDialog, setShowGameModeDialog] = useState(false);
 
@@ -137,10 +139,10 @@ export default function Stats() {
           >
             {/* Header */}
             <div className="mb-8">
-              <h1 className={`text-4xl md:text-5xl font-bold ${currentTheme === 'space' ? 'text-white' : 'text-foreground'}`}>
+              <h1 className={`text-4xl md:text-5xl font-bold ${textClasses.headline}`}>
                 My Stats
               </h1>
-              <p className={`text-lg mt-1 ${currentTheme === 'space' ? 'text-white/80' : 'text-muted-foreground'}`}>Your spelling journey</p>
+              <p className={`text-lg mt-1 ${textClasses.subtitle}`}>Your spelling journey</p>
             </div>
 
             {/* Date Filter */}
