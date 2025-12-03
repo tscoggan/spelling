@@ -208,7 +208,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const themeAssets = THEME_ASSETS[currentTheme] || THEME_ASSETS.default;
   
   // Themes with dark backgrounds that need white text
-  const hasDarkBackground = currentTheme === "space" || currentTheme === "robot" || currentTheme === "skiing" || currentTheme === "basketball";
+  const hasDarkBackground = currentTheme === "space" || currentTheme === "robot" || currentTheme === "skiing" || currentTheme === "basketball" || currentTheme === "volleyball";
 
   const value: ThemeContextValue = {
     currentTheme,

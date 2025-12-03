@@ -175,7 +175,8 @@ interface CustomWordList {
 export default function Home() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
-  const { themeAssets, currentTheme } = useTheme();
+  const { themeAssets, currentTheme, hasDarkBackground } = useTheme();
+  const textClasses = getThemedTextClasses(hasDarkBackground);
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [wordListDialogOpen, setWordListDialogOpen] = useState(false);
   const [filterGradeLevel, setFilterGradeLevel] = useState<string>("all");
@@ -555,7 +556,7 @@ export default function Home() {
               data-testid="img-title-banner"
             />
           </motion.div>
-          <p className={`text-lg md:text-xl font-semibold ${currentTheme === 'space' ? 'text-white' : 'text-foreground'}`}>
+          <p className={`text-lg md:text-xl font-semibold ${textClasses.subtitle}`}>
             Master your spelling skills with fun, interactive challenges!
           </p>
         </div>
@@ -627,7 +628,7 @@ export default function Home() {
         </div>
 
         <div className="flex justify-center mb-6">
-          <h2 className={`text-2xl md:text-3xl font-bold text-center ${currentTheme === 'space' ? 'text-white' : 'text-foreground'}`}>
+          <h2 className={`text-2xl md:text-3xl font-bold text-center ${textClasses.sectionTitle}`}>
             Choose Your Game Mode
           </h2>
         </div>
@@ -673,7 +674,7 @@ export default function Home() {
         {/* Head to Head Challenge Card */}
         <div className="mt-8">
           <div className="flex justify-center mb-6">
-            <h2 className={`text-2xl md:text-3xl font-bold text-center ${currentTheme === 'space' ? 'text-white' : 'text-foreground'}`}>
+            <h2 className={`text-2xl md:text-3xl font-bold text-center ${textClasses.sectionTitle}`}>
               Challenge a Friend
             </h2>
           </div>
