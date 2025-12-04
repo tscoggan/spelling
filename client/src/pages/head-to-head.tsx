@@ -67,7 +67,7 @@ function AvatarDisplay({ avatar, size = "md", className = "" }: { avatar?: strin
     lg: "w-10 h-10 text-xl"
   };
   
-  const baseClasses = `rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center flex-shrink-0 ${sizeClasses[size]} ${className}`;
+  const baseClasses = `rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center flex-shrink-0 border-2 border-purple-600 ${sizeClasses[size]} ${className}`;
   
   if (!avatar) {
     return (
