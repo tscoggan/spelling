@@ -172,6 +172,43 @@ interface CustomWordList {
   createdAt?: string | Date;
 }
 
+// Helper component to render avatar - handles both emoji and object storage paths
+function AvatarDisplay({ avatar, size = "md", className = "" }: { avatar?: string | null; size?: "sm" | "md" | "lg"; className?: string }) {
+  const sizeClasses = {
+    sm: "w-6 h-6 text-sm",
+    md: "w-8 h-8 text-lg",
+    lg: "w-10 h-10 text-xl"
+  };
+  
+  const baseClasses = `rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center flex-shrink-0 ${sizeClasses[size]} ${className}`;
+  
+  if (!avatar) {
+    return (
+      <div className={baseClasses}>
+        <span role="img" aria-label="default avatar">🙂</span>
+      </div>
+    );
+  }
+  
+  // Check if avatar is an object storage path (image file)
+  if (avatar.startsWith('/objects/')) {
+    return (
+      <img 
+        src={avatar} 
+        alt="User avatar" 
+        className={`rounded-full object-cover flex-shrink-0 ${sizeClasses[size].split(' ').slice(0, 2).join(' ')} ${className}`}
+      />
+    );
+  }
+  
+  // Otherwise render as emoji
+  return (
+    <div className={baseClasses}>
+      {avatar}
+    </div>
+  );
+}
+
 export default function Home() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
@@ -1092,12 +1129,13 @@ export default function Home() {
                           <button
                             key={result.id}
                             onClick={() => setH2hSelectedOpponent(result)}
-                            className={`w-full p-3 text-left hover-elevate flex items-center justify-between ${
+                            className={`w-full p-3 text-left hover-elevate flex items-center gap-3 ${
                               h2hSelectedOpponent?.id === result.id ? 'bg-primary/10' : ''
                             }`}
                             data-testid={`button-select-opponent-${result.id}`}
                           >
-                            <div>
+                            <AvatarDisplay avatar={result.selectedAvatar} size="md" />
+                            <div className="flex-1">
                               <div className="font-medium">{result.username}</div>
                               {(result.firstName || result.lastName) && (
                                 <div className="text-sm text-muted-foreground">
@@ -1123,9 +1161,12 @@ export default function Home() {
               {h2hSelectedOpponent && (
                 <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-3">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-sm text-muted-foreground">Challenging:</div>
-                      <div className="font-semibold">{h2hSelectedOpponent.username}</div>
+                    <div className="flex items-center gap-3">
+                      <AvatarDisplay avatar={h2hSelectedOpponent.selectedAvatar} size="md" />
+                      <div>
+                        <div className="text-sm text-muted-foreground">Challenging:</div>
+                        <div className="font-semibold">{h2hSelectedOpponent.username}</div>
+                      </div>
                     </div>
                     <Button
                       variant="ghost"
