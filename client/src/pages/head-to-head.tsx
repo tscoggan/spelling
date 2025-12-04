@@ -765,7 +765,7 @@ export default function HeadToHead() {
                       {searchResults.map((result: any) => (
                         <div
                           key={result.id}
-                          className={`p-2 rounded cursor-pointer transition-colors ${
+                          className={`p-2 rounded cursor-pointer transition-colors flex items-center gap-2 ${
                             h2hSelectedOpponent?.id === result.id
                               ? "bg-orange-100 border border-orange-300"
                               : "hover:bg-gray-100"
@@ -773,6 +773,9 @@ export default function HeadToHead() {
                           onClick={() => setH2hSelectedOpponent(result)}
                           data-testid={`h2h-opponent-${result.id}`}
                         >
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-lg flex-shrink-0">
+                            {result.avatar || "🙂"}
+                          </div>
                           <div className="font-medium text-sm">
                             {result.firstName && result.lastName
                               ? `${result.firstName} ${result.lastName} (${result.username})`
@@ -792,11 +795,16 @@ export default function HeadToHead() {
               {/* Selected Opponent Display */}
               {h2hSelectedOpponent && (
                 <div className="mt-2 p-2 bg-orange-50 rounded-md flex items-center justify-between">
-                  <span className="text-sm font-medium">
-                    Challenging: {h2hSelectedOpponent.firstName && h2hSelectedOpponent.lastName
-                      ? `${h2hSelectedOpponent.firstName} ${h2hSelectedOpponent.lastName} (${h2hSelectedOpponent.username})`
-                      : h2hSelectedOpponent.username}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-lg flex-shrink-0">
+                      {h2hSelectedOpponent.avatar || "🙂"}
+                    </div>
+                    <span className="text-sm font-medium">
+                      Challenging: {h2hSelectedOpponent.firstName && h2hSelectedOpponent.lastName
+                        ? `${h2hSelectedOpponent.firstName} ${h2hSelectedOpponent.lastName} (${h2hSelectedOpponent.username})`
+                        : h2hSelectedOpponent.username}
+                    </span>
+                  </div>
                   <Button
                     variant="ghost"
                     size="icon"
