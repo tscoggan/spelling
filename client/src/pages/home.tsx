@@ -31,7 +31,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import titleBanner from "@assets/Spelling_Playground_title_1764864487617.png";
+import titleBanner from "@assets/Spelling_Playground_title_1764882992138.png";
 import oneStar from "@assets/1 star_1763916010555.png";
 import missingStar from "@assets/Missing star (grey)_1763916010554.png";
 import wordListsButton from "@assets/Word Lists button_1764442517980.png";
