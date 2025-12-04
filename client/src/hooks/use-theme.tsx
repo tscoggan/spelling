@@ -4,8 +4,8 @@ import { useAuth } from "./use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ThemeId, ThemeAssets, AVAILABLE_THEMES, ShopItemId } from "@shared/schema";
 
-import defaultBackgroundLandscape from "@assets/Colorful_background_landscape_1763563266457.png";
-import defaultBackgroundPortrait from "@assets/Colorful_background_portrait_1763563266458.png";
+import defaultBackgroundLandscape from "@assets/Playground_background_-_landscape_1764862674337.png";
+import defaultBackgroundPortrait from "@assets/Playground_background_-_portrait_1764862674336.png";
 import defaultMascotTrophy from "@assets/Bee with trophy_1763852047681.png";
 import defaultMascotGoodTry from "@assets/Bee with good try_1764525113983.png";
 
@@ -55,7 +55,7 @@ const THEME_ASSETS: Record<ThemeId, ThemeAssets> = {
     backgroundPortrait: defaultBackgroundPortrait,
     mascotTrophy: defaultMascotTrophy,
     mascotGoodTry: defaultMascotGoodTry,
-    name: "Outdoor Theme",
+    name: "Playground",
   },
   pirate: {
     backgroundLandscape: pirateBackgroundLandscape,

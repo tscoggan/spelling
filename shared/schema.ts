@@ -300,7 +300,7 @@ export interface ThemeAssets {
 
 export const AVAILABLE_THEMES: Record<ThemeId, { name: string; requiresPurchase: boolean; shopItemId?: ShopItemId }> = {
   default: {
-    name: "Outdoor Adventure",
+    name: "Playground",
     requiresPurchase: false,
   },
   pirate: {

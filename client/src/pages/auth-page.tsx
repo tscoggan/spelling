@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useTheme } from "@/hooks/use-theme";
-import titleBanner from "@assets/image_1763494070680.png";
+import titleBanner from "@assets/Spelling_Playground_title_1764862674335.png";
 
 const avatarOptions = [
   { emoji: "🐶", label: "Dog" },
