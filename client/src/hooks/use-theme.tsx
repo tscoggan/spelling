@@ -62,56 +62,56 @@ const THEME_ASSETS: Record<ThemeId, ThemeAssets> = {
     backgroundPortrait: pirateBackgroundPortrait,
     mascotTrophy: pirateMascotTrophy,
     mascotGoodTry: pirateMascotGoodTry,
-    name: "Pirate Theme",
+    name: "Pirate",
   },
   space: {
     backgroundLandscape: spaceBackgroundLandscape,
     backgroundPortrait: spaceBackgroundPortrait,
     mascotTrophy: spaceMascotTrophy,
     mascotGoodTry: spaceMascotGoodTry,
-    name: "Space Theme",
+    name: "Space",
   },
   soccer: {
     backgroundLandscape: soccerBackgroundLandscape,
     backgroundPortrait: soccerBackgroundPortrait,
     mascotTrophy: soccerMascotTrophy,
     mascotGoodTry: soccerMascotGoodTry,
-    name: "Soccer Theme",
+    name: "Soccer",
   },
   skiing: {
     backgroundLandscape: skiingBackgroundLandscape,
     backgroundPortrait: skiingBackgroundPortrait,
     mascotTrophy: skiingMascotTrophy,
     mascotGoodTry: skiingMascotGoodTry,
-    name: "Skiing Theme",
+    name: "Skiing",
   },
   basketball: {
     backgroundLandscape: basketballBackgroundLandscape,
     backgroundPortrait: basketballBackgroundPortrait,
     mascotTrophy: basketballMascotTrophy,
     mascotGoodTry: basketballMascotGoodTry,
-    name: "Basketball Theme",
+    name: "Basketball",
   },
   robot: {
     backgroundLandscape: robotBackgroundLandscape,
     backgroundPortrait: robotBackgroundPortrait,
     mascotTrophy: robotMascotTrophy,
     mascotGoodTry: robotMascotGoodTry,
-    name: "Robot Theme",
+    name: "Robot",
   },
   unicorn: {
     backgroundLandscape: unicornBackgroundLandscape,
     backgroundPortrait: unicornBackgroundPortrait,
     mascotTrophy: unicornMascotTrophy,
     mascotGoodTry: unicornMascotGoodTry,
-    name: "Unicorn Theme",
+    name: "Unicorn",
   },
   volleyball: {
     backgroundLandscape: volleyballBackgroundLandscape,
     backgroundPortrait: volleyballBackgroundPortrait,
     mascotTrophy: volleyballMascotTrophy,
     mascotGoodTry: volleyballMascotGoodTry,
-    name: "Volleyball Theme",
+    name: "Volleyball",
   },
 };
 
@@ -208,7 +208,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const themeAssets = THEME_ASSETS[currentTheme] || THEME_ASSETS.default;
   
   // Themes with dark backgrounds that need white text
-  const hasDarkBackground = currentTheme === "space" || currentTheme === "robot" || currentTheme === "skiing" || currentTheme === "basketball" || currentTheme === "volleyball";
+  const hasDarkBackground = currentTheme === "default" || currentTheme === "space" || currentTheme === "robot" || currentTheme === "skiing" || currentTheme === "basketball" || currentTheme === "volleyball";
 
   const value: ThemeContextValue = {
     currentTheme,

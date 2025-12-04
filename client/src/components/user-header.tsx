@@ -42,6 +42,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { APP_VERSION } from "@shared/version";
 
 export function UserHeader() {
   const { user, logoutMutation } = useAuth();
@@ -1324,6 +1325,12 @@ export function UserHeader() {
                     {sendingMessage ? "Sending..." : "Send Message"}
                   </Button>
                 </form>
+              </div>
+
+              <div className="border-t pt-4 mt-6 text-center">
+                <p className="text-xs text-muted-foreground">
+                  Version {APP_VERSION}
+                </p>
               </div>
             </div>
           </ScrollArea>
