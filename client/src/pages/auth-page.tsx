@@ -184,7 +184,7 @@ export default function AuthPage() {
           <div className="mb-4 flex justify-center">
             <img 
               src={titleBanner} 
-              alt="Spelling Champions" 
+              alt="Spelling Playground" 
               className="w-full max-w-xs h-auto rounded-md"
               data-testid="img-title-banner"
             />
