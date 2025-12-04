@@ -59,6 +59,43 @@ function formatPlayerName(firstName?: string | null, lastName?: string | null, u
   return username || 'Unknown';
 }
 
+// Helper component to render avatar - handles both emoji and object storage paths
+function AvatarDisplay({ avatar, size = "md", className = "" }: { avatar?: string | null; size?: "sm" | "md" | "lg"; className?: string }) {
+  const sizeClasses = {
+    sm: "w-6 h-6 text-sm",
+    md: "w-8 h-8 text-lg",
+    lg: "w-10 h-10 text-xl"
+  };
+  
+  const baseClasses = `rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center flex-shrink-0 ${sizeClasses[size]} ${className}`;
+  
+  if (!avatar) {
+    return (
+      <div className={baseClasses}>
+        🙂
+      </div>
+    );
+  }
+  
+  // Check if avatar is an object storage path (image file)
+  if (avatar.startsWith('/objects/')) {
+    return (
+      <img 
+        src={avatar} 
+        alt="User avatar" 
+        className={`rounded-full object-cover flex-shrink-0 ${sizeClasses[size].split(' ').slice(0, 2).join(' ')} ${className}`}
+      />
+    );
+  }
+  
+  // Otherwise render as emoji
+  return (
+    <div className={baseClasses}>
+      {avatar}
+    </div>
+  );
+}
+
 interface ChallengeRecord {
   wins: number;
   losses: number;
@@ -410,9 +447,7 @@ export default function HeadToHead() {
                         <div className="flex items-center justify-between flex-wrap gap-2">
                           <div className="min-w-0 flex-1">
                             <CardTitle className="text-lg flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-lg flex-shrink-0">
-                                {challenge.initiatorAvatar || "🙂"}
-                              </div>
+                              <AvatarDisplay avatar={challenge.initiatorAvatar} size="md" />
                               {formatPlayerName(challenge.initiatorFirstName, challenge.initiatorLastName, challenge.initiatorUsername)} challenged you!
                             </CardTitle>
                             <CardDescription>
@@ -464,9 +499,7 @@ export default function HeadToHead() {
                           <div className="flex items-center justify-between flex-wrap gap-2">
                             <div className="min-w-0 flex-1">
                               <CardTitle className="text-lg flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-lg flex-shrink-0">
-                                  {opponentAvatar || "🙂"}
-                                </div>
+                                <AvatarDisplay avatar={opponentAvatar} size="md" />
                                 vs {opponentDisplayName}
                               </CardTitle>
                               <CardDescription>
@@ -499,9 +532,7 @@ export default function HeadToHead() {
                         <div className="flex items-center justify-between flex-wrap gap-2">
                           <div className="min-w-0 flex-1">
                             <CardTitle className="text-lg flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-lg flex-shrink-0">
-                                {challenge.opponentAvatar || "🙂"}
-                              </div>
+                              <AvatarDisplay avatar={challenge.opponentAvatar} size="md" />
                               You challenged {formatPlayerName(challenge.opponentFirstName, challenge.opponentLastName, challenge.opponentUsername)}
                             </CardTitle>
                             <CardDescription>
@@ -548,9 +579,7 @@ export default function HeadToHead() {
                         <CardHeader className="pb-2">
                           <div className="flex items-center justify-between">
                             <CardTitle className="text-lg flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-lg flex-shrink-0">
-                                {opponentAvatar || "🙂"}
-                              </div>
+                              <AvatarDisplay avatar={opponentAvatar} size="md" />
                               vs {opponentDisplayName}
                               <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                                 <Clock className="w-3 h-3 mr-1" />
@@ -615,9 +644,7 @@ export default function HeadToHead() {
                       <CardHeader className="pb-2">
                         <div className="flex items-center justify-between flex-wrap gap-2">
                           <CardTitle className="text-lg flex items-center gap-2 flex-wrap">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-lg flex-shrink-0">
-                              {opponentAvatar || "🙂"}
-                            </div>
+                            <AvatarDisplay avatar={opponentAvatar} size="md" />
                             vs {opponentDisplayName}
                             {getResultBadge(challenge)}
                             {challenge.winnerUserId === user?.id && challenge.starAwarded && (
@@ -652,9 +679,7 @@ export default function HeadToHead() {
                           </div>
                           <div className="text-center p-3 bg-muted/50 rounded-lg">
                             <div className="flex items-center justify-center gap-2 mb-1">
-                              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-sm flex-shrink-0">
-                                {opponentAvatar || "🙂"}
-                              </div>
+                              <AvatarDisplay avatar={opponentAvatar} size="sm" />
                               <div className="text-sm text-muted-foreground">{opponentDisplayName}</div>
                             </div>
                             <div className="text-2xl font-bold">{opponentScore ?? '-'}</div>
@@ -798,9 +823,7 @@ export default function HeadToHead() {
                           onClick={() => setH2hSelectedOpponent(result)}
                           data-testid={`h2h-opponent-${result.id}`}
                         >
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-lg flex-shrink-0">
-                            {result.selectedAvatar || "🙂"}
-                          </div>
+                          <AvatarDisplay avatar={result.selectedAvatar} size="md" />
                           <div className="font-medium text-sm">
                             {result.firstName && result.lastName
                               ? `${result.firstName} ${result.lastName} (${result.username})`
@@ -821,9 +844,7 @@ export default function HeadToHead() {
               {h2hSelectedOpponent && (
                 <div className="mt-2 p-2 bg-orange-50 rounded-md flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-lg flex-shrink-0">
-                      {h2hSelectedOpponent.selectedAvatar || "🙂"}
-                    </div>
+                    <AvatarDisplay avatar={h2hSelectedOpponent.selectedAvatar} size="md" />
                     <span className="text-sm font-medium">
                       Challenging: {h2hSelectedOpponent.firstName && h2hSelectedOpponent.lastName
                         ? `${h2hSelectedOpponent.firstName} ${h2hSelectedOpponent.lastName} (${h2hSelectedOpponent.username})`
