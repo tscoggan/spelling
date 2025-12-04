@@ -44,9 +44,11 @@ interface Challenge {
   initiatorUsername?: string;
   initiatorFirstName?: string | null;
   initiatorLastName?: string | null;
+  initiatorAvatar?: string | null;
   opponentUsername?: string;
   opponentFirstName?: string | null;
   opponentLastName?: string | null;
+  opponentAvatar?: string | null;
   wordListName?: string;
 }
 
@@ -407,7 +409,10 @@ export default function HeadToHead() {
                       <CardHeader className="pb-2">
                         <div className="flex items-center justify-between flex-wrap gap-2">
                           <div className="min-w-0 flex-1">
-                            <CardTitle className="text-lg">
+                            <CardTitle className="text-lg flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-lg flex-shrink-0">
+                                {challenge.initiatorAvatar || "🙂"}
+                              </div>
                               {formatPlayerName(challenge.initiatorFirstName, challenge.initiatorLastName, challenge.initiatorUsername)} challenged you!
                             </CardTitle>
                             <CardDescription>
@@ -451,13 +456,17 @@ export default function HeadToHead() {
                     const opponentDisplayName = isInitiator 
                       ? formatPlayerName(challenge.opponentFirstName, challenge.opponentLastName, challenge.opponentUsername)
                       : formatPlayerName(challenge.initiatorFirstName, challenge.initiatorLastName, challenge.initiatorUsername);
+                    const opponentAvatar = isInitiator ? challenge.opponentAvatar : challenge.initiatorAvatar;
 
                     return (
                       <Card key={challenge.id} className="border-purple-300 dark:border-purple-800">
                         <CardHeader className="pb-2">
                           <div className="flex items-center justify-between flex-wrap gap-2">
                             <div className="min-w-0 flex-1">
-                              <CardTitle className="text-lg">
+                              <CardTitle className="text-lg flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-lg flex-shrink-0">
+                                  {opponentAvatar || "🙂"}
+                                </div>
                                 vs {opponentDisplayName}
                               </CardTitle>
                               <CardDescription>
@@ -489,7 +498,10 @@ export default function HeadToHead() {
                       <CardHeader className="pb-2">
                         <div className="flex items-center justify-between flex-wrap gap-2">
                           <div className="min-w-0 flex-1">
-                            <CardTitle className="text-lg">
+                            <CardTitle className="text-lg flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-lg flex-shrink-0">
+                                {challenge.opponentAvatar || "🙂"}
+                              </div>
                               You challenged {formatPlayerName(challenge.opponentFirstName, challenge.opponentLastName, challenge.opponentUsername)}
                             </CardTitle>
                             <CardDescription>
@@ -529,12 +541,16 @@ export default function HeadToHead() {
                     const opponentDisplayName = isInitiator 
                       ? formatPlayerName(challenge.opponentFirstName, challenge.opponentLastName, challenge.opponentUsername)
                       : formatPlayerName(challenge.initiatorFirstName, challenge.initiatorLastName, challenge.initiatorUsername);
+                    const opponentAvatar = isInitiator ? challenge.opponentAvatar : challenge.initiatorAvatar;
 
                     return (
                       <Card key={challenge.id} className="border-blue-300 dark:border-blue-800">
                         <CardHeader className="pb-2">
                           <div className="flex items-center justify-between">
                             <CardTitle className="text-lg flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-lg flex-shrink-0">
+                                {opponentAvatar || "🙂"}
+                              </div>
                               vs {opponentDisplayName}
                               <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                                 <Clock className="w-3 h-3 mr-1" />
@@ -592,12 +608,16 @@ export default function HeadToHead() {
                   const opponentDisplayName = isInitiator 
                     ? formatPlayerName(challenge.opponentFirstName, challenge.opponentLastName, challenge.opponentUsername)
                     : formatPlayerName(challenge.initiatorFirstName, challenge.initiatorLastName, challenge.initiatorUsername);
+                  const opponentAvatar = isInitiator ? challenge.opponentAvatar : challenge.initiatorAvatar;
 
                   return (
                     <Card key={challenge.id}>
                       <CardHeader className="pb-2">
                         <div className="flex items-center justify-between flex-wrap gap-2">
                           <CardTitle className="text-lg flex items-center gap-2 flex-wrap">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-lg flex-shrink-0">
+                              {opponentAvatar || "🙂"}
+                            </div>
                             vs {opponentDisplayName}
                             {getResultBadge(challenge)}
                             {challenge.winnerUserId === user?.id && challenge.starAwarded && (
@@ -631,7 +651,12 @@ export default function HeadToHead() {
                             )}
                           </div>
                           <div className="text-center p-3 bg-muted/50 rounded-lg">
-                            <div className="text-sm text-muted-foreground mb-1">{opponentDisplayName}</div>
+                            <div className="flex items-center justify-center gap-2 mb-1">
+                              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-sm flex-shrink-0">
+                                {opponentAvatar || "🙂"}
+                              </div>
+                              <div className="text-sm text-muted-foreground">{opponentDisplayName}</div>
+                            </div>
                             <div className="text-2xl font-bold">{opponentScore ?? '-'}</div>
                             {opponentTime !== undefined && opponentTime !== null && (
                               <div className="text-xs text-muted-foreground flex items-center justify-center gap-1 mt-1">
@@ -774,7 +799,7 @@ export default function HeadToHead() {
                           data-testid={`h2h-opponent-${result.id}`}
                         >
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-lg flex-shrink-0">
-                            {result.avatar || "🙂"}
+                            {result.selectedAvatar || "🙂"}
                           </div>
                           <div className="font-medium text-sm">
                             {result.firstName && result.lastName
@@ -797,7 +822,7 @@ export default function HeadToHead() {
                 <div className="mt-2 p-2 bg-orange-50 rounded-md flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-lg flex-shrink-0">
-                      {h2hSelectedOpponent.avatar || "🙂"}
+                      {h2hSelectedOpponent.selectedAvatar || "🙂"}
                     </div>
                     <span className="text-sm font-medium">
                       Challenging: {h2hSelectedOpponent.firstName && h2hSelectedOpponent.lastName
