@@ -172,6 +172,18 @@ interface CustomWordList {
   createdAt?: string | Date;
 }
 
+// Helper function to format player name with privacy (first name + last initial only)
+function formatPlayerNamePrivate(firstName?: string | null, lastName?: string | null): string {
+  if (firstName && lastName) {
+    const lastInitial = lastName.charAt(0).toUpperCase();
+    return `${firstName} ${lastInitial}.`;
+  }
+  if (firstName) {
+    return firstName;
+  }
+  return '';
+}
+
 // Helper component to render avatar - handles both emoji and object storage paths
 function AvatarDisplay({ avatar, size = "md", className = "" }: { avatar?: string | null; size?: "sm" | "md" | "lg"; className?: string }) {
   const sizeClasses = {
@@ -1139,7 +1151,7 @@ export default function Home() {
                               <div className="font-medium">{result.username}</div>
                               {(result.firstName || result.lastName) && (
                                 <div className="text-sm text-muted-foreground">
-                                  {result.firstName} {result.lastName}
+                                  {formatPlayerNamePrivate(result.firstName, result.lastName)}
                                 </div>
                               )}
                             </div>

@@ -54,7 +54,12 @@ interface Challenge {
 
 function formatPlayerName(firstName?: string | null, lastName?: string | null, username?: string): string {
   if (firstName && lastName) {
-    return `${firstName} ${lastName} (${username || 'Unknown'})`;
+    // Show first name + last initial only for privacy
+    const lastInitial = lastName.charAt(0).toUpperCase();
+    return `${firstName} ${lastInitial}. (${username || 'Unknown'})`;
+  }
+  if (firstName) {
+    return `${firstName} (${username || 'Unknown'})`;
   }
   return username || 'Unknown';
 }
@@ -634,6 +639,8 @@ export default function HeadToHead() {
                   const myIncorrect = isInitiator ? challenge.initiatorIncorrect : challenge.opponentIncorrect;
                   const opponentScore = isInitiator ? challenge.opponentScore : challenge.initiatorScore;
                   const opponentTime = isInitiator ? challenge.opponentTime : challenge.initiatorTime;
+                  const opponentCorrect = isInitiator ? challenge.opponentCorrect : challenge.initiatorCorrect;
+                  const opponentIncorrect = isInitiator ? challenge.opponentIncorrect : challenge.initiatorIncorrect;
                   const opponentDisplayName = isInitiator 
                     ? formatPlayerName(challenge.opponentFirstName, challenge.opponentLastName, challenge.opponentUsername)
                     : formatPlayerName(challenge.initiatorFirstName, challenge.initiatorLastName, challenge.initiatorUsername);
@@ -683,6 +690,9 @@ export default function HeadToHead() {
                               <div className="text-sm text-muted-foreground">{opponentDisplayName}</div>
                             </div>
                             <div className="text-2xl font-bold">{opponentScore ?? '-'}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {opponentCorrect ?? 0} correct, {opponentIncorrect ?? 0} incorrect
+                            </div>
                             {opponentTime !== undefined && opponentTime !== null && (
                               <div className="text-xs text-muted-foreground flex items-center justify-center gap-1 mt-1">
                                 <Clock className="w-3 h-3" />
@@ -825,9 +835,7 @@ export default function HeadToHead() {
                         >
                           <AvatarDisplay avatar={result.selectedAvatar} size="md" />
                           <div className="font-medium text-sm">
-                            {result.firstName && result.lastName
-                              ? `${result.firstName} ${result.lastName} (${result.username})`
-                              : result.username}
+                            {formatPlayerName(result.firstName, result.lastName, result.username)}
                           </div>
                         </div>
                       ))}
@@ -846,9 +854,7 @@ export default function HeadToHead() {
                   <div className="flex items-center gap-2">
                     <AvatarDisplay avatar={h2hSelectedOpponent.selectedAvatar} size="md" />
                     <span className="text-sm font-medium">
-                      Challenging: {h2hSelectedOpponent.firstName && h2hSelectedOpponent.lastName
-                        ? `${h2hSelectedOpponent.firstName} ${h2hSelectedOpponent.lastName} (${h2hSelectedOpponent.username})`
-                        : h2hSelectedOpponent.username}
+                      Challenging: {formatPlayerName(h2hSelectedOpponent.firstName, h2hSelectedOpponent.lastName, h2hSelectedOpponent.username)}
                     </span>
                   </div>
                   <Button
