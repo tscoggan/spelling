@@ -54,6 +54,7 @@ import { eq, desc, and, sql, inArray, not, or } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
+import { APP_VERSION } from "@shared/version";
 
 export interface IStorage {
   getWord(id: number): Promise<Word | undefined>;
@@ -1736,7 +1737,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async bumpAppVersion(): Promise<string> {
-    const currentVersion = await this.getAppSetting("app_version") || "1.0.0";
+    // Use APP_VERSION as fallback when no DB value exists
+    const currentVersion = await this.getAppSetting("app_version") || APP_VERSION;
     const parts = currentVersion.split(".");
     const major = parseInt(parts[0] || "1");
     const minor = parseInt(parts[1] || "0") + 1;
