@@ -9,6 +9,7 @@ import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { sendPasswordResetEmail, sendEmailUpdateNotification, sendContactEmail } from "./services/emailService";
 import multer from "multer";
 import crypto from "crypto";
+import { APP_VERSION } from "@shared/version";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -228,6 +229,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid request data", details: error.errors });
       }
       res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+
+  // App version endpoints
+  app.get("/api/app-version", async (req, res) => {
+    try {
+      // Use APP_VERSION as fallback when no DB value exists
+      const version = await storage.getAppSetting("app_version") || APP_VERSION;
+      res.json({ version });
+    } catch (error) {
+      console.error("Error getting app version:", error);
+      res.status(500).json({ error: "Failed to get app version" });
+    }
+  });
+
+  app.post("/api/app-version/bump", async (req, res) => {
+    try {
+      if (!req.isAuthenticated() || !req.user) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      
+      const user = req.user as { role?: string };
+      if (user.role !== "teacher") {
+        return res.status(403).json({ error: "Only teachers can bump the version" });
+      }
+      
+      const newVersion = await storage.bumpAppVersion();
+      res.json({ version: newVersion });
+    } catch (error) {
+      console.error("Error bumping app version:", error);
+      res.status(500).json({ error: "Failed to bump app version" });
     }
   });
 

@@ -157,7 +157,8 @@ export default function Game() {
   const listId = params.get("listId");
   const virtualWords = params.get("virtualWords");
   const gameMode = (params.get("mode") || "practice") as GameMode;
-  const quizCount = params.get("quizCount") || "all";
+  // Support both new gameCount and legacy quizCount parameters
+  const gameCount = params.get("gameCount") || params.get("quizCount") || "all";
   const challengeId = params.get("challengeId");
   const isInitiator = params.get("isInitiator") === "true";
   
@@ -192,12 +193,12 @@ export default function Game() {
   // Only render game content when listId or virtualWords is confirmed
   // Pass all parameters as props to avoid GameContent parsing them
   // Key prop forces complete remount when gameResetKey changes (clean restart)
-  return <GameContent key={gameResetKey} listId={listId || undefined} virtualWords={virtualWords || undefined} gameMode={gameMode} quizCount={quizCount} onRestart={handleRestart} challengeId={challengeId || undefined} isInitiator={isInitiator} />;
+  return <GameContent key={gameResetKey} listId={listId || undefined} virtualWords={virtualWords || undefined} gameMode={gameMode} gameCount={gameCount} onRestart={handleRestart} challengeId={challengeId || undefined} isInitiator={isInitiator} />;
 }
 
 // Actual game component with all the hooks - only rendered when listId or virtualWords exists
 // Receives all parameters as props to ensure hooks always have valid data
-function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, challengeId, isInitiator }: { listId?: string; virtualWords?: string; gameMode: GameMode; quizCount: string; onRestart: () => void; challengeId?: string; isInitiator?: boolean }) {
+function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, challengeId, isInitiator }: { listId?: string; virtualWords?: string; gameMode: GameMode; gameCount: string; onRestart: () => void; challengeId?: string; isInitiator?: boolean }) {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { themeAssets, currentTheme, setTheme, unlockedThemes, allThemes } = useTheme();
@@ -670,8 +671,11 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
     return shuffled;
   };
 
+  // Modes that support the Game Length setting (10 words or all)
+  const supportsGameLength = ["practice", "quiz", "scramble", "mistake"].includes(gameMode);
+
   const { data: words, isLoading } = useQuery<Word[]>({
-    queryKey: ['/api/word-lists', listId, virtualWords, gameMode, quizCount, sessionTimestamp],
+    queryKey: ['/api/word-lists', listId, virtualWords, gameMode, gameCount, sessionTimestamp],
     queryFn: async () => {
       // Handle virtual word lists (from Most Misspelled Words)
       if (virtualWords) {
@@ -684,8 +688,8 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
         // Randomize word order
         wordsArray = shuffleArray(wordsArray);
         
-        // For quiz mode, limit to 10 words if quizCount is "10"
-        if (gameMode === "quiz" && quizCount === "10") {
+        // For modes that support game length, limit to 10 words if gameCount is "10"
+        if (supportsGameLength && gameCount === "10") {
           wordsArray = wordsArray.slice(0, 10);
         }
         
@@ -710,8 +714,8 @@ function GameContent({ listId, virtualWords, gameMode, quizCount, onRestart, cha
       // Randomize word order
       wordsArray = shuffleArray(wordsArray);
       
-      // For quiz mode, limit to 10 words if quizCount is "10"
-      if (gameMode === "quiz" && quizCount === "10") {
+      // For modes that support game length, limit to 10 words if gameCount is "10"
+      if (supportsGameLength && gameCount === "10") {
         wordsArray = wordsArray.slice(0, 10);
       }
       

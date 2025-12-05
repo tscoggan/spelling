@@ -112,6 +112,37 @@ export function UserHeader() {
     enabled: !!user && todoModalOpen,
   });
 
+  const { data: appVersion } = useQuery<{ version: string }>({
+    queryKey: ["/api/app-version"],
+    queryFn: async () => {
+      const res = await fetch("/api/app-version");
+      if (!res.ok) return { version: APP_VERSION };
+      return await res.json();
+    },
+    staleTime: 60000,
+  });
+
+  const bumpVersionMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/app-version/bump", {});
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/app-version"] });
+      toast({
+        title: "Version Updated",
+        description: `Version bumped to ${data.version}`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to bump version",
+        variant: "destructive",
+      });
+    },
+  });
+
   const completeTodoMutation = useMutation({
     mutationFn: async (todoId: number) => {
       await apiRequest("POST", `/api/user-to-dos/${todoId}/complete`, {});
@@ -1327,10 +1358,21 @@ export function UserHeader() {
                 </form>
               </div>
 
-              <div className="border-t pt-4 mt-6 text-center">
+              <div className="border-t pt-4 mt-6 text-center space-y-2">
                 <p className="text-xs text-muted-foreground">
-                  Version {APP_VERSION}
+                  Version {appVersion?.version || APP_VERSION}
                 </p>
+                {user?.role === "teacher" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => bumpVersionMutation.mutate()}
+                    disabled={bumpVersionMutation.isPending}
+                    data-testid="button-bump-version"
+                  >
+                    {bumpVersionMutation.isPending ? "Updating..." : "Bump Version (Before Publish)"}
+                  </Button>
+                )}
               </div>
             </div>
           </ScrollArea>

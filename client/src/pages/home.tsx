@@ -37,8 +37,8 @@ import missingStar from "@assets/Missing star (grey)_1763916010554.png";
 import wordListsButton from "@assets/Word Lists button_1764442517980.png";
 import userGroupsButton from "@assets/User Groups button 2_1764445093609.png";
 import myStatsButton from "@assets/My Stats button 2_1764445093611.png";
-import achievementsButton from "@assets/Achievements button 3_1764446032415.png";
-import starShopButton from "@assets/Star Shops button 2_1764445093610.png";
+import achievementsButton from "@assets/Achievements_button_4_1764949081693.png";
+import starShopButton from "@assets/Star_Shop_button_3_1764949081694.png";
 import h2hChallengeResultsButton from "@assets/H2H_Challenge_Results_button_1764699075884.png";
 
 const useRefreshNotifications = (userId: number | undefined) => {
@@ -231,7 +231,7 @@ export default function Home() {
   const [filterGradeLevel, setFilterGradeLevel] = useState<string>("all");
   const [filterCreatedBy, setFilterCreatedBy] = useState<string>("all");
   const [hideMastered, setHideMastered] = useState<boolean>(false);
-  const [quizWordCount, setQuizWordCount] = useState<"10" | "all">("all");
+  const [gameWordCount, setGameWordCount] = useState<"10" | "all">("all");
   const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
   const iOSKeyboardInput = useIOSKeyboardTrigger();
   const { toast } = useToast();
@@ -416,7 +416,7 @@ export default function Home() {
     setFilterGradeLevel("all");
     setFilterCreatedBy("all");
     setHideMastered(false);
-    setQuizWordCount("all");
+    setGameWordCount("all");
     setWordListDialogOpen(true);
   };
 
@@ -434,8 +434,10 @@ export default function Home() {
     // Close dialog and navigate
     // Note: Dialog's onCloseAutoFocus prevents focus restoration, keeping focus on hidden input
     setWordListDialogOpen(false);
-    const quizParam = selectedMode === "quiz" ? `&quizCount=${quizWordCount}` : "";
-    setLocation(`/game?listId=${list.id}&mode=${selectedMode}${quizParam}`);
+    // Pass game word count for modes that support it (practice, quiz, scramble, mistake)
+    const supportsGameLength = ["practice", "quiz", "scramble", "mistake"].includes(selectedMode);
+    const gameCountParam = supportsGameLength ? `&gameCount=${gameWordCount}` : "";
+    setLocation(`/game?listId=${list.id}&mode=${selectedMode}${gameCountParam}`);
   };
 
   const allLists = useMemo(() => {
@@ -808,7 +810,7 @@ export default function Home() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className={`mb-4 grid grid-cols-1 gap-4 ${selectedMode === "quiz" ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+          <div className={`mb-4 grid grid-cols-1 gap-4 ${selectedMode && ["practice", "quiz", "scramble", "mistake"].includes(selectedMode) ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
             <div>
               <label className="text-sm font-medium mb-1.5 block">Grade Level</label>
               <Select 
@@ -847,24 +849,24 @@ export default function Home() {
                 </SelectContent>
               </Select>
             </div>
-            {selectedMode === "quiz" && (
+            {selectedMode && ["practice", "quiz", "scramble", "mistake"].includes(selectedMode) && (
               <div>
-                <label className="text-sm font-medium mb-1.5 block">Quiz Length</label>
+                <label className="text-sm font-medium mb-1.5 block">Game Length</label>
                 <div className="flex gap-2">
                   <Button
-                    variant={quizWordCount === "10" ? "default" : "outline"}
+                    variant={gameWordCount === "10" ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setQuizWordCount("10")}
-                    data-testid="button-quiz-10"
+                    onClick={() => setGameWordCount("10")}
+                    data-testid="button-game-length-10"
                     className="flex-1"
                   >
                     10 Words
                   </Button>
                   <Button
-                    variant={quizWordCount === "all" ? "default" : "outline"}
+                    variant={gameWordCount === "all" ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setQuizWordCount("all")}
-                    data-testid="button-quiz-all"
+                    onClick={() => setGameWordCount("all")}
+                    data-testid="button-game-length-all"
                     className="flex-1"
                   >
                     All Words

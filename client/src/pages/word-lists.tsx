@@ -511,9 +511,10 @@ export default function WordListsPage() {
   const startGameWithMode = (mode: string) => {
     if (!selectedListForPlay) return;
     
-    // For quiz mode, default to "all" words
-    if (mode === "quiz") {
-      setLocation(`/game?listId=${selectedListForPlay.id}&mode=${mode}&quizCount=all`);
+    // For modes that support game length (practice, quiz, scramble, mistake), default to "all" words
+    const supportsGameLength = ["practice", "quiz", "scramble", "mistake"].includes(mode);
+    if (supportsGameLength) {
+      setLocation(`/game?listId=${selectedListForPlay.id}&mode=${mode}&gameCount=all`);
     } else {
       setLocation(`/game?listId=${selectedListForPlay.id}&mode=${mode}`);
     }

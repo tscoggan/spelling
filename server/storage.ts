@@ -45,6 +45,7 @@ import {
   userStreaks,
   userItems,
   headToHeadChallenges,
+  appSettings,
   SHOP_ITEMS,
   type ShopItemId,
 } from "@shared/schema";
@@ -171,6 +172,10 @@ export interface IStorage {
   updateChallenge(id: number, updates: Partial<HeadToHeadChallenge>): Promise<HeadToHeadChallenge | undefined>;
   getUserChallengeRecord(userId: number, startDate?: Date, endDate?: Date): Promise<{ wins: number; losses: number; ties: number }>;
   isUserParticipantInActiveChallenge(userId: number, wordListId: number): Promise<boolean>;
+  
+  getAppSetting(key: string): Promise<string | undefined>;
+  setAppSetting(key: string, value: string): Promise<void>;
+  bumpAppVersion(): Promise<string>;
   
   sessionStore: session.Store;
 }
@@ -1708,6 +1713,37 @@ export class DatabaseStorage implements IStorage {
         )
       );
     return challenges.length > 0;
+  }
+
+  async getAppSetting(key: string): Promise<string | undefined> {
+    const [setting] = await db
+      .select()
+      .from(appSettings)
+      .where(eq(appSettings.key, key));
+    return setting?.value;
+  }
+
+  async setAppSetting(key: string, value: string): Promise<void> {
+    const existing = await this.getAppSetting(key);
+    if (existing !== undefined) {
+      await db
+        .update(appSettings)
+        .set({ value, updatedAt: new Date() })
+        .where(eq(appSettings.key, key));
+    } else {
+      await db.insert(appSettings).values({ key, value });
+    }
+  }
+
+  async bumpAppVersion(): Promise<string> {
+    const currentVersion = await this.getAppSetting("app_version") || "1.0.0";
+    const parts = currentVersion.split(".");
+    const major = parseInt(parts[0] || "1");
+    const minor = parseInt(parts[1] || "0") + 1;
+    const patch = 0;
+    const newVersion = `${major}.${minor}.${patch}`;
+    await this.setAppSetting("app_version", newVersion);
+    return newVersion;
   }
 }
 

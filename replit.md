@@ -4,10 +4,11 @@
 Spelling Playground is an interactive educational application designed to enhance children's spelling abilities through engaging games. It incorporates text-to-speech, immediate feedback, and a scoring system. The application utilizes custom, user-generated word lists, fostering collaborative learning through leaderboards and list sharing. The project's vision is to deliver a comprehensive and enjoyable platform for spelling development, with recent expansions including user groups, an audio-only crossword puzzle mode, realistic misspelling challenges, and robust content moderation for child safety.
 
 ## Version Management
-- Current version is stored in `shared/version.ts` as `APP_VERSION`
-- Version displayed in the Help screen footer
-- **IMPORTANT**: Increment the patch version (third digit) each time the app is published
-  - Example: 1.0.0 → 1.0.1 → 1.0.2, etc.
+- Version stored in `app_settings` database table with `APP_VERSION` from `shared/version.ts` as fallback
+- Version displayed in the Help dialog footer
+- Teachers can bump the version using the "Bump Version (Before Publish)" button in Help dialog
+  - Increments the minor version (e.g., 1.0.0 → 1.1.0)
+  - Database-backed for persistence across deployments
 
 ## User Preferences
 - I prefer simple language.
