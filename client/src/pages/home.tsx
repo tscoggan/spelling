@@ -941,7 +941,7 @@ export default function Home() {
       <Dialog open={welcomeDialogOpen} onOpenChange={setWelcomeDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-2xl">Welcome to Spelling Champions!</DialogTitle>
+            <DialogTitle className="text-2xl">Welcome to Spelling Playground!</DialogTitle>
             <DialogDescription className="text-base pt-4">
               We're excited to have you here! Get started by creating your first Custom Word List.
             </DialogDescription>
