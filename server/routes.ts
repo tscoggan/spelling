@@ -232,7 +232,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // App version endpoints
+  // App version endpoint - version auto-increments on production startup
   app.get("/api/app-version", async (req, res) => {
     try {
       // Use APP_VERSION as fallback when no DB value exists
@@ -241,25 +241,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error getting app version:", error);
       res.status(500).json({ error: "Failed to get app version" });
-    }
-  });
-
-  app.post("/api/app-version/bump", async (req, res) => {
-    try {
-      if (!req.isAuthenticated() || !req.user) {
-        return res.status(401).json({ error: "Not authenticated" });
-      }
-      
-      const user = req.user as { role?: string };
-      if (user.role !== "teacher") {
-        return res.status(403).json({ error: "Only teachers can bump the version" });
-      }
-      
-      const newVersion = await storage.bumpAppVersion();
-      res.json({ version: newVersion });
-    } catch (error) {
-      console.error("Error bumping app version:", error);
-      res.status(500).json({ error: "Failed to bump app version" });
     }
   });
 
