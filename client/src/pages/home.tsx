@@ -635,7 +635,7 @@ export default function Home() {
               <img 
                 src={userGroupsButton} 
                 alt="User Groups" 
-                className="h-[95%] w-[95%] object-contain"
+                className="h-[95%] w-[95%] object-contain -mt-1"
               />
             </div>
           </button>
@@ -672,7 +672,7 @@ export default function Home() {
               <img 
                 src={starShopButton} 
                 alt="Star Shop" 
-                className="h-full w-full object-contain"
+                className="h-full w-full object-contain -mt-1"
               />
             </div>
           </button>
