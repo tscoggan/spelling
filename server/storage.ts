@@ -1741,8 +1741,8 @@ export class DatabaseStorage implements IStorage {
     const currentVersion = await this.getAppSetting("app_version") || APP_VERSION;
     const parts = currentVersion.split(".");
     const major = parseInt(parts[0] || "1");
-    const minor = parseInt(parts[1] || "0") + 1;
-    const patch = 0;
+    const minor = parseInt(parts[1] || "0");
+    const patch = parseInt(parts[2] || "0") + 1;
     const newVersion = `${major}.${minor}.${patch}`;
     await this.setAppSetting("app_version", newVersion);
     return newVersion;

@@ -7,7 +7,8 @@ Spelling Playground is an interactive educational application designed to enhanc
 - Version stored in `app_settings` database table with `APP_VERSION` from `shared/version.ts` as fallback
 - Version displayed in the Help dialog footer
 - Version automatically increments on each production deployment (when app starts in production mode)
-  - Increments the minor version (e.g., 1.0.0 → 1.1.0)
+  - Increments the patch version (3rd digit, e.g., 1.0.0 → 1.0.1)
+  - Major/minor version changes are done manually upon request
   - Database-backed for persistence across deployments
 
 ## User Preferences
