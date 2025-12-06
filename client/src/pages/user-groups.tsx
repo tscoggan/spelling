@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +27,17 @@ export default function UserGroupsPage() {
   const { themeAssets, hasDarkBackground } = useTheme();
   const textClasses = getThemedTextClasses(hasDarkBackground);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  
+  useEffect(() => {
+    if (user?.accountType === 'free') {
+      toast({
+        title: "Feature Locked",
+        description: "Create an account to join user groups!",
+        variant: "destructive",
+      });
+      setLocation("/");
+    }
+  }, [user?.accountType, setLocation, toast]);
   const [membersDialogOpen, setMembersDialogOpen] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<any>(null);

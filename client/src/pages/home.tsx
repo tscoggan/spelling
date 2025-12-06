@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Sparkles, Trophy, Clock, Target, List, ChevronRight, Shuffle, AlertCircle, Grid3x3, Users, BarChart3, LayoutDashboard, Swords, Search, Eye, Loader2 } from "lucide-react";
+import { BookOpen, Sparkles, Trophy, Clock, Target, List, ChevronRight, Shuffle, AlertCircle, Grid3x3, Users, BarChart3, LayoutDashboard, Swords, Search, Eye, Loader2, Lock } from "lucide-react";
 import type { GameMode, HeadToHeadChallenge } from "@shared/schema";
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { UserHeader } from "@/components/user-header";
 import { AccuracyCard } from "@/components/accuracy-card";
 import { useTheme } from "@/hooks/use-theme";
@@ -626,19 +627,46 @@ export default function Home() {
               />
             </div>
           </button>
-          <button
-            onClick={() => setLocation("/user-groups")}
-            className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-full"
-            data-testid="button-user-groups"
-          >
-            <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-white/90 border-2 border-blue-400 flex items-center justify-center p-2">
-              <img 
-                src={userGroupsButton} 
-                alt="User Groups" 
-                className="h-[95%] w-[95%] object-contain -mt-1"
-              />
-            </div>
-          </button>
+          {user?.accountType === 'free' ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  className="cursor-not-allowed rounded-full relative"
+                  data-testid="button-user-groups-locked"
+                >
+                  <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-white/90 border-2 border-gray-300 flex items-center justify-center p-2 opacity-50">
+                    <img 
+                      src={userGroupsButton} 
+                      alt="User Groups" 
+                      className="h-[95%] w-[95%] object-contain -mt-1 grayscale"
+                    />
+                  </div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="bg-gray-800/80 rounded-full p-2">
+                      <Lock className="w-6 h-6 text-white" />
+                    </div>
+                  </div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Create an account to join groups!</p>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <button
+              onClick={() => setLocation("/user-groups")}
+              className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-full"
+              data-testid="button-user-groups"
+            >
+              <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-white/90 border-2 border-blue-400 flex items-center justify-center p-2">
+                <img 
+                  src={userGroupsButton} 
+                  alt="User Groups" 
+                  className="h-[95%] w-[95%] object-contain -mt-1"
+                />
+              </div>
+            </button>
+          )}
           <button
             onClick={() => setLocation("/word-lists")}
             className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-lg"
@@ -730,66 +758,102 @@ export default function Home() {
             </h2>
           </div>
           <div className="max-w-2xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-4"
-            >
-              {/* Head to Head Challenge Button */}
-              <Card
-                className="hover:scale-105 transition-transform cursor-pointer shadow-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 w-full sm:w-auto relative"
-                onClick={() => {
-                  setH2hSelectedWordList(null);
-                  setH2hSelectedOpponent(null);
-                  setH2hOpponentSearch("");
-                  queryClient.invalidateQueries({ queryKey: ["/api/challenges/pending"] });
-                  queryClient.invalidateQueries({ queryKey: ["/api/challenges/active"] });
-                  queryClient.invalidateQueries({ queryKey: ["/api/challenges/completed"] });
-                  setH2hDialogOpen(true);
-                }}
-                role="button"
-                tabIndex={0}
-                data-testid="card-mode-headtohead"
+            {user?.accountType === 'free' ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="flex flex-col items-center justify-center gap-4"
               >
-                {/* Notification dot for pending challenges */}
-                {totalPendingH2H > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full min-w-[1.25rem] h-5 flex items-center justify-center px-1 z-10" data-testid="badge-pending-h2h">
-                    {totalPendingH2H}
-                  </span>
-                )}
-                <CardHeader className="space-y-1 flex-1 flex flex-col justify-center p-4">
-                  <div className="flex items-center gap-3">
-                    <Swords className="w-8 h-8 text-orange-600" />
-                    <CardTitle className="text-2xl text-gray-800">Head to Head Challenge</CardTitle>
-                  </div>
-                  <CardDescription className="text-base text-gray-600">
-                    Challenge a friend to a timed spelling duel.<br />The winner gets a star!
-                  </CardDescription>
-                </CardHeader>
-              </Card>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Card
+                      className="shadow-lg border border-gray-300 bg-gray-100 w-full sm:w-auto relative cursor-not-allowed opacity-60"
+                      data-testid="card-mode-headtohead-locked"
+                    >
+                      <div className="absolute inset-0 flex items-center justify-center z-10">
+                        <div className="bg-gray-800/80 rounded-full p-3">
+                          <Lock className="w-8 h-8 text-white" />
+                        </div>
+                      </div>
+                      <CardHeader className="space-y-1 flex-1 flex flex-col justify-center p-4">
+                        <div className="flex items-center gap-3">
+                          <Swords className="w-8 h-8 text-gray-400" />
+                          <CardTitle className="text-2xl text-gray-500">Head to Head Challenge</CardTitle>
+                        </div>
+                        <CardDescription className="text-base text-gray-400">
+                          Challenge a friend to a timed spelling duel.<br />The winner gets a star!
+                        </CardDescription>
+                      </CardHeader>
+                    </Card>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Create an account to challenge friends!</p>
+                  </TooltipContent>
+                </Tooltip>
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="flex flex-col sm:flex-row items-center justify-center gap-4"
+              >
+                {/* Head to Head Challenge Button */}
+                <Card
+                  className="hover:scale-105 transition-transform cursor-pointer shadow-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 w-full sm:w-auto relative"
+                  onClick={() => {
+                    setH2hSelectedWordList(null);
+                    setH2hSelectedOpponent(null);
+                    setH2hOpponentSearch("");
+                    queryClient.invalidateQueries({ queryKey: ["/api/challenges/pending"] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/challenges/active"] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/challenges/completed"] });
+                    setH2hDialogOpen(true);
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  data-testid="card-mode-headtohead"
+                >
+                  {/* Notification dot for pending challenges */}
+                  {totalPendingH2H > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full min-w-[1.25rem] h-5 flex items-center justify-center px-1 z-10" data-testid="badge-pending-h2h">
+                      {totalPendingH2H}
+                    </span>
+                  )}
+                  <CardHeader className="space-y-1 flex-1 flex flex-col justify-center p-4">
+                    <div className="flex items-center gap-3">
+                      <Swords className="w-8 h-8 text-orange-600" />
+                      <CardTitle className="text-2xl text-gray-800">Head to Head Challenge</CardTitle>
+                    </div>
+                    <CardDescription className="text-base text-gray-600">
+                      Challenge a friend to a timed spelling duel.<br />The winner gets a star!
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
 
-              {/* H2H Challenge Results Button */}
-              <div
-                className="hover:scale-105 transition-transform cursor-pointer bg-white rounded-lg border border-gray-300 dark:border-gray-600 shadow-lg p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                onClick={() => setLocation("/head-to-head")}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    setLocation("/head-to-head");
-                  }
-                }}
-                data-testid="button-h2h-challenge-results"
-              >
-                <img 
-                  src={h2hChallengeResultsButton} 
-                  alt="H2H Challenge Results" 
-                  className="w-28 h-auto"
-                />
-              </div>
-            </motion.div>
+                {/* H2H Challenge Results Button */}
+                <div
+                  className="hover:scale-105 transition-transform cursor-pointer bg-white rounded-lg border border-gray-300 dark:border-gray-600 shadow-lg p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                  onClick={() => setLocation("/head-to-head")}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setLocation("/head-to-head");
+                    }
+                  }}
+                  data-testid="button-h2h-challenge-results"
+                >
+                  <img 
+                    src={h2hChallengeResultsButton} 
+                    alt="H2H Challenge Results" 
+                    className="w-28 h-auto"
+                  />
+                </div>
+              </motion.div>
+            )}
           </div>
         </div>
       </motion.div>

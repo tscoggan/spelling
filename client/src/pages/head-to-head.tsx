@@ -116,6 +116,17 @@ export default function HeadToHead() {
   const textClasses = getThemedTextClasses(hasDarkBackground);
   const { toast } = useToast();
   
+  useEffect(() => {
+    if (user?.accountType === 'free') {
+      toast({
+        title: "Feature Locked",
+        description: "Create an account to challenge friends!",
+        variant: "destructive",
+      });
+      setLocation("/");
+    }
+  }, [user?.accountType, setLocation, toast]);
+  
   // Parse query parameters to get initial tab
   const searchParams = new URLSearchParams(searchString);
   const tabParam = searchParams.get('tab');
