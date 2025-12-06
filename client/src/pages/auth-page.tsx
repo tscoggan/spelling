@@ -207,13 +207,13 @@ export default function AuthPage() {
         <Button
           variant="outline"
           size="lg"
-          className="w-full h-auto py-6 flex flex-col gap-2"
+          className="w-full h-auto py-6 flex flex-col gap-2 opacity-60"
           onClick={() => setAccountType("school")}
           data-testid="button-school-account"
         >
           <School className="w-8 h-8" />
           <span className="text-xl font-bold">School Account</span>
-          <span className="text-sm opacity-80 font-normal">Login or register for full access</span>
+          <span className="text-sm opacity-80 font-normal">Coming soon - Full access for classrooms</span>
         </Button>
       </div>
     </Card>
@@ -232,7 +232,7 @@ export default function AuthPage() {
           Family accounts will include:
         </p>
         <ul className="text-sm text-muted-foreground mt-2 space-y-1">
-          <li>- One-time $5 payment</li>
+          <li>- Annual membership fee</li>
           <li>- Create profiles for multiple children</li>
           <li>- Full access to all features</li>
           <li>- Share word lists with family members</li>
@@ -251,7 +251,39 @@ export default function AuthPage() {
     </Card>
   );
 
-  // School Account Login/Register Screen (existing functionality)
+  // School Account Stub Screen (coming soon)
+  const renderSchoolStub = () => (
+    <Card className="w-full max-w-md p-8 relative z-10">
+      <div className="text-center mb-6">
+        <School className="w-16 h-16 mx-auto mb-4 text-primary" />
+        <h2 className="text-2xl font-bold mb-2">School Account</h2>
+        <p className="text-muted-foreground">Coming Soon!</p>
+      </div>
+      <div className="bg-muted/50 rounded-lg p-4 mb-6">
+        <p className="text-sm text-muted-foreground">
+          School accounts will include:
+        </p>
+        <ul className="text-sm text-muted-foreground mt-2 space-y-1">
+          <li>- Classroom management tools</li>
+          <li>- Student progress tracking</li>
+          <li>- Full access to all features</li>
+          <li>- Share word lists with students</li>
+          <li>- Head-to-head challenges</li>
+        </ul>
+      </div>
+      <Button
+        variant="outline"
+        className="w-full"
+        onClick={() => setAccountType("none")}
+        data-testid="button-back-to-selection"
+      >
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Back to Account Selection
+      </Button>
+    </Card>
+  );
+
+  // School Account Login/Register Screen (existing functionality - kept for future use)
   const renderSchoolAuth = () => (
     <Card className="w-full max-w-md p-8 relative z-10">
       <Button
@@ -585,7 +617,7 @@ export default function AuthPage() {
       
       {accountType === "none" && renderAccountTypeSelection()}
       {accountType === "family" && renderFamilyStub()}
-      {accountType === "school" && renderSchoolAuth()}
+      {accountType === "school" && renderSchoolStub()}
     </div>
   );
 }

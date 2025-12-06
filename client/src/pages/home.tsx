@@ -763,7 +763,7 @@ export default function Home() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6 }}
-                className="flex flex-col items-center justify-center gap-4"
+                className="flex flex-col sm:flex-row items-center justify-center gap-4"
               >
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -789,6 +789,30 @@ export default function Home() {
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>Create an account to challenge friends!</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Locked H2H Challenge Results Button */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      className="bg-gray-100 rounded-lg border border-gray-300 shadow-lg p-2 cursor-not-allowed opacity-60 relative"
+                      data-testid="button-h2h-challenge-results-locked"
+                    >
+                      <div className="absolute inset-0 flex items-center justify-center z-10">
+                        <div className="bg-gray-800/80 rounded-full p-2">
+                          <Lock className="w-5 h-5 text-white" />
+                        </div>
+                      </div>
+                      <img 
+                        src={h2hChallengeResultsButton} 
+                        alt="H2H Challenge Results" 
+                        className="w-28 h-auto grayscale"
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Create an account to view challenge results!</p>
                   </TooltipContent>
                 </Tooltip>
               </motion.div>

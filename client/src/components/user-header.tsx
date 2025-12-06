@@ -590,27 +590,50 @@ export function UserHeader() {
       <div className="flex justify-end mb-6">
         <Card className="px-4 py-2">
           <div className="flex items-center gap-3">
-            <button 
-              className="flex items-center gap-2 hover-elevate active-elevate-2 rounded-md px-2 py-1 cursor-pointer"
-              onClick={() => setProfileOpen(true)}
-              data-testid="button-edit-profile"
-            >
-              {user?.selectedAvatar && (
-                user.selectedAvatar.startsWith('/objects/') ? (
-                  <img 
-                    src={user.selectedAvatar} 
-                    alt="User avatar" 
-                    className="w-8 h-8 rounded-full object-cover"
-                    data-testid="img-user-avatar"
-                  />
-                ) : (
-                  <div className="text-2xl" data-testid="text-user-avatar">{user.selectedAvatar}</div>
-                )
-              )}
-              <div className="text-gray-800 dark:text-gray-200" data-testid="text-username">
-                {user?.username}
+            {user?.accountType === 'free' ? (
+              <div 
+                className="flex items-center gap-2 rounded-md px-2 py-1 cursor-default"
+                data-testid="text-guest-username"
+              >
+                {user?.selectedAvatar && (
+                  user.selectedAvatar.startsWith('/objects/') ? (
+                    <img 
+                      src={user.selectedAvatar} 
+                      alt="User avatar" 
+                      className="w-8 h-8 rounded-full object-cover"
+                      data-testid="img-user-avatar"
+                    />
+                  ) : (
+                    <div className="text-2xl" data-testid="text-user-avatar">{user.selectedAvatar}</div>
+                  )
+                )}
+                <div className="text-gray-800 dark:text-gray-200" data-testid="text-username">
+                  guest
+                </div>
               </div>
-            </button>
+            ) : (
+              <button 
+                className="flex items-center gap-2 hover-elevate active-elevate-2 rounded-md px-2 py-1 cursor-pointer"
+                onClick={() => setProfileOpen(true)}
+                data-testid="button-edit-profile"
+              >
+                {user?.selectedAvatar && (
+                  user.selectedAvatar.startsWith('/objects/') ? (
+                    <img 
+                      src={user.selectedAvatar} 
+                      alt="User avatar" 
+                      className="w-8 h-8 rounded-full object-cover"
+                      data-testid="img-user-avatar"
+                    />
+                  ) : (
+                    <div className="text-2xl" data-testid="text-user-avatar">{user.selectedAvatar}</div>
+                  )
+                )}
+                <div className="text-gray-800 dark:text-gray-200" data-testid="text-username">
+                  {user?.username}
+                </div>
+              </button>
+            )}
             <div className="flex items-center gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>
