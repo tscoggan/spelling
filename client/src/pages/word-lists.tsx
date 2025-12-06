@@ -716,9 +716,12 @@ export default function WordListsPage() {
                 )}
               </CardTitle>
               <div className="mt-2 flex items-center gap-4 text-sm text-gray-600 flex-wrap">
-                <span data-testid={`author-${list.id}`}>
-                  by <span className="font-semibold">{list.authorUsername || 'Unknown'}</span>
-                </span>
+                {/* Hide author for free accounts - they only see their own lists */}
+                {!isFreeAccount && (
+                  <span data-testid={`author-${list.id}`}>
+                    by <span className="font-semibold">{list.authorUsername || 'Unknown'}</span>
+                  </span>
+                )}
                 <span>{list.words.length} words</span>
                 {list.gradeLevel && (
                   <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-md font-medium" data-testid={`grade-${list.id}`}>

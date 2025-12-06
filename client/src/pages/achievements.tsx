@@ -49,6 +49,9 @@ export default function Achievements() {
   const { themeAssets, hasDarkBackground } = useTheme();
   const textClasses = getThemedTextClasses(hasDarkBackground);
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
+  
+  // Check if user is a free account
+  const isFreeAccount = user?.accountType === 'free';
 
   const { data: achievements } = useQuery<Achievement[]>({
     queryKey: ["/api/achievements/user", user?.id],
@@ -213,9 +216,12 @@ export default function Achievements() {
                               )}
                             </CardTitle>
                             <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
-                              <span data-testid={`author-${list.id}`}>
-                                by <span className="font-semibold">{list.authorUsername || 'Unknown'}</span>
-                              </span>
+                              {/* Hide author for free accounts - they only see their own lists */}
+                              {!isFreeAccount && (
+                                <span data-testid={`author-${list.id}`}>
+                                  by <span className="font-semibold">{list.authorUsername || 'Unknown'}</span>
+                                </span>
+                              )}
                               <span>{list.words.length} words</span>
                               {list.gradeLevel && (
                                 <Badge variant="secondary" className="text-xs">
