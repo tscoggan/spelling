@@ -1,0 +1,20 @@
+I want to redesign the sign up / login experience to support three different types of accounts.  Add a new "account_type" column to the users table with values of "free", "family", or "school".
+
+1) Free account:
+     - No login is required.  The user can bypass the login screen and has no personal information (name, username, email address) displayed in the app or stored in the database.  The only identifier is the generated user_id, which is not visible to the user in the app.  Once a user_id has been assigned, store it on the local device storage and use this user_id whenever the app is opened in free mode on this device.
+     - None of the social features (user groups, sharing word lists between users, or Head to Head Challenges) are accessible.  They should be visible but greyed out with a message indicating that these features are not available to free accounts.
+     - The user can only create & edit private word lists, play the 6 solo game modes, earn achievements, and spend stars in the star shop.
+
+2) Family account:
+     - Stub this out for now, as we will implement it later
+     - Will require an initial payment of $5 using Stripe and Verifiable Parental Consent (VPC) from an adult
+     - Once payment and VPC are obtained, the adult account owner can create multiple student user profiles for his/her children.  These user profiles will include a username and avatar image.  The parent's email address will be used for password resets.  The parent's login will be used to access these user profiles within the app.
+     - All app features are accessible
+
+3) School account:
+     - Stub this out for now, as we will implement it later
+     - Will work similar to the family account with the school administrator able to manage payments for the account, manage the roster of students (assign usernames & password for each student) and teachers 
+     - All app features are accessible
+
+For now, I want to get the free account type working fully and stub out the sign up & log in screens for the family and school account types so I can flesh them out later.
+

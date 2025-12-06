@@ -7,12 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { UserCircle, GraduationCap, BookOpen } from "lucide-react";
+import { UserCircle, GraduationCap, BookOpen, Users, School, Play, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useTheme } from "@/hooks/use-theme";
 import titleBanner from "@assets/Spelling_Playground_title_1764882992138.png";
+
+type AccountType = "none" | "free" | "family" | "school";
 
 const avatarOptions = [
   { emoji: "🐶", label: "Dog" },
@@ -31,10 +33,11 @@ const avatarOptions = [
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
-  const { user, loginMutation, registerMutation } = useAuth();
+  const { user, loginMutation, registerMutation, guestLoginMutation } = useAuth();
   const { toast } = useToast();
   const { themeAssets } = useTheme();
 
+  const [accountType, setAccountType] = useState<AccountType>("none");
   const [loginData, setLoginData] = useState({ username: "", password: "" });
   const [registerData, setRegisterData] = useState({
     username: "",
@@ -154,51 +157,132 @@ export default function AuthPage() {
     }
   };
 
-  return (
-    <div 
-      className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden"
-    >
-      {/* Portrait background */}
-      <div 
-        className="fixed inset-0 portrait:block landscape:hidden"
-        style={{
-          backgroundImage: `url(${themeAssets.backgroundPortrait})`,
-          backgroundSize: 'cover',
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center top',
-        }}
-      ></div>
-      {/* Landscape background */}
-      <div 
-        className="fixed inset-0 portrait:hidden landscape:block"
-        style={{
-          backgroundImage: `url(${themeAssets.backgroundLandscape})`,
-          backgroundSize: 'cover',
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center top',
-        }}
-      ></div>
-      <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
-      <Card className="w-full max-w-md p-8 relative z-10">
-        <div className="text-center mb-8">
-          <div className="mb-4 flex justify-center">
-            <img 
-              src={titleBanner} 
-              alt="Spelling Playground" 
-              className="w-full max-w-xs h-auto rounded-md"
-              data-testid="img-title-banner"
-            />
-          </div>
-          <p className="text-muted-foreground">Create an account or log in to start your spelling adventure!</p>
+  const handleGuestLogin = () => {
+    guestLoginMutation.mutate();
+  };
+
+  // Account Type Selection Screen
+  const renderAccountTypeSelection = () => (
+    <Card className="w-full max-w-lg p-8 relative z-10">
+      <div className="text-center mb-8">
+        <div className="mb-4 flex justify-center">
+          <img 
+            src={titleBanner} 
+            alt="Spelling Playground" 
+            className="w-full max-w-xs h-auto rounded-md"
+            data-testid="img-title-banner"
+          />
         </div>
+        <p className="text-muted-foreground text-lg">Choose how you'd like to play</p>
+      </div>
 
-        <Tabs defaultValue="login" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="login" data-testid="tab-login">Login</TabsTrigger>
-            <TabsTrigger value="register" data-testid="tab-register">Sign Up</TabsTrigger>
-          </TabsList>
+      <div className="space-y-4">
+        <Button
+          variant="default"
+          size="lg"
+          className="w-full h-auto py-6 flex flex-col gap-2"
+          onClick={handleGuestLogin}
+          disabled={guestLoginMutation.isPending}
+          data-testid="button-free-account"
+        >
+          <Play className="w-8 h-8" />
+          <span className="text-xl font-bold">Play for Free</span>
+          <span className="text-sm opacity-80 font-normal">
+            {guestLoginMutation.isPending ? "Starting..." : "No account needed - start playing right away!"}
+          </span>
+        </Button>
 
-          <TabsContent value="login">
+        <Button
+          variant="outline"
+          size="lg"
+          className="w-full h-auto py-6 flex flex-col gap-2 opacity-60"
+          onClick={() => setAccountType("family")}
+          data-testid="button-family-account"
+        >
+          <Users className="w-8 h-8" />
+          <span className="text-xl font-bold">Family Account</span>
+          <span className="text-sm opacity-80 font-normal">Coming soon - Full access for the whole family</span>
+        </Button>
+
+        <Button
+          variant="outline"
+          size="lg"
+          className="w-full h-auto py-6 flex flex-col gap-2"
+          onClick={() => setAccountType("school")}
+          data-testid="button-school-account"
+        >
+          <School className="w-8 h-8" />
+          <span className="text-xl font-bold">School Account</span>
+          <span className="text-sm opacity-80 font-normal">Login or register for full access</span>
+        </Button>
+      </div>
+    </Card>
+  );
+
+  // Family Account Stub Screen
+  const renderFamilyStub = () => (
+    <Card className="w-full max-w-md p-8 relative z-10">
+      <div className="text-center mb-6">
+        <Users className="w-16 h-16 mx-auto mb-4 text-primary" />
+        <h2 className="text-2xl font-bold mb-2">Family Account</h2>
+        <p className="text-muted-foreground">Coming Soon!</p>
+      </div>
+      <div className="bg-muted/50 rounded-lg p-4 mb-6">
+        <p className="text-sm text-muted-foreground">
+          Family accounts will include:
+        </p>
+        <ul className="text-sm text-muted-foreground mt-2 space-y-1">
+          <li>- One-time $5 payment</li>
+          <li>- Create profiles for multiple children</li>
+          <li>- Full access to all features</li>
+          <li>- Share word lists with family members</li>
+          <li>- Head-to-head challenges</li>
+        </ul>
+      </div>
+      <Button
+        variant="outline"
+        className="w-full"
+        onClick={() => setAccountType("none")}
+        data-testid="button-back-to-selection"
+      >
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Back to Account Selection
+      </Button>
+    </Card>
+  );
+
+  // School Account Login/Register Screen (existing functionality)
+  const renderSchoolAuth = () => (
+    <Card className="w-full max-w-md p-8 relative z-10">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="mb-4"
+        onClick={() => setAccountType("none")}
+        data-testid="button-back-to-selection"
+      >
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Back
+      </Button>
+      <div className="text-center mb-8">
+        <div className="mb-4 flex justify-center">
+          <img 
+            src={titleBanner} 
+            alt="Spelling Playground" 
+            className="w-full max-w-xs h-auto rounded-md"
+            data-testid="img-title-banner-school"
+          />
+        </div>
+        <p className="text-muted-foreground">School Account - Log in or sign up</p>
+      </div>
+
+      <Tabs defaultValue="login" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="login" data-testid="tab-login">Login</TabsTrigger>
+          <TabsTrigger value="register" data-testid="tab-register">Sign Up</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="login">
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="login-username">Username</Label>
@@ -470,7 +554,38 @@ export default function AuthPage() {
             </form>
           </TabsContent>
         </Tabs>
-      </Card>
+    </Card>
+  );
+
+  return (
+    <div 
+      className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden"
+    >
+      {/* Portrait background */}
+      <div 
+        className="fixed inset-0 portrait:block landscape:hidden"
+        style={{
+          backgroundImage: `url(${themeAssets.backgroundPortrait})`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center top',
+        }}
+      ></div>
+      {/* Landscape background */}
+      <div 
+        className="fixed inset-0 portrait:hidden landscape:block"
+        style={{
+          backgroundImage: `url(${themeAssets.backgroundLandscape})`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center top',
+        }}
+      ></div>
+      <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
+      
+      {accountType === "none" && renderAccountTypeSelection()}
+      {accountType === "family" && renderFamilyStub()}
+      {accountType === "school" && renderSchoolAuth()}
     </div>
   );
 }

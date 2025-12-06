@@ -244,6 +244,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Guest user endpoints for free accounts
+  app.post("/api/guest-user", async (req, res) => {
+    try {
+      // Generate a unique guest username
+      const guestId = crypto.randomBytes(8).toString('hex');
+      const guestUsername = `guest_${guestId}`;
+      const guestPassword = crypto.randomBytes(16).toString('hex');
+      
+      // Create guest user with accountType='free'
+      const hashedPassword = await hashPassword(guestPassword);
+      const user = await storage.createUser({
+        username: guestUsername,
+        password: hashedPassword,
+        role: "student",
+        accountType: "free",
+      });
+      
+      res.json(user);
+    } catch (error) {
+      console.error("Error creating guest user:", error);
+      res.status(500).json({ error: "Failed to create guest user" });
+    }
+  });
+
+  app.get("/api/guest-user/:id", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id, 10);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+      
+      const user = await storage.getUser(userId);
+      if (!user || user.accountType !== "free") {
+        return res.status(404).json({ error: "Guest user not found" });
+      }
+      
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching guest user:", error);
+      res.status(500).json({ error: "Failed to fetch guest user" });
+    }
+  });
+
   // Avatar upload endpoint
   const avatarUpload = multer({
     storage: multer.memoryStorage(),
