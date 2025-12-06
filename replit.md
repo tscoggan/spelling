@@ -27,6 +27,10 @@ The frontend is built with React, utilizing Wouter for routing, TanStack Query f
 
 ### Feature Specifications
 - **User Management**: Secure authentication, enhanced user profiles, support for user groups with membership and to-do notifications, and a `stars` column to track spendable stars for the Star Shop. Teachers can delegate co-owners (other teachers) for word lists and user groups, granting them full admin privileges.
+- **Three-Tier Account System**: 
+  - **Free (Guest)**: No-login guest mode with localStorage persistence for user ID. Social features (User Groups, Head-to-Head Challenges, Word List Sharing) are visibly disabled with lock icons and "Upgrade to Family or School account" tooltips. Server-side `requirePaidAccount` middleware returns 403 for all social feature API routes.
+  - **Family**: Stubbed for future implementation with $5 Stripe payment and Verifiable Parental Consent (VPC) flow. Currently shows "Coming Soon" message.
+  - **School**: Full-featured accounts with complete access to all features including social features, user groups, and head-to-head challenges.
 - **Star Shop**: Users can purchase power-ups with earned stars. Available items include "Do Over" (1 star, retry one incorrect word) and "2nd Chance" (5 stars, retry all incorrect words at the end). Items are stored in the `user_items` table with quantity tracking.
 - **Custom Word Lists**: Users create, share, and manage custom word lists with assignable grade levels, image assignment, and visibility controls (public, private, groups). Supports importing words from .txt, .csv, and .pdf files with profanity filtering.
 - **Game Modes**: Includes Practice, Timed Challenge, Quiz Mode, Word Scramble (with dynamic tile sizing and single-row layout), Find the Mistake (with realistic error generation), and Crossword Puzzle (interactive, audio-only with client-side grid generation and mobile UX enhancements). All game modes use Durstenfeld shuffle for word randomization.
