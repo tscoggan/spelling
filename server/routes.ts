@@ -14,6 +14,17 @@ import { APP_VERSION } from "@shared/version";
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
 
+  const requirePaidAccount = (req: any, res: any, next: any) => {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    if (user.accountType === 'free') {
+      return res.status(403).json({ error: "This feature requires a paid account. Please upgrade to access social features." });
+    }
+    next();
+  };
+
   app.get("/objects/:objectPath(*)", async (req, res) => {
     const objectStorageService = new ObjectStorageService();
     try {
@@ -1622,12 +1633,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User Groups endpoints
-  app.get("/api/user-groups", async (req, res) => {
+  app.get("/api/user-groups", requirePaidAccount, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const user = req.user as any;
       const groups = await storage.getUserAccessibleGroups(user.id);
       // Only include password for groups owned by the current user
@@ -1650,12 +1657,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/user-groups", async (req, res) => {
+  app.post("/api/user-groups", requirePaidAccount, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const user = req.user as any;
       const { insertUserGroupSchema } = await import("@shared/schema");
       
@@ -1675,12 +1678,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/user-groups/:id", async (req, res) => {
+  app.patch("/api/user-groups/:id", requirePaidAccount, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const user = req.user as any;
       const groupId = parseInt(req.params.id);
       const group = await storage.getUserGroup(groupId);
@@ -1708,12 +1707,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/user-groups/:id", async (req, res) => {
+  app.delete("/api/user-groups/:id", requirePaidAccount, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const groupId = parseInt(req.params.id);
       const user = req.user as any;
       
@@ -1738,12 +1733,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/user-groups/:id/members", async (req, res) => {
+  app.get("/api/user-groups/:id/members", requirePaidAccount, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const groupId = parseInt(req.params.id);
       const members = await storage.getGroupMembers(groupId);
       res.json(members);
@@ -1753,12 +1744,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/user-groups/:id/members", async (req, res) => {
+  app.post("/api/user-groups/:id/members", requirePaidAccount, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const groupId = parseInt(req.params.id);
       const { userId } = req.body;
       
@@ -1770,12 +1757,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/user-groups/:id/members/:userId", async (req, res) => {
+  app.delete("/api/user-groups/:id/members/:userId", requirePaidAccount, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const groupId = parseInt(req.params.id);
       const userId = parseInt(req.params.userId);
       const user = req.user as any;
@@ -1801,12 +1784,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/user-groups/:id/invite", async (req, res) => {
+  app.post("/api/user-groups/:id/invite", requirePaidAccount, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const groupId = parseInt(req.params.id);
       const { userIds } = req.body;
       const currentUser = req.user as any;
@@ -1895,12 +1874,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/user-groups/:id/request-access", async (req, res) => {
+  app.post("/api/user-groups/:id/request-access", requirePaidAccount, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const groupId = parseInt(req.params.id);
       const currentUser = req.user as any;
 
@@ -1961,12 +1936,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/user-groups/:id/join-with-password", async (req, res) => {
+  app.post("/api/user-groups/:id/join-with-password", requirePaidAccount, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const groupId = parseInt(req.params.id);
       const currentUser = req.user as any;
       const { password } = req.body;
@@ -2020,9 +1991,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/user-groups/:id/accept-invite", async (req, res) => {
+  app.post("/api/user-groups/:id/accept-invite", requirePaidAccount, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
+      if (!req.user) {
         return res.status(401).json({ error: "Authentication required" });
       }
 
@@ -2065,12 +2036,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/user-groups/:id/approve-request", async (req, res) => {
+  app.post("/api/user-groups/:id/approve-request", requirePaidAccount, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const groupId = parseInt(req.params.id);
       const { userId } = req.body;
       const currentUser = req.user as any;
@@ -2111,12 +2078,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/user-groups/:id/requests/:requestId/approve", async (req, res) => {
+  app.post("/api/user-groups/:id/requests/:requestId/approve", requirePaidAccount, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const groupId = parseInt(req.params.id);
       const requestId = parseInt(req.params.requestId);
       const currentUser = req.user as any;
@@ -2143,12 +2106,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/user-groups/:id/requests/:requestId", async (req, res) => {
+  app.delete("/api/user-groups/:id/requests/:requestId", requirePaidAccount, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const groupId = parseInt(req.params.id);
       const requestId = parseInt(req.params.requestId);
       const currentUser = req.user as any;
@@ -2179,12 +2138,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/user-groups/:id/leave", async (req, res) => {
+  app.post("/api/user-groups/:id/leave", requirePaidAccount, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const groupId = parseInt(req.params.id);
       const currentUser = req.user as any;
 
@@ -2219,12 +2174,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get co-owners for a user group
-  app.get("/api/user-groups/:id/co-owners", async (req, res) => {
+  app.get("/api/user-groups/:id/co-owners", requirePaidAccount, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const groupId = parseInt(req.params.id);
       if (isNaN(groupId)) {
         return res.status(400).json({ error: "Invalid group ID" });
@@ -2266,12 +2217,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Add a co-owner to a user group
-  app.post("/api/user-groups/:id/co-owners", async (req, res) => {
+  app.post("/api/user-groups/:id/co-owners", requirePaidAccount, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const user = req.user as any;
       
       // Only teachers can add co-owners
@@ -2330,12 +2277,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Remove a co-owner from a user group
-  app.delete("/api/user-groups/:id/co-owners/:coOwnerUserId", async (req, res) => {
+  app.delete("/api/user-groups/:id/co-owners/:coOwnerUserId", requirePaidAccount, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const groupId = parseInt(req.params.id);
       const coOwnerUserId = parseInt(req.params.coOwnerUserId);
       
@@ -2681,11 +2624,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Head to Head Challenge routes
-  app.post("/api/challenges", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
+  app.post("/api/challenges", requirePaidAccount, async (req, res) => {
     try {
       const schema = z.object({
         opponentId: z.number(),
@@ -2738,11 +2677,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/challenges/pending", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
+  app.get("/api/challenges/pending", requirePaidAccount, async (req, res) => {
     try {
       const userId = (req.user as any).id;
       const challenges = await storage.getUserPendingChallenges(userId);
@@ -2769,11 +2704,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/challenges/active", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
+  app.get("/api/challenges/active", requirePaidAccount, async (req, res) => {
     try {
       const userId = (req.user as any).id;
       const challenges = await storage.getUserActiveChallenges(userId);
@@ -2805,10 +2736,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/challenges/completed", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
+  app.get("/api/challenges/completed", requirePaidAccount, async (req, res) => {
 
     try {
       const userId = (req.user as any).id;
@@ -2843,11 +2771,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/challenges/record", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
+  app.get("/api/challenges/record", requirePaidAccount, async (req, res) => {
     try {
       const userId = (req.user as any).id;
       const dateFilter = req.query.dateFilter as string;
@@ -2883,11 +2807,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/challenges/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
+  app.get("/api/challenges/:id", requirePaidAccount, async (req, res) => {
     try {
       const challengeId = parseInt(req.params.id);
       const userId = (req.user as any).id;
@@ -2925,11 +2845,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/challenges/:id/accept", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
+  app.post("/api/challenges/:id/accept", requirePaidAccount, async (req, res) => {
     try {
       const challengeId = parseInt(req.params.id);
       const userId = (req.user as any).id;
@@ -2968,10 +2884,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/challenges/:id/decline", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
+  app.post("/api/challenges/:id/decline", requirePaidAccount, async (req, res) => {
 
     try {
       const challengeId = parseInt(req.params.id);
@@ -3012,11 +2925,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Cancel a pending challenge (initiator only)
-  app.post("/api/challenges/:id/cancel", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
+  app.post("/api/challenges/:id/cancel", requirePaidAccount, async (req, res) => {
     try {
       const challengeId = parseInt(req.params.id);
       const userId = (req.user as any).id;
@@ -3055,11 +2964,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/challenges/:id/submit", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
+  app.post("/api/challenges/:id/submit", requirePaidAccount, async (req, res) => {
     try {
       const challengeId = parseInt(req.params.id);
       const userId = (req.user as any).id;
