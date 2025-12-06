@@ -272,7 +272,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         accountType: "free",
       });
       
-      res.json(user);
+      // Log in the guest user to establish session
+      req.login(user, (err) => {
+        if (err) {
+          console.error("Error logging in guest user:", err);
+          return res.status(500).json({ error: "Failed to establish session" });
+        }
+        res.json(user);
+      });
     } catch (error) {
       console.error("Error creating guest user:", error);
       res.status(500).json({ error: "Failed to create guest user" });
@@ -291,7 +298,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Guest user not found" });
       }
       
-      res.json(user);
+      // Log in the returning guest user to establish session
+      req.login(user, (err) => {
+        if (err) {
+          console.error("Error logging in guest user:", err);
+          return res.status(500).json({ error: "Failed to establish session" });
+        }
+        res.json(user);
+      });
     } catch (error) {
       console.error("Error fetching guest user:", error);
       res.status(500).json({ error: "Failed to fetch guest user" });
