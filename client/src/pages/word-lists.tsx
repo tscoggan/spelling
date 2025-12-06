@@ -38,6 +38,7 @@ function getVisibility(list: any): "public" | "private" | "groups" {
 
 export default function WordListsPage() {
   const { user } = useAuth();
+  const isFreeAccount = user?.accountType === 'free';
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { themeAssets, hasDarkBackground } = useTheme();
@@ -60,29 +61,28 @@ export default function WordListsPage() {
   const [coOwnersDialogOpen, setCoOwnersDialogOpen] = useState(false);
   const [selectedListForCoOwners, setSelectedListForCoOwners] = useState<CustomWordList | null>(null);
   const [teacherSearchQuery, setTeacherSearchQuery] = useState("");
-  const [formData, setFormData] = useState(() => {
-    const isTeacher = user?.role === "teacher";
-    return {
-      name: "",
-      words: "",
-      visibility: (isTeacher ? "groups" : "private") as "public" | "private" | "groups",
-      assignImages: isTeacher ? false : true,
-      gradeLevel: "",
-      selectedGroupIds: [] as number[],
-    };
+  const [formData, setFormData] = useState({
+    name: "",
+    words: "",
+    visibility: "private" as "public" | "private" | "groups",
+    assignImages: true,
+    gradeLevel: "",
+    selectedGroupIds: [] as number[],
   });
 
   // Update form defaults when user role becomes available
+  // Free accounts always get "private" visibility
   useEffect(() => {
     if (user && !editingList) {
       const isTeacher = user.role === "teacher";
+      const isFree = user.accountType === 'free';
       setFormData(prev => ({
         ...prev,
-        visibility: isTeacher ? "groups" : prev.visibility,
+        visibility: isFree ? "private" : (isTeacher ? "groups" : prev.visibility),
         assignImages: isTeacher ? false : prev.assignImages,
       }));
     }
-  }, [user?.role]);
+  }, [user?.role, user?.accountType]);
 
   const { data: userLists = [], isLoading: loadingUserLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists", user?.id],
@@ -96,8 +96,10 @@ export default function WordListsPage() {
     staleTime: 0,
   });
 
+  // Free accounts cannot see public or shared lists
   const { data: publicLists = [], isLoading: loadingPublicLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists/public"],
+    enabled: !isFreeAccount,
   });
 
   const { data: sharedLists = [], isLoading: loadingSharedLists } = useQuery<CustomWordList[]>({
@@ -107,7 +109,7 @@ export default function WordListsPage() {
       if (!response.ok) throw new Error("Failed to fetch shared word lists");
       return await response.json();
     },
-    enabled: !!user,
+    enabled: !!user && !isFreeAccount,
     refetchOnMount: "always",
     staleTime: 0,
   });
@@ -361,10 +363,11 @@ export default function WordListsPage() {
 
   const resetForm = () => {
     const isTeacher = user?.role === "teacher";
+    const isFree = user?.accountType === 'free';
     setFormData({
       name: "",
       words: "",
-      visibility: isTeacher ? "groups" : "private",
+      visibility: isFree ? "private" : (isTeacher ? "groups" : "private"),
       assignImages: isTeacher ? false : true,
       gradeLevel: "",
       selectedGroupIds: [],
@@ -375,13 +378,14 @@ export default function WordListsPage() {
     setEditingList(list);
     const visibility = getVisibility(list);
     const sharedGroups = (list as any).sharedGroups || [];
+    const isFree = user?.accountType === 'free';
     setFormData({
       name: list.name,
       words: list.words.join('\n'),
-      visibility,
+      visibility: isFree ? "private" : visibility,
       assignImages: (list as any).assignImages !== false,
       gradeLevel: list.gradeLevel || "",
-      selectedGroupIds: sharedGroups.map((g: any) => g.id),
+      selectedGroupIds: isFree ? [] : sharedGroups.map((g: any) => g.id),
     });
     setDialogOpen(true);
   };
@@ -496,10 +500,15 @@ export default function WordListsPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Defensively ensure free accounts always submit with private visibility
+    const submissionData = isFreeAccount 
+      ? { ...formData, visibility: "private" as const, selectedGroupIds: [] }
+      : formData;
+    
     if (editingList) {
-      updateMutation.mutate({ id: editingList.id, data: formData });
+      updateMutation.mutate({ id: editingList.id, data: submissionData });
     } else {
-      createMutation.mutate(formData);
+      createMutation.mutate(submissionData);
     }
   };
 
@@ -953,35 +962,50 @@ export default function WordListsPage() {
                   </div>
                   <div>
                     <Label htmlFor="visibility">Visibility</Label>
-                    <Select
-                      value={formData.visibility}
-                      onValueChange={(value: "public" | "private" | "groups") => setFormData({ ...formData, visibility: value })}
-                    >
-                      <SelectTrigger id="visibility" data-testid="select-visibility">
-                        <SelectValue placeholder="Select visibility" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="public" data-testid="visibility-public">
-                          <div className="flex items-center gap-2">
-                            <Globe className="w-4 h-4" />
-                            <span>Public - Anyone can use this list</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="private" data-testid="visibility-private">
-                          <div className="flex items-center gap-2">
+                    {/* Show locked display for free accounts or when user data not yet loaded */}
+                    {(isFreeAccount || !user) ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex items-center gap-2 h-9 px-3 border rounded-md bg-muted/50 text-muted-foreground cursor-not-allowed" data-testid="select-visibility-locked">
                             <Lock className="w-4 h-4" />
                             <span>Private - Only you can use this list</span>
                           </div>
-                        </SelectItem>
-                        <SelectItem value="groups" data-testid="visibility-groups">
-                          <div className="flex items-center gap-2">
-                            <span>Groups - Share with specific groups</span>
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{isFreeAccount ? "Upgrade to a Family or School account to share word lists" : "Loading..."}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <Select
+                        value={formData.visibility}
+                        onValueChange={(value: "public" | "private" | "groups") => setFormData({ ...formData, visibility: value })}
+                      >
+                        <SelectTrigger id="visibility" data-testid="select-visibility">
+                          <SelectValue placeholder="Select visibility" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="public" data-testid="visibility-public">
+                            <div className="flex items-center gap-2">
+                              <Globe className="w-4 h-4" />
+                              <span>Public - Anyone can use this list</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="private" data-testid="visibility-private">
+                            <div className="flex items-center gap-2">
+                              <Lock className="w-4 h-4" />
+                              <span>Private - Only you can use this list</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="groups" data-testid="visibility-groups">
+                            <div className="flex items-center gap-2">
+                              <span>Groups - Share with specific groups</span>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
-                  {formData.visibility === "groups" && (
+                  {formData.visibility === "groups" && !isFreeAccount && (
                     <div>
                       <Label>Share with Groups</Label>
                       <div className="border rounded-md p-4 space-y-3 max-h-[200px] overflow-y-auto">
@@ -1170,6 +1194,35 @@ export default function WordListsPage() {
         )}
 
         {user?.role === "teacher" ? (
+          <div className="space-y-4">
+            {loadingUserLists ? (
+              <div className="text-center py-12">
+                <div className="text-gray-600">Loading your word lists...</div>
+              </div>
+            ) : userLists.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-gray-600 mb-4">
+                    You haven't created any word lists yet
+                  </p>
+                  <Button onClick={() => setDialogOpen(true)} data-testid="button-create-first">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Your First List
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : filteredUserLists.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-gray-600">No word lists found for the selected grade level</p>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredUserLists.map((list) => renderWordList(list, true))
+            )}
+          </div>
+        ) : isFreeAccount ? (
+          /* Free accounts only see their own private lists - no tabs needed */
           <div className="space-y-4">
             {loadingUserLists ? (
               <div className="text-center py-12">

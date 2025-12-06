@@ -706,6 +706,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Authentication required" });
       }
 
+      // Free accounts can only create private word lists
+      const user = req.user as Express.User;
+      if (user.accountType === 'free' && req.body.visibility && req.body.visibility !== 'private') {
+        return res.status(403).json({ 
+          error: "Free accounts can only create private word lists. Upgrade to a Family or School account to share word lists." 
+        });
+      }
+      // Force private visibility for free accounts
+      if (user.accountType === 'free') {
+        req.body.visibility = 'private';
+      }
+
       // Validate list name and words for inappropriate content before processing
       const { containsInappropriateContent, validateWords } = await import("./contentModeration");
       
@@ -922,6 +934,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!isOwner && !isCoOwner) {
         return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Free accounts can only have private word lists
+      const user = req.user as Express.User;
+      if (user.accountType === 'free' && req.body.visibility && req.body.visibility !== 'private') {
+        return res.status(403).json({ 
+          error: "Free accounts can only have private word lists. Upgrade to a Family or School account to share word lists." 
+        });
+      }
+      // Force private visibility for free accounts
+      if (user.accountType === 'free') {
+        req.body.visibility = 'private';
       }
 
       // Validate list name and words for inappropriate content before processing
