@@ -441,8 +441,33 @@ export default function Home() {
     setLocation(`/game?listId=${list.id}&mode=${selectedMode}${gameCountParam}`);
   };
 
+  // Check if user is a free account
+  const isFreeAccount = user?.accountType === 'free';
+
   const allLists = useMemo(() => {
     const myLists = (customLists || []).map(list => ({ ...list, isMine: true }));
+    
+    // Free accounts only see their own lists - no public or shared lists
+    if (isFreeAccount) {
+      let filtered = myLists;
+      
+      if (filterGradeLevel !== "all") {
+        filtered = filtered.filter(list => list.gradeLevel === filterGradeLevel);
+      }
+      if (hideMastered && achievements) {
+        filtered = filtered.filter(list => {
+          const achievement = getAchievementForList(list.id);
+          return !achievement || achievement.achievementValue !== "3 Stars";
+        });
+      }
+      
+      return filtered.sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0).getTime();
+        const dateB = new Date(b.createdAt || 0).getTime();
+        return dateB - dateA;
+      });
+    }
+    
     const pubLists = (publicLists || []).map(list => ({ ...list, isMine: false }));
     const shared = (sharedLists || []).map(list => ({ ...list, isMine: false, isShared: true }));
     const combined = [...myLists, ...pubLists, ...shared];
@@ -474,7 +499,7 @@ export default function Home() {
       const dateB = new Date(b.createdAt || 0).getTime();
       return dateB - dateA;
     });
-  }, [customLists, publicLists, sharedLists, filterGradeLevel, filterCreatedBy, hideMastered, achievements]);
+  }, [customLists, publicLists, sharedLists, filterGradeLevel, filterCreatedBy, hideMastered, achievements, isFreeAccount]);
 
   const availableGradeLevels = useMemo(() => {
     const myLists = customLists || [];
@@ -898,7 +923,13 @@ export default function Home() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className={`mb-4 grid grid-cols-1 gap-4 ${selectedMode && ["practice", "quiz", "scramble", "mistake"].includes(selectedMode) ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+          <div className={`mb-4 grid grid-cols-1 gap-4 ${
+            // Free accounts: 1 col for Grade only, 2 cols if Game Length shown
+            // Paid accounts: 2 cols for Grade+Author, 3 cols if Game Length shown
+            isFreeAccount 
+              ? (selectedMode && ["practice", "quiz", "scramble", "mistake"].includes(selectedMode) ? "md:grid-cols-2" : "md:grid-cols-1")
+              : (selectedMode && ["practice", "quiz", "scramble", "mistake"].includes(selectedMode) ? "md:grid-cols-3" : "md:grid-cols-2")
+          }`}>
             <div>
               <label className="text-sm font-medium mb-1.5 block">Grade Level</label>
               <Select 
@@ -918,25 +949,28 @@ export default function Home() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">Created By</label>
-              <Select 
-                value={filterCreatedBy} 
-                onValueChange={setFilterCreatedBy}
-              >
-                <SelectTrigger data-testid="filter-author">
-                  <SelectValue placeholder="All Authors" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Authors</SelectItem>
-                  {availableAuthors.map((author) => (
-                    <SelectItem key={author} value={author || ""}>
-                      {author}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Hide Author filter for free accounts - they only see their own lists */}
+            {!isFreeAccount && (
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Created By</label>
+                <Select 
+                  value={filterCreatedBy} 
+                  onValueChange={setFilterCreatedBy}
+                >
+                  <SelectTrigger data-testid="filter-author">
+                    <SelectValue placeholder="All Authors" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Authors</SelectItem>
+                    {availableAuthors.map((author) => (
+                      <SelectItem key={author} value={author || ""}>
+                        {author}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             {selectedMode && ["practice", "quiz", "scramble", "mistake"].includes(selectedMode) && (
               <div>
                 <label className="text-sm font-medium mb-1.5 block">Game Length</label>
