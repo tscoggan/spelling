@@ -39,7 +39,7 @@ function getVisibility(list: any): "public" | "private" | "groups" {
 
 export default function WordListsPage() {
   const { user, isGuestMode } = useAuth();
-  const { guestWordLists, guestAddWordList, guestUpdateWordList, guestDeleteWordList, guestGetWordList } = useGuestSession();
+  const { guestWordLists, guestAddWordList, guestUpdateWordList, guestDeleteWordList, guestGetWordList, guestAddWordImageAssignment } = useGuestSession();
   const isFreeAccount = user?.accountType === 'free';
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -71,6 +71,121 @@ export default function WordListsPage() {
     gradeLevel: "",
     selectedGroupIds: [] as number[],
   });
+  // Track newly created list ID for dialog button disabling during image assignment
+  const [processingNewListId, setProcessingNewListId] = useState<number | null>(null);
+  // Get the context-level processing lock for guest image assignments
+  const { guestSetWordListImageAssignments, guestIsListProcessing, guestSetListProcessing } = useGuestSession();
+  
+  // Helper to check if the current dialog should be locked (for edit or new list)
+  const isDialogProcessing = editingList 
+    ? guestIsListProcessing(editingList.id) 
+    : (processingNewListId !== null && guestIsListProcessing(processingNewListId));
+  
+  // Helper function to automatically assign images to guest word lists
+  const autoAssignGuestImages = async (listId: number, words: string[], existingAssignments: GuestImageAssignment[] = []) => {
+    // Prevent re-entry using context-level lock (shared across all components/tabs)
+    if (guestIsListProcessing(listId)) {
+      console.warn("Image assignment already in progress for this list, skipping");
+      return;
+    }
+    
+    guestSetListProcessing(listId, true);
+    
+    // Build a set of words that already have assignments (using a copy to avoid mutation)
+    const wordsWithImages = new Set(existingAssignments.map(a => a.word.toLowerCase()));
+    
+    // Deduplicate words in the input and filter out those with existing assignments
+    const seenWords = new Set<string>();
+    const wordsToFetch: string[] = [];
+    for (const w of words) {
+      const lowerWord = w.toLowerCase();
+      if (!wordsWithImages.has(lowerWord) && !seenWords.has(lowerWord)) {
+        wordsToFetch.push(w);
+        seenWords.add(lowerWord);
+      }
+    }
+    
+    // Create a fresh copy of existing assignments
+    const newAssignments: GuestImageAssignment[] = existingAssignments.map(a => ({ ...a }));
+    let successCount = 0;
+    let failCount = 0;
+    
+    // If no new words to fetch, still refresh state with a fresh array to ensure re-render
+    if (wordsToFetch.length === 0) {
+      guestSetWordListImageAssignments(listId, [...newAssignments]);
+      guestSetListProcessing(listId, false);
+      return;
+    }
+    
+    // Track words already processed within this run to avoid duplicate fetches
+    const processedWords = new Set<string>();
+    
+    try {
+      for (const word of wordsToFetch) {
+        // Skip if already processed in this run
+        const lowerWord = word.toLowerCase();
+        if (processedWords.has(lowerWord)) {
+          continue;
+        }
+        processedWords.add(lowerWord);
+        
+        try {
+          const response = await fetch(`/api/guest/pixabay-search?word=${encodeURIComponent(word)}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.previews && data.previews.length > 0) {
+              const firstResult = data.previews[0];
+              newAssignments.push({
+                word,
+                imageUrl: firstResult.largeImageURL || firstResult.webformatURL,
+                previewUrl: firstResult.previewURL,
+              });
+              successCount++;
+            } else {
+              // No images found for this word (not a failure, just no results)
+            }
+          } else {
+            failCount++;
+          }
+        } catch (err) {
+          console.warn(`Failed to fetch image for word "${word}":`, err);
+          failCount++;
+        }
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 150));
+      }
+      
+      // Always update state with a fresh array to trigger React re-render
+      guestSetWordListImageAssignments(listId, [...newAssignments]);
+      
+      if (successCount > 0) {
+        toast({
+          title: "Images Assigned!",
+          description: `Found images for ${successCount} of ${wordsToFetch.length} words`,
+        });
+      } else if (failCount === wordsToFetch.length) {
+        toast({
+          title: "Image Assignment Failed",
+          description: "Could not fetch images. Please try again later.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "No Images Found",
+          description: "No matching images were found for your words",
+        });
+      }
+    } catch (err) {
+      console.error("Error auto-assigning images:", err);
+      toast({
+        title: "Error",
+        description: "Failed to assign images. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      guestSetListProcessing(listId, false);
+    }
+  };
 
   // Update form defaults when user role becomes available
   // Free accounts always get "private" visibility
@@ -523,7 +638,7 @@ export default function WordListsPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Defensively ensure free accounts always submit with private visibility
     const submissionData = isFreeAccount 
@@ -554,6 +669,10 @@ export default function WordListsPage() {
       }
       
       if (editingList) {
+        // Get existing assignments before updating
+        const existingList = guestGetWordList(editingList.id);
+        const existingAssignments = existingList?.imageAssignments || [];
+        
         guestUpdateWordList(editingList.id, {
           name: submissionData.name,
           words,
@@ -562,10 +681,18 @@ export default function WordListsPage() {
         });
         toast({
           title: "Success!",
-          description: "Word list updated successfully",
+          description: submissionData.assignImages 
+            ? "Word list updated! Checking for new images..." 
+            : "Word list updated successfully",
         });
+        
+        // Auto-assign images for new words if enabled (passes existing assignments for deduplication)
+        // AWAIT to keep dialog open until assignment completes
+        if (submissionData.assignImages) {
+          await autoAssignGuestImages(editingList.id, words, existingAssignments);
+        }
       } else {
-        guestAddWordList({
+        const newList = guestAddWordList({
           name: submissionData.name,
           words,
           visibility: "private",
@@ -573,8 +700,21 @@ export default function WordListsPage() {
         });
         toast({
           title: "Success!",
-          description: "Word list created successfully (stored in memory for this session)",
+          description: submissionData.assignImages 
+            ? "Word list created! Assigning images..." 
+            : "Word list created successfully (stored in memory for this session)",
         });
+        
+        // Auto-assign images if enabled (no existing assignments for new list)
+        // AWAIT to keep dialog open until assignment completes
+        if (submissionData.assignImages && newList) {
+          setProcessingNewListId(newList.id);
+          try {
+            await autoAssignGuestImages(newList.id, words, []);
+          } finally {
+            setProcessingNewListId(null);
+          }
+        }
       }
       setDialogOpen(false);
       setEditingList(null);
@@ -901,6 +1041,12 @@ export default function WordListsPage() {
           <span className="px-2 py-1 text-gray-600 text-sm block mt-2">
             +{list.words.length - 10} more words
           </span>
+        )}
+        {guestIsListProcessing(list.id) && (
+          <div className="flex items-center gap-2 mt-2 text-sm text-blue-600">
+            <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full" />
+            <span>Assigning images...</span>
+          </div>
         )}
       </CardContent>
     </Card>
@@ -1231,16 +1377,17 @@ export default function WordListsPage() {
                       type="button"
                       variant="outline"
                       onClick={() => { setDialogOpen(false); setEditingList(null); resetForm(); }}
+                      disabled={isDialogProcessing}
                       data-testid="button-cancel"
                     >
                       Cancel
                     </Button>
                     <Button
                       type="submit"
-                      disabled={createMutation.isPending || updateMutation.isPending}
+                      disabled={createMutation.isPending || updateMutation.isPending || isDialogProcessing}
                       data-testid="button-save-list"
                     >
-                      {editingList ? "Update" : "Create"} List
+                      {isDialogProcessing ? "Assigning Images..." : (editingList ? "Update" : "Create") + " List"}
                     </Button>
                   </div>
                 </form>

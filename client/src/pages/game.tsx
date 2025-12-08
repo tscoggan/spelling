@@ -204,7 +204,7 @@ export default function Game() {
 function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, challengeId, isInitiator }: { listId?: string; virtualWords?: string; gameMode: GameMode; gameCount: string; onRestart: () => void; challengeId?: string; isInitiator?: boolean }) {
   const [, setLocation] = useLocation();
   const { user, isGuestMode } = useAuth();
-  const { addGameSession, updateGameSession, addStars, addAchievement, state: guestState } = useGuestSession();
+  const { addGameSession, updateGameSession, addStars, addAchievement, state: guestState, guestGetWordList } = useGuestSession();
   const { themeAssets, currentTheme, setTheme, unlockedThemes, allThemes } = useTheme();
   
   const [userInput, setUserInput] = useState("");
@@ -801,6 +801,10 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
 
   // Use the custom list ID for illustrations
   const effectiveWordListId = listId ? parseInt(listId) : undefined;
+  
+  // For guest mode, get image assignments from the guest word list
+  const guestListData = isGuestMode && effectiveWordListId ? guestGetWordList(effectiveWordListId) : null;
+  const guestImageAssignments = guestListData?.imageAssignments || [];
 
   const { data: wordIllustrations } = useQuery<WordIllustration[]>({
     queryKey: ['/api/word-lists', effectiveWordListId, 'illustrations'],
@@ -812,8 +816,8 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
       }
       return response.json();
     },
-    // Only enable query when we have a valid word list ID
-    enabled: !!effectiveWordListId,
+    // Only enable query when we have a valid word list ID and NOT in guest mode
+    enabled: !!effectiveWordListId && !isGuestMode,
     // Provide a default value to prevent errors during initial load
     placeholderData: [],
   });
@@ -4725,11 +4729,27 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
                       </h2>
                     </div>
                     
-                    {gameMode !== "mistake" && currentWord && wordIllustrations && (() => {
-                      const illustration = wordIllustrations.find(
-                        (ill) => ill.word === currentWord.word.toLowerCase()
-                      );
-                      return illustration && illustration.imagePath ? (
+                    {gameMode !== "mistake" && currentWord && (() => {
+                      // Check guest image assignments first, then fall back to server illustrations
+                      let imagePath: string | null = null;
+                      
+                      if (isGuestMode && guestImageAssignments.length > 0) {
+                        const guestAssignment = guestImageAssignments.find(
+                          (a) => a.word.toLowerCase() === currentWord.word.toLowerCase()
+                        );
+                        if (guestAssignment) {
+                          imagePath = guestAssignment.imageUrl;
+                        }
+                      } else if (wordIllustrations) {
+                        const illustration = wordIllustrations.find(
+                          (ill) => ill.word === currentWord.word.toLowerCase()
+                        );
+                        if (illustration?.imagePath) {
+                          imagePath = illustration.imagePath;
+                        }
+                      }
+                      
+                      return imagePath ? (
                         <motion.div
                           ref={wordImageRef}
                           initial={{ scale: 0.8, opacity: 0 }}
@@ -4738,7 +4758,7 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
                           className="flex justify-center"
                         >
                           <img 
-                            src={illustration.imagePath}
+                            src={imagePath}
                             alt={`Cartoon ${currentWord.word}`}
                             className="w-32 h-32 md:w-48 md:h-48 object-contain"
                             data-testid="img-word-illustration"

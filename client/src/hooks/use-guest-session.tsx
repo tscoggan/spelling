@@ -37,6 +37,7 @@ type GuestSessionState = {
   achievements: GuestAchievement[];
   stars: number;
   items: Map<string, number>;
+  processingListIds: Set<number>;
 };
 
 type GuestSessionContextType = {
@@ -58,6 +59,8 @@ type GuestSessionContextType = {
   useItem: (itemId: string) => boolean;
   getItemQuantity: (itemId: string) => number;
   resetSession: () => void;
+  isListProcessing: (listId: number) => boolean;
+  setListProcessing: (listId: number, processing: boolean) => void;
 };
 
 const initialState: GuestSessionState = {
@@ -66,6 +69,7 @@ const initialState: GuestSessionState = {
   achievements: [],
   stars: 0,
   items: new Map(),
+  processingListIds: new Set(),
 };
 
 let nextWordListId = 1;
@@ -230,6 +234,22 @@ export function GuestSessionProvider({ children }: { children: ReactNode }) {
     return state.items.get(itemId) || 0;
   }, [state.items]);
 
+  const isListProcessing = useCallback((listId: number): boolean => {
+    return state.processingListIds.has(listId);
+  }, [state.processingListIds]);
+
+  const setListProcessing = useCallback((listId: number, processing: boolean) => {
+    setState(prev => {
+      const newSet = new Set(prev.processingListIds);
+      if (processing) {
+        newSet.add(listId);
+      } else {
+        newSet.delete(listId);
+      }
+      return { ...prev, processingListIds: newSet };
+    });
+  }, []);
+
   const resetSession = useCallback(() => {
     nextWordListId = 1;
     nextGameSessionId = 1;
@@ -258,6 +278,8 @@ export function GuestSessionProvider({ children }: { children: ReactNode }) {
         useItem,
         getItemQuantity,
         resetSession,
+        isListProcessing,
+        setListProcessing,
       }}
     >
       {children}
@@ -294,5 +316,7 @@ export function useGuestSession() {
     guestUseItem: context.useItem,
     guestGetItemQuantity: context.getItemQuantity,
     guestResetSession: context.resetSession,
+    guestIsListProcessing: context.isListProcessing,
+    guestSetListProcessing: context.setListProcessing,
   };
 }
