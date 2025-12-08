@@ -28,8 +28,6 @@ import {
   type UserGroupCoOwner,
   type HeadToHeadChallenge,
   type InsertHeadToHeadChallenge,
-  type FlaggedWord,
-  type InsertFlaggedWord,
   words,
   gameSessions,
   users,
@@ -48,7 +46,6 @@ import {
   userItems,
   headToHeadChallenges,
   appSettings,
-  flaggedWords,
   SHOP_ITEMS,
   type ShopItemId,
 } from "@shared/schema";
@@ -180,8 +177,6 @@ export interface IStorage {
   getAppSetting(key: string): Promise<string | undefined>;
   setAppSetting(key: string, value: string): Promise<void>;
   bumpAppVersion(): Promise<string>;
-  
-  createFlaggedWord(flag: InsertFlaggedWord): Promise<FlaggedWord>;
   
   sessionStore: session.Store;
 }
@@ -1751,11 +1746,6 @@ export class DatabaseStorage implements IStorage {
     const newVersion = `${major}.${minor}.${patch}`;
     await this.setAppSetting("app_version", newVersion);
     return newVersion;
-  }
-
-  async createFlaggedWord(flag: InsertFlaggedWord): Promise<FlaggedWord> {
-    const [flaggedWord] = await db.insert(flaggedWords).values(flag).returning();
-    return flaggedWord;
   }
 }
 

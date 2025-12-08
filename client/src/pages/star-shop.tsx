@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Home, Star, Minus, Plus } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import { useGuestSession } from "@/hooks/use-guest-session";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { UserHeader } from "@/components/user-header";
@@ -54,8 +53,7 @@ const ITEM_IMAGES: Record<ShopItemId, string> = {
 
 export default function StarShop() {
   const [, setLocation] = useLocation();
-  const { user, isGuestMode } = useAuth();
-  const { state: guestState, spendStars: guestSpendStars, addItem: guestAddItem, getItemQuantity: guestGetItemQuantity } = useGuestSession();
+  const { user } = useAuth();
   const { toast } = useToast();
   const { forceSetTheme } = useTheme();
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
@@ -64,51 +62,21 @@ export default function StarShop() {
   const [applyThemeDialogOpen, setApplyThemeDialogOpen] = useState(false);
   const [purchasedThemeId, setPurchasedThemeId] = useState<ThemeId | null>(null);
 
-  // Fetch shop data - only for authenticated users
-  const { data: apiShopData, isLoading: apiLoading } = useQuery<ShopData>({
+  const { data: shopData, isLoading } = useQuery<ShopData>({
     queryKey: ["/api/user-items"],
-    enabled: !!user && !isGuestMode,
-    refetchOnMount: "always",
+    enabled: !!user,
+    refetchOnMount: "always",  // Always refetch when page opens to get fresh star balance
   });
-  
-  // For guests, create shop data from guest session
-  const isLoading = isGuestMode ? false : apiLoading;
-  const shopData: ShopData | undefined = isGuestMode 
-    ? {
-        stars: guestState.stars,
-        inventory: Array.from(guestState.items.entries()).map(([itemId, quantity], index) => ({
-          id: index,
-          userId: 0,
-          itemId,
-          quantity,
-        })),
-        catalog: SHOP_ITEMS,
-      }
-    : apiShopData;
 
   const purchaseMutation = useMutation({
     mutationFn: async ({ itemId, quantity }: { itemId: ShopItemId; quantity: number }) => {
-      // Guest users purchase from in-memory storage
-      if (isGuestMode) {
-        const item = SHOP_ITEMS[itemId];
-        const totalCost = item.cost * quantity;
-        const success = guestSpendStars(totalCost);
-        if (!success) throw new Error("Not enough stars");
-        guestAddItem(itemId, quantity);
-        return { 
-          newItemQuantity: guestGetItemQuantity(itemId),
-          success: true 
-        };
-      }
       const response = await apiRequest("POST", "/api/user-items/purchase", { itemId, quantity });
       return response.json();
     },
     onSuccess: (data, variables) => {
-      if (!isGuestMode) {
-        queryClient.invalidateQueries({ queryKey: ["/api/user-items"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/user-items/list"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      }
+      queryClient.invalidateQueries({ queryKey: ["/api/user-items"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-items/list"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       
       const purchasedItem = selectedItem;
       setPurchaseDialogOpen(false);

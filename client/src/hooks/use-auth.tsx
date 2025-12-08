@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useState } from "react";
+import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import {
   useQuery,
   useMutation,
@@ -7,7 +7,8 @@ import {
 import { insertUserSchema, User as SelectUser, InsertUser } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useGuestSession } from "@/hooks/use-guest-session";
+
+const GUEST_USER_ID_KEY = "spelling_playground_guest_id";
 
 type AuthContextType = {
   user: SelectUser | null;
@@ -17,33 +18,19 @@ type AuthContextType = {
   loginMutation: UseMutationResult<SelectUser, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<SelectUser, Error, InsertUser>;
-  guestLoginMutation: UseMutationResult<void, Error, void>;
+  guestLoginMutation: UseMutationResult<SelectUser, Error, void>;
 };
 
 type LoginData = Pick<InsertUser, "username" | "password">;
-
-const GUEST_USER: SelectUser = {
-  id: 0,
-  username: "guest",
-  password: "",
-  firstName: null,
-  lastName: null,
-  email: null,
-  selectedAvatar: null,
-  selectedTheme: "default",
-  preferredVoice: null,
-  stars: 0,
-  role: "student",
-  accountType: "free",
-  createdAt: new Date(),
-};
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
-  const { resetSession } = useGuestSession();
-  const [isGuestMode, setIsGuestMode] = useState(false);
+  const [guestUserId, setGuestUserId] = useState<number | null>(() => {
+    const stored = localStorage.getItem(GUEST_USER_ID_KEY);
+    return stored ? parseInt(stored, 10) : null;
+  });
 
   const {
     data: sessionUser,
@@ -54,16 +41,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
 
-  // Detect legacy guest users (username starts with "guest_") and treat them as guest mode
-  const isLegacyGuest = sessionUser?.username?.startsWith("guest_") ?? false;
-  const effectiveIsGuestMode = isGuestMode || isLegacyGuest;
-  
-  // For legacy guests, use the GUEST_USER constant instead of the legacy record
-  const user = isLegacyGuest 
-    ? GUEST_USER 
-    : (sessionUser || (isGuestMode ? GUEST_USER : null));
-  const error = sessionError || null;
-  const isLoading = sessionLoading;
+  const {
+    data: guestUser,
+    error: guestError,
+    isLoading: guestLoading,
+  } = useQuery<SelectUser | undefined, Error>({
+    queryKey: ["/api/guest-user", guestUserId],
+    queryFn: async () => {
+      if (!guestUserId) return undefined;
+      const res = await fetch(`/api/guest-user/${guestUserId}`);
+      if (!res.ok) {
+        localStorage.removeItem(GUEST_USER_ID_KEY);
+        setGuestUserId(null);
+        return undefined;
+      }
+      return res.json();
+    },
+    enabled: !!guestUserId && !sessionUser,
+  });
+
+  const user = sessionUser || guestUser || null;
+  const error = sessionError || guestError || null;
+  const isLoading = sessionLoading || (!!guestUserId && guestLoading);
+  const isGuestMode = !sessionUser && !!guestUser;
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
@@ -71,8 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
-      setIsGuestMode(false);
       queryClient.setQueryData(["/api/user"], user);
+      // Refresh notification count on login
       queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos/count"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos"] });
     },
@@ -91,7 +91,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
-      setIsGuestMode(false);
       queryClient.setQueryData(["/api/user"], user);
     },
     onError: (error: Error) => {
@@ -106,16 +105,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logoutMutation = useMutation({
     mutationFn: async () => {
       if (isGuestMode) {
-        setIsGuestMode(false);
-        resetSession();
+        localStorage.removeItem(GUEST_USER_ID_KEY);
+        setGuestUserId(null);
         return;
       }
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
-      setIsGuestMode(false);
-      resetSession();
       queryClient.setQueryData(["/api/user"], null);
+      queryClient.removeQueries({ queryKey: ["/api/guest-user"] });
       queryClient.removeQueries({ queryKey: ["/api/word-lists"] });
       queryClient.removeQueries({ queryKey: ["/api/word-lists/shared-with-me"] });
       queryClient.removeQueries({ queryKey: ["/api/user-groups"] });
@@ -132,10 +130,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const guestLoginMutation = useMutation({
     mutationFn: async () => {
-      setIsGuestMode(true);
+      const existingGuestId = localStorage.getItem(GUEST_USER_ID_KEY);
+      if (existingGuestId) {
+        const res = await fetch(`/api/guest-user/${existingGuestId}`);
+        if (res.ok) {
+          return res.json();
+        }
+      }
+      const res = await apiRequest("POST", "/api/guest-user", {});
+      return res.json();
     },
-    onSuccess: () => {
-      queryClient.setQueryData(["/api/user"], null);
+    onSuccess: (user: SelectUser) => {
+      localStorage.setItem(GUEST_USER_ID_KEY, user.id.toString());
+      setGuestUserId(user.id);
+      queryClient.setQueryData(["/api/guest-user", user.id], user);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Guest login failed",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -145,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: user ?? null,
         isLoading,
         error,
-        isGuestMode: effectiveIsGuestMode,
+        isGuestMode,
         loginMutation,
         logoutMutation,
         registerMutation,

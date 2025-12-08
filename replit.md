@@ -41,7 +41,6 @@ The frontend is built with React, utilizing Wouter for routing, TanStack Query f
 - **Scoring System & Leaderboard**: Points, streak bonuses, and leaderboards.
 - **Progress Tracking**: Session-based tracking of words, accuracy, and streaks.
 - **My Stats Page**: Provides aggregate performance metrics with date filtering, lifetime metrics (streaks, favorite game mode), and a "Most Misspelled Words Play Feature" for re-practicing specific words. Implements security measures and UTC date boundaries for accurate tracking.
-- **Report Inappropriate Content**: Users can flag word content (definition, sentence, or word origin) during gameplay in Practice, Timed Challenge, Quiz, and Word Scramble modes. Reports are stored in the `flagged_words` table with the word ID, content types flagged, optional comments, user ID (if logged in), and game mode.
 
 ### System Design Choices
 - **Client-Server Architecture**: React frontend communicates with an Express.js backend.
@@ -50,7 +49,7 @@ The frontend is built with React, utilizing Wouter for routing, TanStack Query f
 - **Authentication Flow**: Passport.js manages user authentication and session persistence.
 - **Object Storage Architecture**: Replit Object Storage hosts all word illustration images publicly.
 - **API Endpoints**: RESTful APIs for core functionalities, supporting unlimited word fetching.
-- **Background Job System**: Asynchronously processes Pixabay image enrichment for custom word lists with real-time UI updates. Jobs are tracked in-memory only (not persisted to database) with 30-minute retention after completion. Backfill jobs have concurrency protection to prevent overlapping executions. Note: Job history is intentionally ephemeral - it is lost after 30 minutes or server restart per design requirements.
+- **Background Job System**: Asynchronously processes Pixabay image enrichment for custom word lists with real-time UI updates.
 - **React Query Caching**: Uses prefix-based and tuple-based query keys for efficient and accurate cache management.
 - **Dictionary Validation System**: Utilizes a precedence hierarchy for Merriam-Webster dictionaries, robust error handling, in-memory caching, and concurrency control for API requests.
 - **Game Session Tracking**: The `game_sessions` table accurately tracks `total_words`, `correct_words`, `is_complete` status, and `score` for various game modes, with detailed accuracy calculation logic. Partial sessions (from clicking Restart or Home mid-game) are saved with `isComplete=false` and included in accuracy metrics calculations.

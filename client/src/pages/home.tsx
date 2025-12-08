@@ -7,7 +7,6 @@ import type { GameMode, HeadToHeadChallenge } from "@shared/schema";
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import { useGuestSession } from "@/hooks/use-guest-session";
 import { useIOSKeyboardTrigger } from "@/App";
 import {
   Dialog,
@@ -29,7 +28,6 @@ import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { UserHeader } from "@/components/user-header";
 import { AccuracyCard } from "@/components/accuracy-card";
-import { FeatureComparisonDialog } from "@/components/feature-comparison-dialog";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -226,8 +224,7 @@ function AvatarDisplay({ avatar, size = "md", className = "" }: { avatar?: strin
 
 export default function Home() {
   const [, setLocation] = useLocation();
-  const { user, isGuestMode } = useAuth();
-  const { state: guestState, guestGetWordListMastery } = useGuestSession();
+  const { user } = useAuth();
   const { themeAssets, currentTheme, hasDarkBackground } = useTheme();
   const textClasses = getThemedTextClasses(hasDarkBackground);
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
@@ -240,9 +237,6 @@ export default function Home() {
   const iOSKeyboardInput = useIOSKeyboardTrigger();
   const { toast } = useToast();
   
-  // Feature comparison dialog state (for locked features)
-  const [featureComparisonOpen, setFeatureComparisonOpen] = useState(false);
-  
   // Head to Head Challenge state
   const [h2hDialogOpen, setH2hDialogOpen] = useState(false);
   const [h2hSelectedWordList, setH2hSelectedWordList] = useState<number | null>(null);
@@ -250,47 +244,35 @@ export default function Home() {
   const [h2hSelectedOpponent, setH2hSelectedOpponent] = useState<any>(null);
   const searchResultsRef = useRef<HTMLDivElement>(null);
 
-  // Refresh notifications when home page loads (only for authenticated users)
+  // Refresh notifications when home page loads
   const refreshNotifications = useRefreshNotifications(user?.id);
   useEffect(() => {
-    if (!isGuestMode) {
-      refreshNotifications();
-    }
-  }, [refreshNotifications, isGuestMode]);
+    refreshNotifications();
+  }, [refreshNotifications]);
 
   // Show Teacher Home for teachers
   if (user?.role === "teacher") {
     return <TeacherHome />;
   }
 
-  // For guests, use in-memory word lists; for authenticated users, fetch from API
-  const { data: apiCustomLists } = useQuery<CustomWordList[]>({
+  const { data: customLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists"],
-    enabled: !isGuestMode,
   });
-  
-  // Guest users get their word lists from in-memory state
-  const customLists = isGuestMode ? (guestState.wordLists as any[]) : apiCustomLists;
 
   const { data: publicLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists/public"],
   });
 
-  // Shared lists only work for authenticated users
   const { data: sharedLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists/shared-with-me"],
-    enabled: !isGuestMode,
   });
 
-  // Achievements - guests use in-memory state
-  const { data: apiAchievements } = useQuery<any[]>({
+  const { data: achievements } = useQuery<any[]>({
     queryKey: ["/api/achievements/user", user?.id],
-    enabled: !!user && !isGuestMode,
+    enabled: !!user,
   });
-  
-  const achievements = isGuestMode ? guestState.achievements : apiAchievements;
 
-  // Head to Head Challenge queries - disabled for guests
+  // Head to Head Challenge queries
   const { data: searchResults, isLoading: isSearchingUsers } = useQuery<any[]>({
     queryKey: ["/api/users/search", h2hOpponentSearch],
     queryFn: async () => {
@@ -300,7 +282,7 @@ export default function Home() {
       if (!res.ok) throw new Error("Failed to search users");
       return res.json();
     },
-    enabled: !isGuestMode && h2hOpponentSearch.length >= 2,
+    enabled: h2hOpponentSearch.length >= 2,
   });
 
   // Auto-scroll to search results when they appear
@@ -312,7 +294,6 @@ export default function Home() {
 
   const { data: pendingChallenges } = useQuery<any[]>({
     queryKey: ["/api/challenges/pending"],
-    enabled: !isGuestMode,
   });
 
   // Filter to get pending invitations for the current user (as opponent)
@@ -321,7 +302,6 @@ export default function Home() {
   // Active challenges where it's the current user's turn to play
   const { data: activeChallenges } = useQuery<any[]>({
     queryKey: ["/api/challenges/active"],
-    enabled: !isGuestMode,
   });
   
   const myTurnChallenges = activeChallenges?.filter((c: any) => 
@@ -334,7 +314,6 @@ export default function Home() {
 
   const { data: completedChallenges } = useQuery<any[]>({
     queryKey: ["/api/challenges/completed"],
-    enabled: !isGuestMode,
   });
 
   const createChallengeMutation = useMutation({
@@ -419,18 +398,6 @@ export default function Home() {
 
   // Helper function to get achievement for a word list
   const getAchievementForList = (wordListId: number) => {
-    // For guest mode, use in-memory word list mastery data
-    if (isGuestMode) {
-      const mastery = guestGetWordListMastery(wordListId);
-      if (!mastery) return null;
-      return {
-        wordListId,
-        achievementType: "Word List Mastery",
-        achievementValue: `${mastery.totalStars} ${mastery.totalStars === 1 ? "Star" : "Stars"}`,
-        completedModes: mastery.completedModes,
-      };
-    }
-    // For authenticated users, use API achievements
     if (!achievements) return null;
     return achievements.find(
       (a) => a.wordListId === wordListId && a.achievementType === "Word List Mastery"
@@ -688,9 +655,8 @@ export default function Home() {
           {user?.accountType === 'free' ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <button
-                  onClick={() => setFeatureComparisonOpen(true)}
-                  className="cursor-pointer rounded-full relative hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                <div
+                  className="cursor-not-allowed rounded-full relative"
                   data-testid="button-user-groups-locked"
                 >
                   <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-white/90 border-2 border-gray-300 flex items-center justify-center p-2 opacity-50">
@@ -705,10 +671,10 @@ export default function Home() {
                       <Lock className="w-6 h-6 text-white" />
                     </div>
                   </div>
-                </button>
+                </div>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Click to see available features</p>
+                <p>Create an account to join groups!</p>
               </TooltipContent>
             </Tooltip>
           ) : (
@@ -827,16 +793,7 @@ export default function Home() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Card
-                      className="shadow-lg border border-gray-300 bg-gray-100 w-full sm:w-auto relative cursor-pointer opacity-60 hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                      onClick={() => setFeatureComparisonOpen(true)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          setFeatureComparisonOpen(true);
-                        }
-                      }}
+                      className="shadow-lg border border-gray-300 bg-gray-100 w-full sm:w-auto relative cursor-not-allowed opacity-60"
                       data-testid="card-mode-headtohead-locked"
                     >
                       <div className="absolute inset-0 flex items-center justify-center z-10">
@@ -856,16 +813,15 @@ export default function Home() {
                     </Card>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Click to see available features</p>
+                    <p>Create an account to challenge friends!</p>
                   </TooltipContent>
                 </Tooltip>
 
                 {/* Locked H2H Challenge Results Button */}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button
-                      onClick={() => setFeatureComparisonOpen(true)}
-                      className="bg-gray-100 rounded-lg border border-gray-300 shadow-lg p-2 cursor-pointer opacity-60 relative hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                    <div
+                      className="bg-gray-100 rounded-lg border border-gray-300 shadow-lg p-2 cursor-not-allowed opacity-60 relative"
                       data-testid="button-h2h-challenge-results-locked"
                     >
                       <div className="absolute inset-0 flex items-center justify-center z-10">
@@ -878,10 +834,10 @@ export default function Home() {
                         alt="H2H Challenge Results" 
                         className="w-28 h-auto grayscale"
                       />
-                    </button>
+                    </div>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Click to see available features</p>
+                    <p>Create an account to view challenge results!</p>
                   </TooltipContent>
                 </Tooltip>
               </motion.div>
@@ -1391,12 +1347,6 @@ export default function Home() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Feature Comparison Dialog */}
-      <FeatureComparisonDialog 
-        open={featureComparisonOpen} 
-        onOpenChange={setFeatureComparisonOpen} 
-      />
     </div>
   );
 }

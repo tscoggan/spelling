@@ -76,6 +76,14 @@ app.use((req, res, next) => {
     await setupVite(app, server);
   } else {
     serveStatic(app);
+    
+    // Auto-increment version on production startup
+    try {
+      const newVersion = await storage.bumpAppVersion();
+      log(`App version auto-incremented to ${newVersion}`);
+    } catch (error) {
+      log(`Failed to auto-increment version: ${error}`);
+    }
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
@@ -89,12 +97,5 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
-    
-    // Auto-increment version on production startup (after server is listening)
-    if (app.get("env") !== "development") {
-      storage.bumpAppVersion()
-        .then(newVersion => log(`App version auto-incremented to ${newVersion}`))
-        .catch(error => log(`Failed to auto-increment version: ${error}`));
-    }
   });
 })();

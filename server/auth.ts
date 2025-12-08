@@ -89,25 +89,8 @@ export function setupAuth(app: Express) {
     });
   });
 
-  app.get("/api/user", (req, res, next) => {
+  app.get("/api/user", (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    
-    const user = req.user as any;
-    // Detect legacy guest users (username starts with "guest_")
-    // Log them out and return 401 to trigger client-side guest mode
-    if (user?.username?.startsWith("guest_")) {
-      console.log(`Logging out legacy guest user: ${user.username}`);
-      req.logout((err) => {
-        if (err) {
-          console.error("Error logging out legacy guest:", err);
-          return next(err);
-        }
-        // Return 401 to trigger client-side guest mode
-        return res.sendStatus(401);
-      });
-      return;
-    }
-    
     res.json(req.user);
   });
 

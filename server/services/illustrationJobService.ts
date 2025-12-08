@@ -1,33 +1,9 @@
 import { db } from '../db';
-import { wordIllustrations, customWordLists, words } from '@shared/schema';
-import { eq, and } from 'drizzle-orm';
+import { illustrationJobs, illustrationJobItems, wordIllustrations, customWordLists, words } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 import { PixabayService } from './pixabay';
 
 const pixabayServiceInstance = new PixabayService();
-
-export interface JobItem {
-  word: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'skipped';
-  imagePath?: string;
-  errorMessage?: string;
-}
-
-export interface IllustrationJob {
-  id: number;
-  wordListId: number;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  totalWords: number;
-  processedWords: number;
-  successCount: number;
-  failureCount: number;
-  createdAt: Date;
-  completedAt?: Date;
-  items: JobItem[];
-}
-
-const activeJobs = new Map<number, IllustrationJob>();
-let nextJobId = 1;
-let backfillInProgress = false;
 
 export class IllustrationJobService {
   private pixabayService: PixabayService;
@@ -48,60 +24,31 @@ export class IllustrationJobService {
 
     const uniqueWords = Array.from(new Set(wordList.words.map(w => w.toLowerCase())));
 
-    const existingIllustrations = await db
-      .select()
-      .from(wordIllustrations)
-      .where(eq(wordIllustrations.wordListId, wordListId));
-
-    const existingWords = new Set(existingIllustrations.map(i => i.word.toLowerCase()));
-    const wordsNeedingImages = uniqueWords.filter(word => !existingWords.has(word));
-
-    if (wordsNeedingImages.length === 0) {
-      console.log(`⏭️  All words in word list ${wordListId} already have illustrations`);
-      const jobId = nextJobId++;
-      const job: IllustrationJob = {
-        id: jobId,
+    const [job] = await db
+      .insert(illustrationJobs)
+      .values({
         wordListId,
-        status: 'completed',
+        status: 'pending',
         totalWords: uniqueWords.length,
-        processedWords: uniqueWords.length,
+        processedWords: 0,
         successCount: 0,
         failureCount: 0,
-        createdAt: new Date(),
-        completedAt: new Date(),
-        items: uniqueWords.map(word => ({
-          word,
-          status: 'skipped' as const,
-          imagePath: existingIllustrations.find(i => i.word.toLowerCase() === word)?.imagePath || undefined,
-        })),
-      };
-      activeJobs.set(jobId, job);
-      return jobId;
+      })
+      .returning();
+
+    for (const word of uniqueWords) {
+      await db.insert(illustrationJobItems).values({
+        jobId: job.id,
+        word: word.toLowerCase(),
+        status: 'pending',
+      });
     }
 
-    const jobId = nextJobId++;
-    const job: IllustrationJob = {
-      id: jobId,
-      wordListId,
-      status: 'pending',
-      totalWords: wordsNeedingImages.length,
-      processedWords: 0,
-      successCount: 0,
-      failureCount: 0,
-      createdAt: new Date(),
-      items: wordsNeedingImages.map(word => ({
-        word,
-        status: 'pending' as const,
-      })),
-    };
+    console.log(`✓ Created illustration job ${job.id} for word list ${wordListId} with ${uniqueWords.length} words`);
 
-    activeJobs.set(jobId, job);
+    this.processJobAsync(job.id);
 
-    console.log(`✓ Created illustration job ${jobId} for word list ${wordListId} with ${wordsNeedingImages.length} words needing images`);
-
-    this.processJobAsync(jobId);
-
-    return jobId;
+    return job.id;
   }
 
   private async processJobAsync(jobId: number): Promise<void> {
@@ -110,31 +57,40 @@ export class IllustrationJobService {
         await this.processJob(jobId);
       } catch (error) {
         console.error(`Error processing illustration job ${jobId}:`, error);
-        const job = activeJobs.get(jobId);
-        if (job) {
-          job.status = 'failed';
-        }
       }
     });
   }
 
   async processJob(jobId: number): Promise<void> {
-    const job = activeJobs.get(jobId);
+    console.log(`🎨 Starting illustration job ${jobId}`);
+
+    await db
+      .update(illustrationJobs)
+      .set({ status: 'processing' })
+      .where(eq(illustrationJobs.id, jobId));
+
+    const [job] = await db
+      .select()
+      .from(illustrationJobs)
+      .where(eq(illustrationJobs.id, jobId));
+
     if (!job) {
       throw new Error(`Job ${jobId} not found`);
     }
 
-    console.log(`🎨 Starting illustration job ${jobId}`);
-    job.status = 'processing';
+    const items = await db
+      .select()
+      .from(illustrationJobItems)
+      .where(eq(illustrationJobItems.jobId, jobId));
 
+    let successCount = 0;
+    let failureCount = 0;
+    let skippedCount = 0;
     const usedImageIds = new Set<number>();
 
-    for (const item of job.items) {
-      if (item.status !== 'pending') {
-        continue;
-      }
-
+    for (const item of items) {
       try {
+        const { and } = await import('drizzle-orm');
         const existingIllustration = await db
           .select()
           .from(wordIllustrations)
@@ -147,11 +103,21 @@ export class IllustrationJobService {
 
         if (existingIllustration.length > 0) {
           console.log(`⏭️  Skipping "${item.word}" - already has illustration for this word list`);
-          item.status = 'skipped';
-          item.imagePath = existingIllustration[0].imagePath || undefined;
-          job.processedWords++;
+          await db
+            .update(illustrationJobItems)
+            .set({
+              status: 'skipped',
+              imagePath: existingIllustration[0].imagePath,
+              completedAt: new Date(),
+            })
+            .where(eq(illustrationJobItems.id, item.id));
+          
+          skippedCount++;
         } else {
-          item.status = 'processing';
+          await db
+            .update(illustrationJobItems)
+            .set({ status: 'processing' })
+            .where(eq(illustrationJobItems.id, item.id));
 
           const result = await this.pixabayService.searchCartoonImage(item.word, usedImageIds);
 
@@ -165,50 +131,93 @@ export class IllustrationJobService {
               source: 'pixabay',
             });
 
-            item.status = 'completed';
-            item.imagePath = result.imagePath;
-            job.successCount++;
-            job.processedWords++;
+            await db
+              .update(illustrationJobItems)
+              .set({
+                status: 'completed',
+                imagePath: result.imagePath,
+                completedAt: new Date(),
+              })
+              .where(eq(illustrationJobItems.id, item.id));
+
+            successCount++;
             console.log(`✅ Found and saved image for "${item.word}" in word list ${job.wordListId}`);
           } else {
-            item.status = 'failed';
-            item.errorMessage = 'No suitable image found';
-            job.failureCount++;
-            job.processedWords++;
+            await db
+              .update(illustrationJobItems)
+              .set({
+                status: 'failed',
+                errorMessage: 'No suitable image found',
+                completedAt: new Date(),
+              })
+              .where(eq(illustrationJobItems.id, item.id));
+
+            failureCount++;
             console.log(`❌ No image found for "${item.word}"`);
           }
 
           await new Promise(resolve => setTimeout(resolve, 500));
         }
       } catch (error: any) {
-        item.status = 'failed';
-        item.errorMessage = error.message || 'Unknown error';
-        job.failureCount++;
-        job.processedWords++;
+        failureCount++;
         console.error(`Error processing word "${item.word}":`, error);
+        
+        await db
+          .update(illustrationJobItems)
+          .set({
+            status: 'failed',
+            errorMessage: error.message || 'Unknown error',
+            completedAt: new Date(),
+          })
+          .where(eq(illustrationJobItems.id, item.id));
       }
+
+      await db
+        .update(illustrationJobs)
+        .set({
+          processedWords: successCount + failureCount + skippedCount,
+          successCount,
+          failureCount,
+        })
+        .where(eq(illustrationJobs.id, jobId));
     }
 
-    job.status = 'completed';
-    job.completedAt = new Date();
+    await db
+      .update(illustrationJobs)
+      .set({
+        status: 'completed',
+        processedWords: items.length,
+        successCount,
+        failureCount,
+        completedAt: new Date(),
+      })
+      .where(eq(illustrationJobs.id, jobId));
 
-    console.log(`🎉 Completed illustration job ${jobId}: ${job.successCount} success, ${job.failureCount} failed`);
-
-    setTimeout(() => {
-      activeJobs.delete(jobId);
-      console.log(`🧹 Cleaned up completed job ${jobId} from memory`);
-    }, 30 * 60 * 1000);
+    console.log(`🎉 Completed illustration job ${jobId}: ${successCount} success, ${failureCount} failed, ${skippedCount} skipped`);
   }
 
-  async getJobStatus(jobId: number): Promise<IllustrationJob | null> {
-    return activeJobs.get(jobId) || null;
+  async getJobStatus(jobId: number) {
+    const [job] = await db
+      .select()
+      .from(illustrationJobs)
+      .where(eq(illustrationJobs.id, jobId));
+
+    if (!job) {
+      return null;
+    }
+
+    const items = await db
+      .select()
+      .from(illustrationJobItems)
+      .where(eq(illustrationJobItems.jobId, jobId));
+
+    return {
+      ...job,
+      items,
+    };
   }
 
   async createBackfillJob(): Promise<number> {
-    if (backfillInProgress) {
-      throw new Error('A backfill job is already in progress. Please wait for it to complete.');
-    }
-    
     const allWords = new Set<string>();
     
     const canonicalWords = await db.select().from(words);
@@ -233,123 +242,30 @@ export class IllustrationJobService {
 
     console.log(`📚 Total ${uniqueWords.length} unique real words to backfill (filtered out test words)`);
 
-    const jobId = nextJobId++;
-    const job: IllustrationJob = {
-      id: jobId,
-      wordListId: 0,
-      status: 'pending',
-      totalWords: uniqueWords.length,
-      processedWords: 0,
-      successCount: 0,
-      failureCount: 0,
-      createdAt: new Date(),
-      items: uniqueWords.map(word => ({
-        word,
-        status: 'pending' as const,
-      })),
-    };
+    const [job] = await db
+      .insert(illustrationJobs)
+      .values({
+        wordListId: 0,
+        status: 'pending',
+        totalWords: uniqueWords.length,
+        processedWords: 0,
+        successCount: 0,
+        failureCount: 0,
+      })
+      .returning();
 
-    activeJobs.set(jobId, job);
-
-    console.log(`✓ Created backfill job ${jobId} with ${uniqueWords.length} words`);
-
-    this.processBackfillJobAsync(jobId);
-
-    return jobId;
-  }
-
-  private async processBackfillJobAsync(jobId: number): Promise<void> {
-    backfillInProgress = true;
-    setImmediate(async () => {
-      try {
-        await this.processBackfillJob(jobId);
-      } catch (error) {
-        console.error(`Error processing backfill job ${jobId}:`, error);
-        const job = activeJobs.get(jobId);
-        if (job) {
-          job.status = 'failed';
-        }
-      } finally {
-        backfillInProgress = false;
-      }
-    });
-  }
-
-  private async processBackfillJob(jobId: number): Promise<void> {
-    const job = activeJobs.get(jobId);
-    if (!job) {
-      backfillInProgress = false;
-      throw new Error(`Job ${jobId} not found`);
+    for (const word of uniqueWords) {
+      await db.insert(illustrationJobItems).values({
+        jobId: job.id,
+        word: word,
+        status: 'pending',
+      });
     }
 
-    console.log(`🎨 Starting backfill job ${jobId}`);
-    job.status = 'processing';
+    console.log(`✓ Created backfill job ${job.id} with ${uniqueWords.length} words`);
 
-    const usedImageIds = new Set<number>();
+    this.processJobAsync(job.id);
 
-    for (const item of job.items) {
-      if (item.status !== 'pending') {
-        continue;
-      }
-
-      try {
-        const existingIllustrations = await db
-          .select()
-          .from(wordIllustrations)
-          .where(eq(wordIllustrations.word, item.word));
-
-        if (existingIllustrations.length > 0) {
-          console.log(`⏭️  Skipping "${item.word}" - already has illustration`);
-          item.status = 'skipped';
-          item.imagePath = existingIllustrations[0].imagePath || undefined;
-          job.processedWords++;
-        } else {
-          item.status = 'processing';
-
-          const result = await this.pixabayService.searchCartoonImage(item.word, usedImageIds);
-
-          if (result) {
-            usedImageIds.add(result.imageId);
-            
-            await db.insert(wordIllustrations).values({
-              word: item.word,
-              wordListId: 0,
-              imagePath: result.imagePath,
-              source: 'pixabay',
-            });
-
-            item.status = 'completed';
-            item.imagePath = result.imagePath;
-            job.successCount++;
-            job.processedWords++;
-            console.log(`✅ Found and saved image for "${item.word}"`);
-          } else {
-            item.status = 'failed';
-            item.errorMessage = 'No suitable image found';
-            job.failureCount++;
-            job.processedWords++;
-            console.log(`❌ No image found for "${item.word}"`);
-          }
-
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-      } catch (error: any) {
-        item.status = 'failed';
-        item.errorMessage = error.message || 'Unknown error';
-        job.failureCount++;
-        job.processedWords++;
-        console.error(`Error processing word "${item.word}":`, error);
-      }
-    }
-
-    job.status = 'completed';
-    job.completedAt = new Date();
-
-    console.log(`🎉 Completed backfill job ${jobId}: ${job.successCount} success, ${job.failureCount} failed`);
-
-    setTimeout(() => {
-      activeJobs.delete(jobId);
-      console.log(`🧹 Cleaned up completed backfill job ${jobId} from memory`);
-    }, 30 * 60 * 1000);
+    return job.id;
   }
 }

@@ -8,7 +8,6 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { ArrowLeft, Trophy, Lock, Globe, HelpCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import { useGuestSession } from "@/hooks/use-guest-session";
 import { Badge } from "@/components/ui/badge";
 import { UserHeader } from "@/components/user-header";
 import { AccuracyCard } from "@/components/accuracy-card";
@@ -46,8 +45,7 @@ function getVisibility(list: any): "public" | "private" | "groups" {
 
 export default function Achievements() {
   const [, setLocation] = useLocation();
-  const { user, isGuestMode } = useAuth();
-  const { guestWordLists, guestWordListMasteries } = useGuestSession();
+  const { user } = useAuth();
   const { themeAssets, hasDarkBackground } = useTheme();
   const textClasses = getThemedTextClasses(hasDarkBackground);
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
@@ -55,47 +53,22 @@ export default function Achievements() {
   // Check if user is a free account
   const isFreeAccount = user?.accountType === 'free';
 
-  const { data: apiAchievements } = useQuery<Achievement[]>({
+  const { data: achievements } = useQuery<Achievement[]>({
     queryKey: ["/api/achievements/user", user?.id],
-    enabled: !isGuestMode && !!user,
+    enabled: !!user,
   });
 
-  const { data: apiCustomLists } = useQuery<CustomWordList[]>({
+  const { data: customLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists"],
-    enabled: !isGuestMode,
   });
 
   const { data: publicLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists/public"],
-    // Public lists should be available for all users including guests
-    enabled: true,
   });
 
   const { data: sharedLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists/shared-with-me"],
-    enabled: !isGuestMode,
   });
-  
-  // Convert guest word list masteries to achievement format
-  const guestAchievementsFormatted: Achievement[] = guestWordListMasteries.map((mastery, index) => ({
-    id: index,
-    userId: 0,
-    wordListId: mastery.wordListId,
-    achievementType: "Word List Mastery",
-    achievementValue: `${mastery.totalStars} ${mastery.totalStars === 1 ? "Star" : "Stars"}`,
-    completedModes: mastery.completedModes,
-  }));
-  
-  // Use guest session data or API data depending on mode
-  const achievements = isGuestMode ? guestAchievementsFormatted : apiAchievements;
-  const customLists = isGuestMode 
-    ? guestWordLists.map(list => ({
-        ...list,
-        isPublic: false,
-        gradeLevel: undefined,
-        authorUsername: undefined,
-      } as CustomWordList))
-    : apiCustomLists;
 
   // Combine all lists and filter for unique lists with achievements
   const allLists = [
