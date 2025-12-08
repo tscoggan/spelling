@@ -65,6 +65,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isLoading = sessionLoading || (!!guestUserId && guestLoading);
   const isGuestMode = !sessionUser && !!guestUser;
 
+  // When guest user is fetched (returning guest), invalidate user items to refetch with new session
+  useEffect(() => {
+    if (guestUser && !sessionUser) {
+      // Small delay to ensure session cookie is established
+      const timer = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/user-items/list"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/user-items"] });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [guestUser, sessionUser]);
+
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
       const res = await apiRequest("POST", "/api/login", credentials);
@@ -144,6 +156,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(GUEST_USER_ID_KEY, user.id.toString());
       setGuestUserId(user.id);
       queryClient.setQueryData(["/api/guest-user", user.id], user);
+      // Invalidate user items to refetch after session is established
+      queryClient.invalidateQueries({ queryKey: ["/api/user-items/list"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-items"] });
     },
     onError: (error: Error) => {
       toast({

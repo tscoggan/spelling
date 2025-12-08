@@ -5119,7 +5119,7 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
                   type="button"
                   onClick={() => setShowReportDialog(true)}
                   data-testid="link-report-content"
-                  className="text-orange-600 hover:text-orange-800 text-xs flex items-center underline underline-offset-2"
+                  className="text-white hover:text-white/80 text-xs flex items-center underline underline-offset-2"
                 >
                   <Flag className="w-3 h-3 mr-1" />
                   Report Inappropriate Content

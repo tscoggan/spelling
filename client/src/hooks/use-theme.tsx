@@ -137,12 +137,22 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [currentTheme, setCurrentTheme] = useState<ThemeId>("default");
 
   const { data: userItems, isLoading: isLoadingItems } = useQuery<UserItem[]>({
-    queryKey: ["/api/user-items/list"],
-    enabled: !!user,
+    // Use a tuple key for cache uniqueness but provide custom queryFn to avoid path joining
+    queryKey: ["/api/user-items/list", { userId: user?.id }],
+    queryFn: async () => {
+      const res = await fetch("/api/user-items/list", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch user items");
+      return res.json();
+    },
+    // Wait for auth to complete before fetching - this ensures guest users have session established
+    enabled: !!user && !isAuthLoading,
+    // Retry with delay to handle race conditions with session establishment
+    retry: 2,
+    retryDelay: 500,
   });
 
   const updateThemeMutation = useMutation({
