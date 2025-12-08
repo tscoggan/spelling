@@ -204,7 +204,7 @@ export default function Game() {
 function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, challengeId, isInitiator }: { listId?: string; virtualWords?: string; gameMode: GameMode; gameCount: string; onRestart: () => void; challengeId?: string; isInitiator?: boolean }) {
   const [, setLocation] = useLocation();
   const { user, isGuestMode } = useAuth();
-  const { addGameSession, updateGameSession, addStars, addAchievement, state: guestState, guestGetWordList } = useGuestSession();
+  const { addGameSession, updateGameSession, addStars, addAchievement, state: guestState, guestGetWordList, guestUpsertWordListMastery } = useGuestSession();
   const { themeAssets, currentTheme, setTheme, unlockedThemes, allThemes } = useTheme();
   
   const [userInput, setUserInput] = useState("");
@@ -630,7 +630,8 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
     // Skip achievement tracking for virtual word lists
     if (virtualWords) return;
     
-    if (!scoreData.userId || !listId) return;
+    // Need listId to track achievements
+    if (!listId) return;
 
     let earnedStar = false;
 
@@ -648,6 +649,22 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
     }
 
     if (earnedStar) {
+      // Handle guest users - store achievements in memory only
+      if (isGuestMode) {
+        console.log("🌟 Guest mode: Checking in-memory achievements for list:", listId);
+        const result = guestUpsertWordListMastery(parseInt(listId, 10), scoreData.gameMode);
+        if (result.earnedNewStar) {
+          console.log("⭐ Guest earned new star! Total stars:", result.totalStars);
+          setAchievementEarned(true);
+        } else {
+          console.log("ℹ️ Guest already earned achievement for this mode");
+        }
+        return;
+      }
+      
+      // Handle authenticated users - persist to database
+      if (!scoreData.userId) return;
+      
       try {
         console.log("🌟 Fetching current achievements for user:", scoreData.userId);
         // Fetch current achievements for this word list
@@ -1547,7 +1564,8 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
 
   useEffect(() => {
     // Wait for voices to be ready before auto-speaking
-    if (currentWord && !showFeedback && voicesReady && gameMode !== "quiz" && gameMode !== "mistake" && gameMode !== "crossword") {
+    // Skip if game is complete to prevent repeating the final word on results screen
+    if (currentWord && !showFeedback && !gameComplete && voicesReady && gameMode !== "quiz" && gameMode !== "mistake" && gameMode !== "crossword") {
       speakWord(currentWord.word, () => {
         // Re-focus after TTS completes
         setTimeout(() => {
@@ -1557,11 +1575,12 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
         }, 100);
       });
     }
-  }, [currentWord, showFeedback, gameMode, voicesReady]);
+  }, [currentWord, showFeedback, gameComplete, gameMode, voicesReady]);
 
   useEffect(() => {
     // Wait for voices to be ready before auto-speaking in quiz mode
-    if (currentWord && voicesReady && gameMode === "quiz") {
+    // Skip if game is complete to prevent repeating the final word on results screen
+    if (currentWord && !gameComplete && voicesReady && gameMode === "quiz") {
       speakWord(currentWord.word, () => {
         // Re-focus after TTS completes
         setTimeout(() => {
@@ -1571,7 +1590,7 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
         }, 100);
       });
     }
-  }, [currentWord, gameMode, currentWordIndex, voicesReady]);
+  }, [currentWord, gameComplete, gameMode, currentWordIndex, voicesReady]);
 
   // Auto-focus Next Word button when feedback appears in Practice mode
   useEffect(() => {

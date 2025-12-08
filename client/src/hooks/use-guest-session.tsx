@@ -31,10 +31,17 @@ type GuestAchievement = {
   unlockedAt: Date;
 };
 
+type GuestWordListMastery = {
+  wordListId: number;
+  completedModes: string[];
+  totalStars: number;
+};
+
 type GuestSessionState = {
   wordLists: GuestWordList[];
   gameSessions: GuestGameSession[];
   achievements: GuestAchievement[];
+  wordListMasteries: GuestWordListMastery[];
   stars: number;
   items: Map<string, number>;
   processingListIds: Set<number>;
@@ -53,6 +60,8 @@ type GuestSessionContextType = {
   addGameSession: (session: Omit<GuestGameSession, 'id' | 'createdAt'>) => GuestGameSession;
   updateGameSession: (id: number, updates: Partial<GuestGameSession>) => void;
   addAchievement: (achievement: Omit<GuestAchievement, 'id' | 'unlockedAt'>) => void;
+  getWordListMastery: (wordListId: number) => GuestWordListMastery | undefined;
+  upsertWordListMastery: (wordListId: number, gameMode: string) => { earnedNewStar: boolean; totalStars: number };
   addStars: (amount: number) => void;
   spendStars: (amount: number) => boolean;
   addItem: (itemId: string, quantity?: number) => void;
@@ -67,6 +76,7 @@ const initialState: GuestSessionState = {
   wordLists: [],
   gameSessions: [],
   achievements: [],
+  wordListMasteries: [],
   stars: 0,
   items: new Map(),
   processingListIds: new Set(),
@@ -190,6 +200,59 @@ export function GuestSessionProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const getWordListMastery = useCallback((wordListId: number): GuestWordListMastery | undefined => {
+    return state.wordListMasteries.find(m => m.wordListId === wordListId);
+  }, [state.wordListMasteries]);
+
+  const upsertWordListMastery = useCallback((wordListId: number, gameMode: string): { earnedNewStar: boolean; totalStars: number } => {
+    const existing = state.wordListMasteries.find(m => m.wordListId === wordListId);
+    
+    if (existing) {
+      // Already completed this mode - no new star
+      if (existing.completedModes.includes(gameMode)) {
+        return { earnedNewStar: false, totalStars: existing.totalStars };
+      }
+      // Already at max stars (3) - don't award more stars but still track the mode
+      if (existing.totalStars >= 3) {
+        const newCompletedModes = [...existing.completedModes, gameMode];
+        setState(prev => ({
+          ...prev,
+          wordListMasteries: prev.wordListMasteries.map(m =>
+            m.wordListId === wordListId
+              ? { ...m, completedModes: newCompletedModes }
+              : m
+          ),
+        }));
+        return { earnedNewStar: false, totalStars: existing.totalStars };
+      }
+      // Award new star (up to cap of 3)
+      const newCompletedModes = [...existing.completedModes, gameMode];
+      const newTotalStars = Math.min(newCompletedModes.length, 3);
+      setState(prev => ({
+        ...prev,
+        wordListMasteries: prev.wordListMasteries.map(m =>
+          m.wordListId === wordListId
+            ? { ...m, completedModes: newCompletedModes, totalStars: newTotalStars }
+            : m
+        ),
+        stars: prev.stars + 1,
+      }));
+      return { earnedNewStar: true, totalStars: newTotalStars };
+    } else {
+      // First star for this word list
+      setState(prev => ({
+        ...prev,
+        wordListMasteries: [...prev.wordListMasteries, {
+          wordListId,
+          completedModes: [gameMode],
+          totalStars: 1,
+        }],
+        stars: prev.stars + 1,
+      }));
+      return { earnedNewStar: true, totalStars: 1 };
+    }
+  }, [state.wordListMasteries]);
+
   const addStars = useCallback((amount: number) => {
     setState(prev => ({
       ...prev,
@@ -272,6 +335,8 @@ export function GuestSessionProvider({ children }: { children: ReactNode }) {
         addGameSession,
         updateGameSession,
         addAchievement,
+        getWordListMastery,
+        upsertWordListMastery,
         addStars,
         spendStars,
         addItem,
@@ -310,6 +375,8 @@ export function useGuestSession() {
     guestAddGameSession: context.addGameSession,
     guestUpdateGameSession: context.updateGameSession,
     guestAddAchievement: context.addAchievement,
+    guestGetWordListMastery: context.getWordListMastery,
+    guestUpsertWordListMastery: context.upsertWordListMastery,
     guestAddStars: context.addStars,
     guestSpendStars: context.spendStars,
     guestAddItem: context.addItem,
