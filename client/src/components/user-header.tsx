@@ -608,7 +608,7 @@ export function UserHeader() {
                   )
                 )}
                 <div className="text-gray-800 dark:text-gray-200" data-testid="text-username">
-                  guest
+                  {user?.username}
                 </div>
               </div>
             ) : (
