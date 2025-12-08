@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { useGuestSession } from "@/hooks/use-guest-session";
+import { useGuestSession, GuestImageAssignment } from "@/hooks/use-guest-session";
 import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload, Filter, Camera, X, Users, Target, Clock, Trophy, Shuffle, AlertCircle, Grid3x3, UserPlus } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -39,7 +39,7 @@ function getVisibility(list: any): "public" | "private" | "groups" {
 
 export default function WordListsPage() {
   const { user, isGuestMode } = useAuth();
-  const { guestWordLists, guestAddWordList, guestUpdateWordList, guestDeleteWordList } = useGuestSession();
+  const { guestWordLists, guestAddWordList, guestUpdateWordList, guestDeleteWordList, guestGetWordList } = useGuestSession();
   const isFreeAccount = user?.accountType === 'free';
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -774,7 +774,12 @@ export default function WordListsPage() {
     return Array.from(authors).sort((a, b) => a.localeCompare(b));
   }, [userLists, sharedLists, publicLists]);
 
-  const renderWordList = (list: any, canEdit: boolean) => (
+  const renderWordList = (list: any, canEdit: boolean) => {
+    // For guest mode, get the image assignments from the guest list
+    const guestListData = isGuestMode ? guestGetWordList(list.id) : null;
+    const guestImageAssignments = guestListData?.imageAssignments || [];
+    
+    return (
     <Card key={list.id} className="hover-elevate" data-testid={`card-word-list-${list.id}`}>
       <CardHeader>
         <div className="flex flex-col gap-3">
@@ -886,7 +891,12 @@ export default function WordListsPage() {
         </div>
       </CardHeader>
       <CardContent>
-        <WordListPreview words={list.words.slice(0, 10)} listId={list.id} />
+        <WordListPreview 
+          words={list.words.slice(0, 10)} 
+          listId={list.id}
+          guestImageAssignments={guestImageAssignments}
+          isGuestMode={isGuestMode}
+        />
         {list.words.length > 10 && (
           <span className="px-2 py-1 text-gray-600 text-sm block mt-2">
             +{list.words.length - 10} more words
@@ -894,7 +904,8 @@ export default function WordListsPage() {
         )}
       </CardContent>
     </Card>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen p-4 md:p-8 relative overflow-hidden">
@@ -1732,8 +1743,13 @@ export default function WordListsPage() {
 }
 
 // Component to preview words with their images
-function WordListPreview({ words, listId }: { words: string[]; listId: number }) {
-  // Query for word illustrations for this specific word list
+function WordListPreview({ words, listId, guestImageAssignments, isGuestMode }: { 
+  words: string[]; 
+  listId: number;
+  guestImageAssignments?: GuestImageAssignment[];
+  isGuestMode?: boolean;
+}) {
+  // Query for word illustrations for this specific word list (authenticated users only)
   const { data: illustrations = [] } = useQuery<WordIllustration[]>({
     queryKey: ["/api/word-lists", listId, "illustrations"],
     queryFn: async () => {
@@ -1741,10 +1757,21 @@ function WordListPreview({ words, listId }: { words: string[]; listId: number })
       if (!response.ok) throw new Error("Failed to fetch word illustrations");
       return await response.json();
     },
+    enabled: !isGuestMode && listId > 0,
   });
 
-  // Get illustration for a word
+  // Get illustration for a word - check guest assignments first, then server data
   const getIllustration = (word: string) => {
+    // For guest mode, check in-memory image assignments first
+    if (isGuestMode && guestImageAssignments) {
+      const assignment = guestImageAssignments.find(
+        (a) => a.word.toLowerCase() === word.toLowerCase()
+      );
+      if (assignment) {
+        return { word: assignment.word, imagePath: assignment.previewUrl || assignment.imageUrl };
+      }
+    }
+    // Fall back to server illustrations for authenticated users
     return illustrations.find((ill) => ill.word.toLowerCase() === word.toLowerCase());
   };
 
