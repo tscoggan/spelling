@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { LogOut, Bell, Settings, Volume2, HelpCircle, Mail, BookOpen, Trophy, Gamepad2, List, Send, UserCircle, Palette, Lock, ShoppingCart } from "lucide-react";
+import { LogOut, Bell, Settings, Volume2, HelpCircle, Mail, BookOpen, Trophy, Gamepad2, List, Send, UserCircle, Palette, Lock, ShoppingCart, Copy } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 import { useQuery } from "@tanstack/react-query";
@@ -56,6 +56,8 @@ export function UserHeader() {
   const [contactEmail, setContactEmail] = useState("");
   const [contactMessage, setContactMessage] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [guestIdOpen, setGuestIdOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   
   // Profile form state
   const [profileFirstName, setProfileFirstName] = useState("");
@@ -591,9 +593,10 @@ export function UserHeader() {
         <Card className="px-4 py-2">
           <div className="flex items-center gap-3">
             {user?.accountType === 'free' ? (
-              <div 
-                className="flex items-center gap-2 rounded-md px-2 py-1 cursor-default"
-                data-testid="text-guest-username"
+              <button 
+                className="flex items-center gap-2 hover-elevate active-elevate-2 rounded-md px-2 py-1 cursor-pointer"
+                onClick={() => setGuestIdOpen(true)}
+                data-testid="button-guest-username"
               >
                 {user?.selectedAvatar && (
                   user.selectedAvatar.startsWith('/objects/') ? (
@@ -608,9 +611,9 @@ export function UserHeader() {
                   )
                 )}
                 <div className="text-gray-800 dark:text-gray-200" data-testid="text-username">
-                  {user?.username}
+                  guest
                 </div>
-              </div>
+              </button>
             ) : (
               <button 
                 className="flex items-center gap-2 hover-elevate active-elevate-2 rounded-md px-2 py-1 cursor-pointer"
@@ -952,6 +955,46 @@ export function UserHeader() {
                   : "Visit Star Shop"}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Guest User ID Dialog */}
+      <Dialog open={guestIdOpen} onOpenChange={(open) => {
+        setGuestIdOpen(open);
+        if (!open) setCopied(false);
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserCircle className="w-5 h-5" />
+              Your Guest ID
+            </DialogTitle>
+            <DialogDescription>
+              This is your unique guest identifier. Save it to access your progress on another device.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="text-sm text-muted-foreground mb-2">Your unique username:</p>
+              <p className="font-mono text-lg font-semibold break-all" data-testid="text-full-guest-username">
+                {user?.username}
+              </p>
+            </div>
+            <Button
+              onClick={() => {
+                if (user?.username) {
+                  navigator.clipboard.writeText(user.username);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }
+              }}
+              className="w-full"
+              data-testid="button-copy-username"
+            >
+              <Copy className="w-4 h-4 mr-2" />
+              {copied ? "Copied!" : "Copy to Clipboard"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
