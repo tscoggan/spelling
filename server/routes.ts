@@ -708,6 +708,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public word validation endpoint (no authentication required)
+  // Used by guest users to validate words before adding to word lists
+  app.post("/api/validate-words", async (req, res) => {
+    try {
+      const { words } = req.body;
+      
+      if (!Array.isArray(words) || words.length === 0) {
+        return res.status(400).json({ error: "Words array is required" });
+      }
+      
+      // Limit to prevent abuse (max 50 words per request)
+      if (words.length > 50) {
+        return res.status(400).json({ error: "Maximum 50 words per validation request" });
+      }
+      
+      // Check for inappropriate content first
+      const { containsInappropriateContent, validateWords: validateProfanity } = await import("./contentModeration");
+      const profanityCheck = validateProfanity(words);
+      
+      if (!profanityCheck.isValid) {
+        return res.status(400).json({ 
+          error: "Inappropriate content detected", 
+          details: `The following words are not appropriate for children: ${profanityCheck.inappropriateWords.join(", ")}`,
+          inappropriateWords: profanityCheck.inappropriateWords
+        });
+      }
+      
+      // Normalize words to lowercase for validation
+      const wordsArray = words.map((word: string) => word.toLowerCase().trim());
+      
+      // Validate words against dictionaries
+      const { validateWords: validateDictionary } = await import("./services/dictionaryValidation");
+      const validationResult = await validateDictionary(wordsArray, storage);
+      
+      // Check if all words were skipped due to API failures
+      if (validationResult.skipped.length === wordsArray.length) {
+        return res.status(503).json({ 
+          error: "Dictionary validation temporarily unavailable",
+          details: "Please try again in a moment"
+        });
+      }
+      
+      res.json({
+        valid: validationResult.valid,
+        invalid: validationResult.invalid,
+        skipped: validationResult.skipped,
+      });
+    } catch (error) {
+      console.error("Error validating words:", error);
+      res.status(500).json({ error: "Failed to validate words" });
+    }
+  });
+
   app.post("/api/word-lists", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
       // Free accounts can only create private word lists

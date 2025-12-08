@@ -682,58 +682,149 @@ export default function WordListsPage() {
         return;
       }
       
-      if (editingList) {
-        // Get existing assignments before updating
-        const existingList = guestGetWordList(editingList.id);
-        const existingAssignments = existingList?.imageAssignments || [];
-        
-        guestUpdateWordList(editingList.id, {
-          name: submissionData.name,
-          words,
-          visibility: "private",
-          assignImages: submissionData.assignImages,
-        });
-        toast({
-          title: "Success!",
-          description: submissionData.assignImages 
-            ? "Word list updated! Checking for new images..." 
-            : "Word list updated successfully",
+      // Validate words against dictionary (same as authenticated users)
+      try {
+        const validationResponse = await fetch("/api/validate-words", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ words }),
         });
         
-        // Auto-assign images for new words if enabled (passes existing assignments for deduplication)
-        // AWAIT to keep dialog open until assignment completes
-        if (submissionData.assignImages) {
-          await autoAssignGuestImages(editingList.id, words, existingAssignments);
+        if (!validationResponse.ok) {
+          const errorData = await validationResponse.json();
+          
+          // Handle inappropriate content
+          if (errorData.inappropriateWords) {
+            toast({
+              title: "Inappropriate Content",
+              description: errorData.details,
+              variant: "destructive",
+            });
+            return;
+          }
+          
+          // Handle service unavailable
+          if (validationResponse.status === 503) {
+            toast({
+              title: "Validation Unavailable",
+              description: "Dictionary validation is temporarily unavailable. Please try again in a moment.",
+              variant: "destructive",
+            });
+            return;
+          }
+          
+          throw new Error(errorData.error || "Validation failed");
         }
-      } else {
-        const newList = guestAddWordList({
-          name: submissionData.name,
-          words,
-          visibility: "private",
-          assignImages: submissionData.assignImages,
-        });
-        toast({
-          title: "Success!",
-          description: submissionData.assignImages 
-            ? "Word list created! Assigning images..." 
-            : "Word list created successfully (stored in memory for this session)",
-        });
         
-        // Auto-assign images if enabled (no existing assignments for new list)
-        // AWAIT to keep dialog open until assignment completes
-        if (submissionData.assignImages && newList) {
-          setProcessingNewListId(newList.id);
-          try {
-            await autoAssignGuestImages(newList.id, words, []);
-          } finally {
-            setProcessingNewListId(null);
+        const validationResult = await validationResponse.json();
+        const validWords = validationResult.valid as string[];
+        const invalidWords = validationResult.invalid as string[];
+        const skippedWords = validationResult.skipped as string[];
+        
+        // If no valid words remain, reject
+        if (validWords.length === 0) {
+          toast({
+            title: "No Valid Words",
+            description: "All words were either invalid or not found in the dictionary. Please check your spelling.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // Check if we still have at least 5 valid words
+        if (validWords.length < 5) {
+          toast({
+            title: "Not Enough Valid Words",
+            description: `Only ${validWords.length} word(s) were valid. Please add at least 5 valid words.`,
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // Use only valid words
+        const finalWords = validWords;
+        
+        if (editingList) {
+          // Get existing assignments before updating
+          const existingList = guestGetWordList(editingList.id);
+          const existingAssignments = existingList?.imageAssignments || [];
+          
+          guestUpdateWordList(editingList.id, {
+            name: submissionData.name,
+            words: finalWords,
+            visibility: "private",
+            assignImages: submissionData.assignImages,
+          });
+          
+          // Show validation feedback if any words were removed or skipped
+          if (invalidWords.length > 0 || skippedWords.length > 0) {
+            setValidationFeedback({
+              removedWords: invalidWords,
+              skippedWords: skippedWords,
+            });
+            setValidationFeedbackOpen(true);
+          }
+          
+          toast({
+            title: "Success!",
+            description: submissionData.assignImages 
+              ? "Word list updated! Checking for new images..." 
+              : "Word list updated successfully",
+          });
+          
+          // Auto-assign images for new words if enabled
+          if (submissionData.assignImages) {
+            await autoAssignGuestImages(editingList.id, finalWords, existingAssignments);
+          }
+        } else {
+          const newList = guestAddWordList({
+            name: submissionData.name,
+            words: finalWords,
+            visibility: "private",
+            assignImages: submissionData.assignImages,
+          });
+          
+          // Show validation feedback if any words were removed or skipped
+          if (invalidWords.length > 0 || skippedWords.length > 0) {
+            setValidationFeedback({
+              removedWords: invalidWords,
+              skippedWords: skippedWords,
+            });
+            setValidationFeedbackOpen(true);
+          }
+          
+          toast({
+            title: "Success!",
+            description: submissionData.assignImages 
+              ? "Word list created! Assigning images..." 
+              : "Word list created successfully (stored in memory for this session)",
+          });
+          
+          // Auto-assign images if enabled
+          if (submissionData.assignImages && newList) {
+            setProcessingNewListId(newList.id);
+            try {
+              await autoAssignGuestImages(newList.id, finalWords, []);
+            } finally {
+              setProcessingNewListId(null);
+            }
           }
         }
+        
+        setDialogOpen(false);
+        setEditingList(null);
+        resetForm();
+        return;
+        
+      } catch (error) {
+        console.error("Word validation error:", error);
+        toast({
+          title: "Validation Error",
+          description: "Failed to validate words. Please try again.",
+          variant: "destructive",
+        });
+        return;
       }
-      setDialogOpen(false);
-      setEditingList(null);
-      resetForm();
-      return;
     }
     
     if (editingList) {
