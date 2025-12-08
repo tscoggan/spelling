@@ -7,12 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { UserCircle, GraduationCap, BookOpen, Users, School, Play, ArrowLeft } from "lucide-react";
+import { UserCircle, GraduationCap, BookOpen, Users, School, Play, ArrowLeft, Crown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useTheme } from "@/hooks/use-theme";
 import titleBanner from "@assets/Spelling_Playground_title_1764882992138.png";
+import { FeatureComparisonDialog } from "@/components/feature-comparison-dialog";
 
 type AccountType = "none" | "free" | "family" | "school";
 
@@ -55,6 +56,9 @@ export default function AuthPage() {
   // Password reset dialog state
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetIdentifier, setResetIdentifier] = useState("");
+  
+  // Feature comparison dialog state
+  const [featureComparisonOpen, setFeatureComparisonOpen] = useState(false);
 
   const resetPasswordMutation = useMutation({
     mutationFn: async (identifier: string) => {
@@ -215,6 +219,16 @@ export default function AuthPage() {
           <span className="text-xl font-bold">School Account</span>
           <span className="text-sm opacity-80 font-normal">Coming soon - Full access for classrooms</span>
         </Button>
+
+        <button
+          type="button"
+          className="w-full text-center text-sm text-primary hover:underline flex items-center justify-center gap-1 pt-2"
+          onClick={() => setFeatureComparisonOpen(true)}
+          data-testid="link-compare-account-types"
+        >
+          <Crown className="w-4 h-4" />
+          Compare account types
+        </button>
       </div>
     </Card>
   );
@@ -590,34 +604,41 @@ export default function AuthPage() {
   );
 
   return (
-    <div 
-      className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden"
-    >
-      {/* Portrait background */}
+    <>
       <div 
-        className="fixed inset-0 portrait:block landscape:hidden"
-        style={{
-          backgroundImage: `url(${themeAssets.backgroundPortrait})`,
-          backgroundSize: 'cover',
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center top',
-        }}
-      ></div>
-      {/* Landscape background */}
-      <div 
-        className="fixed inset-0 portrait:hidden landscape:block"
-        style={{
-          backgroundImage: `url(${themeAssets.backgroundLandscape})`,
-          backgroundSize: 'cover',
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center top',
-        }}
-      ></div>
-      <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
-      
-      {accountType === "none" && renderAccountTypeSelection()}
-      {accountType === "family" && renderFamilyStub()}
-      {accountType === "school" && renderSchoolStub()}
-    </div>
+        className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden"
+      >
+        {/* Portrait background */}
+        <div 
+          className="fixed inset-0 portrait:block landscape:hidden"
+          style={{
+            backgroundImage: `url(${themeAssets.backgroundPortrait})`,
+            backgroundSize: 'cover',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center top',
+          }}
+        ></div>
+        {/* Landscape background */}
+        <div 
+          className="fixed inset-0 portrait:hidden landscape:block"
+          style={{
+            backgroundImage: `url(${themeAssets.backgroundLandscape})`,
+            backgroundSize: 'cover',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center top',
+          }}
+        ></div>
+        <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
+        
+        {accountType === "none" && renderAccountTypeSelection()}
+        {accountType === "family" && renderFamilyStub()}
+        {accountType === "school" && renderSchoolStub()}
+      </div>
+
+      <FeatureComparisonDialog 
+        open={featureComparisonOpen} 
+        onOpenChange={setFeatureComparisonOpen} 
+      />
+    </>
   );
 }
