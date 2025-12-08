@@ -548,13 +548,17 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
       return await response.json();
     },
     onSuccess: async (data, variables) => {
-      // Skip achievement tracking for virtual word lists and guests
-      if (virtualWords || isGuestMode) return;
+      // Skip achievement tracking for virtual word lists
+      if (virtualWords) return;
       
       // Track achievements for Word List Mastery
       // Note: headtohead mode does NOT track achievements (only Stars Earned metric)
-      if (variables.userId && listId && variables.gameMode !== "headtohead") {
-        await checkAndAwardAchievement(variables);
+      // Guest users are handled inside checkAndAwardAchievement with in-memory storage
+      if (listId && variables.gameMode !== "headtohead") {
+        // For authenticated users, require userId; for guests, proceed with in-memory tracking
+        if (variables.userId || isGuestMode) {
+          await checkAndAwardAchievement(variables);
+        }
       }
     },
   });
