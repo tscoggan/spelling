@@ -11,6 +11,7 @@ import type { Word, GameMode } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/use-auth";
+import { useGuestSession } from "@/hooks/use-guest-session";
 import {
   Select,
   SelectContent,
@@ -202,7 +203,8 @@ export default function Game() {
 // Receives all parameters as props to ensure hooks always have valid data
 function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, challengeId, isInitiator }: { listId?: string; virtualWords?: string; gameMode: GameMode; gameCount: string; onRestart: () => void; challengeId?: string; isInitiator?: boolean }) {
   const [, setLocation] = useLocation();
-  const { user } = useAuth();
+  const { user, isGuestMode } = useAuth();
+  const { addGameSession, updateGameSession, addStars, addAchievement, state: guestState } = useGuestSession();
   const { themeAssets, currentTheme, setTheme, unlockedThemes, allThemes } = useTheme();
   
   const [userInput, setUserInput] = useState("");
@@ -424,6 +426,18 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
 
   const createSessionMutation = useMutation({
     mutationFn: async (sessionData: { gameMode: string; userId: number | null; wordListId?: number }) => {
+      // Guest users store sessions in memory only
+      if (isGuestMode) {
+        const guestSession = addGameSession({
+          wordListId: sessionData.wordListId || null,
+          gameMode: sessionData.gameMode,
+          score: 0,
+          totalWords: 0,
+          correctWords: 0,
+          isComplete: false,
+        });
+        return guestSession;
+      }
       const response = await apiRequest("POST", "/api/sessions", sessionData);
       return await response.json();
     },
@@ -434,6 +448,20 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
 
   const updateSessionMutation = useMutation({
     mutationFn: async (sessionData: { sessionId: number; score: number; totalWords: number; correctWords: number; bestStreak: number; incorrectWords: string[]; isComplete: boolean; completedAt: Date; starsEarned?: number }) => {
+      // Guest users update sessions in memory only
+      if (isGuestMode) {
+        updateGameSession(sessionData.sessionId, {
+          score: sessionData.score,
+          totalWords: sessionData.totalWords,
+          correctWords: sessionData.correctWords,
+          isComplete: sessionData.isComplete,
+        });
+        // Add stars to guest session if earned
+        if (sessionData.starsEarned) {
+          addStars(sessionData.starsEarned);
+        }
+        return { success: true };
+      }
       const response = await apiRequest("PATCH", `/api/sessions/${sessionData.sessionId}`, {
         score: sessionData.score,
         totalWords: sessionData.totalWords,
@@ -450,8 +478,8 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
 
   const incrementWordStreakMutation = useMutation({
     mutationFn: async () => {
-      // Skip streak tracking for virtual word lists
-      if (virtualWords) return null;
+      // Skip streak tracking for virtual word lists and guests
+      if (virtualWords || isGuestMode) return null;
       
       const response = await apiRequest("POST", "/api/streaks/increment");
       return await response.json();
@@ -460,22 +488,29 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
 
   const resetWordStreakMutation = useMutation({
     mutationFn: async () => {
-      // Skip streak tracking for virtual word lists
-      if (virtualWords) return null;
+      // Skip streak tracking for virtual word lists and guests
+      if (virtualWords || isGuestMode) return null;
       
       const response = await apiRequest("POST", "/api/streaks/reset");
       return await response.json();
     },
   });
 
-  // Fetch user's Star Shop items (Do Over, 2nd Chance)
+  // Fetch user's Star Shop items (Do Over, 2nd Chance) - only for authenticated users
   const { data: shopData, refetch: refetchShopData } = useQuery<ShopData>({
     queryKey: ["/api/user-items"],
-    enabled: !!user,
+    enabled: !!user && !isGuestMode,
   });
 
-  // Helper to get item quantity from inventory
+  // Import useGuestSession's getItemQuantity for guests
+  const guestGetItemQuantity = useGuestSession().getItemQuantity;
+  const guestUseItem = useGuestSession().useItem;
+
+  // Helper to get item quantity from inventory (works for both guests and authenticated users)
   const getItemQuantity = (itemId: string): number => {
+    if (isGuestMode) {
+      return guestGetItemQuantity(itemId);
+    }
     if (!shopData?.inventory) return 0;
     const item = shopData.inventory.find(i => i.itemId === itemId);
     return item?.quantity || 0;
@@ -484,24 +519,36 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
   // Mutation for using Star Shop items
   const useItemMutation = useMutation({
     mutationFn: async ({ itemId, quantity = 1 }: { itemId: string; quantity?: number }) => {
+      // Guest users use items from in-memory storage
+      if (isGuestMode) {
+        const success = guestUseItem(itemId);
+        if (!success) throw new Error("Item not available");
+        return { success: true };
+      }
       const response = await apiRequest("POST", "/api/user-items/use", { itemId, quantity });
       return await response.json();
     },
     onSuccess: () => {
-      // Refetch user items to update quantity display
-      refetchShopData();
-      queryClient.invalidateQueries({ queryKey: ["/api/user-items"] });
+      // Refetch user items to update quantity display (only for authenticated users)
+      if (!isGuestMode) {
+        refetchShopData();
+        queryClient.invalidateQueries({ queryKey: ["/api/user-items"] });
+      }
     },
   });
 
   const saveScoreMutation = useMutation({
     mutationFn: async (scoreData: { score: number; accuracy: number; gameMode: GameMode; userId: number | null; sessionId: number }) => {
+      // Guests don't save to leaderboard
+      if (isGuestMode) {
+        return { success: true, skipped: true };
+      }
       const response = await apiRequest("POST", "/api/leaderboard", scoreData);
       return await response.json();
     },
     onSuccess: async (data, variables) => {
-      // Skip achievement tracking for virtual word lists
-      if (virtualWords) return;
+      // Skip achievement tracking for virtual word lists and guests
+      if (virtualWords || isGuestMode) return;
       
       // Track achievements for Word List Mastery
       // Note: headtohead mode does NOT track achievements (only Stars Earned metric)

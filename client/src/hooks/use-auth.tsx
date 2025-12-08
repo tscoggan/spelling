@@ -7,6 +7,7 @@ import {
 import { insertUserSchema, User as SelectUser, InsertUser } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useGuestSession } from "@/hooks/use-guest-session";
 
 type AuthContextType = {
   user: SelectUser | null;
@@ -41,6 +42,7 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
+  const { resetSession } = useGuestSession();
   const [isGuestMode, setIsGuestMode] = useState(false);
 
   const {
@@ -52,7 +54,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
 
-  const user = sessionUser || (isGuestMode ? GUEST_USER : null);
+  // Detect legacy guest users (username starts with "guest_") and treat them as guest mode
+  const isLegacyGuest = sessionUser?.username?.startsWith("guest_") ?? false;
+  const effectiveIsGuestMode = isGuestMode || isLegacyGuest;
+  
+  // For legacy guests, use the GUEST_USER constant instead of the legacy record
+  const user = isLegacyGuest 
+    ? GUEST_USER 
+    : (sessionUser || (isGuestMode ? GUEST_USER : null));
   const error = sessionError || null;
   const isLoading = sessionLoading;
 
@@ -98,12 +107,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: async () => {
       if (isGuestMode) {
         setIsGuestMode(false);
+        resetSession();
         return;
       }
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
       setIsGuestMode(false);
+      resetSession();
       queryClient.setQueryData(["/api/user"], null);
       queryClient.removeQueries({ queryKey: ["/api/word-lists"] });
       queryClient.removeQueries({ queryKey: ["/api/word-lists/shared-with-me"] });
@@ -134,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: user ?? null,
         isLoading,
         error,
-        isGuestMode,
+        isGuestMode: effectiveIsGuestMode,
         loginMutation,
         logoutMutation,
         registerMutation,

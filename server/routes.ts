@@ -24,6 +24,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     next();
   };
+  
+  // Middleware to reject legacy guest users (username starting with "guest_")
+  // These users should be logged out and redirected to use the new in-memory guest mode
+  const rejectLegacyGuest = (req: any, res: any, next: any) => {
+    const user = req.user;
+    if (user?.username?.startsWith("guest_")) {
+      // Legacy guest detected - reject the request
+      // The client will detect this and switch to pure guest mode
+      return res.status(403).json({ 
+        error: "Guest session expired. Please reload to continue as guest.",
+        code: "LEGACY_GUEST_SESSION"
+      });
+    }
+    next();
+  };
+  
+  // Combined middleware for authenticated routes that should reject legacy guests
+  const requireAuthAndRejectLegacyGuest = (req: any, res: any, next: any) => {
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    // Check for legacy guest after authentication
+    if (req.user?.username?.startsWith("guest_")) {
+      return res.status(403).json({ 
+        error: "Guest session expired. Please reload to continue as guest.",
+        code: "LEGACY_GUEST_SESSION"
+      });
+    }
+    next();
+  };
+  
+  // Global middleware to reject legacy guests on any authenticated request
+  // This runs on all /api/* routes EXCEPT public ones (auth, word-lists/public, etc)
+  const publicRoutes = [
+    '/api/register',
+    '/api/login',
+    '/api/logout',
+    '/api/user', // Allow /api/user so the auth.ts handler can properly logout legacy guests
+    '/api/word-lists/public',
+    '/api/app-version',
+    '/api/leaderboard',
+    '/api/words',
+    '/api/auth/request-password-reset',
+    '/api/auth/reset-password',
+    '/api/auth/validate-reset-token',
+    '/objects',
+  ];
+  
+  app.use('/api', (req: any, res: any, next: any) => {
+    // Skip public routes
+    const isPublicRoute = publicRoutes.some(route => 
+      req.path === route || 
+      req.path.startsWith(route + '/') ||
+      req.originalUrl.startsWith(route)
+    );
+    
+    if (isPublicRoute) {
+      return next();
+    }
+    
+    // If user is authenticated and is a legacy guest, reject them
+    if (req.isAuthenticated() && req.user?.username?.startsWith("guest_")) {
+      console.log(`Rejecting legacy guest ${req.user.username} on ${req.method} ${req.path}`);
+      return res.status(403).json({ 
+        error: "Guest session expired. Please reload to continue as guest.",
+        code: "LEGACY_GUEST_SESSION"
+      });
+    }
+    
+    next();
+  });
 
   app.get("/objects/:objectPath(*)", async (req, res) => {
     const objectStorageService = new ObjectStorageService();
@@ -255,63 +326,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Guest user endpoints for free accounts
-  app.post("/api/guest-user", async (req, res) => {
-    try {
-      // Generate a unique guest username
-      const guestId = crypto.randomBytes(8).toString('hex');
-      const guestUsername = `guest_${guestId}`;
-      const guestPassword = crypto.randomBytes(16).toString('hex');
-      
-      // Create guest user with accountType='free'
-      const hashedPassword = await hashPassword(guestPassword);
-      const user = await storage.createUser({
-        username: guestUsername,
-        password: hashedPassword,
-        role: "student",
-        accountType: "free",
-      });
-      
-      // Log in the guest user to establish session
-      req.login(user, (err) => {
-        if (err) {
-          console.error("Error logging in guest user:", err);
-          return res.status(500).json({ error: "Failed to establish session" });
-        }
-        res.json(user);
-      });
-    } catch (error) {
-      console.error("Error creating guest user:", error);
-      res.status(500).json({ error: "Failed to create guest user" });
-    }
-  });
-
-  app.get("/api/guest-user/:id", async (req, res) => {
-    try {
-      const userId = parseInt(req.params.id, 10);
-      if (isNaN(userId)) {
-        return res.status(400).json({ error: "Invalid user ID" });
-      }
-      
-      const user = await storage.getUser(userId);
-      if (!user || user.accountType !== "free") {
-        return res.status(404).json({ error: "Guest user not found" });
-      }
-      
-      // Log in the returning guest user to establish session
-      req.login(user, (err) => {
-        if (err) {
-          console.error("Error logging in guest user:", err);
-          return res.status(500).json({ error: "Failed to establish session" });
-        }
-        res.json(user);
-      });
-    } catch (error) {
-      console.error("Error fetching guest user:", error);
-      res.status(500).json({ error: "Failed to fetch guest user" });
-    }
-  });
-
   // Avatar upload endpoint
   const avatarUpload = multer({
     storage: multer.memoryStorage(),
@@ -415,7 +429,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/sessions", async (req, res) => {
+  app.post("/api/sessions", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
       // Normalize legacy "standard" mode to "practice"
       const normalizedData = {
@@ -450,7 +464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/sessions/:id", async (req, res) => {
+  app.patch("/api/sessions/:id", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
@@ -500,7 +514,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/leaderboard", async (req, res) => {
+  app.post("/api/leaderboard", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
       const { insertLeaderboardScoreSchema } = await import("@shared/schema");
       // Normalize legacy "standard" mode to "practice"
@@ -519,9 +533,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/achievements/user/:userId", async (req, res) => {
+  app.get("/api/achievements/user/:userId", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
+      const user = req.user as any;
+      
+      // Only allow users to view their own achievements
+      if (user.id !== userId) {
+        return res.status(403).json({ error: "You can only view your own achievements" });
+      }
+      
       const achievements = await storage.getUserAchievements(userId);
       res.json(achievements);
     } catch (error) {
@@ -529,13 +550,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/streaks/increment", async (req, res) => {
+  app.post("/api/streaks/increment", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated() || !req.user) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-      
-      await storage.incrementWordStreak(req.user.id);
+      await storage.incrementWordStreak(req.user!.id);
       res.json({ success: true });
     } catch (error) {
       console.error("Error incrementing streak:", error);
@@ -543,13 +560,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/streaks/reset", async (req, res) => {
+  app.post("/api/streaks/reset", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated() || !req.user) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-      
-      await storage.resetWordStreak(req.user.id);
+      await storage.resetWordStreak(req.user!.id);
       res.json({ success: true });
     } catch (error) {
       console.error("Error resetting streak:", error);
@@ -557,12 +570,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/stats/user/:userId", async (req, res) => {
+  app.get("/api/stats/user/:userId", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const requestedUserId = parseInt(req.params.userId);
       const user = req.user as any;
       
@@ -583,7 +592,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/achievements", async (req, res) => {
+  app.post("/api/achievements", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
       const { insertAchievementSchema } = await import("@shared/schema");
       // Normalize legacy "standard" mode to "practice" in completedModes array
@@ -604,12 +613,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/user-items", async (req, res) => {
+  app.get("/api/user-items", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const user = req.user as any;
       const items = await storage.getUserItems(user.id);
       const { SHOP_ITEMS } = await import("@shared/schema");
@@ -625,12 +630,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/user-items/list", async (req, res) => {
+  app.get("/api/user-items/list", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const user = req.user as any;
       const items = await storage.getUserItems(user.id);
       
@@ -641,12 +642,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/user-items/purchase", async (req, res) => {
+  app.post("/api/user-items/purchase", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const { itemId, quantity = 1 } = req.body;
       
       if (!itemId || typeof itemId !== 'string') {
@@ -678,12 +675,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/user-items/use", async (req, res) => {
+  app.post("/api/user-items/use", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const { itemId, quantity = 1 } = req.body;
       
       if (!itemId || typeof itemId !== 'string') {
@@ -714,12 +707,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/word-lists", async (req, res) => {
+  app.post("/api/word-lists", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       // Free accounts can only create private word lists
       const user = req.user as Express.User;
       if (user.accountType === 'free' && req.body.visibility && req.body.visibility !== 'private') {
@@ -846,12 +835,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/word-lists", async (req, res) => {
+  app.get("/api/word-lists", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const wordLists = await storage.getUserCustomWordLists(req.user!.id);
       res.json(wordLists);
     } catch (error) {
@@ -868,12 +853,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/word-lists/shared-with-me", async (req, res) => {
+  app.get("/api/word-lists/shared-with-me", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const wordLists = await storage.getGroupSharedWordLists(req.user!.id);
       res.json(wordLists);
     } catch (error) {
@@ -926,12 +907,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/word-lists/:id", async (req, res) => {
+  app.put("/api/word-lists/:id", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid word list ID" });
@@ -1107,12 +1084,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/word-lists/:id", async (req, res) => {
+  app.delete("/api/word-lists/:id", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid word list ID" });
@@ -1139,12 +1112,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get co-owners for a word list
-  app.get("/api/word-lists/:id/co-owners", async (req, res) => {
+  app.get("/api/word-lists/:id/co-owners", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid word list ID" });
@@ -1185,12 +1154,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Add a co-owner to a word list
-  app.post("/api/word-lists/:id/co-owners", async (req, res) => {
+  app.post("/api/word-lists/:id/co-owners", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       // Only teachers can add co-owners
       if (req.user!.role !== "teacher") {
         return res.status(403).json({ error: "Only teachers can add co-owners" });
@@ -1247,12 +1212,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Remove a co-owner from a word list
-  app.delete("/api/word-lists/:id/co-owners/:coOwnerUserId", async (req, res) => {
+  app.delete("/api/word-lists/:id/co-owners/:coOwnerUserId", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const id = parseInt(req.params.id);
       const coOwnerUserId = parseInt(req.params.coOwnerUserId);
       
@@ -1281,12 +1242,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get list of teachers for co-owner selection
-  app.get("/api/teachers", async (req, res) => {
+  app.get("/api/teachers", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       // Only teachers can view the teacher list
       if (req.user!.role !== "teacher") {
         return res.status(403).json({ error: "Access denied" });
@@ -1311,12 +1268,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Search teachers by name, email, or username
-  app.get("/api/teachers/search", async (req, res) => {
+  app.get("/api/teachers/search", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       // Only teachers can search for other teachers
       if (req.user!.role !== "teacher") {
         return res.status(403).json({ error: "Access denied" });
@@ -1347,12 +1300,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Pixabay preview endpoint - fetch top results without downloading
-  app.get("/api/pixabay/previews", async (req, res) => {
+  app.get("/api/pixabay/previews", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const word = req.query.word as string;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
 
@@ -2347,12 +2296,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // To-Do Items endpoints
-  app.get("/api/user-to-dos", async (req, res) => {
+  app.get("/api/user-to-dos", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const user = req.user as any;
       const todos = await storage.getUserToDoItems(user.id);
       res.json(todos);
@@ -2362,12 +2307,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/user-to-dos/count", async (req, res) => {
+  app.get("/api/user-to-dos/count", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const user = req.user as any;
       const todos = await storage.getUserToDoItems(user.id);
       res.json(todos.length);
@@ -2378,12 +2319,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get pending access requests for the current user (as requester)
-  app.get("/api/user-pending-requests", async (req, res) => {
+  app.get("/api/user-pending-requests", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const user = req.user as any;
       const pendingRequests = await storage.getUserPendingRequests(user.id);
       res.json(pendingRequests);
@@ -2393,12 +2330,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/user-to-dos/:id/complete", async (req, res) => {
+  app.post("/api/user-to-dos/:id/complete", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const todoId = parseInt(req.params.id);
       const user = req.user as any;
 
@@ -2423,12 +2356,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/todos", async (req, res) => {
+  app.get("/api/todos", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const user = req.user as any;
       const todos = await storage.getUserToDoItems(user.id);
       res.json(todos);
@@ -2438,7 +2367,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/todos", async (req, res) => {
+  app.post("/api/todos", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
       const { insertUserToDoItemSchema } = await import("@shared/schema");
       const todoData = insertUserToDoItemSchema.parse(req.body);
@@ -2453,12 +2382,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/todos/:id", async (req, res) => {
+  app.patch("/api/todos/:id", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const todoId = parseInt(req.params.id);
       const { completed } = req.body;
       
@@ -2470,12 +2395,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/todos/:id", async (req, res) => {
+  app.delete("/api/todos/:id", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
       const todoId = parseInt(req.params.id);
       const user = req.user as any;
       

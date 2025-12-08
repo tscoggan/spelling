@@ -7,6 +7,7 @@ import type { GameMode, HeadToHeadChallenge } from "@shared/schema";
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { useGuestSession } from "@/hooks/use-guest-session";
 import { useIOSKeyboardTrigger } from "@/App";
 import {
   Dialog,
@@ -224,7 +225,8 @@ function AvatarDisplay({ avatar, size = "md", className = "" }: { avatar?: strin
 
 export default function Home() {
   const [, setLocation] = useLocation();
-  const { user } = useAuth();
+  const { user, isGuestMode } = useAuth();
+  const { state: guestState } = useGuestSession();
   const { themeAssets, currentTheme, hasDarkBackground } = useTheme();
   const textClasses = getThemedTextClasses(hasDarkBackground);
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
@@ -244,35 +246,47 @@ export default function Home() {
   const [h2hSelectedOpponent, setH2hSelectedOpponent] = useState<any>(null);
   const searchResultsRef = useRef<HTMLDivElement>(null);
 
-  // Refresh notifications when home page loads
+  // Refresh notifications when home page loads (only for authenticated users)
   const refreshNotifications = useRefreshNotifications(user?.id);
   useEffect(() => {
-    refreshNotifications();
-  }, [refreshNotifications]);
+    if (!isGuestMode) {
+      refreshNotifications();
+    }
+  }, [refreshNotifications, isGuestMode]);
 
   // Show Teacher Home for teachers
   if (user?.role === "teacher") {
     return <TeacherHome />;
   }
 
-  const { data: customLists } = useQuery<CustomWordList[]>({
+  // For guests, use in-memory word lists; for authenticated users, fetch from API
+  const { data: apiCustomLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists"],
+    enabled: !isGuestMode,
   });
+  
+  // Guest users get their word lists from in-memory state
+  const customLists = isGuestMode ? (guestState.wordLists as any[]) : apiCustomLists;
 
   const { data: publicLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists/public"],
   });
 
+  // Shared lists only work for authenticated users
   const { data: sharedLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists/shared-with-me"],
+    enabled: !isGuestMode,
   });
 
-  const { data: achievements } = useQuery<any[]>({
+  // Achievements - guests use in-memory state
+  const { data: apiAchievements } = useQuery<any[]>({
     queryKey: ["/api/achievements/user", user?.id],
-    enabled: !!user,
+    enabled: !!user && !isGuestMode,
   });
+  
+  const achievements = isGuestMode ? guestState.achievements : apiAchievements;
 
-  // Head to Head Challenge queries
+  // Head to Head Challenge queries - disabled for guests
   const { data: searchResults, isLoading: isSearchingUsers } = useQuery<any[]>({
     queryKey: ["/api/users/search", h2hOpponentSearch],
     queryFn: async () => {
@@ -282,7 +296,7 @@ export default function Home() {
       if (!res.ok) throw new Error("Failed to search users");
       return res.json();
     },
-    enabled: h2hOpponentSearch.length >= 2,
+    enabled: !isGuestMode && h2hOpponentSearch.length >= 2,
   });
 
   // Auto-scroll to search results when they appear
@@ -294,6 +308,7 @@ export default function Home() {
 
   const { data: pendingChallenges } = useQuery<any[]>({
     queryKey: ["/api/challenges/pending"],
+    enabled: !isGuestMode,
   });
 
   // Filter to get pending invitations for the current user (as opponent)
@@ -302,6 +317,7 @@ export default function Home() {
   // Active challenges where it's the current user's turn to play
   const { data: activeChallenges } = useQuery<any[]>({
     queryKey: ["/api/challenges/active"],
+    enabled: !isGuestMode,
   });
   
   const myTurnChallenges = activeChallenges?.filter((c: any) => 
@@ -314,6 +330,7 @@ export default function Home() {
 
   const { data: completedChallenges } = useQuery<any[]>({
     queryKey: ["/api/challenges/completed"],
+    enabled: !isGuestMode,
   });
 
   const createChallengeMutation = useMutation({

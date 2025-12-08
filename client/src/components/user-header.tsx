@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LogOut, Bell, Settings, Volume2, HelpCircle, Mail, BookOpen, Trophy, Gamepad2, List, Send, UserCircle, Palette, Lock, ShoppingCart } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useGuestSession } from "@/hooks/use-guest-session";
 import { useTheme } from "@/hooks/use-theme";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
@@ -45,7 +46,8 @@ import {
 import { APP_VERSION } from "@shared/version";
 
 export function UserHeader() {
-  const { user, logoutMutation } = useAuth();
+  const { user, logoutMutation, isGuestMode } = useAuth();
+  useGuestSession(); // Ensure guest session context is available
   const { currentTheme, themeAssets, setTheme, unlockedThemes, allThemes, isLoading: isThemeLoading } = useTheme();
   const [, setLocation] = useLocation();
   const [todoModalOpen, setTodoModalOpen] = useState(false);
@@ -97,7 +99,7 @@ export function UserHeader() {
       if (!res.ok) throw new Error("Failed to fetch todo count");
       return await res.json();
     },
-    enabled: !!user,
+    enabled: !isGuestMode && !!user,
     refetchInterval: 30000, // Poll every 30 seconds for new notifications
     refetchOnWindowFocus: true, // Also check when user returns to tab
   });
@@ -109,7 +111,7 @@ export function UserHeader() {
       if (!res.ok) throw new Error("Failed to fetch todos");
       return await res.json();
     },
-    enabled: !!user && todoModalOpen,
+    enabled: !isGuestMode && !!user && todoModalOpen,
   });
 
   const { data: appVersion } = useQuery<{ version: string }>({
