@@ -29,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { UserHeader } from "@/components/user-header";
 import { AccuracyCard } from "@/components/accuracy-card";
+import { FeatureComparisonDialog } from "@/components/feature-comparison-dialog";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -238,6 +239,9 @@ export default function Home() {
   const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
   const iOSKeyboardInput = useIOSKeyboardTrigger();
   const { toast } = useToast();
+  
+  // Feature comparison dialog state (for locked features)
+  const [featureComparisonOpen, setFeatureComparisonOpen] = useState(false);
   
   // Head to Head Challenge state
   const [h2hDialogOpen, setH2hDialogOpen] = useState(false);
@@ -684,8 +688,9 @@ export default function Home() {
           {user?.accountType === 'free' ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <div
-                  className="cursor-not-allowed rounded-full relative"
+                <button
+                  onClick={() => setFeatureComparisonOpen(true)}
+                  className="cursor-pointer rounded-full relative hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                   data-testid="button-user-groups-locked"
                 >
                   <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-white/90 border-2 border-gray-300 flex items-center justify-center p-2 opacity-50">
@@ -700,10 +705,10 @@ export default function Home() {
                       <Lock className="w-6 h-6 text-white" />
                     </div>
                   </div>
-                </div>
+                </button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Create an account to join groups!</p>
+                <p>Click to see available features</p>
               </TooltipContent>
             </Tooltip>
           ) : (
@@ -822,7 +827,16 @@ export default function Home() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Card
-                      className="shadow-lg border border-gray-300 bg-gray-100 w-full sm:w-auto relative cursor-not-allowed opacity-60"
+                      className="shadow-lg border border-gray-300 bg-gray-100 w-full sm:w-auto relative cursor-pointer opacity-60 hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                      onClick={() => setFeatureComparisonOpen(true)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setFeatureComparisonOpen(true);
+                        }
+                      }}
                       data-testid="card-mode-headtohead-locked"
                     >
                       <div className="absolute inset-0 flex items-center justify-center z-10">
@@ -842,15 +856,16 @@ export default function Home() {
                     </Card>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Create an account to challenge friends!</p>
+                    <p>Click to see available features</p>
                   </TooltipContent>
                 </Tooltip>
 
                 {/* Locked H2H Challenge Results Button */}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div
-                      className="bg-gray-100 rounded-lg border border-gray-300 shadow-lg p-2 cursor-not-allowed opacity-60 relative"
+                    <button
+                      onClick={() => setFeatureComparisonOpen(true)}
+                      className="bg-gray-100 rounded-lg border border-gray-300 shadow-lg p-2 cursor-pointer opacity-60 relative hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                       data-testid="button-h2h-challenge-results-locked"
                     >
                       <div className="absolute inset-0 flex items-center justify-center z-10">
@@ -863,10 +878,10 @@ export default function Home() {
                         alt="H2H Challenge Results" 
                         className="w-28 h-auto grayscale"
                       />
-                    </div>
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Create an account to view challenge results!</p>
+                    <p>Click to see available features</p>
                   </TooltipContent>
                 </Tooltip>
               </motion.div>
@@ -1376,6 +1391,12 @@ export default function Home() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Feature Comparison Dialog */}
+      <FeatureComparisonDialog 
+        open={featureComparisonOpen} 
+        onOpenChange={setFeatureComparisonOpen} 
+      />
     </div>
   );
 }

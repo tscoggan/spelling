@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { LogOut, Bell, Settings, Volume2, HelpCircle, Mail, BookOpen, Trophy, Gamepad2, List, Send, UserCircle, Palette, Lock, ShoppingCart } from "lucide-react";
+import { LogOut, Bell, Settings, Volume2, HelpCircle, Mail, BookOpen, Trophy, Gamepad2, List, Send, UserCircle, Palette, Lock, ShoppingCart, Crown } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useGuestSession } from "@/hooks/use-guest-session";
 import { useTheme } from "@/hooks/use-theme";
@@ -1241,6 +1241,81 @@ export function UserHeader() {
                         <li>View accuracy and progress for each word list</li>
                         <li>Identify which words students are struggling with</li>
                       </ul>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="account-types">
+                  <AccordionTrigger className="text-left">
+                    <div className="flex items-center gap-2">
+                      <Crown className="w-4 h-4 text-yellow-500" />
+                      Account Types
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-3 text-sm">
+                    <p className="text-muted-foreground">
+                      Compare features available across different account types. Upgrade to unlock more features!
+                    </p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs border-collapse" data-testid="table-account-types-help">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-2 px-1 font-semibold">Feature</th>
+                            <th className="text-center py-2 px-1 font-semibold text-gray-600">Free</th>
+                            <th className="text-center py-2 px-1 font-semibold text-blue-600">Family</th>
+                            <th className="text-center py-2 px-1 font-semibold text-purple-600">School</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-b">
+                            <td className="py-2 px-1">Create Custom Word Lists</td>
+                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
+                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
+                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
+                          </tr>
+                          <tr className="border-b bg-muted/30">
+                            <td className="py-2 px-1">6 Game Modes</td>
+                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
+                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
+                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
+                          </tr>
+                          <tr className="border-b">
+                            <td className="py-2 px-1">Share Word Lists with Friends</td>
+                            <td className="text-center py-2 px-1"><X className="w-4 h-4 text-gray-400 mx-auto" /></td>
+                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
+                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
+                          </tr>
+                          <tr className="border-b bg-muted/30">
+                            <td className="py-2 px-1">My Stats & Achievements</td>
+                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
+                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
+                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
+                          </tr>
+                          <tr className="border-b">
+                            <td className="py-2 px-1">Star Shop</td>
+                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
+                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
+                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
+                          </tr>
+                          <tr className="border-b bg-muted/30">
+                            <td className="py-2 px-1">Head to Head Challenges</td>
+                            <td className="text-center py-2 px-1"><X className="w-4 h-4 text-gray-400 mx-auto" /></td>
+                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
+                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
+                          </tr>
+                          <tr className="border-b">
+                            <td className="py-2 px-1">Teacher Dashboard</td>
+                            <td className="text-center py-2 px-1"><X className="w-4 h-4 text-gray-400 mx-auto" /></td>
+                            <td className="text-center py-2 px-1"><X className="w-4 h-4 text-gray-400 mx-auto" /></td>
+                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <p className="text-xs text-blue-800 dark:text-blue-200">
+                        <strong>Family accounts</strong> are coming soon! <strong>School accounts</strong> include full access to all features including User Groups, Head to Head Challenges, and the Teacher Dashboard.
+                      </p>
                     </div>
                   </AccordionContent>
                 </AccordionItem>
