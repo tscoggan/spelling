@@ -39,7 +39,7 @@ function getVisibility(list: any): "public" | "private" | "groups" {
 
 export default function WordListsPage() {
   const { user, isGuestMode } = useAuth();
-  const { guestWordLists, guestAddWordList, guestUpdateWordList, guestDeleteWordList, guestGetWordList, guestAddWordImageAssignment, getWordListMastery: guestGetWordListMastery } = useGuestSession();
+  const { guestWordLists, guestAddWordList, guestUpdateWordList, guestDeleteWordList, guestGetWordList, guestAddWordImageAssignment, guestGetWordListMastery } = useGuestSession();
   const isFreeAccount = user?.accountType === 'free';
   const [, setLocation] = useLocation();
   const { toast } = useToast();

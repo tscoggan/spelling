@@ -204,7 +204,7 @@ export default function Game() {
 function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, challengeId, isInitiator }: { listId?: string; virtualWords?: string; gameMode: GameMode; gameCount: string; onRestart: () => void; challengeId?: string; isInitiator?: boolean }) {
   const [, setLocation] = useLocation();
   const { user, isGuestMode } = useAuth();
-  const { addGameSession, updateGameSession, addStars, addAchievement, state: guestState, guestGetWordList, guestUpsertWordListMastery } = useGuestSession();
+  const { addGameSession, updateGameSession, addStars, addAchievement, state: guestState, guestGetWordList, guestUpsertWordListMastery, guestIncrementWordStreak, guestResetWordStreak } = useGuestSession();
   const { themeAssets, currentTheme, setTheme, unlockedThemes, allThemes } = useTheme();
   
   const [userInput, setUserInput] = useState("");
@@ -479,8 +479,14 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
 
   const incrementWordStreakMutation = useMutation({
     mutationFn: async () => {
-      // Skip streak tracking for virtual word lists and guests
-      if (virtualWords || isGuestMode) return null;
+      // Skip streak tracking for virtual word lists
+      if (virtualWords) return null;
+      
+      // For guests, track streaks in memory
+      if (isGuestMode) {
+        guestIncrementWordStreak();
+        return { success: true };
+      }
       
       const response = await apiRequest("POST", "/api/streaks/increment");
       return await response.json();
@@ -489,8 +495,14 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
 
   const resetWordStreakMutation = useMutation({
     mutationFn: async () => {
-      // Skip streak tracking for virtual word lists and guests
-      if (virtualWords || isGuestMode) return null;
+      // Skip streak tracking for virtual word lists
+      if (virtualWords) return null;
+      
+      // For guests, track streaks in memory
+      if (isGuestMode) {
+        guestResetWordStreak();
+        return { success: true };
+      }
       
       const response = await apiRequest("POST", "/api/streaks/reset");
       return await response.json();

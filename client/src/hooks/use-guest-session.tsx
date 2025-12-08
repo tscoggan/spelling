@@ -45,6 +45,8 @@ type GuestSessionState = {
   stars: number;
   items: Map<string, number>;
   processingListIds: Set<number>;
+  currentWordStreak: number;
+  longestWordStreak: number;
 };
 
 type GuestSessionContextType = {
@@ -70,6 +72,8 @@ type GuestSessionContextType = {
   resetSession: () => void;
   isListProcessing: (listId: number) => boolean;
   setListProcessing: (listId: number, processing: boolean) => void;
+  incrementWordStreak: () => void;
+  resetWordStreak: () => void;
 };
 
 const initialState: GuestSessionState = {
@@ -80,6 +84,8 @@ const initialState: GuestSessionState = {
   stars: 0,
   items: new Map(),
   processingListIds: new Set(),
+  currentWordStreak: 0,
+  longestWordStreak: 0,
 };
 
 let nextWordListId = 1;
@@ -320,6 +326,25 @@ export function GuestSessionProvider({ children }: { children: ReactNode }) {
     setState(initialState);
   }, []);
 
+  const incrementWordStreak = useCallback(() => {
+    setState(prev => {
+      const newCurrent = prev.currentWordStreak + 1;
+      const newLongest = Math.max(newCurrent, prev.longestWordStreak);
+      return {
+        ...prev,
+        currentWordStreak: newCurrent,
+        longestWordStreak: newLongest,
+      };
+    });
+  }, []);
+
+  const resetWordStreak = useCallback(() => {
+    setState(prev => ({
+      ...prev,
+      currentWordStreak: 0,
+    }));
+  }, []);
+
   return (
     <GuestSessionContext.Provider
       value={{
@@ -345,6 +370,8 @@ export function GuestSessionProvider({ children }: { children: ReactNode }) {
         resetSession,
         isListProcessing,
         setListProcessing,
+        incrementWordStreak,
+        resetWordStreak,
       }}
     >
       {children}
@@ -386,5 +413,9 @@ export function useGuestSession() {
     guestResetSession: context.resetSession,
     guestIsListProcessing: context.isListProcessing,
     guestSetListProcessing: context.setListProcessing,
+    guestIncrementWordStreak: context.incrementWordStreak,
+    guestResetWordStreak: context.resetWordStreak,
+    guestCurrentWordStreak: context.state.currentWordStreak,
+    guestLongestWordStreak: context.state.longestWordStreak,
   };
 }

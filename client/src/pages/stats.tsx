@@ -35,7 +35,7 @@ interface UserStats {
 export default function Stats() {
   const [, setLocation] = useLocation();
   const { user, isGuestMode } = useAuth();
-  const { guestGameSessions, guestStars } = useGuestSession();
+  const { guestGameSessions, guestStars, guestCurrentWordStreak, guestLongestWordStreak } = useGuestSession();
   const { themeAssets, hasDarkBackground } = useTheme();
   const textClasses = getThemedTextClasses(hasDarkBackground);
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
@@ -90,8 +90,8 @@ export default function Stats() {
     return {
       totalWordsAttempted,
       accuracy,
-      longestStreak: 0,
-      currentStreak: 0,
+      longestStreak: guestLongestWordStreak,
+      currentStreak: guestCurrentWordStreak,
       totalGamesPlayed: sessions.length,
       favoriteGameMode,
       averageScore,
