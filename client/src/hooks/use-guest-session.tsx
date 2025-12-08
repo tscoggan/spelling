@@ -363,6 +363,7 @@ export function useGuestSession() {
     guestWordLists: context.state.wordLists,
     guestGameSessions: context.state.gameSessions,
     guestAchievements: context.state.achievements,
+    guestWordListMasteries: context.state.wordListMasteries,
     guestStars: context.state.stars,
     guestAddWordList: context.addWordList,
     guestUpdateWordList: context.updateWordList,

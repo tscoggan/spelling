@@ -47,7 +47,7 @@ function getVisibility(list: any): "public" | "private" | "groups" {
 export default function Achievements() {
   const [, setLocation] = useLocation();
   const { user, isGuestMode } = useAuth();
-  const { guestWordLists, guestAchievements } = useGuestSession();
+  const { guestWordLists, guestWordListMasteries } = useGuestSession();
   const { themeAssets, hasDarkBackground } = useTheme();
   const textClasses = getThemedTextClasses(hasDarkBackground);
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
@@ -76,9 +76,26 @@ export default function Achievements() {
     enabled: !isGuestMode,
   });
   
+  // Convert guest word list masteries to achievement format
+  const guestAchievementsFormatted: Achievement[] = guestWordListMasteries.map((mastery, index) => ({
+    id: index,
+    userId: 0,
+    wordListId: mastery.wordListId,
+    achievementType: "Word List Mastery",
+    achievementValue: `${mastery.totalStars} ${mastery.totalStars === 1 ? "Star" : "Stars"}`,
+    completedModes: mastery.completedModes,
+  }));
+  
   // Use guest session data or API data depending on mode
-  const achievements = isGuestMode ? guestAchievements : apiAchievements;
-  const customLists = isGuestMode ? guestWordLists : apiCustomLists;
+  const achievements = isGuestMode ? guestAchievementsFormatted : apiAchievements;
+  const customLists = isGuestMode 
+    ? guestWordLists.map(list => ({
+        ...list,
+        isPublic: false,
+        gradeLevel: undefined,
+        authorUsername: undefined,
+      } as CustomWordList))
+    : apiCustomLists;
 
   // Combine all lists and filter for unique lists with achievements
   const allLists = [
