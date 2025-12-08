@@ -139,21 +139,21 @@ export function FeatureComparisonDialog({ open, onOpenChange }: FeatureCompariso
                         ) : feature.freePlay ? (
                           <Check className="w-5 h-5 text-green-600 mx-auto" data-testid={`check-free-${index}`} />
                         ) : (
-                          <X className="w-5 h-5 text-gray-400 mx-auto" data-testid={`x-free-${index}`} />
+                          <X className="w-5 h-5 text-red-500 mx-auto" data-testid={`x-free-${index}`} />
                         )}
                       </td>
                       <td className="text-center py-4 px-2">
                         {feature.family ? (
                           <Check className="w-5 h-5 text-green-600 mx-auto" data-testid={`check-family-${index}`} />
                         ) : (
-                          <X className="w-5 h-5 text-gray-400 mx-auto" data-testid={`x-family-${index}`} />
+                          <X className="w-5 h-5 text-red-500 mx-auto" data-testid={`x-family-${index}`} />
                         )}
                       </td>
                       <td className="text-center py-4 px-2">
                         {feature.school ? (
                           <Check className="w-5 h-5 text-green-600 mx-auto" data-testid={`check-school-${index}`} />
                         ) : (
-                          <X className="w-5 h-5 text-gray-400 mx-auto" data-testid={`x-school-${index}`} />
+                          <X className="w-5 h-5 text-red-500 mx-auto" data-testid={`x-school-${index}`} />
                         )}
                       </td>
                     </tr>
