@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
+import { useGuestSession } from "@/hooks/use-guest-session";
 import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload, Filter, Camera, X, Users, Target, Clock, Trophy, Shuffle, AlertCircle, Grid3x3, UserPlus } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -37,7 +38,8 @@ function getVisibility(list: any): "public" | "private" | "groups" {
 }
 
 export default function WordListsPage() {
-  const { user } = useAuth();
+  const { user, isGuestMode } = useAuth();
+  const { guestWordLists, guestAddWordList, guestUpdateWordList, guestDeleteWordList } = useGuestSession();
   const isFreeAccount = user?.accountType === 'free';
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -84,17 +86,28 @@ export default function WordListsPage() {
     }
   }, [user?.role, user?.accountType]);
 
-  const { data: userLists = [], isLoading: loadingUserLists } = useQuery<CustomWordList[]>({
+  const { data: apiUserLists = [], isLoading: loadingUserLists } = useQuery<CustomWordList[]>({
     queryKey: ["/api/word-lists", user?.id],
     queryFn: async () => {
       const response = await fetch("/api/word-lists", { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch word lists");
       return await response.json();
     },
-    enabled: !!user,
+    enabled: !!user && !isGuestMode,
     refetchOnMount: "always",
     staleTime: 0,
   });
+  
+  // For guests, use in-memory word lists; for authenticated users, use API lists
+  const userLists: CustomWordList[] = isGuestMode 
+    ? guestWordLists.map(list => ({
+        ...list,
+        userId: 0,
+        isPublic: false,
+        gradeLevel: null,
+        createdAt: list.createdAt,
+      } as CustomWordList))
+    : apiUserLists;
 
   // Free accounts cannot see public or shared lists
   const { data: publicLists = [], isLoading: loadingPublicLists } = useQuery<CustomWordList[]>({
@@ -389,6 +402,18 @@ export default function WordListsPage() {
     });
     setDialogOpen(true);
   };
+  
+  const handleDelete = (listId: number) => {
+    if (isGuestMode) {
+      guestDeleteWordList(listId);
+      toast({
+        title: "Success!",
+        description: "Word list deleted successfully",
+      });
+    } else {
+      deleteMutation.mutate(listId);
+    }
+  };
 
   const extractTextFromPDF = async (file: File): Promise<string> => {
     pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -504,6 +529,58 @@ export default function WordListsPage() {
     const submissionData = isFreeAccount 
       ? { ...formData, visibility: "private" as const, selectedGroupIds: [] }
       : formData;
+    
+    // For guest mode, use in-memory storage instead of API
+    if (isGuestMode) {
+      const words = submissionData.words.split('\n').map(w => w.trim().toLowerCase()).filter(w => w.length > 0);
+      
+      // Validate minimum word count
+      if (words.length < 5) {
+        toast({
+          title: "Error",
+          description: "Please add at least 5 words to your list",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (words.length > 500) {
+        toast({
+          title: "Error",
+          description: "Word lists cannot exceed 500 words",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (editingList) {
+        guestUpdateWordList(editingList.id, {
+          name: submissionData.name,
+          words,
+          visibility: "private",
+          assignImages: submissionData.assignImages,
+        });
+        toast({
+          title: "Success!",
+          description: "Word list updated successfully",
+        });
+      } else {
+        guestAddWordList({
+          name: submissionData.name,
+          words,
+          visibility: "private",
+          assignImages: submissionData.assignImages,
+        });
+        toast({
+          title: "Success!",
+          description: "Word list created successfully (stored in memory for this session)",
+        });
+      }
+      setDialogOpen(false);
+      setEditingList(null);
+      resetForm();
+      return;
+    }
     
     if (editingList) {
       updateMutation.mutate({ id: editingList.id, data: submissionData });
@@ -776,8 +853,8 @@ export default function WordListsPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => deleteMutation.mutate(list.id)}
-                      disabled={deleteMutation.isPending}
+                      onClick={() => handleDelete(list.id)}
+                      disabled={!isGuestMode && deleteMutation.isPending}
                       data-testid={`button-delete-${list.id}`}
                     >
                       <Trash2 className="w-4 h-4" />

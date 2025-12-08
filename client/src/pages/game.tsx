@@ -727,7 +727,7 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
   const supportsGameLength = ["practice", "quiz", "scramble", "mistake"].includes(gameMode);
 
   const { data: words, isLoading } = useQuery<Word[]>({
-    queryKey: ['/api/word-lists', listId, virtualWords, gameMode, gameCount, sessionTimestamp],
+    queryKey: ['/api/word-lists', listId, virtualWords, gameMode, gameCount, sessionTimestamp, isGuestMode],
     queryFn: async () => {
       // Handle virtual word lists (from Most Misspelled Words)
       if (virtualWords) {
@@ -753,6 +753,28 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
       if (!listId) {
         console.warn('Query executed without listId - returning empty array');
         return [];
+      }
+      
+      // For guest mode, check if this is a guest word list (stored in memory)
+      if (isGuestMode) {
+        const guestList = guestState.wordLists.find(list => list.id === parseInt(listId));
+        if (guestList) {
+          let wordsArray = guestList.words.map((word: string, index: number) => ({
+            id: index + 1,
+            word,
+          }));
+          
+          // Randomize word order
+          wordsArray = shuffleArray(wordsArray);
+          
+          // For modes that support game length, limit to 10 words if gameCount is "10"
+          if (supportsGameLength && gameCount === "10") {
+            wordsArray = wordsArray.slice(0, 10);
+          }
+          
+          return wordsArray;
+        }
+        // If not found in guest lists, fall through to API call (for public lists)
       }
       
       const response = await fetch(`/api/word-lists/${listId}`);
