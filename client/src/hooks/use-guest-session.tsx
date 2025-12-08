@@ -1,9 +1,16 @@
 import { createContext, ReactNode, useContext, useState, useCallback } from "react";
 import type { CustomWordList, GameSession, UserItem, Achievement } from "@shared/schema";
 
+export type GuestImageAssignment = {
+  word: string;
+  imageUrl: string;
+  previewUrl: string;
+};
+
 type GuestWordList = Omit<CustomWordList, 'id' | 'userId' | 'createdAt' | 'gradeLevel' | 'isPublic' | 'groupId' | 'hasImage' | 'enrichmentStatus' | 'enrichmentJobId' | 'coOwnerIds'> & {
   id: number;
   createdAt: Date;
+  imageAssignments?: GuestImageAssignment[];
 };
 
 type GuestGameSession = {
@@ -38,6 +45,10 @@ type GuestSessionContextType = {
   updateWordList: (id: number, updates: Partial<GuestWordList>) => void;
   deleteWordList: (id: number) => void;
   getWordList: (id: number) => GuestWordList | undefined;
+  setWordListImageAssignments: (listId: number, assignments: GuestImageAssignment[]) => void;
+  addWordImageAssignment: (listId: number, assignment: GuestImageAssignment) => void;
+  removeWordImageAssignment: (listId: number, word: string) => void;
+  getWordImageAssignment: (listId: number, word: string) => GuestImageAssignment | undefined;
   addGameSession: (session: Omit<GuestGameSession, 'id' | 'createdAt'>) => GuestGameSession;
   updateGameSession: (id: number, updates: Partial<GuestGameSession>) => void;
   addAchievement: (achievement: Omit<GuestAchievement, 'id' | 'unlockedAt'>) => void;
@@ -97,6 +108,44 @@ export function GuestSessionProvider({ children }: { children: ReactNode }) {
 
   const getWordList = useCallback((id: number): GuestWordList | undefined => {
     return state.wordLists.find(list => list.id === id);
+  }, [state.wordLists]);
+
+  const setWordListImageAssignments = useCallback((listId: number, assignments: GuestImageAssignment[]) => {
+    setState(prev => ({
+      ...prev,
+      wordLists: prev.wordLists.map(list =>
+        list.id === listId ? { ...list, imageAssignments: assignments } : list
+      ),
+    }));
+  }, []);
+
+  const addWordImageAssignment = useCallback((listId: number, assignment: GuestImageAssignment) => {
+    setState(prev => ({
+      ...prev,
+      wordLists: prev.wordLists.map(list => {
+        if (list.id !== listId) return list;
+        const existing = list.imageAssignments || [];
+        const filtered = existing.filter(a => a.word.toLowerCase() !== assignment.word.toLowerCase());
+        return { ...list, imageAssignments: [...filtered, assignment] };
+      }),
+    }));
+  }, []);
+
+  const removeWordImageAssignment = useCallback((listId: number, word: string) => {
+    setState(prev => ({
+      ...prev,
+      wordLists: prev.wordLists.map(list => {
+        if (list.id !== listId) return list;
+        const existing = list.imageAssignments || [];
+        return { ...list, imageAssignments: existing.filter(a => a.word.toLowerCase() !== word.toLowerCase()) };
+      }),
+    }));
+  }, []);
+
+  const getWordImageAssignment = useCallback((listId: number, word: string): GuestImageAssignment | undefined => {
+    const list = state.wordLists.find(l => l.id === listId);
+    if (!list?.imageAssignments) return undefined;
+    return list.imageAssignments.find(a => a.word.toLowerCase() === word.toLowerCase());
   }, [state.wordLists]);
 
   const addGameSession = useCallback((session: Omit<GuestGameSession, 'id' | 'createdAt'>): GuestGameSession => {
@@ -196,6 +245,10 @@ export function GuestSessionProvider({ children }: { children: ReactNode }) {
         updateWordList,
         deleteWordList,
         getWordList,
+        setWordListImageAssignments,
+        addWordImageAssignment,
+        removeWordImageAssignment,
+        getWordImageAssignment,
         addGameSession,
         updateGameSession,
         addAchievement,
@@ -228,6 +281,10 @@ export function useGuestSession() {
     guestUpdateWordList: context.updateWordList,
     guestDeleteWordList: context.deleteWordList,
     guestGetWordList: context.getWordList,
+    guestSetWordListImageAssignments: context.setWordListImageAssignments,
+    guestAddWordImageAssignment: context.addWordImageAssignment,
+    guestRemoveWordImageAssignment: context.removeWordImageAssignment,
+    guestGetWordImageAssignment: context.getWordImageAssignment,
     guestAddGameSession: context.addGameSession,
     guestUpdateGameSession: context.updateGameSession,
     guestAddAchievement: context.addAchievement,

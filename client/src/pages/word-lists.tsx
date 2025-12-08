@@ -1779,7 +1779,12 @@ function EditImagesDialog({ list, open, onOpenChange }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { user } = useAuth();
+  const { user, isGuestMode } = useAuth();
+  const { 
+    guestAddWordImageAssignment, 
+    guestRemoveWordImageAssignment, 
+    guestGetWordList 
+  } = useGuestSession();
   const { toast } = useToast();
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [pixabayPreviews, setPixabayPreviews] = useState<any[]>([]);
@@ -1787,8 +1792,12 @@ function EditImagesDialog({ list, open, onOpenChange }: {
   const [customSearchTerm, setCustomSearchTerm] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // For guest mode, get images from guest session state
+  const guestList = isGuestMode ? guestGetWordList(list.id) : null;
+  const guestImageAssignments = guestList?.imageAssignments || [];
 
-  // Query for word illustrations for this specific word list
+  // Query for word illustrations for this specific word list (authenticated users only)
   const { data: illustrations = [], refetch: refetchIllustrations } = useQuery<WordIllustration[]>({
     queryKey: ["/api/word-lists", list.id, "illustrations"],
     queryFn: async () => {
@@ -1796,7 +1805,7 @@ function EditImagesDialog({ list, open, onOpenChange }: {
       if (!response.ok) throw new Error("Failed to fetch word illustrations");
       return await response.json();
     },
-    enabled: open,
+    enabled: open && !isGuestMode,
   });
 
   // Mutation to select a new image
@@ -1847,11 +1856,14 @@ function EditImagesDialog({ list, open, onOpenChange }: {
       return;
     }
 
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
+    // Validate file size (5MB max for server, 2MB for guests)
+    const maxSize = isGuestMode ? 2 * 1024 * 1024 : 5 * 1024 * 1024;
+    if (file.size > maxSize) {
       toast({
         title: "File too large",
-        description: "Please select an image smaller than 5MB",
+        description: isGuestMode 
+          ? "Please select an image smaller than 2MB" 
+          : "Please select an image smaller than 5MB",
         variant: "destructive",
       });
       return;
@@ -1860,6 +1872,45 @@ function EditImagesDialog({ list, open, onOpenChange }: {
     setUploadingImage(true);
 
     try {
+      if (isGuestMode) {
+        // For guests, read file as data URL and store in memory
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const dataUrl = e.target?.result as string;
+          if (dataUrl && selectedWord) {
+            guestAddWordImageAssignment(list.id, {
+              word: selectedWord,
+              imageUrl: dataUrl,
+              previewUrl: dataUrl,
+            });
+            setSelectedWord(null);
+            setPixabayPreviews([]);
+            toast({
+              title: "Success!",
+              description: "Custom image added successfully",
+            });
+          }
+          setUploadingImage(false);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
+        };
+        reader.onerror = () => {
+          toast({
+            title: "Error",
+            description: "Failed to read image file",
+            variant: "destructive",
+          });
+          setUploadingImage(false);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      // For authenticated users, upload to server
       const formData = new FormData();
       formData.append('image', file);
       formData.append('word', selectedWord);
@@ -1911,7 +1962,11 @@ function EditImagesDialog({ list, open, onOpenChange }: {
   const fetchPixabayPreviews = async (word: string) => {
     setLoadingPreviews(true);
     try {
-      const response = await fetch(`/api/pixabay/previews?word=${encodeURIComponent(word)}&limit=16`);
+      // Use guest endpoint for guests, authenticated endpoint for logged-in users
+      const endpoint = isGuestMode 
+        ? `/api/guest/pixabay-search?word=${encodeURIComponent(word)}&limit=10`
+        : `/api/pixabay/previews?word=${encodeURIComponent(word)}&limit=16`;
+      const response = await fetch(endpoint);
       if (!response.ok) throw new Error("Failed to fetch previews");
       const data = await response.json();
       setPixabayPreviews(data);
@@ -1926,8 +1981,18 @@ function EditImagesDialog({ list, open, onOpenChange }: {
     }
   };
 
-  // Get illustration for a word
+  // Get illustration for a word (different sources for guest vs authenticated)
   const getIllustration = (word: string) => {
+    if (isGuestMode) {
+      // For guests, check in-memory image assignments
+      const assignment = guestImageAssignments.find(
+        (a) => a.word.toLowerCase() === word.toLowerCase()
+      );
+      if (assignment) {
+        return { word: assignment.word, imagePath: assignment.imageUrl };
+      }
+      return null;
+    }
     return illustrations.find((ill) => ill.word.toLowerCase() === word.toLowerCase());
   };
 
@@ -1940,7 +2005,33 @@ function EditImagesDialog({ list, open, onOpenChange }: {
   // Handle selecting a new image (or removing it with null)
   const handleSelectImage = (imageUrl: string | null) => {
     if (!selectedWord) return;
-    selectImageMutation.mutate({ word: selectedWord, imageUrl });
+    
+    if (isGuestMode) {
+      // For guests, store image in memory
+      if (imageUrl) {
+        // Find the preview to get both URLs
+        const preview = pixabayPreviews.find(p => 
+          (p.largeImageURL === imageUrl || p.webformatURL === imageUrl)
+        );
+        guestAddWordImageAssignment(list.id, {
+          word: selectedWord,
+          imageUrl: imageUrl,
+          previewUrl: preview?.previewURL || imageUrl,
+        });
+      } else {
+        // Remove image
+        guestRemoveWordImageAssignment(list.id, selectedWord);
+      }
+      setSelectedWord(null);
+      setPixabayPreviews([]);
+      toast({
+        title: "Success!",
+        description: "Image updated successfully",
+      });
+    } else {
+      // For authenticated users, use the server mutation
+      selectImageMutation.mutate({ word: selectedWord, imageUrl });
+    }
   };
 
   // Reset state when dialog closes

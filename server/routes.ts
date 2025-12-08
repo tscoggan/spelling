@@ -69,6 +69,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     '/api/auth/request-password-reset',
     '/api/auth/reset-password',
     '/api/auth/validate-reset-token',
+    '/api/guest/pixabay-search', // Guest image search (no persistence)
     '/objects',
   ];
   
@@ -1316,6 +1317,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(previews);
     } catch (error) {
       console.error("Error fetching Pixabay previews:", error);
+      res.status(500).json({ error: "Failed to fetch image previews" });
+    }
+  });
+
+  // Guest-friendly Pixabay search - returns preview URLs without authentication or persistence
+  // Used by guest users to search for images that will be stored in client-side memory only
+  app.get("/api/guest/pixabay-search", async (req, res) => {
+    try {
+      const word = req.query.word as string;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+
+      if (!word) {
+        return res.status(400).json({ error: "Word parameter is required" });
+      }
+
+      // Basic rate limiting - limit to 10 results for guests
+      const safeLimit = Math.min(limit, 10);
+
+      const { PixabayService } = await import("./services/pixabay");
+      const pixabayService = new PixabayService();
+      const previews = await pixabayService.getImagePreviews(word, safeLimit);
+      
+      res.json(previews);
+    } catch (error) {
+      console.error("Error fetching Pixabay previews for guest:", error);
       res.status(500).json({ error: "Failed to fetch image previews" });
     }
   });

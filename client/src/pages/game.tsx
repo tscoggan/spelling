@@ -227,6 +227,7 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
   const [achievementEarned, setAchievementEarned] = useState(false);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string | null>(null);
+  const [voicesReady, setVoicesReady] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showWordHints, setShowWordHints] = useState(() => {
     const saved = localStorage.getItem('showWordHints');
@@ -907,6 +908,7 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
     // Feature detection - check if speechSynthesis is available
     if (!('speechSynthesis' in window)) {
       setAvailableVoices([]);
+      setVoicesReady(true); // Mark as ready so game can proceed without TTS
       return;
     }
 
@@ -916,6 +918,11 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
         
         // Filter to English voices only (both male and female)
         const englishVoices = voices.filter(voice => voice.lang.startsWith('en'));
+        
+        // Only proceed if voices are actually loaded
+        if (englishVoices.length === 0) {
+          return; // Wait for voiceschanged event
+        }
         
         setAvailableVoices(englishVoices);
         
@@ -934,15 +941,20 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
             );
             if (samanthaVoice) {
               setSelectedVoice(samanthaVoice.name);
+              setVoicesReady(true);
               return;
             }
           }
           // Fallback to first available voice
           setSelectedVoice(englishVoices[0].name);
         }
+        
+        // Mark voices as ready
+        setVoicesReady(true);
       } catch (error) {
         console.error('Error loading voices:', error);
         setAvailableVoices([]);
+        setVoicesReady(true); // Still mark as ready so the game can proceed
       }
     };
 
@@ -1530,7 +1542,8 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
   }, [currentWordIndex, showFeedback]);
 
   useEffect(() => {
-    if (currentWord && !showFeedback && gameMode !== "quiz" && gameMode !== "mistake" && gameMode !== "crossword") {
+    // Wait for voices to be ready before auto-speaking
+    if (currentWord && !showFeedback && voicesReady && gameMode !== "quiz" && gameMode !== "mistake" && gameMode !== "crossword") {
       speakWord(currentWord.word, () => {
         // Re-focus after TTS completes
         setTimeout(() => {
@@ -1540,10 +1553,11 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
         }, 100);
       });
     }
-  }, [currentWord, showFeedback, gameMode]);
+  }, [currentWord, showFeedback, gameMode, voicesReady]);
 
   useEffect(() => {
-    if (currentWord && gameMode === "quiz") {
+    // Wait for voices to be ready before auto-speaking in quiz mode
+    if (currentWord && voicesReady && gameMode === "quiz") {
       speakWord(currentWord.word, () => {
         // Re-focus after TTS completes
         setTimeout(() => {
@@ -1553,7 +1567,7 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
         }, 100);
       });
     }
-  }, [currentWord, gameMode, currentWordIndex]);
+  }, [currentWord, gameMode, currentWordIndex, voicesReady]);
 
   // Auto-focus Next Word button when feedback appears in Practice mode
   useEffect(() => {
