@@ -44,6 +44,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { APP_VERSION } from "@shared/version";
+import { FeatureComparisonDialog } from "@/components/feature-comparison-dialog";
 
 export function UserHeader() {
   const { user, logoutMutation, isGuestMode } = useAuth();
@@ -53,6 +54,7 @@ export function UserHeader() {
   const [todoModalOpen, setTodoModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [featureComparisonOpen, setFeatureComparisonOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
@@ -1254,69 +1256,20 @@ export function UserHeader() {
                   </AccordionTrigger>
                   <AccordionContent className="space-y-3 text-sm">
                     <p className="text-muted-foreground">
-                      Compare features available across different account types. Upgrade to unlock more features!
+                      Compare features available across different account types. See what's included with Play for Free, Family, and School accounts.
                     </p>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs border-collapse" data-testid="table-account-types-help">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left py-2 px-1 font-semibold">Feature</th>
-                            <th className="text-center py-2 px-1 font-semibold text-gray-600">Free</th>
-                            <th className="text-center py-2 px-1 font-semibold text-blue-600">Family</th>
-                            <th className="text-center py-2 px-1 font-semibold text-purple-600">School</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr className="border-b">
-                            <td className="py-2 px-1">Create Custom Word Lists</td>
-                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
-                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
-                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
-                          </tr>
-                          <tr className="border-b bg-muted/30">
-                            <td className="py-2 px-1">6 Game Modes</td>
-                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
-                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
-                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
-                          </tr>
-                          <tr className="border-b">
-                            <td className="py-2 px-1">Share Word Lists with Friends</td>
-                            <td className="text-center py-2 px-1"><X className="w-4 h-4 text-gray-400 mx-auto" /></td>
-                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
-                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
-                          </tr>
-                          <tr className="border-b bg-muted/30">
-                            <td className="py-2 px-1">My Stats & Achievements</td>
-                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
-                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
-                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
-                          </tr>
-                          <tr className="border-b">
-                            <td className="py-2 px-1">Star Shop</td>
-                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
-                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
-                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
-                          </tr>
-                          <tr className="border-b bg-muted/30">
-                            <td className="py-2 px-1">Head to Head Challenges</td>
-                            <td className="text-center py-2 px-1"><X className="w-4 h-4 text-gray-400 mx-auto" /></td>
-                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
-                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
-                          </tr>
-                          <tr className="border-b">
-                            <td className="py-2 px-1">Teacher Dashboard</td>
-                            <td className="text-center py-2 px-1"><X className="w-4 h-4 text-gray-400 mx-auto" /></td>
-                            <td className="text-center py-2 px-1"><X className="w-4 h-4 text-gray-400 mx-auto" /></td>
-                            <td className="text-center py-2 px-1"><Check className="w-4 h-4 text-green-600 mx-auto" /></td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                    <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                      <p className="text-xs text-blue-800 dark:text-blue-200">
-                        <strong>Family accounts</strong> are coming soon! <strong>School accounts</strong> include full access to all features including User Groups, Head to Head Challenges, and the Teacher Dashboard.
-                      </p>
-                    </div>
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => {
+                        setHelpOpen(false);
+                        setFeatureComparisonOpen(true);
+                      }}
+                      data-testid="button-view-account-types"
+                    >
+                      <Crown className="w-4 h-4 mr-2 text-yellow-500" />
+                      View Account Types & Features
+                    </Button>
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
@@ -1569,6 +1522,11 @@ export function UserHeader() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <FeatureComparisonDialog 
+        open={featureComparisonOpen} 
+        onOpenChange={setFeatureComparisonOpen} 
+      />
     </>
   );
 }
