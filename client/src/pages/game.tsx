@@ -1155,11 +1155,9 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
           if (dbWord.sentenceExample) {
             setWordExample(dbWord.sentenceExample);
             console.log(`✅ Using example from database`);
-          } else if (hasCompleteData) {
-            // Generate fallback example if we have definition but no example
-            const fallbackExample = generateFallbackExample(fetchWord);
-            setWordExample(fallbackExample);
-            console.log(`✨ Generated fallback example: "${fallbackExample}"`);
+          } else {
+            // No example available - don't generate fake sentences
+            console.log(`ℹ️ No example sentence available for "${fetchWord}"`);
           }
           if (dbWord.wordOrigin) {
             setWordOrigin(dbWord.wordOrigin);
@@ -1291,10 +1289,7 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
             // If we found a definition, return early (even if no example found)
             if (foundDefinition) {
               if (!foundExample) {
-                console.log(`⚠️ No example in Simple English Wiktionary for "${fetchWord}" - generating fallback`);
-                const fallbackExample = generateFallbackExample(fetchWord);
-                setWordExample(fallbackExample);
-                console.log(`✨ Generated fallback example: "${fallbackExample}"`);
+                console.log(`ℹ️ No example in Simple English Wiktionary for "${fetchWord}" - no example available`);
               }
               if (partsOfSpeechFound.size > 0) {
                 const partsArray = Array.from(partsOfSpeechFound);
@@ -1392,31 +1387,18 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
             }
           }
           
-          // Generate fallback if no example found
+          // Log if no example found - no fake sentences generated
           if (!foundExample) {
-            console.log(`❌ No example found for "${fetchWord}" (checked ${entry.meanings?.length || 0} meanings) - generating fallback`);
-            const fallbackExample = generateFallbackExample(fetchWord);
-            setWordExample(fallbackExample);
-            console.log(`✨ Generated fallback example: "${fallbackExample}"`);
+            console.log(`ℹ️ No example found for "${fetchWord}" (checked ${entry.meanings?.length || 0} meanings) - no example available`);
           }
         }
       } else {
         // Both APIs returned non-OK response
-        console.log(`⚠️ Both dictionary APIs returned errors for "${fetchWord}" - generating fallback`);
-        if (currentWordRef.current?.toLowerCase() === fetchWord) {
-          const fallbackExample = generateFallbackExample(fetchWord);
-          setWordExample(fallbackExample);
-          console.log(`✨ Generated fallback example (API ${response.status}): "${fallbackExample}"`);
-        }
+        console.log(`⚠️ Both dictionary APIs returned errors for "${fetchWord}" - no example available`);
       }
     } catch (error) {
       console.error('Error fetching dictionary data:', error);
-      // Generate fallback example if API fails
-      if (currentWordRef.current?.toLowerCase() === fetchWord) {
-        const fallbackExample = generateFallbackExample(fetchWord);
-        setWordExample(fallbackExample);
-        console.log(`✨ Generated fallback example (API error): "${fallbackExample}"`);
-      }
+      // No fake example generated on API failure
     } finally {
       // Only clear loading if we're still on the same word
       if (currentWordRef.current?.toLowerCase() === fetchWord) {
@@ -1425,23 +1407,7 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
     }
   };
 
-  const generateFallbackExample = (word: string): string => {
-    const templates = [
-      `I saw a ${word} today.`,
-      `The ${word} was very interesting.`,
-      `Can you find the ${word}?`,
-      `Look at that ${word}!`,
-      `My friend has a ${word}.`,
-      `We learned about ${word} in school.`,
-      `The ${word} is important.`,
-      `I like to use ${word}.`,
-      `Let me tell you about ${word}.`,
-      `Everyone needs ${word}.`,
-    ];
-    
-    const randomIndex = Math.floor(Math.random() * templates.length);
-    return templates[randomIndex];
-  };
+  // Note: Fake example sentences removed - only real dictionary examples are shown
 
   // Helper to keep input focused on mobile when clicking buttons
   const handleKeepInputFocused = (e: React.PointerEvent | React.TouchEvent) => {
