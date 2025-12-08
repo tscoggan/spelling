@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { LogOut, Bell, Settings, Volume2, HelpCircle, Mail, BookOpen, Trophy, Gamepad2, List, Send, UserCircle, Palette, Lock, ShoppingCart, Crown } from "lucide-react";
+import { LogOut, Bell, Settings, Volume2, HelpCircle, Mail, BookOpen, Trophy, Gamepad2, List, Send, UserCircle, Palette, Lock, ShoppingCart, Info } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useGuestSession } from "@/hooks/use-guest-session";
 import { useTheme } from "@/hooks/use-theme";
@@ -1250,7 +1250,7 @@ export function UserHeader() {
                 <AccordionItem value="account-types">
                   <AccordionTrigger className="text-left">
                     <div className="flex items-center gap-2">
-                      <Crown className="w-4 h-4 text-yellow-500" />
+                      <Info className="w-4 h-4 text-blue-500" />
                       Account Types
                     </div>
                   </AccordionTrigger>
@@ -1267,7 +1267,7 @@ export function UserHeader() {
                       }}
                       data-testid="button-view-account-types"
                     >
-                      <Crown className="w-4 h-4 mr-2 text-yellow-500" />
+                      <Info className="w-4 h-4 mr-2 text-blue-500" />
                       View Account Types & Features
                     </Button>
                   </AccordionContent>

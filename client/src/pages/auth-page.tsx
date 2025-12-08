@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { UserCircle, GraduationCap, BookOpen, Users, School, Play, ArrowLeft, Crown } from "lucide-react";
+import { UserCircle, GraduationCap, BookOpen, Users, School, Play, ArrowLeft, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -226,7 +226,7 @@ export default function AuthPage() {
           onClick={() => setFeatureComparisonOpen(true)}
           data-testid="link-compare-account-types"
         >
-          <Crown className="w-4 h-4" />
+          <Info className="w-4 h-4" />
           Compare account types
         </button>
       </div>

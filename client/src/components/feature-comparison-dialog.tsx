@@ -6,7 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Check, X, Users, Crown } from "lucide-react";
+import { Check, X, Users, Info } from "lucide-react";
 
 interface FeatureComparisonDialogProps {
   open: boolean;
@@ -86,7 +86,7 @@ export function FeatureComparisonDialog({ open, onOpenChange }: FeatureCompariso
       <DialogContent className="max-w-4xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
-            <Crown className="w-6 h-6 text-yellow-500" />
+            <Info className="w-6 h-6 text-blue-500" />
             Account Types & Features
           </DialogTitle>
           <DialogDescription>
