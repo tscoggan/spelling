@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/use-auth";
+import { GuestSessionProvider } from "@/hooks/use-guest-session";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { ProtectedRoute } from "@/lib/protected-route";
 import Home from "@/pages/home";
@@ -88,24 +89,26 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ThemeProvider>
-          <TooltipProvider>
-            <IOSKeyboardContext.Provider value={{ inputRef: iOSKeyboardInputRef }}>
-              <Toaster />
-              {/* Hidden input for iOS keyboard activation - positioned off-screen but focusable */}
-              <input
-                ref={iOSKeyboardInputRef}
-                type="text"
-                className="fixed -left-[9999px] top-0 w-1 h-1 opacity-0 pointer-events-none"
-                tabIndex={-1}
-                aria-hidden="true"
-              />
-              <Router />
-            </IOSKeyboardContext.Provider>
-          </TooltipProvider>
-        </ThemeProvider>
-      </AuthProvider>
+      <GuestSessionProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            <TooltipProvider>
+              <IOSKeyboardContext.Provider value={{ inputRef: iOSKeyboardInputRef }}>
+                <Toaster />
+                {/* Hidden input for iOS keyboard activation - positioned off-screen but focusable */}
+                <input
+                  ref={iOSKeyboardInputRef}
+                  type="text"
+                  className="fixed -left-[9999px] top-0 w-1 h-1 opacity-0 pointer-events-none"
+                  tabIndex={-1}
+                  aria-hidden="true"
+                />
+                <Router />
+              </IOSKeyboardContext.Provider>
+            </TooltipProvider>
+          </ThemeProvider>
+        </AuthProvider>
+      </GuestSessionProvider>
     </QueryClientProvider>
   );
 }

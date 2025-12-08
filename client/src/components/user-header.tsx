@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { LogOut, Bell, Settings, Volume2, HelpCircle, Mail, BookOpen, Trophy, Gamepad2, List, Send, UserCircle, Palette, Lock, ShoppingCart } from "lucide-react";
+import { LogOut, Bell, Settings, Volume2, HelpCircle, Mail, BookOpen, Trophy, Gamepad2, List, Send, UserCircle, Palette, Lock, ShoppingCart, Info } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useGuestSession } from "@/hooks/use-guest-session";
 import { useTheme } from "@/hooks/use-theme";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
@@ -43,14 +44,17 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { APP_VERSION } from "@shared/version";
+import { FeatureComparisonDialog } from "@/components/feature-comparison-dialog";
 
 export function UserHeader() {
-  const { user, logoutMutation } = useAuth();
+  const { user, logoutMutation, isGuestMode } = useAuth();
+  useGuestSession(); // Ensure guest session context is available
   const { currentTheme, themeAssets, setTheme, unlockedThemes, allThemes, isLoading: isThemeLoading } = useTheme();
   const [, setLocation] = useLocation();
   const [todoModalOpen, setTodoModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [featureComparisonOpen, setFeatureComparisonOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
@@ -97,7 +101,7 @@ export function UserHeader() {
       if (!res.ok) throw new Error("Failed to fetch todo count");
       return await res.json();
     },
-    enabled: !!user,
+    enabled: !isGuestMode && !!user,
     refetchInterval: 30000, // Poll every 30 seconds for new notifications
     refetchOnWindowFocus: true, // Also check when user returns to tab
   });
@@ -109,7 +113,7 @@ export function UserHeader() {
       if (!res.ok) throw new Error("Failed to fetch todos");
       return await res.json();
     },
-    enabled: !!user && todoModalOpen,
+    enabled: !isGuestMode && !!user && todoModalOpen,
   });
 
   const { data: appVersion } = useQuery<{ version: string }>({
@@ -592,21 +596,9 @@ export function UserHeader() {
           <div className="flex items-center gap-3">
             {user?.accountType === 'free' ? (
               <div 
-                className="flex items-center gap-2 rounded-md px-2 py-1 cursor-default"
+                className="flex items-center gap-2 rounded-md px-2 py-1"
                 data-testid="text-guest-username"
               >
-                {user?.selectedAvatar && (
-                  user.selectedAvatar.startsWith('/objects/') ? (
-                    <img 
-                      src={user.selectedAvatar} 
-                      alt="User avatar" 
-                      className="w-8 h-8 rounded-full object-cover"
-                      data-testid="img-user-avatar"
-                    />
-                  ) : (
-                    <div className="text-2xl" data-testid="text-user-avatar">{user.selectedAvatar}</div>
-                  )
-                )}
                 <div className="text-gray-800 dark:text-gray-200" data-testid="text-username">
                   guest
                 </div>
@@ -1254,6 +1246,32 @@ export function UserHeader() {
                     </div>
                   </AccordionContent>
                 </AccordionItem>
+
+                <AccordionItem value="account-types">
+                  <AccordionTrigger className="text-left">
+                    <div className="flex items-center gap-2">
+                      <Info className="w-4 h-4 text-blue-500" />
+                      Account Types
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-3 text-sm">
+                    <p className="text-muted-foreground">
+                      Compare features available across different account types. See what's included with Play for Free, Family, and School accounts.
+                    </p>
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => {
+                        setHelpOpen(false);
+                        setFeatureComparisonOpen(true);
+                      }}
+                      data-testid="button-view-account-types"
+                    >
+                      <Info className="w-4 h-4 mr-2 text-blue-500" />
+                      View Account Types & Features
+                    </Button>
+                  </AccordionContent>
+                </AccordionItem>
               </Accordion>
 
               <div className="border-t pt-6">
@@ -1504,6 +1522,11 @@ export function UserHeader() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <FeatureComparisonDialog 
+        open={featureComparisonOpen} 
+        onOpenChange={setFeatureComparisonOpen} 
+      />
     </>
   );
 }

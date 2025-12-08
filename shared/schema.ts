@@ -76,29 +76,6 @@ export const wordIllustrations = pgTable("word_illustrations", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const illustrationJobs = pgTable("illustration_jobs", {
-  id: serial("id").primaryKey(),
-  wordListId: integer("word_list_id").notNull(),
-  status: text("status").notNull().default("pending"),
-  totalWords: integer("total_words").notNull().default(0),
-  processedWords: integer("processed_words").notNull().default(0),
-  successCount: integer("success_count").notNull().default(0),
-  failureCount: integer("failure_count").notNull().default(0),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  completedAt: timestamp("completed_at"),
-});
-
-export const illustrationJobItems = pgTable("illustration_job_items", {
-  id: serial("id").primaryKey(),
-  jobId: integer("job_id").notNull(),
-  word: text("word").notNull(),
-  status: text("status").notNull().default("pending"),
-  imagePath: text("image_path"),
-  errorMessage: text("error_message"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  completedAt: timestamp("completed_at"),
-});
-
 export const userGroups = pgTable("user_groups", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -210,6 +187,16 @@ export const appSettings = pgTable("app_settings", {
   key: text("key").notNull().unique(),
   value: text("value").notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const flaggedWords = pgTable("flagged_words", {
+  id: serial("id").primaryKey(),
+  wordId: integer("word_id").notNull(),
+  userId: integer("user_id"),
+  gameMode: text("game_mode").notNull(),
+  flaggedContentTypes: text("flagged_content_types").array().notNull(),
+  comments: text("comments"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const SHOP_ITEMS = {
@@ -606,6 +593,16 @@ export const insertAppSettingSchema = createInsertSchema(appSettings).omit({
   updatedAt: true,
 });
 
+export const insertFlaggedWordSchema = createInsertSchema(flaggedWords).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  userId: z.number().nullable().optional(),
+  flaggedContentTypes: z.array(z.enum(["definition", "sentence", "origin"])).min(1, "Please select at least one content type"),
+  comments: z.string().max(500).optional(),
+  gameMode: z.enum(["practice", "timed", "quiz", "scramble"]),
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertWord = z.infer<typeof insertWordSchema>;
@@ -642,6 +639,8 @@ export type InsertHeadToHeadChallenge = z.infer<typeof insertHeadToHeadChallenge
 export type HeadToHeadChallenge = typeof headToHeadChallenges.$inferSelect;
 export type InsertAppSetting = z.infer<typeof insertAppSettingSchema>;
 export type AppSetting = typeof appSettings.$inferSelect;
+export type InsertFlaggedWord = z.infer<typeof insertFlaggedWordSchema>;
+export type FlaggedWord = typeof flaggedWords.$inferSelect;
 
 export type GameMode = "practice" | "timed" | "quiz" | "scramble" | "mistake" | "crossword" | "headtohead";
 

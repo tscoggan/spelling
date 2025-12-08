@@ -7,14 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { UserCircle, GraduationCap, BookOpen, Users, School, Play, ArrowLeft } from "lucide-react";
+import { UserCircle, GraduationCap, BookOpen, Users, School, Play, ArrowLeft, Info, LogIn } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useTheme } from "@/hooks/use-theme";
 import titleBanner from "@assets/Spelling_Playground_title_1764882992138.png";
+import { FeatureComparisonDialog } from "@/components/feature-comparison-dialog";
 
-type AccountType = "none" | "free" | "family" | "school";
+type AccountType = "none" | "free" | "family" | "school" | "login";
 
 const avatarOptions = [
   { emoji: "🐶", label: "Dog" },
@@ -55,6 +56,9 @@ export default function AuthPage() {
   // Password reset dialog state
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetIdentifier, setResetIdentifier] = useState("");
+  
+  // Feature comparison dialog state
+  const [featureComparisonOpen, setFeatureComparisonOpen] = useState(false);
 
   const resetPasswordMutation = useMutation({
     mutationFn: async (identifier: string) => {
@@ -195,12 +199,24 @@ export default function AuthPage() {
         <Button
           variant="outline"
           size="lg"
+          className="w-full h-auto py-6 flex flex-col gap-2"
+          onClick={() => setAccountType("login")}
+          data-testid="button-login"
+        >
+          <LogIn className="w-8 h-8" />
+          <span className="text-xl font-bold">Log In</span>
+          <span className="text-sm opacity-80 font-normal">Sign in with your username and password</span>
+        </Button>
+
+        <Button
+          variant="outline"
+          size="lg"
           className="w-full h-auto py-6 flex flex-col gap-2 opacity-60"
           onClick={() => setAccountType("family")}
           data-testid="button-family-account"
         >
           <Users className="w-8 h-8" />
-          <span className="text-xl font-bold">Family Account</span>
+          <span className="text-xl font-bold">Create Family Account</span>
           <span className="text-sm opacity-80 font-normal">Coming soon - Full access for the whole family</span>
         </Button>
 
@@ -212,9 +228,19 @@ export default function AuthPage() {
           data-testid="button-school-account"
         >
           <School className="w-8 h-8" />
-          <span className="text-xl font-bold">School Account</span>
+          <span className="text-xl font-bold">Create School Account</span>
           <span className="text-sm opacity-80 font-normal">Coming soon - Full access for classrooms</span>
         </Button>
+
+        <button
+          type="button"
+          className="w-full text-center text-sm text-primary hover:underline flex items-center justify-center gap-1 pt-2"
+          onClick={() => setFeatureComparisonOpen(true)}
+          data-testid="link-compare-account-types"
+        >
+          <Info className="w-4 h-4" />
+          Compare account types
+        </button>
       </div>
     </Card>
   );
@@ -280,6 +306,107 @@ export default function AuthPage() {
         <ArrowLeft className="w-4 h-4 mr-2" />
         Back to Account Selection
       </Button>
+    </Card>
+  );
+
+  // Login Form Screen
+  const renderLoginForm = () => (
+    <Card className="w-full max-w-md p-8 relative z-10">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="mb-4"
+        onClick={() => setAccountType("none")}
+        data-testid="button-back-to-selection"
+      >
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Back
+      </Button>
+      <div className="text-center mb-8">
+        <div className="mb-4 flex justify-center">
+          <img 
+            src={titleBanner} 
+            alt="Spelling Playground" 
+            className="w-full max-w-xs h-auto rounded-md"
+            data-testid="img-title-banner-login"
+          />
+        </div>
+        <p className="text-muted-foreground">Log in to your account</p>
+      </div>
+
+      <form onSubmit={handleLogin} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="login-username">Username</Label>
+          <Input
+            id="login-username"
+            type="text"
+            value={loginData.username}
+            onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
+            placeholder="Enter your username"
+            required
+            data-testid="input-login-username"
+          />
+        </div>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="login-password">Password</Label>
+            <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+              <DialogTrigger asChild>
+                <button
+                  type="button"
+                  className="text-sm text-primary hover:underline"
+                  data-testid="link-forgot-password"
+                >
+                  Forgot password?
+                </button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Reset Password</DialogTitle>
+                  <DialogDescription>
+                    Enter your username or email address. If your account has an email on file, we'll send you a password reset link.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleResetPasswordRequest} className="space-y-4">
+                  <Input
+                    type="text"
+                    placeholder="Username or email"
+                    value={resetIdentifier}
+                    onChange={(e) => setResetIdentifier(e.target.value)}
+                    required
+                    data-testid="input-reset-identifier"
+                  />
+                  <Button 
+                    type="submit" 
+                    className="w-full"
+                    disabled={resetPasswordMutation.isPending}
+                    data-testid="button-send-reset"
+                  >
+                    {resetPasswordMutation.isPending ? "Sending..." : "Send Reset Link"}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+          <Input
+            id="login-password"
+            type="password"
+            value={loginData.password}
+            onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+            placeholder="Enter your password"
+            required
+            data-testid="input-login-password"
+          />
+        </div>
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={loginMutation.isPending}
+          data-testid="button-login-submit"
+        >
+          {loginMutation.isPending ? "Logging in..." : "Log In"}
+        </Button>
+      </form>
     </Card>
   );
 
@@ -590,34 +717,42 @@ export default function AuthPage() {
   );
 
   return (
-    <div 
-      className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden"
-    >
-      {/* Portrait background */}
+    <>
       <div 
-        className="fixed inset-0 portrait:block landscape:hidden"
-        style={{
-          backgroundImage: `url(${themeAssets.backgroundPortrait})`,
-          backgroundSize: 'cover',
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center top',
-        }}
-      ></div>
-      {/* Landscape background */}
-      <div 
-        className="fixed inset-0 portrait:hidden landscape:block"
-        style={{
-          backgroundImage: `url(${themeAssets.backgroundLandscape})`,
-          backgroundSize: 'cover',
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center top',
-        }}
-      ></div>
-      <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
-      
-      {accountType === "none" && renderAccountTypeSelection()}
-      {accountType === "family" && renderFamilyStub()}
-      {accountType === "school" && renderSchoolStub()}
-    </div>
+        className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden"
+      >
+        {/* Portrait background */}
+        <div 
+          className="fixed inset-0 portrait:block landscape:hidden"
+          style={{
+            backgroundImage: `url(${themeAssets.backgroundPortrait})`,
+            backgroundSize: 'cover',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center top',
+          }}
+        ></div>
+        {/* Landscape background */}
+        <div 
+          className="fixed inset-0 portrait:hidden landscape:block"
+          style={{
+            backgroundImage: `url(${themeAssets.backgroundLandscape})`,
+            backgroundSize: 'cover',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center top',
+          }}
+        ></div>
+        <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
+        
+        {accountType === "none" && renderAccountTypeSelection()}
+        {accountType === "login" && renderLoginForm()}
+        {accountType === "family" && renderFamilyStub()}
+        {accountType === "school" && renderSchoolStub()}
+      </div>
+
+      <FeatureComparisonDialog 
+        open={featureComparisonOpen} 
+        onOpenChange={setFeatureComparisonOpen} 
+      />
+    </>
   );
 }

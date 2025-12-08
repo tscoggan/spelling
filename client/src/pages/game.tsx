@@ -11,6 +11,7 @@ import type { Word, GameMode } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/use-auth";
+import { useGuestSession } from "@/hooks/use-guest-session";
 import {
   Select,
   SelectContent,
@@ -59,6 +60,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { ReportInappropriateDialog } from "@/components/report-inappropriate-dialog";
+import { Flag } from "lucide-react";
 
 interface UserItem {
   id: number;
@@ -200,7 +203,8 @@ export default function Game() {
 // Receives all parameters as props to ensure hooks always have valid data
 function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, challengeId, isInitiator }: { listId?: string; virtualWords?: string; gameMode: GameMode; gameCount: string; onRestart: () => void; challengeId?: string; isInitiator?: boolean }) {
   const [, setLocation] = useLocation();
-  const { user } = useAuth();
+  const { user, isGuestMode } = useAuth();
+  const { addGameSession, updateGameSession, addStars, addAchievement, state: guestState, guestGetWordList, guestUpsertWordListMastery, guestIncrementWordStreak, guestResetWordStreak } = useGuestSession();
   const { themeAssets, currentTheme, setTheme, unlockedThemes, allThemes } = useTheme();
   
   const [userInput, setUserInput] = useState("");
@@ -223,6 +227,7 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
   const [achievementEarned, setAchievementEarned] = useState(false);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string | null>(null);
+  const [voicesReady, setVoicesReady] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showWordHints, setShowWordHints] = useState(() => {
     const saved = localStorage.getItem('showWordHints');
@@ -296,6 +301,9 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
   
   // Do Over and 2nd Chance states
   const [showDoOverDialog, setShowDoOverDialog] = useState(false);
+  
+  // Report Inappropriate Content dialog state
+  const [showReportDialog, setShowReportDialog] = useState(false);
   const [doOverPendingResult, setDoOverPendingResult] = useState<{
     userAnswer: string;
     correctWord: string;
@@ -419,6 +427,18 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
 
   const createSessionMutation = useMutation({
     mutationFn: async (sessionData: { gameMode: string; userId: number | null; wordListId?: number }) => {
+      // Guest users store sessions in memory only
+      if (isGuestMode) {
+        const guestSession = addGameSession({
+          wordListId: sessionData.wordListId || null,
+          gameMode: sessionData.gameMode,
+          score: 0,
+          totalWords: 0,
+          correctWords: 0,
+          isComplete: false,
+        });
+        return guestSession;
+      }
       const response = await apiRequest("POST", "/api/sessions", sessionData);
       return await response.json();
     },
@@ -429,6 +449,20 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
 
   const updateSessionMutation = useMutation({
     mutationFn: async (sessionData: { sessionId: number; score: number; totalWords: number; correctWords: number; bestStreak: number; incorrectWords: string[]; isComplete: boolean; completedAt: Date; starsEarned?: number }) => {
+      // Guest users update sessions in memory only
+      if (isGuestMode) {
+        updateGameSession(sessionData.sessionId, {
+          score: sessionData.score,
+          totalWords: sessionData.totalWords,
+          correctWords: sessionData.correctWords,
+          isComplete: sessionData.isComplete,
+        });
+        // Add stars to guest session if earned
+        if (sessionData.starsEarned) {
+          addStars(sessionData.starsEarned);
+        }
+        return { success: true };
+      }
       const response = await apiRequest("PATCH", `/api/sessions/${sessionData.sessionId}`, {
         score: sessionData.score,
         totalWords: sessionData.totalWords,
@@ -448,6 +482,12 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
       // Skip streak tracking for virtual word lists
       if (virtualWords) return null;
       
+      // For guests, track streaks in memory
+      if (isGuestMode) {
+        guestIncrementWordStreak();
+        return { success: true };
+      }
+      
       const response = await apiRequest("POST", "/api/streaks/increment");
       return await response.json();
     },
@@ -458,19 +498,32 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
       // Skip streak tracking for virtual word lists
       if (virtualWords) return null;
       
+      // For guests, track streaks in memory
+      if (isGuestMode) {
+        guestResetWordStreak();
+        return { success: true };
+      }
+      
       const response = await apiRequest("POST", "/api/streaks/reset");
       return await response.json();
     },
   });
 
-  // Fetch user's Star Shop items (Do Over, 2nd Chance)
+  // Fetch user's Star Shop items (Do Over, 2nd Chance) - only for authenticated users
   const { data: shopData, refetch: refetchShopData } = useQuery<ShopData>({
     queryKey: ["/api/user-items"],
-    enabled: !!user,
+    enabled: !!user && !isGuestMode,
   });
 
-  // Helper to get item quantity from inventory
+  // Import useGuestSession's getItemQuantity for guests
+  const guestGetItemQuantity = useGuestSession().getItemQuantity;
+  const guestUseItem = useGuestSession().useItem;
+
+  // Helper to get item quantity from inventory (works for both guests and authenticated users)
   const getItemQuantity = (itemId: string): number => {
+    if (isGuestMode) {
+      return guestGetItemQuantity(itemId);
+    }
     if (!shopData?.inventory) return 0;
     const item = shopData.inventory.find(i => i.itemId === itemId);
     return item?.quantity || 0;
@@ -479,18 +532,30 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
   // Mutation for using Star Shop items
   const useItemMutation = useMutation({
     mutationFn: async ({ itemId, quantity = 1 }: { itemId: string; quantity?: number }) => {
+      // Guest users use items from in-memory storage
+      if (isGuestMode) {
+        const success = guestUseItem(itemId);
+        if (!success) throw new Error("Item not available");
+        return { success: true };
+      }
       const response = await apiRequest("POST", "/api/user-items/use", { itemId, quantity });
       return await response.json();
     },
     onSuccess: () => {
-      // Refetch user items to update quantity display
-      refetchShopData();
-      queryClient.invalidateQueries({ queryKey: ["/api/user-items"] });
+      // Refetch user items to update quantity display (only for authenticated users)
+      if (!isGuestMode) {
+        refetchShopData();
+        queryClient.invalidateQueries({ queryKey: ["/api/user-items"] });
+      }
     },
   });
 
   const saveScoreMutation = useMutation({
     mutationFn: async (scoreData: { score: number; accuracy: number; gameMode: GameMode; userId: number | null; sessionId: number }) => {
+      // Guests don't save to leaderboard
+      if (isGuestMode) {
+        return { success: true, skipped: true };
+      }
       const response = await apiRequest("POST", "/api/leaderboard", scoreData);
       return await response.json();
     },
@@ -500,8 +565,12 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
       
       // Track achievements for Word List Mastery
       // Note: headtohead mode does NOT track achievements (only Stars Earned metric)
-      if (variables.userId && listId && variables.gameMode !== "headtohead") {
-        await checkAndAwardAchievement(variables);
+      // Guest users are handled inside checkAndAwardAchievement with in-memory storage
+      if (listId && variables.gameMode !== "headtohead") {
+        // For authenticated users, require userId; for guests, proceed with in-memory tracking
+        if (variables.userId || isGuestMode) {
+          await checkAndAwardAchievement(variables);
+        }
       }
     },
   });
@@ -577,7 +646,8 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
     // Skip achievement tracking for virtual word lists
     if (virtualWords) return;
     
-    if (!scoreData.userId || !listId) return;
+    // Need listId to track achievements
+    if (!listId) return;
 
     let earnedStar = false;
 
@@ -595,6 +665,22 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
     }
 
     if (earnedStar) {
+      // Handle guest users - store achievements in memory only
+      if (isGuestMode) {
+        console.log("🌟 Guest mode: Checking in-memory achievements for list:", listId);
+        const result = guestUpsertWordListMastery(parseInt(listId, 10), scoreData.gameMode);
+        if (result.earnedNewStar) {
+          console.log("⭐ Guest earned new star! Total stars:", result.totalStars);
+          setAchievementEarned(true);
+        } else {
+          console.log("ℹ️ Guest already earned achievement for this mode");
+        }
+        return;
+      }
+      
+      // Handle authenticated users - persist to database
+      if (!scoreData.userId) return;
+      
       try {
         console.log("🌟 Fetching current achievements for user:", scoreData.userId);
         // Fetch current achievements for this word list
@@ -675,7 +761,7 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
   const supportsGameLength = ["practice", "quiz", "scramble", "mistake"].includes(gameMode);
 
   const { data: words, isLoading } = useQuery<Word[]>({
-    queryKey: ['/api/word-lists', listId, virtualWords, gameMode, gameCount, sessionTimestamp],
+    queryKey: ['/api/word-lists', listId, virtualWords, gameMode, gameCount, sessionTimestamp, isGuestMode],
     queryFn: async () => {
       // Handle virtual word lists (from Most Misspelled Words)
       if (virtualWords) {
@@ -703,6 +789,28 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
         return [];
       }
       
+      // For guest mode, check if this is a guest word list (stored in memory)
+      if (isGuestMode) {
+        const guestList = guestState.wordLists.find(list => list.id === parseInt(listId));
+        if (guestList) {
+          let wordsArray = guestList.words.map((word: string, index: number) => ({
+            id: index + 1,
+            word,
+          }));
+          
+          // Randomize word order
+          wordsArray = shuffleArray(wordsArray);
+          
+          // For modes that support game length, limit to 10 words if gameCount is "10"
+          if (supportsGameLength && gameCount === "10") {
+            wordsArray = wordsArray.slice(0, 10);
+          }
+          
+          return wordsArray;
+        }
+        // If not found in guest lists, fall through to API call (for public lists)
+      }
+      
       const response = await fetch(`/api/word-lists/${listId}`);
       if (!response.ok) throw new Error('Failed to fetch custom word list');
       const listData = await response.json();
@@ -726,6 +834,10 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
 
   // Use the custom list ID for illustrations
   const effectiveWordListId = listId ? parseInt(listId) : undefined;
+  
+  // For guest mode, get image assignments from the guest word list
+  const guestListData = isGuestMode && effectiveWordListId ? guestGetWordList(effectiveWordListId) : null;
+  const guestImageAssignments = guestListData?.imageAssignments || [];
 
   const { data: wordIllustrations } = useQuery<WordIllustration[]>({
     queryKey: ['/api/word-lists', effectiveWordListId, 'illustrations'],
@@ -737,8 +849,8 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
       }
       return response.json();
     },
-    // Only enable query when we have a valid word list ID
-    enabled: !!effectiveWordListId,
+    // Only enable query when we have a valid word list ID and NOT in guest mode
+    enabled: !!effectiveWordListId && !isGuestMode,
     // Provide a default value to prevent errors during initial load
     placeholderData: [],
   });
@@ -833,6 +945,7 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
     // Feature detection - check if speechSynthesis is available
     if (!('speechSynthesis' in window)) {
       setAvailableVoices([]);
+      setVoicesReady(true); // Mark as ready so game can proceed without TTS
       return;
     }
 
@@ -842,6 +955,11 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
         
         // Filter to English voices only (both male and female)
         const englishVoices = voices.filter(voice => voice.lang.startsWith('en'));
+        
+        // Only proceed if voices are actually loaded
+        if (englishVoices.length === 0) {
+          return; // Wait for voiceschanged event
+        }
         
         setAvailableVoices(englishVoices);
         
@@ -860,15 +978,20 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
             );
             if (samanthaVoice) {
               setSelectedVoice(samanthaVoice.name);
+              setVoicesReady(true);
               return;
             }
           }
           // Fallback to first available voice
           setSelectedVoice(englishVoices[0].name);
         }
+        
+        // Mark voices as ready
+        setVoicesReady(true);
       } catch (error) {
         console.error('Error loading voices:', error);
         setAvailableVoices([]);
+        setVoicesReady(true); // Still mark as ready so the game can proceed
       }
     };
 
@@ -1032,11 +1155,9 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
           if (dbWord.sentenceExample) {
             setWordExample(dbWord.sentenceExample);
             console.log(`✅ Using example from database`);
-          } else if (hasCompleteData) {
-            // Generate fallback example if we have definition but no example
-            const fallbackExample = generateFallbackExample(fetchWord);
-            setWordExample(fallbackExample);
-            console.log(`✨ Generated fallback example: "${fallbackExample}"`);
+          } else {
+            // No example available - don't generate fake sentences
+            console.log(`ℹ️ No example sentence available for "${fetchWord}"`);
           }
           if (dbWord.wordOrigin) {
             setWordOrigin(dbWord.wordOrigin);
@@ -1168,10 +1289,7 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
             // If we found a definition, return early (even if no example found)
             if (foundDefinition) {
               if (!foundExample) {
-                console.log(`⚠️ No example in Simple English Wiktionary for "${fetchWord}" - generating fallback`);
-                const fallbackExample = generateFallbackExample(fetchWord);
-                setWordExample(fallbackExample);
-                console.log(`✨ Generated fallback example: "${fallbackExample}"`);
+                console.log(`ℹ️ No example in Simple English Wiktionary for "${fetchWord}" - no example available`);
               }
               if (partsOfSpeechFound.size > 0) {
                 const partsArray = Array.from(partsOfSpeechFound);
@@ -1269,31 +1387,18 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
             }
           }
           
-          // Generate fallback if no example found
+          // Log if no example found - no fake sentences generated
           if (!foundExample) {
-            console.log(`❌ No example found for "${fetchWord}" (checked ${entry.meanings?.length || 0} meanings) - generating fallback`);
-            const fallbackExample = generateFallbackExample(fetchWord);
-            setWordExample(fallbackExample);
-            console.log(`✨ Generated fallback example: "${fallbackExample}"`);
+            console.log(`ℹ️ No example found for "${fetchWord}" (checked ${entry.meanings?.length || 0} meanings) - no example available`);
           }
         }
       } else {
         // Both APIs returned non-OK response
-        console.log(`⚠️ Both dictionary APIs returned errors for "${fetchWord}" - generating fallback`);
-        if (currentWordRef.current?.toLowerCase() === fetchWord) {
-          const fallbackExample = generateFallbackExample(fetchWord);
-          setWordExample(fallbackExample);
-          console.log(`✨ Generated fallback example (API ${response.status}): "${fallbackExample}"`);
-        }
+        console.log(`⚠️ Both dictionary APIs returned errors for "${fetchWord}" - no example available`);
       }
     } catch (error) {
       console.error('Error fetching dictionary data:', error);
-      // Generate fallback example if API fails
-      if (currentWordRef.current?.toLowerCase() === fetchWord) {
-        const fallbackExample = generateFallbackExample(fetchWord);
-        setWordExample(fallbackExample);
-        console.log(`✨ Generated fallback example (API error): "${fallbackExample}"`);
-      }
+      // No fake example generated on API failure
     } finally {
       // Only clear loading if we're still on the same word
       if (currentWordRef.current?.toLowerCase() === fetchWord) {
@@ -1302,23 +1407,7 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
     }
   };
 
-  const generateFallbackExample = (word: string): string => {
-    const templates = [
-      `I saw a ${word} today.`,
-      `The ${word} was very interesting.`,
-      `Can you find the ${word}?`,
-      `Look at that ${word}!`,
-      `My friend has a ${word}.`,
-      `We learned about ${word} in school.`,
-      `The ${word} is important.`,
-      `I like to use ${word}.`,
-      `Let me tell you about ${word}.`,
-      `Everyone needs ${word}.`,
-    ];
-    
-    const randomIndex = Math.floor(Math.random() * templates.length);
-    return templates[randomIndex];
-  };
+  // Note: Fake example sentences removed - only real dictionary examples are shown
 
   // Helper to keep input focused on mobile when clicking buttons
   const handleKeepInputFocused = (e: React.PointerEvent | React.TouchEvent) => {
@@ -1456,7 +1545,9 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
   }, [currentWordIndex, showFeedback]);
 
   useEffect(() => {
-    if (currentWord && !showFeedback && gameMode !== "quiz" && gameMode !== "mistake" && gameMode !== "crossword") {
+    // Wait for voices to be ready before auto-speaking
+    // Skip if game is complete to prevent repeating the final word on results screen
+    if (currentWord && !showFeedback && !gameComplete && voicesReady && gameMode !== "quiz" && gameMode !== "mistake" && gameMode !== "crossword") {
       speakWord(currentWord.word, () => {
         // Re-focus after TTS completes
         setTimeout(() => {
@@ -1466,10 +1557,12 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
         }, 100);
       });
     }
-  }, [currentWord, showFeedback, gameMode]);
+  }, [currentWord, showFeedback, gameComplete, gameMode, voicesReady]);
 
   useEffect(() => {
-    if (currentWord && gameMode === "quiz") {
+    // Wait for voices to be ready before auto-speaking in quiz mode
+    // Skip if game is complete to prevent repeating the final word on results screen
+    if (currentWord && !gameComplete && voicesReady && gameMode === "quiz") {
       speakWord(currentWord.word, () => {
         // Re-focus after TTS completes
         setTimeout(() => {
@@ -1479,7 +1572,7 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
         }, 100);
       });
     }
-  }, [currentWord, gameMode, currentWordIndex]);
+  }, [currentWord, gameComplete, gameMode, currentWordIndex, voicesReady]);
 
   // Auto-focus Next Word button when feedback appears in Practice mode
   useEffect(() => {
@@ -4637,11 +4730,27 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
                       </h2>
                     </div>
                     
-                    {gameMode !== "mistake" && currentWord && wordIllustrations && (() => {
-                      const illustration = wordIllustrations.find(
-                        (ill) => ill.word === currentWord.word.toLowerCase()
-                      );
-                      return illustration && illustration.imagePath ? (
+                    {gameMode !== "mistake" && currentWord && (() => {
+                      // Check guest image assignments first, then fall back to server illustrations
+                      let imagePath: string | null = null;
+                      
+                      if (isGuestMode && guestImageAssignments.length > 0) {
+                        const guestAssignment = guestImageAssignments.find(
+                          (a) => a.word.toLowerCase() === currentWord.word.toLowerCase()
+                        );
+                        if (guestAssignment) {
+                          imagePath = guestAssignment.imageUrl;
+                        }
+                      } else if (wordIllustrations) {
+                        const illustration = wordIllustrations.find(
+                          (ill) => ill.word === currentWord.word.toLowerCase()
+                        );
+                        if (illustration?.imagePath) {
+                          imagePath = illustration.imagePath;
+                        }
+                      }
+                      
+                      return imagePath ? (
                         <motion.div
                           ref={wordImageRef}
                           initial={{ scale: 0.8, opacity: 0 }}
@@ -4650,7 +4759,7 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
                           className="flex justify-center"
                         >
                           <img 
-                            src={illustration.imagePath}
+                            src={imagePath}
                             alt={`Cartoon ${currentWord.word}`}
                             className="w-32 h-32 md:w-48 md:h-48 object-contain"
                             data-testid="img-word-illustration"
@@ -5105,9 +5214,21 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
             )}
           </AnimatePresence>
           
-          {/* Restart button - shown during active gameplay only, not for Head to Head mode */}
+          {/* Report and Restart buttons - shown during active gameplay only, not for Head to Head mode */}
           {!gameComplete && gameMode !== "headtohead" && (
-            <div className="mt-4 flex justify-center">
+            <div className="mt-4 flex justify-center items-center gap-4">
+              {/* Report link - only for practice, timed, quiz, scramble modes */}
+              {["practice", "timed", "quiz", "scramble"].includes(gameMode) && currentWord && (
+                <button
+                  type="button"
+                  onClick={() => setShowReportDialog(true)}
+                  data-testid="link-report-content"
+                  className="text-white hover:text-white/80 text-xs flex items-center underline underline-offset-2"
+                >
+                  <Flag className="w-3 h-3 mr-1" />
+                  Report Inappropriate Content
+                </button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -5164,6 +5285,17 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Report Inappropriate Content Dialog */}
+      {currentWord && ["practice", "timed", "quiz", "scramble"].includes(gameMode) && (
+        <ReportInappropriateDialog
+          open={showReportDialog}
+          onOpenChange={setShowReportDialog}
+          wordId={currentWord.id}
+          wordText={currentWord.word}
+          gameMode={gameMode as "practice" | "timed" | "quiz" | "scramble"}
+        />
+      )}
 
       {/* Floating letter element for touch dragging */}
       {touchDragging && touchPosition && draggedLetterElement && (

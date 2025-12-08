@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Home, Target, Trophy, Flame, TrendingUp, Award, Calendar, Play, Shuffle, AlertCircle, Grid3x3, Clock, Star, Gamepad2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
+import { useGuestSession } from "@/hooks/use-guest-session";
 import { UserHeader } from "@/components/user-header";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
@@ -33,7 +34,8 @@ interface UserStats {
 
 export default function Stats() {
   const [, setLocation] = useLocation();
-  const { user } = useAuth();
+  const { user, isGuestMode } = useAuth();
+  const { guestGameSessions, guestStars, guestCurrentWordStreak, guestLongestWordStreak } = useGuestSession();
   const { themeAssets, hasDarkBackground } = useTheme();
   const textClasses = getThemedTextClasses(hasDarkBackground);
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
@@ -42,7 +44,7 @@ export default function Stats() {
   // Get user's timezone
   const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-  const { data: stats, isLoading } = useQuery<UserStats>({
+  const { data: apiStats, isLoading: apiLoading } = useQuery<UserStats>({
     queryKey: [`/api/stats/user/${user?.id}`, dateFilter, userTimezone],
     queryFn: async () => {
       if (!user) return null;
@@ -50,7 +52,7 @@ export default function Stats() {
       if (!response.ok) throw new Error('Failed to fetch stats');
       return response.json();
     },
-    enabled: !!user,
+    enabled: !isGuestMode && !!user,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
     staleTime: 0,
@@ -65,11 +67,41 @@ export default function Stats() {
       if (!response.ok) throw new Error('Failed to fetch H2H record');
       return response.json();
     },
-    enabled: !!user,
+    enabled: !isGuestMode && !!user,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
     staleTime: 0,
   });
+  
+  // Compute guest stats from in-memory sessions
+  const guestStats: UserStats | undefined = isGuestMode ? (() => {
+    const sessions = guestGameSessions;
+    const totalWordsAttempted = sessions.reduce((sum, s) => sum + s.totalWords, 0);
+    const correctWords = sessions.reduce((sum, s) => sum + s.correctWords, 0);
+    const accuracy = totalWordsAttempted > 0 ? Math.round((correctWords / totalWordsAttempted) * 100) : null;
+    const modeCounts: Record<string, number> = {};
+    sessions.forEach(s => {
+      modeCounts[s.gameMode] = (modeCounts[s.gameMode] || 0) + 1;
+    });
+    const favoriteGameMode = Object.entries(modeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+    const averageScore = sessions.length > 0 
+      ? Math.round(sessions.reduce((sum, s) => sum + s.score, 0) / sessions.length) 
+      : 0;
+    return {
+      totalWordsAttempted,
+      accuracy,
+      longestStreak: guestLongestWordStreak,
+      currentStreak: guestCurrentWordStreak,
+      totalGamesPlayed: sessions.length,
+      favoriteGameMode,
+      averageScore,
+      starsEarned: guestStars,
+      mostMisspelledWords: [],
+    };
+  })() : undefined;
+  
+  const stats = isGuestMode ? guestStats : apiStats;
+  const isLoading = isGuestMode ? false : apiLoading;
 
   const gameModeNames: { [key: string]: string } = {
     practice: "Practice",
