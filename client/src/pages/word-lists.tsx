@@ -133,8 +133,10 @@ export default function WordListsPage() {
           const response = await fetch(`/api/guest/pixabay-search?word=${encodeURIComponent(word)}`);
           if (response.ok) {
             const data = await response.json();
-            if (data.previews && data.previews.length > 0) {
-              const firstResult = data.previews[0];
+            // API returns array directly, not wrapped in {previews: [...]}
+            const previews = Array.isArray(data) ? data : (data.previews || []);
+            if (previews.length > 0) {
+              const firstResult = previews[0];
               newAssignments.push({
                 word,
                 imageUrl: firstResult.largeImageURL || firstResult.webformatURL,
