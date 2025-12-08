@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useEffect, useState } from "react";
+import { createContext, ReactNode, useContext, useState } from "react";
 import {
   useQuery,
   useMutation,
@@ -8,8 +8,6 @@ import { insertUserSchema, User as SelectUser, InsertUser } from "@shared/schema
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-const GUEST_USER_ID_KEY = "spelling_playground_guest_id";
-
 type AuthContextType = {
   user: SelectUser | null;
   isLoading: boolean;
@@ -18,19 +16,32 @@ type AuthContextType = {
   loginMutation: UseMutationResult<SelectUser, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<SelectUser, Error, InsertUser>;
-  guestLoginMutation: UseMutationResult<SelectUser, Error, void>;
+  guestLoginMutation: UseMutationResult<void, Error, void>;
 };
 
 type LoginData = Pick<InsertUser, "username" | "password">;
+
+const GUEST_USER: SelectUser = {
+  id: 0,
+  username: "guest",
+  password: "",
+  firstName: null,
+  lastName: null,
+  email: null,
+  selectedAvatar: null,
+  selectedTheme: "default",
+  preferredVoice: null,
+  stars: 0,
+  role: "student",
+  accountType: "free",
+  createdAt: new Date(),
+};
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
-  const [guestUserId, setGuestUserId] = useState<number | null>(() => {
-    const stored = localStorage.getItem(GUEST_USER_ID_KEY);
-    return stored ? parseInt(stored, 10) : null;
-  });
+  const [isGuestMode, setIsGuestMode] = useState(false);
 
   const {
     data: sessionUser,
@@ -41,41 +52,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
 
-  const {
-    data: guestUser,
-    error: guestError,
-    isLoading: guestLoading,
-  } = useQuery<SelectUser | undefined, Error>({
-    queryKey: ["/api/guest-user", guestUserId],
-    queryFn: async () => {
-      if (!guestUserId) return undefined;
-      const res = await fetch(`/api/guest-user/${guestUserId}`);
-      if (!res.ok) {
-        localStorage.removeItem(GUEST_USER_ID_KEY);
-        setGuestUserId(null);
-        return undefined;
-      }
-      return res.json();
-    },
-    enabled: !!guestUserId && !sessionUser,
-  });
-
-  const user = sessionUser || guestUser || null;
-  const error = sessionError || guestError || null;
-  const isLoading = sessionLoading || (!!guestUserId && guestLoading);
-  const isGuestMode = !sessionUser && !!guestUser;
-
-  // When guest user is fetched (returning guest), invalidate user items to refetch with new session
-  useEffect(() => {
-    if (guestUser && !sessionUser) {
-      // Small delay to ensure session cookie is established
-      const timer = setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["/api/user-items/list"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/user-items"] });
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [guestUser, sessionUser]);
+  const user = sessionUser || (isGuestMode ? GUEST_USER : null);
+  const error = sessionError || null;
+  const isLoading = sessionLoading;
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
@@ -83,8 +62,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
+      setIsGuestMode(false);
       queryClient.setQueryData(["/api/user"], user);
-      // Refresh notification count on login
       queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos/count"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-to-dos"] });
     },
@@ -103,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
+      setIsGuestMode(false);
       queryClient.setQueryData(["/api/user"], user);
     },
     onError: (error: Error) => {
@@ -117,15 +97,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logoutMutation = useMutation({
     mutationFn: async () => {
       if (isGuestMode) {
-        localStorage.removeItem(GUEST_USER_ID_KEY);
-        setGuestUserId(null);
+        setIsGuestMode(false);
         return;
       }
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
+      setIsGuestMode(false);
       queryClient.setQueryData(["/api/user"], null);
-      queryClient.removeQueries({ queryKey: ["/api/guest-user"] });
       queryClient.removeQueries({ queryKey: ["/api/word-lists"] });
       queryClient.removeQueries({ queryKey: ["/api/word-lists/shared-with-me"] });
       queryClient.removeQueries({ queryKey: ["/api/user-groups"] });
@@ -142,30 +121,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const guestLoginMutation = useMutation({
     mutationFn: async () => {
-      const existingGuestId = localStorage.getItem(GUEST_USER_ID_KEY);
-      if (existingGuestId) {
-        const res = await fetch(`/api/guest-user/${existingGuestId}`);
-        if (res.ok) {
-          return res.json();
-        }
-      }
-      const res = await apiRequest("POST", "/api/guest-user", {});
-      return res.json();
+      setIsGuestMode(true);
     },
-    onSuccess: (user: SelectUser) => {
-      localStorage.setItem(GUEST_USER_ID_KEY, user.id.toString());
-      setGuestUserId(user.id);
-      queryClient.setQueryData(["/api/guest-user", user.id], user);
-      // Invalidate user items to refetch after session is established
-      queryClient.invalidateQueries({ queryKey: ["/api/user-items/list"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user-items"] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Guest login failed",
-        description: error.message,
-        variant: "destructive",
-      });
+    onSuccess: () => {
+      queryClient.setQueryData(["/api/user"], null);
     },
   });
 
