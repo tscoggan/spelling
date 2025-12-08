@@ -226,7 +226,7 @@ function AvatarDisplay({ avatar, size = "md", className = "" }: { avatar?: strin
 export default function Home() {
   const [, setLocation] = useLocation();
   const { user, isGuestMode } = useAuth();
-  const { state: guestState } = useGuestSession();
+  const { state: guestState, guestGetWordListMastery } = useGuestSession();
   const { themeAssets, currentTheme, hasDarkBackground } = useTheme();
   const textClasses = getThemedTextClasses(hasDarkBackground);
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
@@ -415,6 +415,18 @@ export default function Home() {
 
   // Helper function to get achievement for a word list
   const getAchievementForList = (wordListId: number) => {
+    // For guest mode, use in-memory word list mastery data
+    if (isGuestMode) {
+      const mastery = guestGetWordListMastery(wordListId);
+      if (!mastery) return null;
+      return {
+        wordListId,
+        achievementType: "Word List Mastery",
+        achievementValue: `${mastery.totalStars} ${mastery.totalStars === 1 ? "Star" : "Stars"}`,
+        completedModes: mastery.completedModes,
+      };
+    }
+    // For authenticated users, use API achievements
     if (!achievements) return null;
     return achievements.find(
       (a) => a.wordListId === wordListId && a.achievementType === "Word List Mastery"
