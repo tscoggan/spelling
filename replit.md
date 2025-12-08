@@ -41,6 +41,7 @@ The frontend is built with React, utilizing Wouter for routing, TanStack Query f
 - **Scoring System & Leaderboard**: Points, streak bonuses, and leaderboards.
 - **Progress Tracking**: Session-based tracking of words, accuracy, and streaks.
 - **My Stats Page**: Provides aggregate performance metrics with date filtering, lifetime metrics (streaks, favorite game mode), and a "Most Misspelled Words Play Feature" for re-practicing specific words. Implements security measures and UTC date boundaries for accurate tracking.
+- **Report Inappropriate Content**: Users can flag word content (definition, sentence, or word origin) during gameplay in Practice, Timed Challenge, Quiz, and Word Scramble modes. Reports are stored in the `flagged_words` table with the word ID, content types flagged, optional comments, user ID (if logged in), and game mode.
 
 ### System Design Choices
 - **Client-Server Architecture**: React frontend communicates with an Express.js backend.

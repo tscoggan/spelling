@@ -59,6 +59,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { ReportInappropriateDialog } from "@/components/report-inappropriate-dialog";
+import { Flag } from "lucide-react";
 
 interface UserItem {
   id: number;
@@ -296,6 +298,9 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
   
   // Do Over and 2nd Chance states
   const [showDoOverDialog, setShowDoOverDialog] = useState(false);
+  
+  // Report Inappropriate Content dialog state
+  const [showReportDialog, setShowReportDialog] = useState(false);
   const [doOverPendingResult, setDoOverPendingResult] = useState<{
     userAnswer: string;
     correctWord: string;
@@ -5105,9 +5110,21 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
             )}
           </AnimatePresence>
           
-          {/* Restart button - shown during active gameplay only, not for Head to Head mode */}
+          {/* Report and Restart buttons - shown during active gameplay only, not for Head to Head mode */}
           {!gameComplete && gameMode !== "headtohead" && (
-            <div className="mt-4 flex justify-center">
+            <div className="mt-4 flex justify-center items-center gap-4">
+              {/* Report link - only for practice, timed, quiz, scramble modes */}
+              {["practice", "timed", "quiz", "scramble"].includes(gameMode) && currentWord && (
+                <button
+                  type="button"
+                  onClick={() => setShowReportDialog(true)}
+                  data-testid="link-report-content"
+                  className="text-orange-600 hover:text-orange-800 text-xs flex items-center underline underline-offset-2"
+                >
+                  <Flag className="w-3 h-3 mr-1" />
+                  Report Inappropriate Content
+                </button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -5164,6 +5181,17 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Report Inappropriate Content Dialog */}
+      {currentWord && ["practice", "timed", "quiz", "scramble"].includes(gameMode) && (
+        <ReportInappropriateDialog
+          open={showReportDialog}
+          onOpenChange={setShowReportDialog}
+          wordId={currentWord.id}
+          wordText={currentWord.word}
+          gameMode={gameMode as "practice" | "timed" | "quiz" | "scramble"}
+        />
+      )}
 
       {/* Floating letter element for touch dragging */}
       {touchDragging && touchPosition && draggedLetterElement && (

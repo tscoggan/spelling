@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertGameSessionSchema, insertWordSchema, insertCustomWordListSchema, type CustomWordList } from "@shared/schema";
+import { insertGameSessionSchema, insertWordSchema, insertCustomWordListSchema, insertFlaggedWordSchema, type CustomWordList } from "@shared/schema";
 import { z } from "zod";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import { IllustrationJobService } from "./services/illustrationJobService";
@@ -3196,6 +3196,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid request data", details: error.errors });
       }
       res.status(500).json({ error: "Failed to submit challenge result" });
+    }
+  });
+
+  app.post("/api/flagged-words", async (req, res) => {
+    try {
+      const user = req.user as any;
+      
+      // Add userId from session before validation (overrides any client-provided value)
+      const dataWithUserId = {
+        ...req.body,
+        userId: user?.id || null,
+      };
+      
+      const validatedData = insertFlaggedWordSchema.parse(dataWithUserId);
+      
+      const flaggedWord = await storage.createFlaggedWord(validatedData);
+      
+      res.status(201).json(flaggedWord);
+    } catch (error) {
+      console.error("Error creating flagged word report:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid request data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to submit report" });
     }
   });
 

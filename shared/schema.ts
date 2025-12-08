@@ -212,6 +212,16 @@ export const appSettings = pgTable("app_settings", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const flaggedWords = pgTable("flagged_words", {
+  id: serial("id").primaryKey(),
+  wordId: integer("word_id").notNull(),
+  userId: integer("user_id"),
+  gameMode: text("game_mode").notNull(),
+  flaggedContentTypes: text("flagged_content_types").array().notNull(),
+  comments: text("comments"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const SHOP_ITEMS = {
   do_over: {
     id: "do_over",
@@ -606,6 +616,16 @@ export const insertAppSettingSchema = createInsertSchema(appSettings).omit({
   updatedAt: true,
 });
 
+export const insertFlaggedWordSchema = createInsertSchema(flaggedWords).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  userId: z.number().nullable().optional(),
+  flaggedContentTypes: z.array(z.enum(["definition", "sentence", "origin"])).min(1, "Please select at least one content type"),
+  comments: z.string().max(500).optional(),
+  gameMode: z.enum(["practice", "timed", "quiz", "scramble"]),
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertWord = z.infer<typeof insertWordSchema>;
@@ -642,6 +662,8 @@ export type InsertHeadToHeadChallenge = z.infer<typeof insertHeadToHeadChallenge
 export type HeadToHeadChallenge = typeof headToHeadChallenges.$inferSelect;
 export type InsertAppSetting = z.infer<typeof insertAppSettingSchema>;
 export type AppSetting = typeof appSettings.$inferSelect;
+export type InsertFlaggedWord = z.infer<typeof insertFlaggedWordSchema>;
+export type FlaggedWord = typeof flaggedWords.$inferSelect;
 
 export type GameMode = "practice" | "timed" | "quiz" | "scramble" | "mistake" | "crossword" | "headtohead";
 
