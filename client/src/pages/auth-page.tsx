@@ -180,68 +180,68 @@ export default function AuthPage() {
         <p className="text-muted-foreground text-lg">Choose how you'd like to play</p>
       </div>
 
-      <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
         <Button
           variant="default"
           size="lg"
-          className="w-full h-auto py-6 flex flex-col gap-2"
+          className="h-auto py-4 px-3 flex flex-col gap-1 text-center"
           onClick={handleGuestLogin}
           disabled={guestLoginMutation.isPending}
           data-testid="button-free-account"
         >
-          <Play className="w-8 h-8" />
-          <span className="text-xl font-bold">Play for Free</span>
-          <span className="text-sm opacity-80 font-normal">
-            {guestLoginMutation.isPending ? "Starting..." : "No account needed - start playing right away!"}
+          <Play className="w-6 h-6" />
+          <span className="text-base font-bold leading-tight">Play for Free</span>
+          <span className="text-xs opacity-80 font-normal leading-tight text-wrap">
+            {guestLoginMutation.isPending ? "Starting..." : "No account needed"}
           </span>
         </Button>
 
         <Button
           variant="outline"
           size="lg"
-          className="w-full h-auto py-6 flex flex-col gap-2"
+          className="h-auto py-4 px-3 flex flex-col gap-1 text-center"
           onClick={() => setAccountType("login")}
           data-testid="button-login"
         >
-          <LogIn className="w-8 h-8" />
-          <span className="text-xl font-bold">Log In</span>
-          <span className="text-sm opacity-80 font-normal">Sign in with your username and password</span>
+          <LogIn className="w-6 h-6" />
+          <span className="text-base font-bold leading-tight">Log In</span>
+          <span className="text-xs opacity-80 font-normal leading-tight text-wrap">Sign in to your account</span>
         </Button>
 
         <Button
           variant="outline"
           size="lg"
-          className="w-full h-auto py-6 flex flex-col gap-2 opacity-60"
+          className="h-auto py-4 px-3 flex flex-col gap-1 text-center opacity-60"
           onClick={() => setAccountType("family")}
           data-testid="button-family-account"
         >
-          <Users className="w-8 h-8" />
-          <span className="text-xl font-bold">Create Family Account</span>
-          <span className="text-sm opacity-80 font-normal">Coming soon - Full access for the whole family</span>
+          <Users className="w-6 h-6" />
+          <span className="text-base font-bold leading-tight text-wrap">Create Family Account</span>
+          <span className="text-xs opacity-80 font-normal leading-tight text-wrap">Coming soon</span>
         </Button>
 
         <Button
           variant="outline"
           size="lg"
-          className="w-full h-auto py-6 flex flex-col gap-2 opacity-60"
+          className="h-auto py-4 px-3 flex flex-col gap-1 text-center opacity-60"
           onClick={() => setAccountType("school")}
           data-testid="button-school-account"
         >
-          <School className="w-8 h-8" />
-          <span className="text-xl font-bold">Create School Account</span>
-          <span className="text-sm opacity-80 font-normal">Coming soon - Full access for classrooms</span>
+          <School className="w-6 h-6" />
+          <span className="text-base font-bold leading-tight text-wrap">Create School Account</span>
+          <span className="text-xs opacity-80 font-normal leading-tight text-wrap">Coming soon</span>
         </Button>
-
-        <button
-          type="button"
-          className="w-full text-center text-sm text-primary hover:underline flex items-center justify-center gap-1 pt-2"
-          onClick={() => setFeatureComparisonOpen(true)}
-          data-testid="link-compare-account-types"
-        >
-          <Info className="w-4 h-4" />
-          Compare account types
-        </button>
       </div>
+
+      <button
+        type="button"
+        className="w-full text-center text-sm text-primary hover:underline flex items-center justify-center gap-1 pt-4"
+        onClick={() => setFeatureComparisonOpen(true)}
+        data-testid="link-compare-account-types"
+      >
+        <Info className="w-4 h-4" />
+        Compare account types
+      </button>
     </Card>
   );
 
