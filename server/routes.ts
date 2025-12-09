@@ -3199,6 +3199,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Hidden Word Lists endpoints (paid accounts only)
+  app.get("/api/hidden-word-lists", requirePaidAccount, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const hiddenLists = await storage.getUserHiddenWordLists(userId);
+      res.json(hiddenLists);
+    } catch (error) {
+      console.error("Error fetching hidden word lists:", error);
+      res.status(500).json({ error: "Failed to fetch hidden word lists" });
+    }
+  });
+
+  app.post("/api/hidden-word-lists/:wordListId", requirePaidAccount, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const wordListId = parseInt(req.params.wordListId);
+      
+      if (isNaN(wordListId)) {
+        return res.status(400).json({ error: "Invalid word list ID" });
+      }
+      
+      const hidden = await storage.hideWordList(userId, wordListId);
+      res.status(201).json(hidden);
+    } catch (error) {
+      console.error("Error hiding word list:", error);
+      res.status(500).json({ error: "Failed to hide word list" });
+    }
+  });
+
+  app.delete("/api/hidden-word-lists/:wordListId", requirePaidAccount, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const wordListId = parseInt(req.params.wordListId);
+      
+      if (isNaN(wordListId)) {
+        return res.status(400).json({ error: "Invalid word list ID" });
+      }
+      
+      await storage.unhideWordList(userId, wordListId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error unhiding word list:", error);
+      res.status(500).json({ error: "Failed to unhide word list" });
+    }
+  });
+
   app.post("/api/flagged-words", async (req, res) => {
     try {
       const user = req.user as any;
