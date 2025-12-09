@@ -30,6 +30,7 @@ import {
   type InsertHeadToHeadChallenge,
   type FlaggedWord,
   type InsertFlaggedWord,
+  type UserHiddenWordList,
   words,
   gameSessions,
   users,
@@ -49,6 +50,7 @@ import {
   headToHeadChallenges,
   appSettings,
   flaggedWords,
+  userHiddenWordLists,
   SHOP_ITEMS,
   type ShopItemId,
 } from "@shared/schema";
@@ -182,6 +184,11 @@ export interface IStorage {
   bumpAppVersion(): Promise<string>;
   
   createFlaggedWord(flag: InsertFlaggedWord): Promise<FlaggedWord>;
+  
+  getUserHiddenWordLists(userId: number): Promise<UserHiddenWordList[]>;
+  hideWordList(userId: number, wordListId: number): Promise<UserHiddenWordList>;
+  unhideWordList(userId: number, wordListId: number): Promise<boolean>;
+  isWordListHidden(userId: number, wordListId: number): Promise<boolean>;
   
   sessionStore: session.Store;
 }
@@ -1756,6 +1763,51 @@ export class DatabaseStorage implements IStorage {
   async createFlaggedWord(flag: InsertFlaggedWord): Promise<FlaggedWord> {
     const [flaggedWord] = await db.insert(flaggedWords).values(flag).returning();
     return flaggedWord;
+  }
+
+  async getUserHiddenWordLists(userId: number): Promise<UserHiddenWordList[]> {
+    return await db.select().from(userHiddenWordLists).where(eq(userHiddenWordLists.userId, userId));
+  }
+
+  async hideWordList(userId: number, wordListId: number): Promise<UserHiddenWordList> {
+    const [hidden] = await db
+      .insert(userHiddenWordLists)
+      .values({ userId, wordListId })
+      .onConflictDoNothing()
+      .returning();
+    
+    if (!hidden) {
+      const [existing] = await db
+        .select()
+        .from(userHiddenWordLists)
+        .where(and(
+          eq(userHiddenWordLists.userId, userId),
+          eq(userHiddenWordLists.wordListId, wordListId)
+        ));
+      return existing;
+    }
+    return hidden;
+  }
+
+  async unhideWordList(userId: number, wordListId: number): Promise<boolean> {
+    const result = await db
+      .delete(userHiddenWordLists)
+      .where(and(
+        eq(userHiddenWordLists.userId, userId),
+        eq(userHiddenWordLists.wordListId, wordListId)
+      ));
+    return true;
+  }
+
+  async isWordListHidden(userId: number, wordListId: number): Promise<boolean> {
+    const [hidden] = await db
+      .select()
+      .from(userHiddenWordLists)
+      .where(and(
+        eq(userHiddenWordLists.userId, userId),
+        eq(userHiddenWordLists.wordListId, wordListId)
+      ));
+    return !!hidden;
   }
 }
 
