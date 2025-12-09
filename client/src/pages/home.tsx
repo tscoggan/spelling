@@ -282,6 +282,16 @@ export default function Home() {
     enabled: !isGuestMode,
   });
 
+  // Hidden word lists - only for paid accounts
+  const { data: hiddenWordLists } = useQuery<{ wordListId: number }[]>({
+    queryKey: ["/api/word-lists/hidden"],
+    enabled: !isGuestMode && user?.accountType !== 'free',
+  });
+  
+  const hiddenWordListIds = useMemo(() => {
+    return new Set((hiddenWordLists || []).map(h => h.wordListId));
+  }, [hiddenWordLists]);
+
   // Achievements - guests use in-memory state
   const { data: apiAchievements } = useQuery<any[]>({
     queryKey: ["/api/achievements/user", user?.id],
@@ -512,6 +522,10 @@ export default function Home() {
     
     // Apply filters
     let filtered = uniqueLists;
+    
+    // Filter out hidden lists for paid accounts (always applied in game mode selection)
+    filtered = filtered.filter(list => !hiddenWordListIds.has(list.id));
+    
     if (filterGradeLevel !== "all") {
       filtered = filtered.filter(list => list.gradeLevel === filterGradeLevel);
     }
@@ -532,7 +546,7 @@ export default function Home() {
       const dateB = new Date(b.createdAt || 0).getTime();
       return dateB - dateA;
     });
-  }, [customLists, publicLists, sharedLists, filterGradeLevel, filterCreatedBy, hideMastered, achievements, isFreeAccount]);
+  }, [customLists, publicLists, sharedLists, filterGradeLevel, filterCreatedBy, hideMastered, achievements, isFreeAccount, hiddenWordListIds]);
 
   const availableGradeLevels = useMemo(() => {
     const myLists = customLists || [];

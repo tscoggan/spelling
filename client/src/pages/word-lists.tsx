@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useGuestSession, GuestImageAssignment } from "@/hooks/use-guest-session";
-import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload, Filter, Camera, X, Users, Target, Clock, Trophy, Shuffle, AlertCircle, Grid3x3, UserPlus } from "lucide-react";
+import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload, Filter, Camera, X, Users, Target, Clock, Trophy, Shuffle, AlertCircle, Grid3x3, UserPlus, Eye, EyeOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
@@ -50,6 +50,7 @@ export default function WordListsPage() {
   const [gradeFilter, setGradeFilter] = useState<string>("all");
   const [createdByFilter, setCreatedByFilter] = useState<string>("all");
   const [hideMastered, setHideMastered] = useState<boolean>(false);
+  const [showHidden, setShowHidden] = useState<boolean>(false);
   const [jobId, setJobId] = useState<number | null>(null);
   const [editImagesDialogOpen, setEditImagesDialogOpen] = useState(false);
   const [editingImagesList, setEditingImagesList] = useState<CustomWordList | null>(null);
@@ -243,6 +244,57 @@ export default function WordListsPage() {
     refetchOnMount: "always",
     staleTime: 0,
   });
+
+  // Hidden word lists (paid accounts only)
+  const { data: hiddenWordLists = [] } = useQuery<{ userId: number; wordListId: number }[]>({
+    queryKey: ["/api/word-lists/hidden"],
+    queryFn: async () => {
+      const response = await fetch("/api/word-lists/hidden", { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch hidden word lists");
+      return await response.json();
+    },
+    enabled: !!user && !isFreeAccount,
+  });
+
+  const hiddenWordListIds = useMemo(() => {
+    return new Set(hiddenWordLists.map(h => h.wordListId));
+  }, [hiddenWordLists]);
+
+  const hideWordListMutation = useMutation({
+    mutationFn: async (wordListId: number) => {
+      const response = await apiRequest("POST", `/api/word-lists/${wordListId}/hide`, {});
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/hidden"] });
+      toast({ title: "Word list hidden", description: "This list is now hidden from your view" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to hide word list", variant: "destructive" });
+    },
+  });
+
+  const unhideWordListMutation = useMutation({
+    mutationFn: async (wordListId: number) => {
+      const response = await apiRequest("DELETE", `/api/word-lists/${wordListId}/hide`, {});
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/word-lists/hidden"] });
+      toast({ title: "Word list visible", description: "This list is now visible again" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to unhide word list", variant: "destructive" });
+    },
+  });
+
+  const toggleHideWordList = (wordListId: number) => {
+    if (hiddenWordListIds.has(wordListId)) {
+      unhideWordListMutation.mutate(wordListId);
+    } else {
+      hideWordListMutation.mutate(wordListId);
+    }
+  };
 
   const { data: achievements } = useQuery<any[]>({
     queryKey: ["/api/achievements/user", user?.id],
@@ -855,6 +907,11 @@ export default function WordListsPage() {
   const filteredUserLists = useMemo(() => {
     let filtered = userLists;
     
+    // Apply hidden filter (for paid accounts only)
+    if (!isFreeAccount && !showHidden) {
+      filtered = filtered.filter(list => !hiddenWordListIds.has(list.id));
+    }
+    
     // Apply grade filter
     if (gradeFilter !== "all") {
       if (gradeFilter === "none") {
@@ -883,11 +940,16 @@ export default function WordListsPage() {
       const dateB = new Date(b.createdAt || 0).getTime();
       return dateB - dateA;
     });
-  }, [userLists, gradeFilter, createdByFilter, hideMastered, achievements]);
+  }, [userLists, gradeFilter, createdByFilter, hideMastered, achievements, showHidden, hiddenWordListIds, isFreeAccount]);
 
   const filteredSharedLists = useMemo(() => {
     let filtered = sharedLists;
     
+    // Apply hidden filter (for paid accounts only)
+    if (!showHidden) {
+      filtered = filtered.filter(list => !hiddenWordListIds.has(list.id));
+    }
+    
     // Apply grade filter
     if (gradeFilter !== "all") {
       if (gradeFilter === "none") {
@@ -916,11 +978,16 @@ export default function WordListsPage() {
       const dateB = new Date(b.createdAt || 0).getTime();
       return dateB - dateA;
     });
-  }, [sharedLists, gradeFilter, createdByFilter, hideMastered, achievements]);
+  }, [sharedLists, gradeFilter, createdByFilter, hideMastered, achievements, showHidden, hiddenWordListIds]);
 
   const filteredPublicLists = useMemo(() => {
     let filtered = publicLists;
     
+    // Apply hidden filter
+    if (!showHidden) {
+      filtered = filtered.filter(list => !hiddenWordListIds.has(list.id));
+    }
+    
     // Apply grade filter
     if (gradeFilter !== "all") {
       if (gradeFilter === "none") {
@@ -949,7 +1016,7 @@ export default function WordListsPage() {
       const dateB = new Date(b.createdAt || 0).getTime();
       return dateB - dateA;
     });
-  }, [publicLists, gradeFilter, createdByFilter, hideMastered, achievements]);
+  }, [publicLists, gradeFilter, createdByFilter, hideMastered, achievements, showHidden, hiddenWordListIds]);
 
   // Combined "All" lists - merge all accessible lists, removing duplicates
   const filteredAllLists = useMemo(() => {
@@ -966,6 +1033,11 @@ export default function WordListsPage() {
     
     let filtered = uniqueLists;
     
+    // Apply hidden filter (for paid accounts only)
+    if (!isFreeAccount && !showHidden) {
+      filtered = filtered.filter(list => !hiddenWordListIds.has(list.id));
+    }
+    
     // Apply grade filter
     if (gradeFilter !== "all") {
       if (gradeFilter === "none") {
@@ -994,7 +1066,7 @@ export default function WordListsPage() {
       const dateB = new Date(b.createdAt || 0).getTime();
       return dateB - dateA;
     });
-  }, [userLists, sharedLists, publicLists, gradeFilter, createdByFilter, hideMastered, achievements]);
+  }, [userLists, sharedLists, publicLists, gradeFilter, createdByFilter, hideMastered, achievements, showHidden, hiddenWordListIds, isFreeAccount]);
 
   const availableGradeLevels = useMemo(() => {
     const grades = new Set<string>();
@@ -1132,6 +1204,28 @@ export default function WordListsPage() {
                 )}
               </>
             )}
+            {!isFreeAccount && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => toggleHideWordList(list.id)}
+                    disabled={hideWordListMutation.isPending || unhideWordListMutation.isPending}
+                    data-testid={`button-hide-${list.id}`}
+                  >
+                    {hiddenWordListIds.has(list.id) ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {hiddenWordListIds.has(list.id) ? "Unhide List" : "Hide List"}
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -1245,6 +1339,22 @@ export default function WordListsPage() {
                   className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer whitespace-nowrap"
                 >
                   Hide Word Lists I've Mastered
+                </label>
+              </div>
+            )}
+            {!isFreeAccount && (
+              <div className="flex items-center space-x-2 bg-white/30 dark:bg-black/30 px-3 py-2 rounded-md backdrop-blur-sm">
+                <Checkbox 
+                  id="show-hidden-lists" 
+                  checked={showHidden}
+                  onCheckedChange={(checked) => setShowHidden(checked === true)}
+                  data-testid="checkbox-show-hidden-lists"
+                />
+                <label 
+                  htmlFor="show-hidden-lists" 
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer whitespace-nowrap"
+                >
+                  Show Hidden Lists
                 </label>
               </div>
             )}
