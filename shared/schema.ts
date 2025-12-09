@@ -199,6 +199,15 @@ export const flaggedWords = pgTable("flagged_words", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const userHiddenWordLists = pgTable("user_hidden_word_lists", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  wordListId: integer("word_list_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  userWordListUnique: unique("user_hidden_word_list_unique").on(table.userId, table.wordListId),
+}));
+
 export const SHOP_ITEMS = {
   do_over: {
     id: "do_over",
@@ -603,6 +612,11 @@ export const insertFlaggedWordSchema = createInsertSchema(flaggedWords).omit({
   gameMode: z.enum(["practice", "timed", "quiz", "scramble"]),
 });
 
+export const insertUserHiddenWordListSchema = createInsertSchema(userHiddenWordLists).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertWord = z.infer<typeof insertWordSchema>;
@@ -641,6 +655,8 @@ export type InsertAppSetting = z.infer<typeof insertAppSettingSchema>;
 export type AppSetting = typeof appSettings.$inferSelect;
 export type InsertFlaggedWord = z.infer<typeof insertFlaggedWordSchema>;
 export type FlaggedWord = typeof flaggedWords.$inferSelect;
+export type InsertUserHiddenWordList = z.infer<typeof insertUserHiddenWordListSchema>;
+export type UserHiddenWordList = typeof userHiddenWordLists.$inferSelect;
 
 export type GameMode = "practice" | "timed" | "quiz" | "scramble" | "mistake" | "crossword" | "headtohead";
 
