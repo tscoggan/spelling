@@ -3285,8 +3285,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Words must be an array" });
       }
       
-      if (wordsArray.length > 1000) {
-        return res.status(400).json({ error: "Maximum 1000 words allowed per upload" });
+      if (wordsArray.length > 2000) {
+        return res.status(400).json({ error: "Maximum 2000 words allowed per upload" });
       }
       
       // Normalize words

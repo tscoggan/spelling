@@ -118,10 +118,10 @@ export default function AdminPage() {
         words = text.split(/[\s,\n]+/).map(w => w.trim()).filter(w => w.length > 0);
       }
 
-      if (words.length > 1000) {
+      if (words.length > 2000) {
         toast({ 
           title: "Too many words", 
-          description: `File contains ${words.length} words. Maximum is 1000.`,
+          description: `File contains ${words.length} words. Maximum is 2000.`,
           variant: "destructive" 
         });
         return;
@@ -268,7 +268,7 @@ export default function AdminPage() {
               <CardHeader>
                 <CardTitle>Bulk Word Loader</CardTitle>
                 <CardDescription>
-                  Upload a TXT or CSV file with up to 1000 words. Words will be validated via Merriam-Webster dictionaries and added to the database.
+                  Upload a TXT or CSV file with up to 2000 words. Words will be validated via Merriam-Webster dictionaries and added to the database.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
