@@ -190,6 +190,12 @@ export interface IStorage {
   unhideWordList(userId: number, wordListId: number): Promise<boolean>;
   isWordListHidden(userId: number, wordListId: number): Promise<boolean>;
   
+  // Admin methods
+  searchWords(query: string, limit?: number): Promise<Word[]>;
+  getAllWords(): Promise<Word[]>;
+  updateWord(id: number, updates: Partial<{ definition: string | null; sentenceExample: string | null; wordOrigin: string | null; partOfSpeech: string | null }>): Promise<Word | undefined>;
+  getUsageMetrics(dateRange: 'today' | 'week' | 'month' | 'all'): Promise<{ userId: number | null; username: string; gamesPlayed: number }[]>;
+  
   sessionStore: session.Store;
 }
 
@@ -1808,6 +1814,83 @@ export class DatabaseStorage implements IStorage {
         eq(userHiddenWordLists.wordListId, wordListId)
       ));
     return !!hidden;
+  }
+
+  // Admin methods
+  async searchWords(query: string, limit: number = 50): Promise<Word[]> {
+    const normalized = query.toLowerCase().trim();
+    return await db
+      .select()
+      .from(words)
+      .where(sql`${words.word} ILIKE ${`%${normalized}%`}`)
+      .orderBy(words.word)
+      .limit(limit);
+  }
+
+  async getAllWords(): Promise<Word[]> {
+    return await db.select().from(words).orderBy(words.word);
+  }
+
+  async updateWord(id: number, updates: Partial<{ definition: string | null; sentenceExample: string | null; wordOrigin: string | null; partOfSpeech: string | null }>): Promise<Word | undefined> {
+    const [updated] = await db
+      .update(words)
+      .set(updates)
+      .where(eq(words.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async getUsageMetrics(dateRange: 'today' | 'week' | 'month' | 'all'): Promise<{ userId: number | null; username: string; gamesPlayed: number }[]> {
+    let dateFilter: Date | null = null;
+    const now = new Date();
+    
+    switch (dateRange) {
+      case 'today':
+        dateFilter = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case 'week':
+        dateFilter = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'month':
+        dateFilter = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case 'all':
+      default:
+        dateFilter = null;
+    }
+
+    const baseQuery = db
+      .select({
+        userId: gameSessions.userId,
+        gamesPlayed: sql<number>`count(*)::int`.as('games_played'),
+      })
+      .from(gameSessions);
+
+    let results;
+    if (dateFilter) {
+      results = await baseQuery
+        .where(sql`${gameSessions.createdAt} >= ${dateFilter}`)
+        .groupBy(gameSessions.userId);
+    } else {
+      results = await baseQuery.groupBy(gameSessions.userId);
+    }
+
+    // Get usernames for each userId
+    const enrichedResults = await Promise.all(
+      results.map(async (row) => {
+        if (row.userId === null) {
+          return { userId: null, username: 'guest', gamesPlayed: row.gamesPlayed };
+        }
+        const user = await this.getUser(row.userId);
+        return {
+          userId: row.userId,
+          username: user?.username || 'Unknown',
+          gamesPlayed: row.gamesPlayed,
+        };
+      })
+    );
+
+    return enrichedResults;
   }
 }
 

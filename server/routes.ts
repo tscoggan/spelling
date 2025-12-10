@@ -3269,6 +3269,144 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== ADMIN ENDPOINTS ====================
+  // These endpoints are not protected - admin authentication will be added later
+  
+  // Import dictionary validation for bulk word loading
+  const { validateWords } = await import('./services/dictionaryValidation');
+  
+  // Admin: Bulk load words from TXT/CSV file
+  app.post("/api/admin/words/bulk", async (req, res) => {
+    try {
+      const { words: wordsArray } = req.body;
+      
+      if (!Array.isArray(wordsArray)) {
+        return res.status(400).json({ error: "Words must be an array" });
+      }
+      
+      if (wordsArray.length > 1000) {
+        return res.status(400).json({ error: "Maximum 1000 words allowed per upload" });
+      }
+      
+      // Normalize words
+      const normalizedWords = wordsArray
+        .map((w: string) => w.toLowerCase().trim())
+        .filter((w: string) => w.length > 0);
+      
+      // Check which words already exist
+      const existingWords = new Set<string>();
+      for (const word of normalizedWords) {
+        const existing = await storage.getWordByText(word);
+        if (existing) {
+          existingWords.add(word);
+        }
+      }
+      
+      // Filter to only new words
+      const newWords = normalizedWords.filter((w: string) => !existingWords.has(w));
+      
+      if (newWords.length === 0) {
+        return res.json({
+          totalProcessed: normalizedWords.length,
+          newWordsAdded: 0,
+          alreadyExisted: existingWords.size,
+          invalidWords: 0,
+          skippedWords: 0,
+        });
+      }
+      
+      // Validate new words with MW dictionary (this also stores metadata)
+      const validationResult = await validateWords(newWords, storage);
+      
+      res.json({
+        totalProcessed: normalizedWords.length,
+        newWordsAdded: validationResult.valid.length,
+        alreadyExisted: existingWords.size,
+        invalidWords: validationResult.invalid.length,
+        skippedWords: validationResult.skipped.length,
+        details: {
+          valid: validationResult.valid,
+          invalid: validationResult.invalid,
+          skipped: validationResult.skipped,
+        },
+      });
+    } catch (error) {
+      console.error("Error bulk loading words:", error);
+      res.status(500).json({ error: "Failed to bulk load words" });
+    }
+  });
+  
+  // Admin: Get usage metrics
+  app.get("/api/admin/usage", async (req, res) => {
+    try {
+      const range = (req.query.range as 'today' | 'week' | 'month' | 'all') || 'all';
+      const metrics = await storage.getUsageMetrics(range);
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching usage metrics:", error);
+      res.status(500).json({ error: "Failed to fetch usage metrics" });
+    }
+  });
+  
+  // Admin: Search words
+  app.get("/api/admin/words/search", async (req, res) => {
+    try {
+      const query = (req.query.q as string) || '';
+      const limit = parseInt(req.query.limit as string) || 50;
+      
+      if (!query) {
+        return res.json([]);
+      }
+      
+      const words = await storage.searchWords(query, limit);
+      res.json(words);
+    } catch (error) {
+      console.error("Error searching words:", error);
+      res.status(500).json({ error: "Failed to search words" });
+    }
+  });
+  
+  // Admin: Get all words
+  app.get("/api/admin/words", async (req, res) => {
+    try {
+      const words = await storage.getAllWords();
+      res.json(words);
+    } catch (error) {
+      console.error("Error fetching all words:", error);
+      res.status(500).json({ error: "Failed to fetch words" });
+    }
+  });
+  
+  // Admin: Update word metadata
+  app.patch("/api/admin/words/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid word ID" });
+      }
+      
+      const { definition, sentenceExample, wordOrigin, partOfSpeech } = req.body;
+      
+      const updates: Partial<{ definition: string | null; sentenceExample: string | null; wordOrigin: string | null; partOfSpeech: string | null }> = {};
+      
+      if (definition !== undefined) updates.definition = definition;
+      if (sentenceExample !== undefined) updates.sentenceExample = sentenceExample;
+      if (wordOrigin !== undefined) updates.wordOrigin = wordOrigin;
+      if (partOfSpeech !== undefined) updates.partOfSpeech = partOfSpeech;
+      
+      const updated = await storage.updateWord(id, updates);
+      
+      if (!updated) {
+        return res.status(404).json({ error: "Word not found" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating word:", error);
+      res.status(500).json({ error: "Failed to update word" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
