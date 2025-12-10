@@ -3274,6 +3274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Import dictionary validation for bulk word loading
   const { validateWords } = await import('./services/dictionaryValidation');
+  const { validateWords: validateProfanity } = await import('./contentModeration');
   
   // Admin: Bulk load words from TXT/CSV file
   app.post("/api/admin/words/bulk", async (req, res) => {
@@ -3293,25 +3294,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .map((w: string) => w.toLowerCase().trim())
         .filter((w: string) => w.length > 0);
       
-      // Check which words already exist
-      const existingWords = new Set<string>();
-      for (const word of normalizedWords) {
+      // Check for inappropriate words first (profanity filter)
+      const profanityCheck = validateProfanity(normalizedWords);
+      const inappropriateWords = new Set(profanityCheck.inappropriateWords.map(w => w.toLowerCase()));
+      
+      // Filter out inappropriate words
+      const cleanWords = normalizedWords.filter((w: string) => !inappropriateWords.has(w));
+      
+      // Check which words already exist (duplicates)
+      const duplicateWords = new Set<string>();
+      for (const word of cleanWords) {
         const existing = await storage.getWordByText(word);
         if (existing) {
-          existingWords.add(word);
+          duplicateWords.add(word);
         }
       }
       
       // Filter to only new words
-      const newWords = normalizedWords.filter((w: string) => !existingWords.has(w));
+      const newWords = cleanWords.filter((w: string) => !duplicateWords.has(w));
       
       if (newWords.length === 0) {
         return res.json({
           totalProcessed: normalizedWords.length,
           newWordsAdded: 0,
-          alreadyExisted: existingWords.size,
+          duplicates: duplicateWords.size,
           invalidWords: 0,
+          inappropriateWords: inappropriateWords.size,
           skippedWords: 0,
+          details: {
+            duplicates: Array.from(duplicateWords),
+            inappropriate: Array.from(inappropriateWords),
+            invalid: [],
+            skipped: [],
+          },
         });
       }
       
@@ -3321,11 +3336,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         totalProcessed: normalizedWords.length,
         newWordsAdded: validationResult.valid.length,
-        alreadyExisted: existingWords.size,
+        duplicates: duplicateWords.size,
         invalidWords: validationResult.invalid.length,
+        inappropriateWords: inappropriateWords.size,
         skippedWords: validationResult.skipped.length,
         details: {
           valid: validationResult.valid,
+          duplicates: Array.from(duplicateWords),
+          inappropriate: Array.from(inappropriateWords),
           invalid: validationResult.invalid,
           skipped: validationResult.skipped,
         },
