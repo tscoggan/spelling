@@ -676,12 +676,12 @@ export default function WordListsPage() {
         return;
       }
 
-      if (words.length > 100) {
+      if (words.length > 500) {
         toast({
           title: "Too many words",
-          description: `File contains ${words.length} words. Using first 100.`,
+          description: `File contains ${words.length} words. Using first 500.`,
         });
-        words = words.slice(0, 100);
+        words = words.slice(0, 500);
       }
 
       setFormData({ ...formData, words: words.join('\n') });
