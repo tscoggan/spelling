@@ -777,6 +777,20 @@ export default function Home() {
               />
             </div>
           </button>
+          {user?.role === "admin" && (
+            <button
+              onClick={() => setLocation("/admin")}
+              className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-full"
+              data-testid="button-admin-dashboard"
+            >
+              <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 border-2 border-purple-400 flex items-center justify-center p-2 shadow-lg">
+                <div className="flex flex-col items-center justify-center text-white">
+                  <LayoutDashboard className="w-10 h-10 mb-1" />
+                  <span className="text-xs font-semibold">Admin</span>
+                </div>
+              </div>
+            </button>
+          )}
         </div>
 
         <div className="flex justify-center mb-6">

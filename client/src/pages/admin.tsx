@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "@/hooks/use-theme";
+import { getThemedTextClasses } from "@/lib/themeText";
 import { Upload, Search, Users, FileText, ArrowUpDown, Loader2, Check, X, AlertCircle, Ban, Copy, BookX } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Word } from "@shared/schema";
@@ -200,12 +202,35 @@ export default function AdminPage() {
     ? uploadResult.duplicates + uploadResult.invalidWords + uploadResult.inappropriateWords + uploadResult.skippedWords
     : 0;
 
+  const { themeAssets, hasDarkBackground } = useTheme();
+  const textClasses = getThemedTextClasses(hasDarkBackground);
+
   return (
-    <div className="min-h-screen p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="min-h-screen p-6 relative overflow-hidden">
+      <div 
+        className="fixed inset-0 portrait:block landscape:hidden"
+        style={{
+          backgroundImage: `url(${themeAssets.backgroundPortrait})`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center top',
+        }}
+      ></div>
+      <div 
+        className="fixed inset-0 portrait:hidden landscape:block"
+        style={{
+          backgroundImage: `url(${themeAssets.backgroundLandscape})`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center top',
+        }}
+      ></div>
+      <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
+
+      <div className="max-w-6xl mx-auto space-y-6 relative z-10">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-foreground" data-testid="text-admin-title">Admin Dashboard</h1>
-          <p className="text-muted-foreground mt-2">Manage words, view usage metrics, and edit content</p>
+          <h1 className={`text-3xl font-bold ${textClasses.headline}`} data-testid="text-admin-title">Admin Dashboard</h1>
+          <p className={`mt-2 ${textClasses.subtitle}`}>Manage words, view usage metrics, and edit content</p>
         </div>
 
         <Tabs defaultValue="word-loader" className="w-full">
