@@ -12,7 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
-import { Upload, Search, Users, FileText, ArrowUpDown, Loader2, Check, X, AlertCircle, Ban, Copy, BookX } from "lucide-react";
+import { Upload, Search, Users, FileText, ArrowUpDown, Loader2, Check, X, AlertCircle, Ban, Copy, BookX, Home } from "lucide-react";
+import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Word } from "@shared/schema";
 
@@ -204,6 +205,7 @@ export default function AdminPage() {
 
   const { themeAssets, hasDarkBackground } = useTheme();
   const textClasses = getThemedTextClasses(hasDarkBackground);
+  const [, setLocation] = useLocation();
 
   return (
     <div className="min-h-screen p-6 relative overflow-hidden">
@@ -228,6 +230,18 @@ export default function AdminPage() {
       <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
 
       <div className="max-w-6xl mx-auto space-y-6 relative z-10">
+        <header className="flex items-center justify-start mb-4">
+          <Button
+            variant="default"
+            onClick={() => setLocation("/")}
+            className="bg-white/90 dark:bg-black/70 text-foreground hover:bg-white dark:hover:bg-black/80 shadow-lg"
+            data-testid="button-home"
+          >
+            <Home className="h-4 w-4 mr-2" />
+            Home
+          </Button>
+        </header>
+
         <div className="text-center mb-8">
           <h1 className={`text-3xl font-bold ${textClasses.headline}`} data-testid="text-admin-title">Admin Dashboard</h1>
           <p className={`mt-2 ${textClasses.subtitle}`}>Manage words, view usage metrics, and edit content</p>
