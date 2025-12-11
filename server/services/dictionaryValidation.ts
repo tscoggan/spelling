@@ -243,8 +243,8 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
   
   // Collect parts of speech ONLY from entries matching the requested word
   const partsOfSpeechSet = new Set<string>();
-  // Track definitions per part of speech (max 1 per POS)
-  const definitionsByPOS: Map<string, string[]> = new Map();
+  // Track definitions - 1 per homograph entry (meta.id)
+  const allDefinitions: string[] = [];
   
   for (const entry of validEntries) {
     
@@ -346,19 +346,13 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
       
       partsOfSpeechSet.add(pos);
       
-      // Short definitions - track by part of speech (max 1 per POS)
+      // Short definitions - take 1 definition per homograph entry (meta.id)
       if (entry.shortdef && Array.isArray(entry.shortdef)) {
-        const posKey = pos || 'unknown';
-        if (!definitionsByPOS.has(posKey)) {
-          definitionsByPOS.set(posKey, []);
-        }
-        const defs = definitionsByPOS.get(posKey)!;
-        
         for (const def of entry.shortdef) {
-          if (defs.length >= 1) break; // Limit to 1 per POS
           const cleaned = stripFormatting(def);
-          if (cleaned.length > 0 && !containsKidInappropriateContent(cleaned) && !defs.includes(cleaned)) {
-            defs.push(cleaned);
+          if (cleaned.length > 0 && !containsKidInappropriateContent(cleaned) && !allDefinitions.includes(cleaned)) {
+            allDefinitions.push(cleaned);
+            break; // Only take first valid definition from this entry
           }
         }
       }
@@ -453,12 +447,6 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
     metadata.partOfSpeech = Array.from(partsOfSpeechSet).join(' or ');
   }
   
-  // Combine definitions from all parts of speech (already limited to 2 per POS)
-  const allDefinitions: string[] = [];
-  definitionsByPOS.forEach((defs) => {
-    allDefinitions.push(...defs);
-  });
-  
   // Join all definitions with pause separator for TTS
   if (allDefinitions.length > 0) {
     metadata.definition = allDefinitions.join('. ... ');
@@ -522,8 +510,8 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
   
   // Collect parts of speech ONLY from entries matching the requested word
   const partsOfSpeechSet = new Set<string>();
-  // Track definitions per part of speech (max 1 per POS)
-  const definitionsByPOS: Map<string, string[]> = new Map();
+  // Track definitions - 1 per homograph entry (meta.id)
+  const allDefinitions: string[] = [];
   
   for (const entry of validEntries) {
     // Check if requested word appears in inflections (ins field) - for forms like "were" -> "be"
@@ -624,19 +612,13 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
       
       partsOfSpeechSet.add(pos);
       
-      // Short definitions - track by part of speech (max 1 per POS)
+      // Short definitions - take 1 definition per homograph entry (meta.id)
       if (entry.shortdef && Array.isArray(entry.shortdef)) {
-        const posKey = pos || 'unknown';
-        if (!definitionsByPOS.has(posKey)) {
-          definitionsByPOS.set(posKey, []);
-        }
-        const defs = definitionsByPOS.get(posKey)!;
-        
         for (const def of entry.shortdef) {
-          if (defs.length >= 1) break; // Limit to 1 per POS
           const cleaned = stripFormatting(def);
-          if (cleaned.length > 0 && !containsKidInappropriateContent(cleaned) && !defs.includes(cleaned)) {
-            defs.push(cleaned);
+          if (cleaned.length > 0 && !containsKidInappropriateContent(cleaned) && !allDefinitions.includes(cleaned)) {
+            allDefinitions.push(cleaned);
+            break; // Only take first valid definition from this entry
           }
         }
       }
@@ -740,12 +722,6 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
   if (partsOfSpeechSet.size > 0) {
     metadata.partOfSpeech = Array.from(partsOfSpeechSet).join(' or ');
   }
-  
-  // Combine definitions from all parts of speech (already limited to 2 per POS)
-  const allDefinitions: string[] = [];
-  definitionsByPOS.forEach((defs) => {
-    allDefinitions.push(...defs);
-  });
   
   // Join all definitions with pause separator for TTS
   if (allDefinitions.length > 0) {
