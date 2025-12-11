@@ -243,7 +243,7 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
   
   // Collect parts of speech ONLY from entries matching the requested word
   const partsOfSpeechSet = new Set<string>();
-  // Track definitions per part of speech (max 2 per POS)
+  // Track definitions per part of speech (max 1 per POS)
   const definitionsByPOS: Map<string, string[]> = new Map();
   
   for (const entry of validEntries) {
@@ -346,7 +346,7 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
       
       partsOfSpeechSet.add(pos);
       
-      // Short definitions - track by part of speech (max 2 per POS)
+      // Short definitions - track by part of speech (max 1 per POS)
       if (entry.shortdef && Array.isArray(entry.shortdef)) {
         const posKey = pos || 'unknown';
         if (!definitionsByPOS.has(posKey)) {
@@ -355,7 +355,7 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
         const defs = definitionsByPOS.get(posKey)!;
         
         for (const def of entry.shortdef) {
-          if (defs.length >= 2) break; // Limit to 2 per POS
+          if (defs.length >= 1) break; // Limit to 1 per POS
           const cleaned = stripFormatting(def);
           if (cleaned.length > 0 && !containsKidInappropriateContent(cleaned) && !defs.includes(cleaned)) {
             defs.push(cleaned);
@@ -522,7 +522,7 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
   
   // Collect parts of speech ONLY from entries matching the requested word
   const partsOfSpeechSet = new Set<string>();
-  // Track definitions per part of speech (max 2 per POS)
+  // Track definitions per part of speech (max 1 per POS)
   const definitionsByPOS: Map<string, string[]> = new Map();
   
   for (const entry of validEntries) {
@@ -624,7 +624,7 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
       
       partsOfSpeechSet.add(pos);
       
-      // Short definitions - track by part of speech (max 2 per POS)
+      // Short definitions - track by part of speech (max 1 per POS)
       if (entry.shortdef && Array.isArray(entry.shortdef)) {
         const posKey = pos || 'unknown';
         if (!definitionsByPOS.has(posKey)) {
@@ -633,7 +633,7 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
         const defs = definitionsByPOS.get(posKey)!;
         
         for (const def of entry.shortdef) {
-          if (defs.length >= 2) break; // Limit to 2 per POS
+          if (defs.length >= 1) break; // Limit to 1 per POS
           const cleaned = stripFormatting(def);
           if (cleaned.length > 0 && !containsKidInappropriateContent(cleaned) && !defs.includes(cleaned)) {
             defs.push(cleaned);
