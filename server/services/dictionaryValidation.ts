@@ -72,6 +72,22 @@ function stripFormatting(text: string): string {
     .trim();
 }
 
+// Strip usage notes from definition text
+// Usage notes start with em-dash and contain phrases like "sometimes", "usually", "often + [word]"
+function stripUsageNotes(text: string): string {
+  if (!text) return '';
+  
+  // Remove usage notes that start with em-dash (—) 
+  // These patterns: "—sometimes + at", "—usually + for", "—often used with", etc.
+  let result = text
+    .replace(/\s*—\s*(sometimes|usually|often|frequently|typically|generally|commonly|rarely|seldom)\s*\+?\s*[^.]*(?:\.|$)/gi, '')
+    .replace(/\s*—\s*(used|not used)\s+[^.]*(?:\.|$)/gi, '')
+    .replace(/\s*—\s*compare\s+[^.]*(?:\.|$)/gi, '')
+    .trim();
+  
+  return result;
+}
+
 // Check if text is a complete sentence suitable for kids
 function isCompleteSentence(text: string): boolean {
   if (!text) return false;
@@ -333,7 +349,7 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
       // Short definitions - take 1 definition per homograph entry (meta.id)
       if (entry.shortdef && Array.isArray(entry.shortdef)) {
         for (const def of entry.shortdef) {
-          const cleaned = stripFormatting(def);
+          const cleaned = stripUsageNotes(stripFormatting(def));
           if (cleaned.length > 0 && !containsKidInappropriateContent(cleaned) && !allDefinitions.includes(cleaned)) {
             allDefinitions.push(cleaned);
             break; // Only take first valid definition from this entry
@@ -638,7 +654,7 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
       // Short definitions - take 1 definition per homograph entry (meta.id)
       if (entry.shortdef && Array.isArray(entry.shortdef)) {
         for (const def of entry.shortdef) {
-          const cleaned = stripFormatting(def);
+          const cleaned = stripUsageNotes(stripFormatting(def));
           if (cleaned.length > 0 && !containsKidInappropriateContent(cleaned) && !allDefinitions.includes(cleaned)) {
             allDefinitions.push(cleaned);
             break; // Only take first valid definition from this entry
