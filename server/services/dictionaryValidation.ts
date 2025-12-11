@@ -209,12 +209,15 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
     
     // Check if requested word appears in inflections (ins field) - for forms like "were" -> "be"
     let isInflectedForm = false;
+    let inflectionLabel = '';
     if (entry.ins && Array.isArray(entry.ins)) {
       for (const inf of entry.ins) {
         const infWord = inf.if || inf.ifc || '';
         const cleanedInf = infWord.replace(/\*/g, '').replace(/:\d+/g, '').replace(/\(.*?\)/g, '').replace(/\d+/g, '');
         if (normalizeWord(cleanedInf) === normalizedRequest) {
           isInflectedForm = true;
+          // Capture the inflection label (il) for tense info
+          inflectionLabel = inf.il || '';
           break;
         }
       }
@@ -222,7 +225,41 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
     
     // Collect part of speech from entries whose headword matches OR requested word is an inflection
     if (entry.fl && (normalizedHeadword === normalizedRequest || isInflectedForm)) {
-      partsOfSpeechSet.add(entry.fl.toLowerCase());
+      let pos = entry.fl.toLowerCase();
+      
+      // Add tense prefix for past tense verbs
+      if (isInflectedForm && pos === 'verb') {
+        if (inflectionLabel) {
+          const labelLower = inflectionLabel.toLowerCase();
+          if (labelLower.includes('past tense')) {
+            pos = 'past tense verb';
+          } else if (labelLower.includes('past participle')) {
+            pos = 'past participle verb';
+          } else if (labelLower.includes('present participle')) {
+            pos = 'present participle verb';
+          }
+        }
+        
+        // Special case: "were" is past tense of "be" but MW labels it as "second singular" and "plural"
+        // without the "past tense" prefix. Handle this explicitly.
+        if (pos === 'verb' && normalizedRequest === 'were' && normalizedHeadword === 'be') {
+          pos = 'past tense verb';
+        }
+        
+        // For regular verbs without inflection labels, detect tense by suffix
+        // "-ed" suffix typically indicates past tense (e.g., walked, talked, jumped)
+        // "-ing" suffix typically indicates present participle (e.g., walking, running)
+        if (pos === 'verb' && !inflectionLabel) {
+          const wordLower = normalizedRequest.toLowerCase();
+          if (wordLower.endsWith('ed')) {
+            pos = 'past tense verb';
+          } else if (wordLower.endsWith('ing')) {
+            pos = 'present participle verb';
+          }
+        }
+      }
+      
+      partsOfSpeechSet.add(pos);
     }
     
     // Short definitions (collect ALL, filter inappropriate)
@@ -360,12 +397,15 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
     
     // Check if requested word appears in inflections (ins field) - for forms like "were" -> "be"
     let isInflectedForm = false;
+    let inflectionLabel = '';
     if (entry.ins && Array.isArray(entry.ins)) {
       for (const inf of entry.ins) {
         const infWord = inf.if || inf.ifc || '';
         const cleanedInf = infWord.replace(/\*/g, '').replace(/:\d+/g, '').replace(/\(.*?\)/g, '').replace(/\d+/g, '');
         if (normalizeWord(cleanedInf) === normalizedRequest) {
           isInflectedForm = true;
+          // Capture the inflection label (il) for tense info
+          inflectionLabel = inf.il || '';
           break;
         }
       }
@@ -373,7 +413,41 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
     
     // Collect part of speech from entries whose headword matches OR requested word is an inflection
     if (entry.fl && (normalizedHeadword === normalizedRequest || isInflectedForm)) {
-      partsOfSpeechSet.add(entry.fl.toLowerCase());
+      let pos = entry.fl.toLowerCase();
+      
+      // Add tense prefix for past tense verbs
+      if (isInflectedForm && pos === 'verb') {
+        if (inflectionLabel) {
+          const labelLower = inflectionLabel.toLowerCase();
+          if (labelLower.includes('past tense')) {
+            pos = 'past tense verb';
+          } else if (labelLower.includes('past participle')) {
+            pos = 'past participle verb';
+          } else if (labelLower.includes('present participle')) {
+            pos = 'present participle verb';
+          }
+        }
+        
+        // Special case: "were" is past tense of "be" but MW labels it as "second singular" and "plural"
+        // without the "past tense" prefix. Handle this explicitly.
+        if (pos === 'verb' && normalizedRequest === 'were' && normalizedHeadword === 'be') {
+          pos = 'past tense verb';
+        }
+        
+        // For regular verbs without inflection labels, detect tense by suffix
+        // "-ed" suffix typically indicates past tense (e.g., walked, talked, jumped)
+        // "-ing" suffix typically indicates present participle (e.g., walking, running)
+        if (pos === 'verb' && !inflectionLabel) {
+          const wordLower = normalizedRequest.toLowerCase();
+          if (wordLower.endsWith('ed')) {
+            pos = 'past tense verb';
+          } else if (wordLower.endsWith('ing')) {
+            pos = 'present participle verb';
+          }
+        }
+      }
+      
+      partsOfSpeechSet.add(pos);
     }
     
     // Short definitions (collect ALL, filter inappropriate)
