@@ -372,8 +372,15 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
             const cxDef = `${label} "${target}"`;
             if (!allDefinitions.includes(cxDef)) {
               allDefinitions.push(cxDef);
-              // Also set part of speech based on the label
-              if (label.includes('tense') && label.includes('of')) {
+              // Set part of speech based on the label - use specific tense if available
+              const labelLower = label.toLowerCase();
+              if (labelLower.includes('past tense')) {
+                partsOfSpeechSet.add('past tense verb');
+              } else if (labelLower.includes('past participle')) {
+                partsOfSpeechSet.add('past participle verb');
+              } else if (labelLower.includes('present participle')) {
+                partsOfSpeechSet.add('present participle verb');
+              } else if (labelLower.includes('tense') || labelLower.includes('of')) {
                 partsOfSpeechSet.add('verb');
               }
               break; // Only take first cxs definition
@@ -469,6 +476,13 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
   
   // Join all parts of speech with "or"
   if (partsOfSpeechSet.size > 0) {
+    // If we have a specific verb tense, remove the generic "verb" to avoid redundancy
+    const hasSpecificVerbTense = partsOfSpeechSet.has('past tense verb') || 
+                                  partsOfSpeechSet.has('past participle verb') || 
+                                  partsOfSpeechSet.has('present participle verb');
+    if (hasSpecificVerbTense && partsOfSpeechSet.has('verb')) {
+      partsOfSpeechSet.delete('verb');
+    }
     metadata.partOfSpeech = Array.from(partsOfSpeechSet).join(' or ');
   }
   
@@ -663,8 +677,15 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
             const cxDef = `${label} "${target}"`;
             if (!allDefinitions.includes(cxDef)) {
               allDefinitions.push(cxDef);
-              // Also set part of speech based on the label
-              if (label.includes('tense') && label.includes('of')) {
+              // Set part of speech based on the label - use specific tense if available
+              const labelLower = label.toLowerCase();
+              if (labelLower.includes('past tense')) {
+                partsOfSpeechSet.add('past tense verb');
+              } else if (labelLower.includes('past participle')) {
+                partsOfSpeechSet.add('past participle verb');
+              } else if (labelLower.includes('present participle')) {
+                partsOfSpeechSet.add('present participle verb');
+              } else if (labelLower.includes('tense') || labelLower.includes('of')) {
                 partsOfSpeechSet.add('verb');
               }
               break; // Only take first cxs definition
@@ -770,6 +791,13 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
   
   // Join all parts of speech with "or"
   if (partsOfSpeechSet.size > 0) {
+    // If we have a specific verb tense, remove the generic "verb" to avoid redundancy
+    const hasSpecificVerbTense = partsOfSpeechSet.has('past tense verb') || 
+                                  partsOfSpeechSet.has('past participle verb') || 
+                                  partsOfSpeechSet.has('present participle verb');
+    if (hasSpecificVerbTense && partsOfSpeechSet.has('verb')) {
+      partsOfSpeechSet.delete('verb');
+    }
     metadata.partOfSpeech = Array.from(partsOfSpeechSet).join(' or ');
   }
   
