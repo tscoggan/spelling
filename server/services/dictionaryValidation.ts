@@ -210,14 +210,17 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
     // Check if requested word appears in inflections (ins field) - for forms like "were" -> "be"
     let isInflectedForm = false;
     let inflectionLabel = '';
+    let inflectionIndex = -1;
     if (entry.ins && Array.isArray(entry.ins)) {
-      for (const inf of entry.ins) {
+      for (let i = 0; i < entry.ins.length; i++) {
+        const inf = entry.ins[i];
         const infWord = inf.if || inf.ifc || '';
         const cleanedInf = infWord.replace(/\*/g, '').replace(/:\d+/g, '').replace(/\(.*?\)/g, '').replace(/\d+/g, '');
         if (normalizeWord(cleanedInf) === normalizedRequest) {
           isInflectedForm = true;
           // Capture the inflection label (il) for tense info
           inflectionLabel = inf.il || '';
+          inflectionIndex = i;
           break;
         }
       }
@@ -246,15 +249,42 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
           pos = 'past tense verb';
         }
         
-        // For regular verbs without inflection labels, detect tense by suffix
-        // "-ed" suffix typically indicates past tense (e.g., walked, talked, jumped)
-        // "-ing" suffix typically indicates present participle (e.g., walking, running)
-        if (pos === 'verb' && !inflectionLabel) {
+        // For verbs without inflection labels, detect tense by suffix or position
+        if (pos === 'verb' && !inflectionLabel && entry.ins && Array.isArray(entry.ins)) {
           const wordLower = normalizedRequest.toLowerCase();
+          
+          // Suffix-based detection for regular verbs
           if (wordLower.endsWith('ed')) {
             pos = 'past tense verb';
           } else if (wordLower.endsWith('ing')) {
             pos = 'present participle verb';
+          } else if (wordLower.endsWith('en')) {
+            // Words ending in -en are typically past participles (eaten, taken, spoken, etc.)
+            pos = 'past participle verb';
+          } else {
+            // Position-based detection for irregular verbs
+            // Check if first inflection ends with 's' (3rd person singular pattern)
+            const firstInf = entry.ins[0];
+            const firstWord = (firstInf?.if || firstInf?.ifc || '').replace(/\*/g, '').toLowerCase();
+            const hasThirdPersonFirst = firstWord.endsWith('s');
+            
+            if (hasThirdPersonFirst) {
+              // Pattern: [3rd person -s, past tense, past participle, present participle -ing]
+              // Examples: goes/went/gone/going, eats/ate/eaten/eating
+              if (inflectionIndex === 1) {
+                pos = 'past tense verb';
+              } else if (inflectionIndex === 2 && !wordLower.endsWith('ing')) {
+                pos = 'past participle verb';
+              }
+            } else {
+              // Pattern: [past tense, past participle, present participle -ing]
+              // Examples: took/taken/taking
+              if (inflectionIndex === 0) {
+                pos = 'past tense verb';
+              } else if (inflectionIndex === 1 && !wordLower.endsWith('ing')) {
+                pos = 'past participle verb';
+              }
+            }
           }
         }
       }
@@ -398,14 +428,17 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
     // Check if requested word appears in inflections (ins field) - for forms like "were" -> "be"
     let isInflectedForm = false;
     let inflectionLabel = '';
+    let inflectionIndex = -1;
     if (entry.ins && Array.isArray(entry.ins)) {
-      for (const inf of entry.ins) {
+      for (let i = 0; i < entry.ins.length; i++) {
+        const inf = entry.ins[i];
         const infWord = inf.if || inf.ifc || '';
         const cleanedInf = infWord.replace(/\*/g, '').replace(/:\d+/g, '').replace(/\(.*?\)/g, '').replace(/\d+/g, '');
         if (normalizeWord(cleanedInf) === normalizedRequest) {
           isInflectedForm = true;
           // Capture the inflection label (il) for tense info
           inflectionLabel = inf.il || '';
+          inflectionIndex = i;
           break;
         }
       }
@@ -434,15 +467,42 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
           pos = 'past tense verb';
         }
         
-        // For regular verbs without inflection labels, detect tense by suffix
-        // "-ed" suffix typically indicates past tense (e.g., walked, talked, jumped)
-        // "-ing" suffix typically indicates present participle (e.g., walking, running)
-        if (pos === 'verb' && !inflectionLabel) {
+        // For verbs without inflection labels, detect tense by suffix or position
+        if (pos === 'verb' && !inflectionLabel && entry.ins && Array.isArray(entry.ins)) {
           const wordLower = normalizedRequest.toLowerCase();
+          
+          // Suffix-based detection for regular verbs
           if (wordLower.endsWith('ed')) {
             pos = 'past tense verb';
           } else if (wordLower.endsWith('ing')) {
             pos = 'present participle verb';
+          } else if (wordLower.endsWith('en')) {
+            // Words ending in -en are typically past participles (eaten, taken, spoken, etc.)
+            pos = 'past participle verb';
+          } else {
+            // Position-based detection for irregular verbs
+            // Check if first inflection ends with 's' (3rd person singular pattern)
+            const firstInf = entry.ins[0];
+            const firstWord = (firstInf?.if || firstInf?.ifc || '').replace(/\*/g, '').toLowerCase();
+            const hasThirdPersonFirst = firstWord.endsWith('s');
+            
+            if (hasThirdPersonFirst) {
+              // Pattern: [3rd person -s, past tense, past participle, present participle -ing]
+              // Examples: goes/went/gone/going, eats/ate/eaten/eating
+              if (inflectionIndex === 1) {
+                pos = 'past tense verb';
+              } else if (inflectionIndex === 2 && !wordLower.endsWith('ing')) {
+                pos = 'past participle verb';
+              }
+            } else {
+              // Pattern: [past tense, past participle, present participle -ing]
+              // Examples: took/taken/taking
+              if (inflectionIndex === 0) {
+                pos = 'past tense verb';
+              } else if (inflectionIndex === 1 && !wordLower.endsWith('ing')) {
+                pos = 'past participle verb';
+              }
+            }
           }
         }
       }
