@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
@@ -30,6 +31,7 @@ interface UsageMetric {
 interface BulkUploadResult {
   totalProcessed: number;
   newWordsAdded: number;
+  overwritten: number;
   duplicates: number;
   invalidWords: number;
   inappropriateWords: number;
@@ -40,6 +42,7 @@ interface BulkUploadResult {
     inappropriate: string[];
     invalid: string[];
     skipped: string[];
+    overwritten: string[];
   };
 }
 
@@ -49,6 +52,7 @@ export default function AdminPage() {
   const [uploadedWords, setUploadedWords] = useState<string[]>([]);
   const [uploadResult, setUploadResult] = useState<BulkUploadResult | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [overwriteExisting, setOverwriteExisting] = useState(false);
   
   const [dateRange, setDateRange] = useState<DateRange>('all');
   const [sortField, setSortField] = useState<SortField>('gamesPlayed');
@@ -142,12 +146,16 @@ export default function AdminPage() {
 
     setIsUploading(true);
     try {
-      const response = await apiRequest('POST', '/api/admin/words/bulk', { words: uploadedWords });
+      const response = await apiRequest('POST', '/api/admin/words/bulk', { 
+        words: uploadedWords,
+        overwrite: overwriteExisting 
+      });
       const result = await response.json();
       setUploadResult(result);
+      const overwriteText = result.overwritten > 0 ? `, ${result.overwritten} overwritten` : '';
       toast({ 
         title: "Upload complete", 
-        description: `Added ${result.newWordsAdded} new words` 
+        description: `Added ${result.newWordsAdded} new words${overwriteText}` 
       });
     } catch {
       toast({ title: "Upload failed", variant: "destructive" });
@@ -303,6 +311,18 @@ export default function AdminPage() {
                       </p>
                     </div>
                     
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="overwrite-existing"
+                        checked={overwriteExisting}
+                        onCheckedChange={(checked) => setOverwriteExisting(checked === true)}
+                        data-testid="checkbox-overwrite-existing"
+                      />
+                      <Label htmlFor="overwrite-existing" className="text-sm cursor-pointer">
+                        Overwrite existing words (re-fetch definitions for duplicates)
+                      </Label>
+                    </div>
+                    
                     <Button 
                       onClick={handleBulkUpload} 
                       disabled={isUploading}
@@ -336,7 +356,11 @@ export default function AdminPage() {
                             <span className="font-medium text-green-700 dark:text-green-300">Loaded</span>
                           </div>
                           <p className="text-3xl font-bold text-green-700 dark:text-green-300">{uploadResult.newWordsAdded}</p>
-                          <p className="text-sm text-green-600 dark:text-green-400">new words added</p>
+                          <p className="text-sm text-green-600 dark:text-green-400">
+                            {uploadResult.overwritten > 0 
+                              ? `${uploadResult.overwritten} overwritten, ${uploadResult.newWordsAdded - uploadResult.overwritten} new`
+                              : 'new words added'}
+                          </p>
                         </div>
                         <div className="p-4 bg-muted rounded-md">
                           <div className="flex items-center gap-2 mb-2">

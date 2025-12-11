@@ -66,6 +66,7 @@ export interface IStorage {
   getWordByText(word: string): Promise<Word | undefined>;
   createWord(word: InsertWord): Promise<Word>;
   upsertWord(word: string, definition?: string, sentenceExample?: string, wordOrigin?: string, partOfSpeech?: string): Promise<Word>;
+  deleteWord(id: number): Promise<boolean>;
   
   getGameSession(id: number): Promise<GameSession | undefined>;
   createGameSession(session: InsertGameSession): Promise<GameSession>;
@@ -275,6 +276,11 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return newWord;
+  }
+
+  async deleteWord(id: number): Promise<boolean> {
+    const result = await db.delete(words).where(eq(words.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 
   async getGameSession(id: number): Promise<GameSession | undefined> {

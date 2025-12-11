@@ -3279,7 +3279,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin: Bulk load words from TXT/CSV file
   app.post("/api/admin/words/bulk", async (req, res) => {
     try {
-      const { words: wordsArray } = req.body;
+      const { words: wordsArray, overwrite = false } = req.body;
       
       if (!Array.isArray(wordsArray)) {
         return res.status(400).json({ error: "Words must be an array" });
@@ -3303,20 +3303,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check which words already exist (duplicates)
       const duplicateWords = new Set<string>();
+      const overwrittenWords: string[] = [];
+      
       for (const word of cleanWords) {
         const existing = await storage.getWordByText(word);
         if (existing) {
-          duplicateWords.add(word);
+          if (overwrite) {
+            // Delete the existing word so it can be re-added with fresh metadata
+            await storage.deleteWord(existing.id);
+            overwrittenWords.push(word);
+          } else {
+            duplicateWords.add(word);
+          }
         }
       }
       
-      // Filter to only new words
-      const newWords = cleanWords.filter((w: string) => !duplicateWords.has(w));
+      // Filter to only new words (or all clean words if overwriting)
+      const newWords = overwrite 
+        ? cleanWords 
+        : cleanWords.filter((w: string) => !duplicateWords.has(w));
       
       if (newWords.length === 0) {
         return res.json({
           totalProcessed: normalizedWords.length,
           newWordsAdded: 0,
+          overwritten: 0,
           duplicates: duplicateWords.size,
           invalidWords: 0,
           inappropriateWords: inappropriateWords.size,
@@ -3326,6 +3337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             inappropriate: Array.from(inappropriateWords),
             invalid: [],
             skipped: [],
+            overwritten: [],
           },
         });
       }
@@ -3336,6 +3348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         totalProcessed: normalizedWords.length,
         newWordsAdded: validationResult.valid.length,
+        overwritten: overwrittenWords.length,
         duplicates: duplicateWords.size,
         invalidWords: validationResult.invalid.length,
         inappropriateWords: inappropriateWords.size,
@@ -3346,6 +3359,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           inappropriate: Array.from(inappropriateWords),
           invalid: validationResult.invalid,
           skipped: validationResult.skipped,
+          overwritten: overwrittenWords,
         },
       });
     } catch (error) {
