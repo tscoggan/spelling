@@ -143,25 +143,7 @@ function extractExamples(dt: any[]): string[] {
         }
       }
       
-      // uns = usage notes, which can contain vis (examples)
-      if (item[0] === 'uns') {
-        const unsArray = item[1];
-        if (Array.isArray(unsArray)) {
-          for (const unsItem of unsArray) {
-            if (Array.isArray(unsItem)) {
-              // Each unsItem is an array of [type, content] pairs
-              for (const unsContent of unsItem) {
-                if (Array.isArray(unsContent) && unsContent[0] === 'vis') {
-                  const visArray = unsContent[1];
-                  if (Array.isArray(visArray)) {
-                    processVisArray(visArray);
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+      // Skip "uns" (usage notes) - do not extract examples from usage notes
     }
   }
   
@@ -247,6 +229,8 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
   const allDefinitions: string[] = [];
   
   for (const entry of validEntries) {
+    // Skip offensive entries
+    if (entry.meta?.offensive === true) continue;
     
     // Get headword from entry (meta.id is the normalized headword)
     const headword = entry.meta?.id || entry.hwi?.hw;
