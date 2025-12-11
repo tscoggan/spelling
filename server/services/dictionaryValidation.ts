@@ -56,6 +56,10 @@ function stripFormatting(text: string): string {
     .replace(/\{\/it\}/g, '')         // italic end
     .replace(/\{b\}/g, '')            // bold start
     .replace(/\{\/b\}/g, '')          // bold end
+    .replace(/\{phrase\}/g, '')       // phrase start
+    .replace(/\{\/phrase\}/g, '')     // phrase end
+    .replace(/\{ldquo\}/g, '"')       // left double quote
+    .replace(/\{rdquo\}/g, '"')       // right double quote
     .replace(/\{sup\}.*?\{\/sup\}/g, '') // superscript
     .replace(/\{inf\}.*?\{\/inf\}/g, '') // inferior
     .replace(/\{dx\}.*?\{\/dx\}/g, '') // cross references
@@ -63,10 +67,6 @@ function stripFormatting(text: string): string {
     .replace(/\{sx\|.*?\}/g, '')      // synonym cross reference
     .replace(/\{ma\}/g, '')           // math
     .replace(/\{\/ma\}/g, '')
-    .replace(/\{ldquo\}/g, '"')       // left double quote
-    .replace(/\{rdquo\}/g, '"')       // right double quote
-    .replace(/\{phrase\}/g, '')       // phrase start
-    .replace(/\{\/phrase\}/g, '')     // phrase end
     .replace(/\[.*?\]/g, '')          // square brackets (e.g., [=leaped])
     .replace(/\s+/g, ' ')             // collapse multiple spaces
     .trim();
@@ -108,29 +108,56 @@ function containsTargetWord(text: string, word: string): boolean {
 function extractExamples(dt: any[]): string[] {
   const examples: string[] = [];
   
+  // Helper to process vis (verbal illustrations) array
+  function processVisArray(visArray: any[]) {
+    for (const vis of visArray) {
+      if (vis && vis.t) {
+        let example = stripFormatting(vis.t);
+        
+        // Remove slash alternatives from words (e.g., "took/rode" → "took")
+        // Only matches alphabetic alternatives, preserving fractions like "3/4"
+        example = example.replace(/\b([A-Za-z]+)\/[A-Za-z]+\b/g, '$1');
+        
+        // Truncate at first period if followed by variant markers
+        // Patterns: ". =", ". (US)", ". (chiefly", etc.
+        // This removes alternative phrasings: "They arrived on June first. = (US) They arrived..."
+        const variantMarkerMatch = example.match(/\.\s+[=(]/);
+        if (variantMarkerMatch && variantMarkerMatch.index !== undefined) {
+          example = example.substring(0, variantMarkerMatch.index + 1).trim();
+        }
+        
+        if (example.length > 0) {
+          examples.push(example);
+        }
+      }
+    }
+  }
+  
   for (const item of dt) {
-    if (Array.isArray(item) && item[0] === 'vis') {
-      // vis = verbal illustrations (examples)
-      const visArray = item[1];
-      if (Array.isArray(visArray)) {
-        for (const vis of visArray) {
-          if (vis && vis.t) {
-            let example = stripFormatting(vis.t);
-            
-            // Remove slash alternatives from words (e.g., "took/rode" → "took")
-            // Only matches alphabetic alternatives, preserving fractions like "3/4"
-            example = example.replace(/\b([A-Za-z]+)\/[A-Za-z]+\b/g, '$1');
-            
-            // Truncate at first period if followed by variant markers
-            // Patterns: ". =", ". (US)", ". (chiefly", etc.
-            // This removes alternative phrasings: "They arrived on June first. = (US) They arrived..."
-            const variantMarkerMatch = example.match(/\.\s+[=(]/);
-            if (variantMarkerMatch && variantMarkerMatch.index !== undefined) {
-              example = example.substring(0, variantMarkerMatch.index + 1).trim();
-            }
-            
-            if (example.length > 0) {
-              examples.push(example);
+    if (Array.isArray(item)) {
+      // Direct vis = verbal illustrations (examples)
+      if (item[0] === 'vis') {
+        const visArray = item[1];
+        if (Array.isArray(visArray)) {
+          processVisArray(visArray);
+        }
+      }
+      
+      // uns = usage notes, which can contain vis (examples)
+      if (item[0] === 'uns') {
+        const unsArray = item[1];
+        if (Array.isArray(unsArray)) {
+          for (const unsItem of unsArray) {
+            if (Array.isArray(unsItem)) {
+              // Each unsItem is an array of [type, content] pairs
+              for (const unsContent of unsItem) {
+                if (Array.isArray(unsContent) && unsContent[0] === 'vis') {
+                  const visArray = unsContent[1];
+                  if (Array.isArray(visArray)) {
+                    processVisArray(visArray);
+                  }
+                }
+              }
             }
           }
         }
@@ -212,15 +239,39 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
     if (!metadata.example && entry.def && Array.isArray(entry.def)) {
       const allExamples: string[] = [];
       
-      // Collect all examples first
+      // Collect all examples first (from senses, divided senses, etc.)
       for (const def of entry.def) {
         if (def.sseq && Array.isArray(def.sseq)) {
           for (const sseq of def.sseq) {
             if (Array.isArray(sseq)) {
               for (const sense of sseq) {
-                if (Array.isArray(sense) && sense[0] === 'sense' && sense[1]?.dt) {
-                  const examples = extractExamples(sense[1].dt);
-                  allExamples.push(...examples);
+                if (Array.isArray(sense)) {
+                  const senseType = sense[0];
+                  const senseData = sense[1];
+                  
+                  // Handle 'sense' type
+                  if (senseType === 'sense' && senseData?.dt) {
+                    const examples = extractExamples(senseData.dt);
+                    allExamples.push(...examples);
+                    
+                    // Also check for sdsense (divided sense) within the sense
+                    if (senseData.sdsense && senseData.sdsense.dt) {
+                      const sdsExamples = extractExamples(senseData.sdsense.dt);
+                      allExamples.push(...sdsExamples);
+                    }
+                  }
+                  
+                  // Handle 'sen' type (sense abbreviation)
+                  if (senseType === 'sen' && senseData?.dt) {
+                    const examples = extractExamples(senseData.dt);
+                    allExamples.push(...examples);
+                  }
+                  
+                  // Handle 'bs' (binding sense) which can contain a sense
+                  if (senseType === 'bs' && senseData?.sense?.dt) {
+                    const examples = extractExamples(senseData.sense.dt);
+                    allExamples.push(...examples);
+                  }
                 }
               }
             }
@@ -349,15 +400,39 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
     if (!metadata.example && entry.def && Array.isArray(entry.def)) {
       const allExamples: string[] = [];
       
-      // Collect all examples first
+      // Collect all examples first (from senses, divided senses, etc.)
       for (const def of entry.def) {
         if (def.sseq && Array.isArray(def.sseq)) {
           for (const sseq of def.sseq) {
             if (Array.isArray(sseq)) {
               for (const sense of sseq) {
-                if (Array.isArray(sense) && sense[0] === 'sense' && sense[1]?.dt) {
-                  const examples = extractExamples(sense[1].dt);
-                  allExamples.push(...examples);
+                if (Array.isArray(sense)) {
+                  const senseType = sense[0];
+                  const senseData = sense[1];
+                  
+                  // Handle 'sense' type
+                  if (senseType === 'sense' && senseData?.dt) {
+                    const examples = extractExamples(senseData.dt);
+                    allExamples.push(...examples);
+                    
+                    // Also check for sdsense (divided sense) within the sense
+                    if (senseData.sdsense && senseData.sdsense.dt) {
+                      const sdsExamples = extractExamples(senseData.sdsense.dt);
+                      allExamples.push(...sdsExamples);
+                    }
+                  }
+                  
+                  // Handle 'sen' type (sense abbreviation)
+                  if (senseType === 'sen' && senseData?.dt) {
+                    const examples = extractExamples(senseData.dt);
+                    allExamples.push(...examples);
+                  }
+                  
+                  // Handle 'bs' (binding sense) which can contain a sense
+                  if (senseType === 'bs' && senseData?.sense?.dt) {
+                    const examples = extractExamples(senseData.sense.dt);
+                    allExamples.push(...examples);
+                  }
                 }
               }
             }
