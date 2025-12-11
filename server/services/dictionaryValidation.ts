@@ -170,8 +170,21 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
     const cleanedHeadword = headword ? headword.replace(/\*/g, '').replace(/:\d+/g, '').replace(/\(.*?\)/g, '').replace(/\d+/g, '') : '';
     const normalizedHeadword = normalizeWord(cleanedHeadword);
     
-    // Only collect part of speech from entries whose headword matches requested word
-    if (entry.fl && normalizedHeadword === normalizedRequest) {
+    // Check if requested word appears in inflections (ins field) - for forms like "were" -> "be"
+    let isInflectedForm = false;
+    if (entry.ins && Array.isArray(entry.ins)) {
+      for (const inf of entry.ins) {
+        const infWord = inf.if || inf.ifc || '';
+        const cleanedInf = infWord.replace(/\*/g, '').replace(/:\d+/g, '').replace(/\(.*?\)/g, '').replace(/\d+/g, '');
+        if (normalizeWord(cleanedInf) === normalizedRequest) {
+          isInflectedForm = true;
+          break;
+        }
+      }
+    }
+    
+    // Collect part of speech from entries whose headword matches OR requested word is an inflection
+    if (entry.fl && (normalizedHeadword === normalizedRequest || isInflectedForm)) {
       partsOfSpeechSet.add(entry.fl.toLowerCase());
     }
     
@@ -264,8 +277,21 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
     const cleanedHeadword = headword ? headword.replace(/\*/g, '').replace(/:\d+/g, '').replace(/\(.*?\)/g, '').replace(/\d+/g, '') : '';
     const normalizedHeadword = normalizeWord(cleanedHeadword);
     
-    // Only collect part of speech from entries whose headword matches requested word
-    if (entry.fl && normalizedHeadword === normalizedRequest) {
+    // Check if requested word appears in inflections (ins field) - for forms like "were" -> "be"
+    let isInflectedForm = false;
+    if (entry.ins && Array.isArray(entry.ins)) {
+      for (const inf of entry.ins) {
+        const infWord = inf.if || inf.ifc || '';
+        const cleanedInf = infWord.replace(/\*/g, '').replace(/:\d+/g, '').replace(/\(.*?\)/g, '').replace(/\d+/g, '');
+        if (normalizeWord(cleanedInf) === normalizedRequest) {
+          isInflectedForm = true;
+          break;
+        }
+      }
+    }
+    
+    // Collect part of speech from entries whose headword matches OR requested word is an inflection
+    if (entry.fl && (normalizedHeadword === normalizedRequest || isInflectedForm)) {
       partsOfSpeechSet.add(entry.fl.toLowerCase());
     }
     
