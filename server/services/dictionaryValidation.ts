@@ -356,6 +356,31 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
           }
         }
       }
+      
+    }
+    
+    // Handle cognate cross-references (cxs) for words like "is", "was", "were" that reference "be"
+    // These entries may have no fl (part of speech) or shortdef but have cxs pointing to the base word
+    // This must be outside the if(entry.fl) block since cxs entries often lack fl
+    if (entry.cxs && Array.isArray(entry.cxs) && allDefinitions.length === 0) {
+      for (const cx of entry.cxs) {
+        if (cx.cxl && cx.cxtis && Array.isArray(cx.cxtis)) {
+          // cxl = "present tense third-person singular of", cxtis = [{cxt: "be"}]
+          const label = cx.cxl;
+          const target = cx.cxtis[0]?.cxt;
+          if (label && target) {
+            const cxDef = `${label} "${target}"`;
+            if (!allDefinitions.includes(cxDef)) {
+              allDefinitions.push(cxDef);
+              // Also set part of speech based on the label
+              if (label.includes('tense') && label.includes('of')) {
+                partsOfSpeechSet.add('verb');
+              }
+              break; // Only take first cxs definition
+            }
+          }
+        }
+      }
     }
     
     // Extract example from detailed definitions (prioritize complete sentences)
@@ -619,6 +644,31 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
           if (cleaned.length > 0 && !containsKidInappropriateContent(cleaned) && !allDefinitions.includes(cleaned)) {
             allDefinitions.push(cleaned);
             break; // Only take first valid definition from this entry
+          }
+        }
+      }
+      
+    }
+    
+    // Handle cognate cross-references (cxs) for words like "is", "was", "were" that reference "be"
+    // These entries may have no fl (part of speech) or shortdef but have cxs pointing to the base word
+    // This must be outside the if(entry.fl) block since cxs entries often lack fl
+    if (entry.cxs && Array.isArray(entry.cxs) && allDefinitions.length === 0) {
+      for (const cx of entry.cxs) {
+        if (cx.cxl && cx.cxtis && Array.isArray(cx.cxtis)) {
+          // cxl = "present tense third-person singular of", cxtis = [{cxt: "be"}]
+          const label = cx.cxl;
+          const target = cx.cxtis[0]?.cxt;
+          if (label && target) {
+            const cxDef = `${label} "${target}"`;
+            if (!allDefinitions.includes(cxDef)) {
+              allDefinitions.push(cxDef);
+              // Also set part of speech based on the label
+              if (label.includes('tense') && label.includes('of')) {
+                partsOfSpeechSet.add('verb');
+              }
+              break; // Only take first cxs definition
+            }
           }
         }
       }
