@@ -73,16 +73,17 @@ function stripFormatting(text: string): string {
 }
 
 // Strip usage notes from definition text
-// Usage notes start with em-dash and contain phrases like "sometimes", "usually", "often + [word]"
+// Usage notes are APPENDED to definitions with em-dash and contain phrases like "sometimes + at", "usually + for"
+// We only strip usage notes that come AFTER real definition content, not definitions that start with "—used to"
 function stripUsageNotes(text: string): string {
   if (!text) return '';
   
-  // Remove usage notes that start with em-dash (—) 
-  // These patterns: "—sometimes + at", "—usually + for", "—often used with", etc.
+  // Remove usage notes that are APPENDED (must have content before the em-dash)
+  // These patterns: "definition text —sometimes + at", "definition text —usually + for"
+  // The (?<=\w) lookbehind ensures there's a word character before the em-dash
   let result = text
-    .replace(/\s*—\s*(sometimes|usually|often|frequently|typically|generally|commonly|rarely|seldom)\s*\+?\s*[^.]*(?:\.|$)/gi, '')
-    .replace(/\s*—\s*(used|not used)\s+[^.]*(?:\.|$)/gi, '')
-    .replace(/\s*—\s*compare\s+[^.]*(?:\.|$)/gi, '')
+    .replace(/(\w)\s*—\s*(sometimes|usually|often|frequently|typically|generally|commonly|rarely|seldom)\s*\+?\s*[^.]*(?:\.|$)/gi, '$1')
+    .replace(/(\w)\s*—\s*compare\s+[^.]*(?:\.|$)/gi, '$1')
     .trim();
   
   return result;
@@ -247,6 +248,10 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
   for (const entry of validEntries) {
     // Skip offensive entries
     if (entry.meta?.offensive === true) continue;
+    
+    // Skip abbreviation and combining form entries
+    const fl = (entry.fl || '').toLowerCase();
+    if (fl === 'abbreviation' || fl.includes('abbr') || fl.includes('combining form')) continue;
     
     // Get headword from entry (meta.id is the normalized headword)
     const headword = entry.meta?.id || entry.hwi?.hw;
@@ -553,6 +558,13 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
   const allDefinitions: string[] = [];
   
   for (const entry of validEntries) {
+    // Skip offensive entries
+    if (entry.meta?.offensive === true) continue;
+    
+    // Skip abbreviation and combining form entries
+    const fl = (entry.fl || '').toLowerCase();
+    if (fl === 'abbreviation' || fl.includes('abbr') || fl.includes('combining form')) continue;
+    
     // Check if requested word appears in inflections (ins field) - for forms like "were" -> "be"
     // Skip "or" alternatives and words with apostrophes
     let isInflectedForm = false;
@@ -587,7 +599,7 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
     }
     
     // Collect part of speech from entries whose headword matches OR requested word is an inflection
-    if (entry.fl && (normalizedHeadword === normalizedRequest || isInflectedForm)) {
+    if (fl && (normalizedHeadword === normalizedRequest || isInflectedForm)) {
       let pos = entry.fl.toLowerCase();
       
       // Add tense prefix for past tense verbs
