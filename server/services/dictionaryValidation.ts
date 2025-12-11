@@ -181,6 +181,13 @@ function extractDefinitionText(dt: any[]): string {
   return '';
 }
 
+// Extract homograph number from MW id field (e.g., "is:1" -> 1, "is" -> 0)
+function getHomographNumber(id: string | undefined): number {
+  if (!id) return 0;
+  const match = id.match(/:(\d+)$/);
+  return match ? parseInt(match[1], 10) : 0;
+}
+
 // Parse Merriam-Webster Learner's Dictionary response
 function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
   const metadata: WordMetadata = {};
@@ -191,15 +198,55 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
   
   const normalizedRequest = normalizeWord(requestedWord);
   
+  // Filter and sort entries by homograph number
+  const validEntries = data
+    .filter((entry: any) => {
+      if (typeof entry === 'string') return false;
+      
+      const headword = entry.meta?.id || entry.hwi?.hw;
+      if (!headword) return false;
+      
+      // Strip MW formatting but check for abbreviation markers (period at end)
+      // "Is." should NOT match "is"
+      const rawHeadword = headword.replace(/:\d+/g, ''); // Remove homograph number only
+      if (rawHeadword.endsWith('.')) return false; // Skip abbreviations
+      
+      const cleanedHeadword = rawHeadword.replace(/\*/g, '').replace(/\(.*?\)/g, '').replace(/\d+/g, '');
+      const normalizedHeadword = normalizeWord(cleanedHeadword);
+      
+      // Check if headword matches OR if requested word is an inflection
+      if (normalizedHeadword === normalizedRequest) return true;
+      
+      // Check inflections (but skip "or" alternatives and words with apostrophes)
+      if (entry.ins && Array.isArray(entry.ins)) {
+        for (const inf of entry.ins) {
+          // Skip "or" alternatives - these are secondary spellings, not conjugations
+          const label = (inf.il || '').toLowerCase();
+          if (label === 'or') continue;
+          
+          const infWord = inf.if || inf.ifc || '';
+          // Skip inflections with apostrophes (e.g., "i's" shouldn't match "is")
+          if (infWord.includes("'")) continue;
+          
+          const cleanedInf = infWord.replace(/\*/g, '').replace(/:\d+/g, '').replace(/\(.*?\)/g, '').replace(/\d+/g, '');
+          if (normalizeWord(cleanedInf) === normalizedRequest) return true;
+        }
+      }
+      
+      return false;
+    })
+    .sort((a: any, b: any) => {
+      const aNum = getHomographNumber(a.meta?.id);
+      const bNum = getHomographNumber(b.meta?.id);
+      return aNum - bNum;
+    });
+  
   // Collect parts of speech ONLY from entries matching the requested word
   const partsOfSpeechSet = new Set<string>();
-  const definitionsArray: string[] = [];
+  // Track definitions per part of speech (max 2 per POS)
+  const definitionsByPOS: Map<string, string[]> = new Map();
   
-  for (const entry of data) {
-    // Check if we got string suggestions instead of actual entry
-    if (typeof entry === 'string') {
-      continue;
-    }
+  for (const entry of validEntries) {
     
     // Get headword from entry (meta.id is the normalized headword)
     const headword = entry.meta?.id || entry.hwi?.hw;
@@ -208,13 +255,21 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
     const normalizedHeadword = normalizeWord(cleanedHeadword);
     
     // Check if requested word appears in inflections (ins field) - for forms like "were" -> "be"
+    // Skip "or" alternatives and words with apostrophes
     let isInflectedForm = false;
     let inflectionLabel = '';
     let inflectionIndex = -1;
     if (entry.ins && Array.isArray(entry.ins)) {
       for (let i = 0; i < entry.ins.length; i++) {
         const inf = entry.ins[i];
+        // Skip "or" alternatives - these are secondary spellings, not primary inflections
+        const label = (inf.il || '').toLowerCase();
+        if (label === 'or') continue;
+        
         const infWord = inf.if || inf.ifc || '';
+        // Skip inflections with apostrophes (e.g., "i's" shouldn't match "is")
+        if (infWord.includes("'")) continue;
+        
         const cleanedInf = infWord.replace(/\*/g, '').replace(/:\d+/g, '').replace(/\(.*?\)/g, '').replace(/\d+/g, '');
         if (normalizeWord(cleanedInf) === normalizedRequest) {
           isInflectedForm = true;
@@ -290,14 +345,21 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
       }
       
       partsOfSpeechSet.add(pos);
-    }
-    
-    // Short definitions (collect ALL, filter inappropriate)
-    if (entry.shortdef && Array.isArray(entry.shortdef)) {
-      for (const def of entry.shortdef) {
-        const cleaned = stripFormatting(def);
-        if (cleaned.length > 0 && !containsKidInappropriateContent(cleaned)) {
-          definitionsArray.push(cleaned);
+      
+      // Short definitions - track by part of speech (max 2 per POS)
+      if (entry.shortdef && Array.isArray(entry.shortdef)) {
+        const posKey = pos || 'unknown';
+        if (!definitionsByPOS.has(posKey)) {
+          definitionsByPOS.set(posKey, []);
+        }
+        const defs = definitionsByPOS.get(posKey)!;
+        
+        for (const def of entry.shortdef) {
+          if (defs.length >= 2) break; // Limit to 2 per POS
+          const cleaned = stripFormatting(def);
+          if (cleaned.length > 0 && !containsKidInappropriateContent(cleaned) && !defs.includes(cleaned)) {
+            defs.push(cleaned);
+          }
         }
       }
     }
@@ -391,9 +453,15 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
     metadata.partOfSpeech = Array.from(partsOfSpeechSet).join(' or ');
   }
   
+  // Combine definitions from all parts of speech (already limited to 2 per POS)
+  const allDefinitions: string[] = [];
+  definitionsByPOS.forEach((defs) => {
+    allDefinitions.push(...defs);
+  });
+  
   // Join all definitions with pause separator for TTS
-  if (definitionsArray.length > 0) {
-    metadata.definition = definitionsArray.join('. ... ');
+  if (allDefinitions.length > 0) {
+    metadata.definition = allDefinitions.join('. ... ');
   }
   
   return metadata;
@@ -409,30 +477,77 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
   
   const normalizedRequest = normalizeWord(requestedWord);
   
+  // Filter and sort entries by homograph number
+  const validEntries = data
+    .filter((entry: any) => {
+      if (typeof entry === 'string') return false;
+      
+      const headword = entry.meta?.id || entry.hwi?.hw;
+      if (!headword) return false;
+      
+      // Strip MW formatting but check for abbreviation markers (period at end)
+      // "Is." should NOT match "is"
+      const rawHeadword = headword.replace(/:\d+/g, ''); // Remove homograph number only
+      if (rawHeadword.endsWith('.')) return false; // Skip abbreviations
+      
+      const cleanedHeadword = rawHeadword.replace(/\*/g, '').replace(/\(.*?\)/g, '').replace(/\d+/g, '');
+      const normalizedHeadword = normalizeWord(cleanedHeadword);
+      
+      // Check if headword matches OR if requested word is an inflection
+      if (normalizedHeadword === normalizedRequest) return true;
+      
+      // Check inflections (but skip "or" alternatives and words with apostrophes)
+      if (entry.ins && Array.isArray(entry.ins)) {
+        for (const inf of entry.ins) {
+          // Skip "or" alternatives - these are secondary spellings, not conjugations
+          const label = (inf.il || '').toLowerCase();
+          if (label === 'or') continue;
+          
+          const infWord = inf.if || inf.ifc || '';
+          // Skip inflections with apostrophes (e.g., "i's" shouldn't match "is")
+          if (infWord.includes("'")) continue;
+          
+          const cleanedInf = infWord.replace(/\*/g, '').replace(/:\d+/g, '').replace(/\(.*?\)/g, '').replace(/\d+/g, '');
+          if (normalizeWord(cleanedInf) === normalizedRequest) return true;
+        }
+      }
+      
+      return false;
+    })
+    .sort((a: any, b: any) => {
+      const aNum = getHomographNumber(a.meta?.id);
+      const bNum = getHomographNumber(b.meta?.id);
+      return aNum - bNum;
+    });
+  
   // Collect parts of speech ONLY from entries matching the requested word
   const partsOfSpeechSet = new Set<string>();
-  const definitionsArray: string[] = [];
+  // Track definitions per part of speech (max 2 per POS)
+  const definitionsByPOS: Map<string, string[]> = new Map();
   
-  for (const entry of data) {
-    // Check if we got string suggestions instead of actual entry
-    if (typeof entry === 'string') {
-      continue;
-    }
-    
-    // Get headword from entry (meta.id is the normalized headword)
-    const headword = entry.meta?.id || entry.hwi?.hw;
-    // Strip MW formatting: asterisks, sense markers (:1, :2), parentheticals, digits
-    const cleanedHeadword = headword ? headword.replace(/\*/g, '').replace(/:\d+/g, '').replace(/\(.*?\)/g, '').replace(/\d+/g, '') : '';
-    const normalizedHeadword = normalizeWord(cleanedHeadword);
-    
+  for (const entry of validEntries) {
     // Check if requested word appears in inflections (ins field) - for forms like "were" -> "be"
+    // Skip "or" alternatives and words with apostrophes
     let isInflectedForm = false;
     let inflectionLabel = '';
     let inflectionIndex = -1;
+    
+    // Get headword from entry (meta.id is the normalized headword)
+    const headword = entry.meta?.id || entry.hwi?.hw;
+    const cleanedHeadword = headword ? headword.replace(/\*/g, '').replace(/:\d+/g, '').replace(/\(.*?\)/g, '').replace(/\d+/g, '') : '';
+    const normalizedHeadword = normalizeWord(cleanedHeadword);
+    
     if (entry.ins && Array.isArray(entry.ins)) {
       for (let i = 0; i < entry.ins.length; i++) {
         const inf = entry.ins[i];
+        // Skip "or" alternatives - these are secondary spellings, not primary inflections
+        const label = (inf.il || '').toLowerCase();
+        if (label === 'or') continue;
+        
         const infWord = inf.if || inf.ifc || '';
+        // Skip inflections with apostrophes (e.g., "i's" shouldn't match "is")
+        if (infWord.includes("'")) continue;
+        
         const cleanedInf = infWord.replace(/\*/g, '').replace(/:\d+/g, '').replace(/\(.*?\)/g, '').replace(/\d+/g, '');
         if (normalizeWord(cleanedInf) === normalizedRequest) {
           isInflectedForm = true;
@@ -508,14 +623,21 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
       }
       
       partsOfSpeechSet.add(pos);
-    }
-    
-    // Short definitions (collect ALL, filter inappropriate)
-    if (entry.shortdef && Array.isArray(entry.shortdef)) {
-      for (const def of entry.shortdef) {
-        const cleaned = stripFormatting(def);
-        if (cleaned.length > 0 && !containsKidInappropriateContent(cleaned)) {
-          definitionsArray.push(cleaned);
+      
+      // Short definitions - track by part of speech (max 2 per POS)
+      if (entry.shortdef && Array.isArray(entry.shortdef)) {
+        const posKey = pos || 'unknown';
+        if (!definitionsByPOS.has(posKey)) {
+          definitionsByPOS.set(posKey, []);
+        }
+        const defs = definitionsByPOS.get(posKey)!;
+        
+        for (const def of entry.shortdef) {
+          if (defs.length >= 2) break; // Limit to 2 per POS
+          const cleaned = stripFormatting(def);
+          if (cleaned.length > 0 && !containsKidInappropriateContent(cleaned) && !defs.includes(cleaned)) {
+            defs.push(cleaned);
+          }
         }
       }
     }
@@ -619,9 +741,15 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
     metadata.partOfSpeech = Array.from(partsOfSpeechSet).join(' or ');
   }
   
+  // Combine definitions from all parts of speech (already limited to 2 per POS)
+  const allDefinitions: string[] = [];
+  definitionsByPOS.forEach((defs) => {
+    allDefinitions.push(...defs);
+  });
+  
   // Join all definitions with pause separator for TTS
-  if (definitionsArray.length > 0) {
-    metadata.definition = definitionsArray.join('. ... ');
+  if (allDefinitions.length > 0) {
+    metadata.definition = allDefinitions.join('. ... ');
   }
   
   return metadata;
