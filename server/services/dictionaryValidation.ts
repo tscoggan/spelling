@@ -94,6 +94,16 @@ function isCompleteSentence(text: string): boolean {
   return true;
 }
 
+// Check if text contains the target word (case-insensitive, word boundary match)
+function containsTargetWord(text: string, word: string): boolean {
+  if (!text || !word) return false;
+  
+  // Create a regex that matches the word with word boundaries (case-insensitive)
+  const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`\\b${escapedWord}\\b`, 'i');
+  return regex.test(text);
+}
+
 // Extract examples from definition text (dt) array
 function extractExamples(dt: any[]): string[] {
   const examples: string[] = [];
@@ -218,15 +228,35 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
         }
       }
       
-      // First, try to find a complete sentence that's kid-appropriate
+      // Priority 1: Complete sentence containing the word AND kid-appropriate
       for (const example of allExamples) {
-        if (!containsKidInappropriateContent(example) && isCompleteSentence(example)) {
+        if (!containsKidInappropriateContent(example) && isCompleteSentence(example) && containsTargetWord(example, requestedWord)) {
           metadata.example = example;
           break;
         }
       }
       
-      // Fallback: use any kid-appropriate example (even if not a complete sentence)
+      // Priority 2: Any example containing the word AND kid-appropriate
+      if (!metadata.example) {
+        for (const example of allExamples) {
+          if (!containsKidInappropriateContent(example) && containsTargetWord(example, requestedWord)) {
+            metadata.example = example;
+            break;
+          }
+        }
+      }
+      
+      // Priority 3: Complete sentence that's kid-appropriate (may not contain word)
+      if (!metadata.example) {
+        for (const example of allExamples) {
+          if (!containsKidInappropriateContent(example) && isCompleteSentence(example)) {
+            metadata.example = example;
+            break;
+          }
+        }
+      }
+      
+      // Priority 4: Any kid-appropriate example (fallback)
       if (!metadata.example) {
         for (const example of allExamples) {
           if (!containsKidInappropriateContent(example)) {
@@ -335,15 +365,35 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
         }
       }
       
-      // First, try to find a complete sentence that's kid-appropriate
+      // Priority 1: Complete sentence containing the word AND kid-appropriate
       for (const example of allExamples) {
-        if (!containsKidInappropriateContent(example) && isCompleteSentence(example)) {
+        if (!containsKidInappropriateContent(example) && isCompleteSentence(example) && containsTargetWord(example, requestedWord)) {
           metadata.example = example;
           break;
         }
       }
       
-      // Fallback: use any kid-appropriate example (even if not a complete sentence)
+      // Priority 2: Any example containing the word AND kid-appropriate
+      if (!metadata.example) {
+        for (const example of allExamples) {
+          if (!containsKidInappropriateContent(example) && containsTargetWord(example, requestedWord)) {
+            metadata.example = example;
+            break;
+          }
+        }
+      }
+      
+      // Priority 3: Complete sentence that's kid-appropriate (may not contain word)
+      if (!metadata.example) {
+        for (const example of allExamples) {
+          if (!containsKidInappropriateContent(example) && isCompleteSentence(example)) {
+            metadata.example = example;
+            break;
+          }
+        }
+      }
+      
+      // Priority 4: Any kid-appropriate example (fallback)
       if (!metadata.example) {
         for (const example of allExamples) {
           if (!containsKidInappropriateContent(example)) {
