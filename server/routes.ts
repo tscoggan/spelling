@@ -3273,7 +3273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // These endpoints are not protected - admin authentication will be added later
   
   // Import dictionary validation for bulk word loading
-  const { validateWords } = await import('./services/dictionaryValidation');
+  const { validateWords, clearCacheForWords } = await import('./services/dictionaryValidation');
   const { validateWords: validateProfanity } = await import('./contentModeration');
   
   // Admin: Bulk load words from TXT/CSV file
@@ -3316,6 +3316,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             duplicateWords.add(word);
           }
         }
+      }
+      
+      // Clear validation cache for overwritten words so they get re-validated and re-saved
+      if (overwrittenWords.length > 0) {
+        clearCacheForWords(overwrittenWords);
       }
       
       // Filter to only new words (or all clean words if overwriting)

@@ -1034,3 +1034,11 @@ export async function validateWords(words: string[], storage?: IStorage): Promis
 export function clearValidationCache(): void {
   validationCache.clear();
 }
+
+// Function to clear specific words from cache (used when overwriting words)
+export function clearCacheForWords(words: string[]): void {
+  for (const word of words) {
+    const normalized = word.toLowerCase().trim().replace(/[^\w\s]/g, '');
+    validationCache.delete(normalized);
+  }
+}
