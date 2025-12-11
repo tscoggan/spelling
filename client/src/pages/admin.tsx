@@ -386,6 +386,16 @@ export default function AdminPage() {
                       
                       {uploadResult.details && (
                         <div className="space-y-2 pt-4 border-t">
+                          {uploadResult.details.valid && uploadResult.details.valid.length > 0 && (
+                            <details className="text-sm" open>
+                              <summary className="cursor-pointer text-green-600 dark:text-green-400 hover:underline font-medium">
+                                View {uploadResult.details.valid.length} added word(s)
+                              </summary>
+                              <p className="mt-1 p-2 bg-green-50 dark:bg-green-950 rounded text-green-700 dark:text-green-300">
+                                {uploadResult.details.valid.join(", ")}
+                              </p>
+                            </details>
+                          )}
                           {uploadResult.details.duplicates.length > 0 && (
                             <details className="text-sm">
                               <summary className="cursor-pointer text-blue-600 dark:text-blue-400 hover:underline">
