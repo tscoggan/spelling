@@ -195,7 +195,7 @@ export interface IStorage {
   // Admin methods
   searchWords(query: string, limit?: number): Promise<Word[]>;
   getAllWords(): Promise<Word[]>;
-  updateWord(id: number, updates: Partial<{ definition: string | null; sentenceExample: string | null; wordOrigin: string | null; partOfSpeech: string | null }>): Promise<Word | undefined>;
+  updateWord(id: number, updates: Partial<{ definition: string | null; sentenceExample: string | null; wordOrigin: string | null; partOfSpeech: string | null }>, updatedByUserId?: number): Promise<Word | undefined>;
   getUsageMetrics(dateRange: 'today' | 'week' | 'month' | 'all'): Promise<{ userId: number | null; username: string; gamesPlayed: number }[]>;
   
   sessionStore: session.Store;
@@ -269,9 +269,10 @@ export class DatabaseStorage implements IStorage {
       }
       
       if (Object.keys(updates).length > 0) {
+        // Set updatedAt for dictionary API updates (no user ID)
         const [updated] = await db
           .update(words)
-          .set(updates)
+          .set({ ...updates, updatedAt: new Date(), updatedByUser: null })
           .where(eq(words.id, existing.id))
           .returning();
         return updated;
@@ -288,6 +289,8 @@ export class DatabaseStorage implements IStorage {
         sentenceExample: sentenceExample || null,
         wordOrigin: wordOrigin || null,
         partOfSpeech: partOfSpeech || null,
+        updatedAt: new Date(),
+        updatedByUser: null,
       })
       .returning();
     
@@ -1853,10 +1856,14 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(words).orderBy(words.word);
   }
 
-  async updateWord(id: number, updates: Partial<{ definition: string | null; sentenceExample: string | null; wordOrigin: string | null; partOfSpeech: string | null }>): Promise<Word | undefined> {
+  async updateWord(id: number, updates: Partial<{ definition: string | null; sentenceExample: string | null; wordOrigin: string | null; partOfSpeech: string | null }>, updatedByUserId?: number): Promise<Word | undefined> {
     const [updated] = await db
       .update(words)
-      .set(updates)
+      .set({ 
+        ...updates, 
+        updatedAt: new Date(), 
+        updatedByUser: updatedByUserId ?? null 
+      })
       .where(eq(words.id, id))
       .returning();
     return updated || undefined;

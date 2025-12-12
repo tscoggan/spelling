@@ -3459,7 +3459,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (wordOrigin !== undefined) updates.wordOrigin = wordOrigin;
       if (partOfSpeech !== undefined) updates.partOfSpeech = partOfSpeech;
       
-      const updated = await storage.updateWord(id, updates);
+      // Pass the user ID for admin edits (manual updates)
+      const userId = req.user?.id;
+      const updated = await storage.updateWord(id, updates, userId);
       
       if (!updated) {
         return res.status(404).json({ error: "Word not found" });

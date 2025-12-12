@@ -27,6 +27,8 @@ export const words = pgTable("words", {
   sentenceExample: text("sentence_example"),
   wordOrigin: text("word_origin"),
   partOfSpeech: text("part_of_speech"),
+  updatedAt: timestamp("updated_at"),
+  updatedByUser: integer("updated_by_user"),
 });
 
 export const gameSessions = pgTable("game_sessions", {
