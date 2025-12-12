@@ -839,6 +839,37 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
   const guestListData = isGuestMode && effectiveWordListId ? guestGetWordList(effectiveWordListId) : null;
   const guestImageAssignments = guestListData?.imageAssignments || [];
 
+  // Prefetch all word metadata at game start - reduces N API calls to 1
+  const wordTexts = words?.map(w => w.word) || [];
+  const { 
+    data: prefetchedWordMetadata, 
+    isSuccess: metadataPrefetchComplete,
+    isError: metadataPrefetchFailed 
+  } = useQuery<Record<string, { id: number; word: string; definition?: string | null; sentenceExample?: string | null; wordOrigin?: string | null; partOfSpeech?: string | null }>>({
+    queryKey: ['/api/words/bulk-by-text', wordTexts],
+    queryFn: async () => {
+      if (wordTexts.length === 0) return {};
+      console.log(`🔄 Prefetching metadata for ${wordTexts.length} words...`);
+      const response = await fetch('/api/words/bulk-by-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ words: wordTexts }),
+      });
+      if (!response.ok) {
+        console.warn('Failed to prefetch word metadata');
+        return {};
+      }
+      const data = await response.json();
+      console.log(`✅ Prefetched metadata for ${Object.keys(data).length} words`);
+      return data;
+    },
+    enabled: wordTexts.length > 0,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+  
+  // Track if prefetch is ready (complete or failed, so we can proceed)
+  const metadataReady = metadataPrefetchComplete || metadataPrefetchFailed || wordTexts.length === 0;
+
   const { data: wordIllustrations } = useQuery<WordIllustration[]>({
     queryKey: ['/api/word-lists', effectiveWordListId, 'illustrations'],
     queryFn: async () => {
@@ -1128,66 +1159,60 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
     }
     
     try {
-      // First, check if we have this word in the database
-      console.log(`🔍 Checking database for "${fetchWord}"...`);
-      try {
-        const dbResponse = await fetch(`/api/words/by-text/${encodeURIComponent(fetchWord)}`);
-        if (dbResponse.ok) {
-          const dbWord = await dbResponse.json();
-          console.log(`✅ Found word in database with metadata:`, {
-            hasDefinition: !!dbWord.definition,
-            hasExample: !!dbWord.sentenceExample,
-            hasOrigin: !!dbWord.wordOrigin
-          });
-          
-          // Check if we're still on the same word before updating state
-          if (currentWordRef.current?.toLowerCase() !== fetchWord) {
-            return;
-          }
-          
-          // Use database data if available
-          let hasCompleteData = false;
-          if (dbWord.definition) {
-            setWordDefinition(dbWord.definition);
-            console.log(`✅ Using definition from database`);
-            hasCompleteData = true;
-          }
-          if (dbWord.sentenceExample) {
-            setWordExample(dbWord.sentenceExample);
-            console.log(`✅ Using example from database`);
-          } else {
-            // No example available - don't generate fake sentences
-            console.log(`ℹ️ No example sentence available for "${fetchWord}"`);
-          }
-          if (dbWord.wordOrigin) {
-            setWordOrigin(dbWord.wordOrigin);
-            console.log(`✅ Using origin from database`);
-          }
-          if (dbWord.partOfSpeech) {
-            setWordPartsOfSpeech(dbWord.partOfSpeech);
-            console.log(`✅ Using partOfSpeech from database`);
-          }
-          
-          // Check if we have all critical metadata (definition AND partOfSpeech)
-          // Check both dbWord and currentWord for partOfSpeech
-          const hasPartOfSpeech = dbWord.partOfSpeech || currentWord?.partOfSpeech;
-          
-          // If we have definition and partOfSpeech from DB, we're done
-          if (hasCompleteData && hasPartOfSpeech) {
-            setLoadingDictionary(false);
-            console.log(`✅ Using complete data from database, skipping dictionary APIs`);
-            return;
-          }
-          
-          // If we have definition but missing partOfSpeech, continue to API fallback
-          if (hasCompleteData && !hasPartOfSpeech) {
-            console.log(`⚠️ Definition found but partOfSpeech missing, fetching from dictionary APIs`);
-          }
-        } else if (dbResponse.status !== 404) {
-          console.log(`⚠️ Database error (${dbResponse.status}), falling back to dictionary APIs`);
+      // First, check prefetched metadata (bulk-loaded at game start for performance)
+      const dbWord = prefetchedWordMetadata?.[fetchWord];
+      if (dbWord) {
+        console.log(`✅ Found word in prefetched cache:`, {
+          hasDefinition: !!dbWord.definition,
+          hasExample: !!dbWord.sentenceExample,
+          hasOrigin: !!dbWord.wordOrigin
+        });
+        
+        // Check if we're still on the same word before updating state
+        if (currentWordRef.current?.toLowerCase() !== fetchWord) {
+          return;
         }
-      } catch (dbError) {
-        console.log(`⚠️ Database lookup failed for "${fetchWord}", falling back to dictionary APIs:`, dbError);
+        
+        // Use database data if available
+        let hasCompleteData = false;
+        if (dbWord.definition) {
+          setWordDefinition(dbWord.definition);
+          console.log(`✅ Using definition from prefetched cache`);
+          hasCompleteData = true;
+        }
+        if (dbWord.sentenceExample) {
+          setWordExample(dbWord.sentenceExample);
+          console.log(`✅ Using example from prefetched cache`);
+        } else {
+          // No example available - don't generate fake sentences
+          console.log(`ℹ️ No example sentence available for "${fetchWord}"`);
+        }
+        if (dbWord.wordOrigin) {
+          setWordOrigin(dbWord.wordOrigin);
+          console.log(`✅ Using origin from prefetched cache`);
+        }
+        if (dbWord.partOfSpeech) {
+          setWordPartsOfSpeech(dbWord.partOfSpeech);
+          console.log(`✅ Using partOfSpeech from prefetched cache`);
+        }
+        
+        // Check if we have all critical metadata (definition AND partOfSpeech)
+        // Check both dbWord and currentWord for partOfSpeech
+        const hasPartOfSpeech = dbWord.partOfSpeech || currentWord?.partOfSpeech;
+        
+        // If we have definition and partOfSpeech from cache, we're done
+        if (hasCompleteData && hasPartOfSpeech) {
+          setLoadingDictionary(false);
+          console.log(`✅ Using complete data from prefetched cache, skipping dictionary APIs`);
+          return;
+        }
+        
+        // If we have definition but missing partOfSpeech, continue to API fallback
+        if (hasCompleteData && !hasPartOfSpeech) {
+          console.log(`⚠️ Definition found but partOfSpeech missing, fetching from dictionary APIs`);
+        }
+      } else {
+        console.log(`ℹ️ Word "${fetchWord}" not in prefetched cache, checking dictionary APIs`);
       }
       
       // If we don't have complete data from database, try Simple English Wiktionary using MediaWiki API
@@ -1495,11 +1520,11 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
   };
 
   useEffect(() => {
-    if (currentWord) {
+    if (currentWord && metadataReady) {
       currentWordRef.current = currentWord.word;
       fetchWordData(currentWord.word);
     }
-  }, [currentWord]);
+  }, [currentWord, metadataReady]);
 
   // Auto-focus input when word changes
   useEffect(() => {
