@@ -430,6 +430,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk fetch word metadata - single query for multiple words
+  app.post("/api/words/bulk-by-text", async (req, res) => {
+    try {
+      const { words: wordTexts } = req.body;
+      
+      if (!Array.isArray(wordTexts)) {
+        return res.status(400).json({ error: "words must be an array" });
+      }
+      
+      if (wordTexts.length > 500) {
+        return res.status(400).json({ error: "Maximum 500 words per request" });
+      }
+      
+      const foundWords = await storage.getWordsByTexts(wordTexts);
+      
+      // Return as a map for easy lookup by word text
+      const wordMap: Record<string, typeof foundWords[0]> = {};
+      for (const word of foundWords) {
+        wordMap[word.word] = word;
+      }
+      
+      res.json(wordMap);
+    } catch (error) {
+      console.error("Error in bulk word fetch:", error);
+      res.status(500).json({ error: "Failed to fetch words" });
+    }
+  });
+
   app.post("/api/sessions", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
       // Normalize legacy "standard" mode to "practice"
