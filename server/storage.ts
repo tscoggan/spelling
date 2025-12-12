@@ -65,7 +65,7 @@ export interface IStorage {
   getWord(id: number): Promise<Word | undefined>;
   getWordByText(word: string): Promise<Word | undefined>;
   createWord(word: InsertWord): Promise<Word>;
-  upsertWord(word: string, definition?: string, sentenceExample?: string, wordOrigin?: string, partOfSpeech?: string): Promise<Word>;
+  upsertWord(word: string, definition?: string, sentenceExample?: string, wordOrigin?: string, partOfSpeech?: string, overwrite?: boolean): Promise<Word>;
   deleteWord(id: number): Promise<boolean>;
   
   getGameSession(id: number): Promise<GameSession | undefined>;
@@ -228,7 +228,7 @@ export class DatabaseStorage implements IStorage {
     return word;
   }
 
-  async upsertWord(wordText: string, definition?: string, sentenceExample?: string, wordOrigin?: string, partOfSpeech?: string): Promise<Word> {
+  async upsertWord(wordText: string, definition?: string, sentenceExample?: string, wordOrigin?: string, partOfSpeech?: string, overwrite?: boolean): Promise<Word> {
     const normalized = wordText.toLowerCase().trim();
     
     const existing = await this.getWordByText(normalized);
@@ -236,20 +236,29 @@ export class DatabaseStorage implements IStorage {
     if (existing) {
       const updates: Partial<InsertWord> = {};
       
-      if (definition && !existing.definition) {
-        updates.definition = definition;
-      }
-      
-      if (sentenceExample && !existing.sentenceExample) {
-        updates.sentenceExample = sentenceExample;
-      }
-      
-      if (wordOrigin && !existing.wordOrigin) {
-        updates.wordOrigin = wordOrigin;
-      }
-      
-      if (partOfSpeech && !existing.partOfSpeech) {
-        updates.partOfSpeech = partOfSpeech;
+      // When overwrite=true, update all fields regardless of existing values
+      if (overwrite) {
+        if (definition !== undefined) updates.definition = definition || null;
+        if (sentenceExample !== undefined) updates.sentenceExample = sentenceExample || null;
+        if (wordOrigin !== undefined) updates.wordOrigin = wordOrigin || null;
+        if (partOfSpeech !== undefined) updates.partOfSpeech = partOfSpeech || null;
+      } else {
+        // Only fill in missing fields
+        if (definition && !existing.definition) {
+          updates.definition = definition;
+        }
+        
+        if (sentenceExample && !existing.sentenceExample) {
+          updates.sentenceExample = sentenceExample;
+        }
+        
+        if (wordOrigin && !existing.wordOrigin) {
+          updates.wordOrigin = wordOrigin;
+        }
+        
+        if (partOfSpeech && !existing.partOfSpeech) {
+          updates.partOfSpeech = partOfSpeech;
+        }
       }
       
       if (Object.keys(updates).length > 0) {

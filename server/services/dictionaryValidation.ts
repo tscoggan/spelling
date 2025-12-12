@@ -160,7 +160,19 @@ function extractExamples(dt: any[]): string[] {
         }
       }
       
-      // Skip "uns" (usage notes) - do not extract examples from usage notes
+      // Also check inside "uns" (usage notes) for vis examples
+      // Structure: ["uns", [[["text", "..."], ["vis", [...]]]]]
+      if (item[0] === 'uns' && Array.isArray(item[1])) {
+        for (const unsGroup of item[1]) {
+          if (Array.isArray(unsGroup)) {
+            for (const unsItem of unsGroup) {
+              if (Array.isArray(unsItem) && unsItem[0] === 'vis' && Array.isArray(unsItem[1])) {
+                processVisArray(unsItem[1]);
+              }
+            }
+          }
+        }
+      }
     }
   }
   
@@ -922,7 +934,7 @@ async function checkMerriamWebsterCollegiate(word: string): Promise<{ valid: boo
 }
 
 // Validate a single word using Merriam-Webster hierarchy (Learner's → Collegiate)
-async function validateSingleWord(word: string, storage?: IStorage): Promise<{ word: string; isValid: boolean; skipped: boolean }> {
+async function validateSingleWord(word: string, storage?: IStorage, overwrite?: boolean): Promise<{ word: string; isValid: boolean; skipped: boolean }> {
   const normalized = normalizeWord(word);
   
   // Check cache first
@@ -1016,7 +1028,8 @@ async function validateSingleWord(word: string, storage?: IStorage): Promise<{ w
         finalMetadata.definition,
         finalMetadata.example,
         finalMetadata.origin,
-        finalMetadata.partOfSpeech
+        finalMetadata.partOfSpeech,
+        overwrite
       );
     } catch (error) {
       console.error(`Failed to save word metadata for "${word}":`, error);
@@ -1027,7 +1040,7 @@ async function validateSingleWord(word: string, storage?: IStorage): Promise<{ w
 }
 
 // Validate multiple words with concurrency control
-async function validateWordsInBatches(words: string[], storage?: IStorage): Promise<ValidationResult> {
+async function validateWordsInBatches(words: string[], storage?: IStorage, overwrite?: boolean): Promise<ValidationResult> {
   const result: ValidationResult = {
     valid: [],
     invalid: [],
@@ -1041,7 +1054,7 @@ async function validateWordsInBatches(words: string[], storage?: IStorage): Prom
   for (let i = 0; i < words.length; i += MAX_CONCURRENT) {
     const batch = words.slice(i, i + MAX_CONCURRENT);
     const results = await Promise.all(
-      batch.map(word => validateSingleWord(word, storage))
+      batch.map(word => validateSingleWord(word, storage, overwrite))
     );
     
     for (const { word, isValid, skipped } of results) {
@@ -1059,7 +1072,7 @@ async function validateWordsInBatches(words: string[], storage?: IStorage): Prom
 }
 
 // Main validation function
-export async function validateWords(words: string[], storage?: IStorage): Promise<ValidationResult> {
+export async function validateWords(words: string[], storage?: IStorage, overwrite?: boolean): Promise<ValidationResult> {
   // Filter out empty words
   const filteredWords = words.filter(w => w && w.trim().length > 0);
   
@@ -1067,7 +1080,7 @@ export async function validateWords(words: string[], storage?: IStorage): Promis
     return { valid: [], invalid: [], skipped: [] };
   }
   
-  return await validateWordsInBatches(filteredWords, storage);
+  return await validateWordsInBatches(filteredWords, storage, overwrite);
 }
 
 // Function to clear cache (for testing or admin purposes)

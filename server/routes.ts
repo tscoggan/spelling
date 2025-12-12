@@ -3348,7 +3348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Validate new words with MW dictionary (this also stores metadata)
-      const validationResult = await validateWords(newWords, storage);
+      const validationResult = await validateWords(newWords, storage, overwrite);
       
       res.json({
         totalProcessed: normalizedWords.length,
