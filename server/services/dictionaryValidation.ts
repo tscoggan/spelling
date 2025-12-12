@@ -228,6 +228,13 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
       // Check if headword matches OR if requested word is an inflection
       if (normalizedHeadword === normalizedRequest) return true;
       
+      // Check stems array (contains all valid forms like "coastal" from "coast")
+      if (entry.meta?.stems && Array.isArray(entry.meta.stems)) {
+        for (const stem of entry.meta.stems) {
+          if (normalizeWord(stem) === normalizedRequest) return true;
+        }
+      }
+      
       // Check inflections (but skip "or" alternatives and words with apostrophes)
       if (entry.ins && Array.isArray(entry.ins)) {
         for (const inf of entry.ins) {
@@ -541,6 +548,13 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
       
       // Check if headword matches OR if requested word is an inflection
       if (normalizedHeadword === normalizedRequest) return true;
+      
+      // Check stems array (contains all valid forms like "coastal" from "coast")
+      if (entry.meta?.stems && Array.isArray(entry.meta.stems)) {
+        for (const stem of entry.meta.stems) {
+          if (normalizeWord(stem) === normalizedRequest) return true;
+        }
+      }
       
       // Check inflections (but skip "or" alternatives and words with apostrophes)
       if (entry.ins && Array.isArray(entry.ins)) {
