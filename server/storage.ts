@@ -64,6 +64,7 @@ import { APP_VERSION } from "@shared/version";
 export interface IStorage {
   getWord(id: number): Promise<Word | undefined>;
   getWordByText(word: string): Promise<Word | undefined>;
+  getWordsByTexts(wordTexts: string[]): Promise<Word[]>;
   createWord(word: InsertWord): Promise<Word>;
   upsertWord(word: string, definition?: string, sentenceExample?: string, wordOrigin?: string, partOfSpeech?: string, overwrite?: boolean): Promise<Word>;
   deleteWord(id: number): Promise<boolean>;
@@ -221,6 +222,12 @@ export class DatabaseStorage implements IStorage {
     const normalized = wordText.toLowerCase().trim();
     const [word] = await db.select().from(words).where(eq(words.word, normalized));
     return word || undefined;
+  }
+
+  async getWordsByTexts(wordTexts: string[]): Promise<Word[]> {
+    if (wordTexts.length === 0) return [];
+    const normalized = wordTexts.map(w => w.toLowerCase().trim());
+    return await db.select().from(words).where(inArray(words.word, normalized));
   }
 
   async createWord(insertWord: InsertWord): Promise<Word> {
