@@ -278,6 +278,17 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
     const cleanedHeadword = headword ? headword.replace(/\*/g, '').replace(/:\d+/g, '').replace(/\(.*?\)/g, '').replace(/\d+/g, '') : '';
     const normalizedHeadword = normalizeWord(cleanedHeadword);
     
+    // Check if requested word appears in stems array (e.g., "coastal" from "coast")
+    let isStemMatch = false;
+    if (entry.meta?.stems && Array.isArray(entry.meta.stems)) {
+      for (const stem of entry.meta.stems) {
+        if (normalizeWord(stem) === normalizedRequest) {
+          isStemMatch = true;
+          break;
+        }
+      }
+    }
+    
     // Check if requested word appears in inflections (ins field) - for forms like "were" -> "be"
     // Skip "or" alternatives and words with apostrophes
     let isInflectedForm = false;
@@ -305,8 +316,8 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
       }
     }
     
-    // Collect part of speech from entries whose headword matches OR requested word is an inflection
-    if (entry.fl && (normalizedHeadword === normalizedRequest || isInflectedForm)) {
+    // Collect part of speech from entries whose headword matches, is a stem match, or is an inflection
+    if (entry.fl && (normalizedHeadword === normalizedRequest || isStemMatch || isInflectedForm)) {
       let pos = entry.fl.toLowerCase();
       
       // Add tense prefix for past tense verbs
@@ -593,17 +604,27 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
     const fl = (entry.fl || '').toLowerCase();
     if (fl === 'abbreviation' || fl.includes('abbr') || fl.includes('combining form')) continue;
     
-    // Check if requested word appears in inflections (ins field) - for forms like "were" -> "be"
-    // Skip "or" alternatives and words with apostrophes
-    let isInflectedForm = false;
-    let inflectionLabel = '';
-    let inflectionIndex = -1;
-    
     // Get headword from entry (meta.id is the normalized headword)
     const headword = entry.meta?.id || entry.hwi?.hw;
     const cleanedHeadword = headword ? headword.replace(/\*/g, '').replace(/:\d+/g, '').replace(/\(.*?\)/g, '').replace(/\d+/g, '') : '';
     const normalizedHeadword = normalizeWord(cleanedHeadword);
     
+    // Check if requested word appears in stems array (e.g., "coastal" from "coast")
+    let isStemMatch = false;
+    if (entry.meta?.stems && Array.isArray(entry.meta.stems)) {
+      for (const stem of entry.meta.stems) {
+        if (normalizeWord(stem) === normalizedRequest) {
+          isStemMatch = true;
+          break;
+        }
+      }
+    }
+    
+    // Check if requested word appears in inflections (ins field) - for forms like "were" -> "be"
+    // Skip "or" alternatives and words with apostrophes
+    let isInflectedForm = false;
+    let inflectionLabel = '';
+    let inflectionIndex = -1;
     if (entry.ins && Array.isArray(entry.ins)) {
       for (let i = 0; i < entry.ins.length; i++) {
         const inf = entry.ins[i];
@@ -626,8 +647,8 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
       }
     }
     
-    // Collect part of speech from entries whose headword matches OR requested word is an inflection
-    if (fl && (normalizedHeadword === normalizedRequest || isInflectedForm)) {
+    // Collect part of speech from entries whose headword matches, is a stem match, or is an inflection
+    if (fl && (normalizedHeadword === normalizedRequest || isStemMatch || isInflectedForm)) {
       let pos = entry.fl.toLowerCase();
       
       // Add tense prefix for past tense verbs
