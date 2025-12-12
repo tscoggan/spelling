@@ -384,7 +384,9 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
         if (cx.cxl && cx.cxtis && Array.isArray(cx.cxtis)) {
           // cxl = "present tense third-person singular of", cxtis = [{cxt: "be"}]
           const label = cx.cxl;
-          const target = cx.cxtis[0]?.cxt;
+          // Strip homograph suffix (e.g., "creep:1" -> "creep")
+          const rawTarget = cx.cxtis[0]?.cxt;
+          const target = rawTarget?.replace(/:\d+$/, '');
           if (label && target) {
             const cxDef = `${label} "${target}"`;
             if (!allDefinitions.includes(cxDef)) {
@@ -696,7 +698,9 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
         if (cx.cxl && cx.cxtis && Array.isArray(cx.cxtis)) {
           // cxl = "present tense third-person singular of", cxtis = [{cxt: "be"}]
           const label = cx.cxl;
-          const target = cx.cxtis[0]?.cxt;
+          // Strip homograph suffix (e.g., "creep:1" -> "creep")
+          const rawTarget = cx.cxtis[0]?.cxt;
+          const target = rawTarget?.replace(/:\d+$/, '');
           if (label && target) {
             const cxDef = `${label} "${target}"`;
             if (!allDefinitions.includes(cxDef)) {
