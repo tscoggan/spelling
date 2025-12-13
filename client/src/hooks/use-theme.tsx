@@ -50,6 +50,16 @@ import unicornBackgroundPortrait from "@assets/Unicorn_background_-_portrait_176
 import unicornMascotTrophy from "@assets/Unicorn_with_trophy_1764681809727.png";
 import unicornMascotGoodTry from "@assets/Unicorn_with_good_try_1764681809728.png";
 
+import mermaidBackgroundLandscape from "@assets/Mermaid_background_-_landscape_1765637240489.png";
+import mermaidBackgroundPortrait from "@assets/Mermaid_background_-_portrait_1765637240488.png";
+import mermaidMascotTrophy from "@assets/Mermaid_with_trophy_1765637240486.png";
+import mermaidMascotGoodTry from "@assets/Mermaid_with_good_try_1765637240488.png";
+
+import dragonBackgroundLandscape from "@assets/Dragon_background_-_landscape_1765637240490.png";
+import dragonBackgroundPortrait from "@assets/Dragon_background_-_portrait_1765637240490.png";
+import dragonMascotTrophy from "@assets/Dragon_with_trophy_1765637240489.png";
+import dragonMascotGoodTry from "@assets/Dragon_with_good_try_1765637240489.png";
+
 const THEME_ASSETS: Record<ThemeId, ThemeAssets> = {
   default: {
     backgroundLandscape: defaultBackgroundLandscape,
@@ -113,6 +123,20 @@ const THEME_ASSETS: Record<ThemeId, ThemeAssets> = {
     mascotTrophy: volleyballMascotTrophy,
     mascotGoodTry: volleyballMascotGoodTry,
     name: "Volleyball",
+  },
+  mermaid: {
+    backgroundLandscape: mermaidBackgroundLandscape,
+    backgroundPortrait: mermaidBackgroundPortrait,
+    mascotTrophy: mermaidMascotTrophy,
+    mascotGoodTry: mermaidMascotGoodTry,
+    name: "Mermaid",
+  },
+  dragon: {
+    backgroundLandscape: dragonBackgroundLandscape,
+    backgroundPortrait: dragonBackgroundPortrait,
+    mascotTrophy: dragonMascotTrophy,
+    mascotGoodTry: dragonMascotGoodTry,
+    name: "Dragon",
   },
 };
 
@@ -224,7 +248,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const themeAssets = THEME_ASSETS[currentTheme] || THEME_ASSETS.default;
   
   // Themes with dark backgrounds that need white text
-  const hasDarkBackground = currentTheme === "default" || currentTheme === "space" || currentTheme === "robot" || currentTheme === "skiing" || currentTheme === "basketball" || currentTheme === "volleyball";
+  const hasDarkBackground = currentTheme === "default" || currentTheme === "space" || currentTheme === "robot" || currentTheme === "skiing" || currentTheme === "basketball" || currentTheme === "volleyball" || currentTheme === "mermaid" || currentTheme === "dragon";
 
   const value: ThemeContextValue = {
     currentTheme,
