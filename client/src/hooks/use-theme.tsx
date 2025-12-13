@@ -60,6 +60,16 @@ import dragonBackgroundPortrait from "@assets/Dragon_background_-_portrait_17656
 import dragonMascotTrophy from "@assets/Dragon_with_trophy_1765637240489.png";
 import dragonMascotGoodTry from "@assets/Dragon_with_good_try_1765637240489.png";
 
+import videogameBackgroundLandscape from "@assets/Video_game_background_-_landscape_1765649906101.png";
+import videogameBackgroundPortrait from "@assets/Video_game_background_-_portrait_1765649906101.png";
+import videogameMascotTrophy from "@assets/Video_game_trophy_1765649906100.png";
+import videogameMascotGoodTry from "@assets/Video_game_good_try_1765649906100.png";
+
+import animeBackgroundLandscape from "@assets/Anime_background_-_landscape_1765649906099.png";
+import animeBackgroundPortrait from "@assets/Anime_background_-_portrait_1765649906100.png";
+import animeMascotTrophy from "@assets/Anime_trophy_1765649906099.png";
+import animeMascotGoodTry from "@assets/Anime_good_try_1765649906098.png";
+
 const THEME_ASSETS: Record<ThemeId, ThemeAssets> = {
   default: {
     backgroundLandscape: defaultBackgroundLandscape,
@@ -137,6 +147,20 @@ const THEME_ASSETS: Record<ThemeId, ThemeAssets> = {
     mascotTrophy: dragonMascotTrophy,
     mascotGoodTry: dragonMascotGoodTry,
     name: "Dragon",
+  },
+  videogame: {
+    backgroundLandscape: videogameBackgroundLandscape,
+    backgroundPortrait: videogameBackgroundPortrait,
+    mascotTrophy: videogameMascotTrophy,
+    mascotGoodTry: videogameMascotGoodTry,
+    name: "Video Game",
+  },
+  anime: {
+    backgroundLandscape: animeBackgroundLandscape,
+    backgroundPortrait: animeBackgroundPortrait,
+    mascotTrophy: animeMascotTrophy,
+    mascotGoodTry: animeMascotGoodTry,
+    name: "Anime",
   },
 };
 

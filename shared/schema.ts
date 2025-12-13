@@ -305,12 +305,28 @@ export const SHOP_ITEMS = {
     type: "theme" as const,
     themeId: "dragon",
   },
+  videogame_theme: {
+    id: "videogame_theme",
+    name: "Video Game Theme",
+    description: "Enter a retro pixel world with classic platformer vibes!",
+    cost: 5,
+    type: "theme" as const,
+    themeId: "videogame",
+  },
+  anime_theme: {
+    id: "anime_theme",
+    name: "Anime Theme",
+    description: "Join an adorable anime adventure with a cute cat companion!",
+    cost: 5,
+    type: "theme" as const,
+    themeId: "anime",
+  },
 } as const;
 
 export type ShopItemId = keyof typeof SHOP_ITEMS;
 export type ShopItem = typeof SHOP_ITEMS[ShopItemId];
 
-export type ThemeId = "default" | "pirate" | "space" | "soccer" | "skiing" | "basketball" | "robot" | "unicorn" | "volleyball" | "mermaid" | "dragon";
+export type ThemeId = "default" | "pirate" | "space" | "soccer" | "skiing" | "basketball" | "robot" | "unicorn" | "volleyball" | "mermaid" | "dragon" | "videogame" | "anime";
 
 export interface ThemeAssets {
   backgroundLandscape: string;
@@ -374,6 +390,16 @@ export const AVAILABLE_THEMES: Record<ThemeId, { name: string; requiresPurchase:
     name: "Dragon",
     requiresPurchase: true,
     shopItemId: "dragon_theme",
+  },
+  videogame: {
+    name: "Video Game",
+    requiresPurchase: true,
+    shopItemId: "videogame_theme",
+  },
+  anime: {
+    name: "Anime",
+    requiresPurchase: true,
+    shopItemId: "anime_theme",
   },
 };
 
