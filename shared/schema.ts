@@ -289,12 +289,28 @@ export const SHOP_ITEMS = {
     type: "theme" as const,
     themeId: "volleyball",
   },
+  mermaid_theme: {
+    id: "mermaid_theme",
+    name: "Mermaid Theme",
+    description: "Dive into an underwater adventure with a magical mermaid character!",
+    cost: 5,
+    type: "theme" as const,
+    themeId: "mermaid",
+  },
+  dragon_theme: {
+    id: "dragon_theme",
+    name: "Dragon Theme",
+    description: "Soar through the skies with a friendly dragon companion!",
+    cost: 5,
+    type: "theme" as const,
+    themeId: "dragon",
+  },
 } as const;
 
 export type ShopItemId = keyof typeof SHOP_ITEMS;
 export type ShopItem = typeof SHOP_ITEMS[ShopItemId];
 
-export type ThemeId = "default" | "pirate" | "space" | "soccer" | "skiing" | "basketball" | "robot" | "unicorn" | "volleyball";
+export type ThemeId = "default" | "pirate" | "space" | "soccer" | "skiing" | "basketball" | "robot" | "unicorn" | "volleyball" | "mermaid" | "dragon";
 
 export interface ThemeAssets {
   backgroundLandscape: string;
@@ -348,6 +364,16 @@ export const AVAILABLE_THEMES: Record<ThemeId, { name: string; requiresPurchase:
     name: "Volleyball",
     requiresPurchase: true,
     shopItemId: "volleyball_theme",
+  },
+  mermaid: {
+    name: "Mermaid",
+    requiresPurchase: true,
+    shopItemId: "mermaid_theme",
+  },
+  dragon: {
+    name: "Dragon",
+    requiresPurchase: true,
+    shopItemId: "dragon_theme",
   },
 };
 
