@@ -265,8 +265,10 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
   const allDefinitions: string[] = [];
   
   for (const entry of validEntries) {
-    // Skip offensive entries
-    if (entry.meta?.offensive === true) continue;
+    // Note: We do NOT skip entries with meta.offensive=true because common words like
+    // "frog" and "girl" are marked offensive due to secondary meanings, but their
+    // primary definitions are perfectly appropriate for children. Instead, we filter
+    // out offensive senses when extracting definitions via containsKidInappropriateContent.
     
     // Skip abbreviation and combining form entries
     const fl = (entry.fl || '').toLowerCase();
@@ -597,8 +599,10 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
   const allDefinitions: string[] = [];
   
   for (const entry of validEntries) {
-    // Skip offensive entries
-    if (entry.meta?.offensive === true) continue;
+    // Note: We do NOT skip entries with meta.offensive=true because common words like
+    // "frog" and "girl" are marked offensive due to secondary meanings, but their
+    // primary definitions are perfectly appropriate for children. Instead, we filter
+    // out offensive senses when extracting definitions via containsKidInappropriateContent.
     
     // Skip abbreviation and combining form entries
     const fl = (entry.fl || '').toLowerCase();
