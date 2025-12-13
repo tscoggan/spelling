@@ -58,6 +58,14 @@ function stripFormatting(text: string): string {
     .replace(/\{\/b\}/g, '')          // bold end
     .replace(/\{phrase\}/g, '')       // phrase start
     .replace(/\{\/phrase\}/g, '')     // phrase end
+    .replace(/\{wi\}/g, '')           // word illustration start
+    .replace(/\{\/wi\}/g, '')         // word illustration end
+    .replace(/\{gloss\}/g, '')        // gloss start
+    .replace(/\{\/gloss\}/g, '')      // gloss end
+    .replace(/\{parahw\}/g, '')       // paragraph headword start
+    .replace(/\{\/parahw\}/g, '')     // paragraph headword end
+    .replace(/\{qword\}/g, '')        // quoted word start
+    .replace(/\{\/qword\}/g, '')      // quoted word end
     .replace(/\{ldquo\}/g, '"')       // left double quote
     .replace(/\{rdquo\}/g, '"')       // right double quote
     .replace(/\{sup\}.*?\{\/sup\}/g, '') // superscript
