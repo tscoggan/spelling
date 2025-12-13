@@ -23,6 +23,8 @@ import basketballThemeImage from "@assets/Backetball_player_with_trophy_17647107
 import robotThemeImage from "@assets/Robot_with_trophy_1764681809726.png";
 import unicornThemeImage from "@assets/Unicorn_with_trophy_1764681809727.png";
 import volleyballThemeImage from "@assets/Volleyball_player_with_trophy_1764710715399.png";
+import mermaidThemeImage from "@assets/Mermaid_with_trophy_1765637240486.png";
+import dragonThemeImage from "@assets/Dragon_with_trophy_1765637240489.png";
 import { SHOP_ITEMS, ShopItem, ShopItemId, ThemeId } from "@shared/schema";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -50,6 +52,8 @@ const ITEM_IMAGES: Record<ShopItemId, string> = {
   robot_theme: robotThemeImage,
   unicorn_theme: unicornThemeImage,
   volleyball_theme: volleyballThemeImage,
+  mermaid_theme: mermaidThemeImage,
+  dragon_theme: dragonThemeImage,
 };
 
 export default function StarShop() {

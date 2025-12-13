@@ -32,6 +32,11 @@ The frontend is built with React, utilizing Wouter for routing, TanStack Query f
   - **Family**: Stubbed for future implementation with $5 Stripe payment and Verifiable Parental Consent (VPC) flow. Currently shows "Coming Soon" message.
   - **School**: Full-featured accounts with complete access to all features including social features, user groups, and head-to-head challenges.
 - **Star Shop**: Users can purchase power-ups with earned stars. Available items include "Do Over" (1 star, retry one incorrect word) and "2nd Chance" (5 stars, retry all incorrect words at the end). Items are stored in the `user_items` table with quantity tracking.
+- **Theme System**: Purchasable themes change the game background and mascot character. When adding a new theme:
+  1. Add theme images to `attached_assets/` (4 images: trophy mascot, good try mascot, landscape background, portrait background)
+  2. Update `shared/schema.ts`: Add to `SHOP_ITEMS`, update `ThemeId` type, and add to `AVAILABLE_THEMES`
+  3. Update `client/src/hooks/use-theme.tsx`: Import all 4 images, add to `THEME_ASSETS`, and update `hasDarkBackground` if needed
+  4. Update `client/src/pages/star-shop.tsx`: Import the trophy image and add to `ITEM_IMAGES` mapping for thumbnails
 - **Custom Word Lists**: Users create, share, and manage custom word lists with assignable grade levels, image assignment, and visibility controls (public, private, groups). Supports importing words from .txt, .csv, and .pdf files with profanity filtering.
 - **Game Modes**: Includes Practice, Timed Challenge, Quiz Mode, Word Scramble (with dynamic tile sizing and single-row layout), Find the Mistake (with realistic error generation), and Crossword Puzzle (interactive, audio-only with client-side grid generation and mobile UX enhancements). All game modes use Durstenfeld shuffle for word randomization.
 - **Responsive Font Scaling**: Dynamic font sizing ensures long words fit within input fields across all game modes and viewport sizes.
