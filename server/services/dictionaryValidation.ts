@@ -326,8 +326,13 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
       }
     }
     
-    // Collect part of speech from entries whose headword matches, is a stem match, or is an inflection
-    if (entry.fl && (normalizedHeadword === normalizedRequest || isStemMatch || isInflectedForm)) {
+    // Allow stem matches only if requested word is derived FROM headword (contains it)
+    // This allows "coastal" from "coast" but prevents "sign language" from contributing to "sign"
+    const isValidStemDerivation = isStemMatch && normalizedRequest.includes(normalizedHeadword);
+    
+    // Collect part of speech and definitions from entries where headword matches exactly,
+    // word is a valid stem derivation, or word is an inflected form.
+    if (entry.fl && (normalizedHeadword === normalizedRequest || isValidStemDerivation || isInflectedForm)) {
       let pos = entry.fl.toLowerCase();
       
       // Add tense prefix for past tense verbs
@@ -659,8 +664,13 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
       }
     }
     
-    // Collect part of speech from entries whose headword matches, is a stem match, or is an inflection
-    if (fl && (normalizedHeadword === normalizedRequest || isStemMatch || isInflectedForm)) {
+    // Allow stem matches only if requested word is derived FROM headword (contains it)
+    // This allows "coastal" from "coast" but prevents "sign language" from contributing to "sign"
+    const isValidStemDerivation = isStemMatch && normalizedRequest.includes(normalizedHeadword);
+    
+    // Collect part of speech and definitions from entries where headword matches exactly,
+    // word is a valid stem derivation, or word is an inflected form.
+    if (fl && (normalizedHeadword === normalizedRequest || isValidStemDerivation || isInflectedForm)) {
       let pos = entry.fl.toLowerCase();
       
       // Add tense prefix for past tense verbs
