@@ -460,19 +460,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/sessions", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      console.log("[DEBUG] Creating session with body:", JSON.stringify(req.body));
       // Normalize legacy "standard" mode to "practice"
       const normalizedData = {
         ...req.body,
         gameMode: req.body.gameMode === "standard" ? "practice" : req.body.gameMode
       };
       const sessionData = insertGameSessionSchema.parse(normalizedData);
-      console.log("[DEBUG] Parsed session data:", JSON.stringify(sessionData));
       const session = await storage.createGameSession(sessionData);
-      console.log("[DEBUG] Created session:", JSON.stringify(session));
       res.json(session);
     } catch (error) {
-      console.error("[DEBUG] Session creation error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid session data", details: error.errors });
       }
