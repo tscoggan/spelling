@@ -247,7 +247,7 @@ export default function Home() {
   // Generate Word List dialog state
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [generateGradeLevel, setGenerateGradeLevel] = useState<string>("");
-  const [generateWordCount, setGenerateWordCount] = useState<number>(10);
+  const [generateWordCountInput, setGenerateWordCountInput] = useState<string>("10");
   const [isGenerating, setIsGenerating] = useState(false);
   
   // Head to Head Challenge state
@@ -500,9 +500,13 @@ export default function Home() {
   const handleGenerateWordList = async () => {
     if (!generateGradeLevel || !selectedMode) return;
     
+    // Validate and clamp word count on submit
+    const parsedCount = parseInt(generateWordCountInput, 10);
+    const wordCount = isNaN(parsedCount) ? 10 : Math.max(5, Math.min(100, parsedCount));
+    
     setIsGenerating(true);
     try {
-      const response = await fetch(`/api/generated-word-lists/${generateGradeLevel}?count=${generateWordCount}`);
+      const response = await fetch(`/api/generated-word-lists/${generateGradeLevel}?count=${wordCount}`);
       if (!response.ok) throw new Error("Failed to generate word list");
       
       const data = await response.json();
@@ -1141,7 +1145,7 @@ export default function Home() {
               size="sm"
               onClick={() => {
                 setGenerateGradeLevel("");
-                setGenerateWordCount(10);
+                setGenerateWordCountInput("10");
                 setGenerateDialogOpen(true);
               }}
               data-testid="button-generate-word-list"
@@ -1238,16 +1242,8 @@ export default function Home() {
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                value={generateWordCount}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/[^0-9]/g, '');
-                  if (val === '') {
-                    setGenerateWordCount(5);
-                  } else {
-                    const num = parseInt(val, 10);
-                    setGenerateWordCount(Math.max(5, Math.min(100, num)));
-                  }
-                }}
+                value={generateWordCountInput}
+                onChange={(e) => setGenerateWordCountInput(e.target.value.replace(/[^0-9]/g, ''))}
                 data-testid="input-word-count"
               />
               <p className="text-xs text-muted-foreground mt-1">Between 5 and 100 words</p>
