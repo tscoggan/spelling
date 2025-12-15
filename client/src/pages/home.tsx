@@ -1215,7 +1215,7 @@ export default function Home() {
           <div className="space-y-4 pt-2">
             <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-md p-3 text-sm text-blue-800 dark:text-blue-200">
               <p className="font-medium mb-1">Practice Mode</p>
-              <p className="text-xs opacity-80">Generated word lists are for practice only. Progress, stars, and achievements are not tracked.</p>
+              <p className="text-xs opacity-80">Generated word lists track your stats, but stars and achievements are not earned.</p>
             </div>
             <div>
               <label className="text-sm font-medium mb-1.5 block">Grade Level</label>
@@ -1235,11 +1235,19 @@ export default function Home() {
             <div>
               <label className="text-sm font-medium mb-1.5 block">Number of Words</label>
               <Input
-                type="number"
-                min={5}
-                max={100}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={generateWordCount}
-                onChange={(e) => setGenerateWordCount(Math.max(5, Math.min(100, parseInt(e.target.value) || 10)))}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9]/g, '');
+                  if (val === '') {
+                    setGenerateWordCount(5);
+                  } else {
+                    const num = parseInt(val, 10);
+                    setGenerateWordCount(Math.max(5, Math.min(100, num)));
+                  }
+                }}
                 data-testid="input-word-count"
               />
               <p className="text-xs text-muted-foreground mt-1">Between 5 and 100 words</p>

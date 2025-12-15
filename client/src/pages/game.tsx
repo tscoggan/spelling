@@ -426,7 +426,7 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
   };
 
   const createSessionMutation = useMutation({
-    mutationFn: async (sessionData: { gameMode: string; userId: number | null; wordListId?: number }) => {
+    mutationFn: async (sessionData: { gameMode: string; userId: number | null; wordListId?: number | null }) => {
       // Guest users store sessions in memory only
       if (isGuestMode) {
         const guestSession = addGameSession({
@@ -887,16 +887,13 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
   });
 
   useEffect(() => {
-    // Skip session creation for virtual word lists (no stats tracking)
-    if (virtualWords) {
-      return;
-    }
-    
-    if (listId && gameMode && !sessionId && user) {
+    // Create session for both regular and virtual word lists
+    // Virtual word lists use null word_list_id but still track stats
+    if ((listId || virtualWords) && gameMode && !sessionId && user) {
       createSessionMutation.mutate({ 
         gameMode, 
         userId: user.id,
-        wordListId: listId ? parseInt(listId, 10) : undefined
+        wordListId: listId ? parseInt(listId, 10) : null
       });
     }
   }, [gameMode, sessionId, user, listId, virtualWords]);
@@ -1631,14 +1628,7 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
   }, [showFeedback, gameMode]);
 
   useEffect(() => {
-    // Skip score saving and session updates for virtual word lists
-    if (virtualWords) {
-      if (gameComplete && !scoreSaved) {
-        setScoreSaved(true);
-      }
-      return;
-    }
-    
+    // Virtual word lists still track stats in game_sessions, but skip leaderboard/achievements
     if (gameComplete && !scoreSaved && sessionId && user) {
       // Calculate actual words used based on game mode
       // Use activeWords for second chance mode, otherwise use words
@@ -1721,6 +1711,12 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
           // Invalidate user stats cache to refresh My Stats page
           queryClient.invalidateQueries({ queryKey: [`/api/stats/user/${user.id}`] });
           
+          // Skip leaderboard/achievements for virtual word lists (no stars/achievements earned)
+          if (virtualWords) {
+            console.log("Virtual word list - skipping leaderboard and achievements");
+            return;
+          }
+          
           // After session update succeeds, save score to leaderboard and check achievements
           saveScoreMutation.mutate({
             score: unifiedScore,
@@ -1731,6 +1727,9 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
           });
         } catch (error) {
           console.error("Failed to update game session:", error);
+          // Skip leaderboard for virtual word lists even on error
+          if (virtualWords) return;
+          
           // Still save to leaderboard even if session update fails
           saveScoreMutation.mutate({
             score: unifiedScore,
