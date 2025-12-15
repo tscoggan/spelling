@@ -326,9 +326,18 @@ function parseLearnerResponse(data: any, requestedWord: string): WordMetadata {
       }
     }
     
-    // Allow stem matches only if requested word is derived FROM headword (contains it)
-    // This allows "coastal" from "coast" but prevents "sign language" from contributing to "sign"
-    const isValidStemDerivation = isStemMatch && normalizedRequest.includes(normalizedHeadword);
+    // Allow stem matches if the requested word is derived FROM headword
+    // This allows "coastal" from "coast" and "recognizable" from "recognize"
+    // but prevents "sign language" from contributing to "sign"
+    // Check if: (1) query contains headword exactly, OR
+    //           (2) query contains headword minus trailing vowel (for words like recognize->recognizable)
+    //           (3) headword contains query (for compound entries where query is the base)
+    const headwordBase = normalizedHeadword.replace(/[aeiou]$/, ''); // Strip trailing vowel
+    const isValidStemDerivation = isStemMatch && (
+      normalizedRequest.includes(normalizedHeadword) ||
+      normalizedRequest.includes(headwordBase) ||
+      normalizedHeadword.includes(normalizedRequest)
+    );
     
     // Collect part of speech and definitions from entries where headword matches exactly,
     // word is a valid stem derivation, or word is an inflected form.
@@ -664,9 +673,18 @@ function parseCollegiateResponse(data: any, requestedWord: string): WordMetadata
       }
     }
     
-    // Allow stem matches only if requested word is derived FROM headword (contains it)
-    // This allows "coastal" from "coast" but prevents "sign language" from contributing to "sign"
-    const isValidStemDerivation = isStemMatch && normalizedRequest.includes(normalizedHeadword);
+    // Allow stem matches if the requested word is derived FROM headword
+    // This allows "coastal" from "coast" and "recognizable" from "recognize"
+    // but prevents "sign language" from contributing to "sign"
+    // Check if: (1) query contains headword exactly, OR
+    //           (2) query contains headword minus trailing vowel (for words like recognize->recognizable)
+    //           (3) headword contains query (for compound entries where query is the base)
+    const headwordBase = normalizedHeadword.replace(/[aeiou]$/, ''); // Strip trailing vowel
+    const isValidStemDerivation = isStemMatch && (
+      normalizedRequest.includes(normalizedHeadword) ||
+      normalizedRequest.includes(headwordBase) ||
+      normalizedHeadword.includes(normalizedRequest)
+    );
     
     // Collect part of speech and definitions from entries where headword matches exactly,
     // word is a valid stem derivation, or word is an inflected form.
