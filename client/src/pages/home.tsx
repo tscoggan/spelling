@@ -244,6 +244,12 @@ export default function Home() {
   // Feature comparison dialog state (for locked features)
   const [featureComparisonOpen, setFeatureComparisonOpen] = useState(false);
   
+  // Generate Word List dialog state
+  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
+  const [generateGradeLevel, setGenerateGradeLevel] = useState<string>("");
+  const [generateWordCount, setGenerateWordCount] = useState<number>(10);
+  const [isGenerating, setIsGenerating] = useState(false);
+  
   // Head to Head Challenge state
   const [h2hDialogOpen, setH2hDialogOpen] = useState(false);
   const [h2hSelectedWordList, setH2hSelectedWordList] = useState<number | null>(null);
@@ -287,6 +293,12 @@ export default function Home() {
   const { data: hiddenWordLists } = useQuery<{ wordListId: number }[]>({
     queryKey: ["/api/word-lists/hidden"],
     enabled: !isGuestMode && user?.accountType !== 'free',
+  });
+
+  // Grade levels for Generate Word List feature
+  const { data: gradeLevels } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ["/api/generated-word-lists/grades"],
+    enabled: generateDialogOpen,
   });
   
   const hiddenWordListIds = useMemo(() => {
@@ -483,6 +495,43 @@ export default function Home() {
     const supportsGameLength = ["practice", "quiz", "scramble", "mistake"].includes(selectedMode);
     const gameCountParam = supportsGameLength ? `&gameCount=${gameWordCount}` : "";
     setLocation(`/game?listId=${list.id}&mode=${selectedMode}${gameCountParam}`);
+  };
+
+  const handleGenerateWordList = async () => {
+    if (!generateGradeLevel || !selectedMode) return;
+    
+    setIsGenerating(true);
+    try {
+      const response = await fetch(`/api/generated-word-lists/${generateGradeLevel}?count=${generateWordCount}`);
+      if (!response.ok) throw new Error("Failed to generate word list");
+      
+      const data = await response.json();
+      const words = data.words as string[];
+      
+      // For iOS keyboard
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || 
+                    (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+      if (isIOS && iOSKeyboardInput?.current) {
+        iOSKeyboardInput.current.focus();
+      }
+      
+      // Close dialogs and navigate using virtualWords parameter
+      setGenerateDialogOpen(false);
+      setWordListDialogOpen(false);
+      
+      const virtualWordsParam = encodeURIComponent(words.join(','));
+      const supportsGameLength = ["practice", "quiz", "scramble", "mistake"].includes(selectedMode);
+      const gameCountParam = supportsGameLength ? `&gameCount=all` : "";
+      setLocation(`/game?virtualWords=${virtualWordsParam}&mode=${selectedMode}${gameCountParam}`);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate word list. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   // Check if user is a free account
@@ -1072,19 +1121,35 @@ export default function Home() {
             )}
           </div>
 
-          <div className="mb-4 flex items-center space-x-2">
-            <Checkbox 
-              id="hide-mastered" 
-              checked={hideMastered}
-              onCheckedChange={(checked) => setHideMastered(checked === true)}
-              data-testid="checkbox-hide-mastered"
-            />
-            <label 
-              htmlFor="hide-mastered" 
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+          <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="hide-mastered" 
+                checked={hideMastered}
+                onCheckedChange={(checked) => setHideMastered(checked === true)}
+                data-testid="checkbox-hide-mastered"
+              />
+              <label 
+                htmlFor="hide-mastered" 
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+              >
+                Hide Word Lists I've Mastered
+              </label>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setGenerateGradeLevel("");
+                setGenerateWordCount(10);
+                setGenerateDialogOpen(true);
+              }}
+              data-testid="button-generate-word-list"
+              className="flex items-center gap-1.5"
             >
-              Hide Word Lists I've Mastered
-            </label>
+              <Sparkles className="w-4 h-4" />
+              Generate Word List
+            </Button>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-2 pr-2">
@@ -1131,6 +1196,78 @@ export default function Home() {
                 </div>
               ))
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Generate Word List Dialog */}
+      <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              Generate Word List
+            </DialogTitle>
+            <DialogDescription>
+              Create a random word list from grade-level vocabulary
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-md p-3 text-sm text-blue-800 dark:text-blue-200">
+              <p className="font-medium mb-1">Practice Mode</p>
+              <p className="text-xs opacity-80">Generated word lists are for practice only. Progress, stars, and achievements are not tracked.</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Grade Level</label>
+              <Select value={generateGradeLevel} onValueChange={setGenerateGradeLevel}>
+                <SelectTrigger data-testid="select-grade-level">
+                  <SelectValue placeholder="Select a grade level" />
+                </SelectTrigger>
+                <SelectContent>
+                  {gradeLevels?.map((grade) => (
+                    <SelectItem key={grade.id} value={grade.id}>
+                      {grade.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Number of Words</label>
+              <Input
+                type="number"
+                min={5}
+                max={100}
+                value={generateWordCount}
+                onChange={(e) => setGenerateWordCount(Math.max(5, Math.min(100, parseInt(e.target.value) || 10)))}
+                data-testid="input-word-count"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Between 5 and 100 words</p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button
+                onClick={handleGenerateWordList}
+                disabled={!generateGradeLevel || isGenerating}
+                className="flex-1"
+                data-testid="button-start-generated"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  "Start"
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setGenerateDialogOpen(false)}
+                data-testid="button-cancel-generate"
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

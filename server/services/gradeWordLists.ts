@@ -54,8 +54,17 @@ export function getRandomWordsFromGrade(gradeId: string, count: number): string[
   const allWords = getGradeLevelWords(gradeId);
   if (!allWords) return null;
 
-  const shuffled = [...allWords].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, Math.min(count, shuffled.length));
+  // Clamp count to valid range (5-100) and available words
+  const clampedCount = Math.max(5, Math.min(100, count, allWords.length));
+
+  // Durstenfeld shuffle for proper randomization (same as game.tsx)
+  const shuffled = [...allWords];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  
+  return shuffled.slice(0, clampedCount);
 }
 
 export function getAvailableGradeLevels(): { id: string; name: string }[] {

@@ -960,7 +960,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { getRandomWordsFromGrade, getGradeWordCount } = await import('./services/gradeWordLists');
       const { gradeId } = req.params;
-      const count = parseInt(req.query.count as string) || 10;
+      
+      // Parse count with default of 10 if not provided
+      const rawCount = req.query.count !== undefined ? parseInt(req.query.count as string) : 10;
+      
+      // Validate that it's a valid number
+      if (isNaN(rawCount)) {
+        return res.status(400).json({ error: "Invalid count parameter. Must be a number between 5 and 100." });
+      }
+      
+      // Clamp to 5-100 range
+      const count = Math.max(5, Math.min(100, rawCount));
       
       const words = getRandomWordsFromGrade(gradeId, count);
       if (!words) {
@@ -968,7 +978,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const totalWords = getGradeWordCount(gradeId);
-      res.json({ words, totalWords });
+      res.json({ words, totalWords, requestedCount: rawCount, actualCount: words.length });
     } catch (error) {
       console.error("Error generating word list:", error);
       res.status(500).json({ error: "Failed to generate word list" });
