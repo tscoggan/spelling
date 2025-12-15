@@ -944,6 +944,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generated Word Lists endpoints - grade-level word lists for quick practice
+  app.get("/api/generated-word-lists/grades", async (req, res) => {
+    try {
+      const { getAvailableGradeLevels } = await import('./services/gradeWordLists');
+      const grades = getAvailableGradeLevels();
+      res.json(grades);
+    } catch (error) {
+      console.error("Error fetching grade levels:", error);
+      res.status(500).json({ error: "Failed to fetch grade levels" });
+    }
+  });
+
+  app.get("/api/generated-word-lists/:gradeId", async (req, res) => {
+    try {
+      const { getRandomWordsFromGrade, getGradeWordCount } = await import('./services/gradeWordLists');
+      const { gradeId } = req.params;
+      const count = parseInt(req.query.count as string) || 10;
+      
+      const words = getRandomWordsFromGrade(gradeId, count);
+      if (!words) {
+        return res.status(404).json({ error: "Grade level not found" });
+      }
+      
+      const totalWords = getGradeWordCount(gradeId);
+      res.json({ words, totalWords });
+    } catch (error) {
+      console.error("Error generating word list:", error);
+      res.status(500).json({ error: "Failed to generate word list" });
+    }
+  });
+
   // Hidden Word Lists endpoints - MUST be before /api/word-lists/:id to avoid route conflict
   app.get("/api/word-lists/hidden", requirePaidAccount, async (req, res) => {
     try {
