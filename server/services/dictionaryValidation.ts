@@ -71,8 +71,14 @@ function stripFormatting(text: string): string {
     .replace(/\{sup\}.*?\{\/sup\}/g, '') // superscript
     .replace(/\{inf\}.*?\{\/inf\}/g, '') // inferior
     .replace(/\{dx\}.*?\{\/dx\}/g, '') // cross references
+    .replace(/\{dx_ety\}.*?\{\/dx_ety\}/g, '') // etymology cross references
+    .replace(/\{dx_def\}.*?\{\/dx_def\}/g, '') // definition cross references
     .replace(/\{dxt\|.*?\}/g, '')     // cross reference text
+    .replace(/\{et_link\|[^}]*\}/g, '') // etymology link references
     .replace(/\{sx\|.*?\}/g, '')      // synonym cross reference
+    .replace(/\{a_link\|[^}]*\}/g, '') // anchor links
+    .replace(/\{d_link\|[^}]*\}/g, '') // definition links
+    .replace(/\{i_link\|[^}]*\}/g, '') // internal links
     .replace(/\{ma\}/g, '')           // math
     .replace(/\{\/ma\}/g, '')
     .replace(/\[.*?\]/g, '')          // square brackets (e.g., [=leaped])
