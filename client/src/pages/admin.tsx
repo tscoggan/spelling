@@ -13,7 +13,18 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
-import { Upload, Search, Users, FileText, ArrowUpDown, Loader2, Check, X, AlertCircle, Ban, Copy, BookX, Home } from "lucide-react";
+import { Upload, Search, Users, FileText, ArrowUpDown, Loader2, Check, X, AlertCircle, Ban, Copy, BookX, Home, UserX, Trash2, Shield } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Word } from "@shared/schema";
@@ -44,6 +55,20 @@ interface BulkUploadResult {
     skipped: string[];
     overwritten: string[];
   };
+}
+
+interface AdminUser {
+  id: number;
+  username: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  role: string;
+  accountType: string;
+  stars: number;
+  createdAt: string;
+  gamesPlayed: number;
+  lastActive: string | null;
 }
 
 export default function AdminPage() {
@@ -99,6 +124,29 @@ export default function AdminPage() {
     },
     onError: (error: Error) => {
       toast({ title: "Failed to update word", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const { data: adminUsers = [], isLoading: isLoadingUsers } = useQuery<AdminUser[]>({
+    queryKey: ['/api/admin/users'],
+    queryFn: async () => {
+      const response = await fetch('/api/admin/users');
+      if (!response.ok) throw new Error('Failed to fetch users');
+      return response.json();
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const response = await apiRequest('DELETE', `/api/admin/users/${userId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "User deleted", description: "User and all associated data have been removed" });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to delete user", description: error.message, variant: "destructive" });
     },
   });
 
@@ -256,7 +304,7 @@ export default function AdminPage() {
         </div>
 
         <Tabs defaultValue="word-loader" className="w-full">
-          <TabsList className="grid w-full grid-cols-3" data-testid="tabs-admin">
+          <TabsList className="grid w-full grid-cols-4" data-testid="tabs-admin">
             <TabsTrigger value="word-loader" data-testid="tab-word-loader">
               <Upload className="w-4 h-4 mr-2" />
               Word Loader
@@ -268,6 +316,10 @@ export default function AdminPage() {
             <TabsTrigger value="word-editor" data-testid="tab-word-editor">
               <FileText className="w-4 h-4 mr-2" />
               Word Editor
+            </TabsTrigger>
+            <TabsTrigger value="user-management" data-testid="tab-user-management">
+              <Shield className="w-4 h-4 mr-2" />
+              User Management
             </TabsTrigger>
           </TabsList>
 
@@ -686,6 +738,136 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="user-management">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="w-5 h-5" />
+                  User Management
+                </CardTitle>
+                <CardDescription>
+                  View all registered users, their activity metrics, and manage accounts.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingUsers ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : adminUsers.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <UserX className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No registered users found</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>ID</TableHead>
+                          <TableHead>Username</TableHead>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Role</TableHead>
+                          <TableHead>Account Type</TableHead>
+                          <TableHead className="text-right">Stars</TableHead>
+                          <TableHead className="text-right">Games Played</TableHead>
+                          <TableHead>Created</TableHead>
+                          <TableHead>Last Active</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {adminUsers.map((user) => (
+                          <TableRow key={user.id} data-testid={`row-user-${user.id}`}>
+                            <TableCell className="font-mono text-xs">{user.id}</TableCell>
+                            <TableCell className="font-medium">{user.username}</TableCell>
+                            <TableCell>
+                              {user.firstName || user.lastName 
+                                ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
+                                : <span className="text-muted-foreground">-</span>}
+                            </TableCell>
+                            <TableCell>
+                              {user.email || <span className="text-muted-foreground">-</span>}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={user.role === 'admin' ? 'default' : user.role === 'teacher' ? 'secondary' : 'outline'}>
+                                {user.role}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="capitalize">
+                                {user.accountType}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">{user.stars}</TableCell>
+                            <TableCell className="text-right">{user.gamesPlayed}</TableCell>
+                            <TableCell className="text-xs">
+                              {new Date(user.createdAt).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              {user.lastActive 
+                                ? new Date(user.lastActive).toLocaleDateString()
+                                : <span className="text-muted-foreground">Never</span>}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    disabled={user.role === 'admin'}
+                                    data-testid={`button-delete-user-${user.id}`}
+                                  >
+                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete User Account</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This will permanently delete the user "{user.username}" and ALL associated data including:
+                                      <ul className="list-disc ml-6 mt-2 space-y-1">
+                                        <li>Game sessions and scores</li>
+                                        <li>Achievements and streaks</li>
+                                        <li>Word lists and groups they own</li>
+                                        <li>Group memberships</li>
+                                        <li>Star shop purchases</li>
+                                      </ul>
+                                      <p className="mt-3 font-medium text-destructive">This action cannot be undone.</p>
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteUserMutation.mutate(user.id)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      data-testid={`button-confirm-delete-user-${user.id}`}
+                                    >
+                                      {deleteUserMutation.isPending ? (
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                      ) : (
+                                        <Trash2 className="w-4 h-4 mr-2" />
+                                      )}
+                                      Delete User
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <div className="mt-4 text-sm text-muted-foreground">
+                      Total users: {adminUsers.length}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

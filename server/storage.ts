@@ -60,6 +60,7 @@ import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
 import { APP_VERSION } from "@shared/version";
+import { encryptUserPII, decryptUserPII, encrypt, decrypt, hasEncryptionKey } from "./services/encryption";
 
 export interface IStorage {
   getWord(id: number): Promise<Word | undefined>;
@@ -197,6 +198,8 @@ export interface IStorage {
   getAllWords(): Promise<Word[]>;
   updateWord(id: number, updates: Partial<{ definition: string | null; sentenceExample: string | null; wordOrigin: string | null; partOfSpeech: string | null }>, updatedByUserId?: number): Promise<Word | undefined>;
   getUsageMetrics(dateRange: 'today' | 'week' | 'month' | 'all'): Promise<{ userId: number | null; username: string; gamesPlayed: number }[]>;
+  getAllUsersWithMetrics(): Promise<{ id: number; username: string; firstName: string | null; lastName: string | null; email: string | null; role: string; accountType: string; stars: number; createdAt: Date; gamesPlayed: number; lastActive: Date | null }[]>;
+  deleteUserAndAllData(userId: number): Promise<boolean>;
   
   sessionStore: session.Store;
 }
@@ -342,22 +345,35 @@ export class DatabaseStorage implements IStorage {
 
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user || undefined;
+    if (!user) return undefined;
+    return hasEncryptionKey() ? decryptUserPII(user) : user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user || undefined;
+    if (!user) return undefined;
+    return hasEncryptionKey() ? decryptUserPII(user) : user;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user || undefined;
+    if (!hasEncryptionKey()) {
+      const [user] = await db.select().from(users).where(eq(users.email, email));
+      return user || undefined;
+    }
+    const allUsers = await db.select().from(users);
+    for (const user of allUsers) {
+      const decrypted = decryptUserPII(user);
+      if (decrypted.email?.toLowerCase() === email.toLowerCase()) {
+        return decrypted;
+      }
+    }
+    return undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
-    return user;
+    const encryptedUser = hasEncryptionKey() ? encryptUserPII(insertUser) : insertUser;
+    const [user] = await db.insert(users).values(encryptedUser).returning();
+    return hasEncryptionKey() ? decryptUserPII(user) : user;
   }
 
   async updateUserPreferences(userId: number, preferences: { preferredVoice?: string | null; selectedTheme?: string }): Promise<User> {
@@ -366,16 +382,17 @@ export class DatabaseStorage implements IStorage {
       .set(preferences)
       .where(eq(users.id, userId))
       .returning();
-    return user;
+    return hasEncryptionKey() ? decryptUserPII(user) : user;
   }
 
   async updateUserEmail(userId: number, email: string): Promise<User> {
+    const encryptedEmail = hasEncryptionKey() ? encrypt(email) : email;
     const [user] = await db
       .update(users)
-      .set({ email })
+      .set({ email: encryptedEmail })
       .where(eq(users.id, userId))
       .returning();
-    return user;
+    return hasEncryptionKey() ? decryptUserPII(user) : user;
   }
 
   async updateUserPassword(userId: number, password: string): Promise<User> {
@@ -384,16 +401,17 @@ export class DatabaseStorage implements IStorage {
       .set({ password })
       .where(eq(users.id, userId))
       .returning();
-    return user;
+    return hasEncryptionKey() ? decryptUserPII(user) : user;
   }
 
   async updateUserProfile(userId: number, updates: { firstName?: string; lastName?: string; email?: string; selectedAvatar?: string }): Promise<User> {
+    const encryptedUpdates = hasEncryptionKey() ? encryptUserPII(updates) : updates;
     const [user] = await db
       .update(users)
-      .set(updates)
+      .set(encryptedUpdates)
       .where(eq(users.id, userId))
       .returning();
-    return user;
+    return hasEncryptionKey() ? decryptUserPII(user) : user;
   }
 
   async createLeaderboardScore(insertScore: InsertLeaderboardScore): Promise<LeaderboardScore> {
@@ -908,7 +926,7 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(users, eq(userGroupMembership.userId, users.id))
       .where(eq(userGroupMembership.groupId, groupId));
     
-    return members;
+    return hasEncryptionKey() ? members.map(m => decryptUserPII(m)) : members;
   }
 
   async updateUserGroup(groupId: number, updates: Partial<InsertUserGroup>): Promise<UserGroup> {
@@ -1008,8 +1026,30 @@ export class DatabaseStorage implements IStorage {
   }
 
   async searchUsers(query: string): Promise<any[]> {
-    const searchTerm = `%${query.toLowerCase()}%`;
-    const results = await db
+    const searchTerm = query.toLowerCase();
+    
+    if (!hasEncryptionKey()) {
+      const results = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          selectedAvatar: users.selectedAvatar,
+        })
+        .from(users)
+        .where(
+          sql`LOWER(${users.username}) LIKE ${'%' + searchTerm + '%'} 
+           OR LOWER(${users.firstName}) LIKE ${'%' + searchTerm + '%'}
+           OR LOWER(${users.lastName}) LIKE ${'%' + searchTerm + '%'}
+           OR LOWER(${users.email}) LIKE ${'%' + searchTerm + '%'}`
+        )
+        .limit(10);
+      return results;
+    }
+    
+    const allUsers = await db
       .select({
         id: users.id,
         username: users.username,
@@ -1018,16 +1058,17 @@ export class DatabaseStorage implements IStorage {
         email: users.email,
         selectedAvatar: users.selectedAvatar,
       })
-      .from(users)
-      .where(
-        sql`LOWER(${users.username}) LIKE ${searchTerm} 
-         OR LOWER(${users.firstName}) LIKE ${searchTerm}
-         OR LOWER(${users.lastName}) LIKE ${searchTerm}
-         OR LOWER(${users.email}) LIKE ${searchTerm}`
-      )
-      .limit(10);
+      .from(users);
     
-    return results;
+    const decryptedUsers = allUsers.map(u => decryptUserPII(u));
+    const filtered = decryptedUsers.filter(u => 
+      u.username?.toLowerCase().includes(searchTerm) ||
+      u.firstName?.toLowerCase().includes(searchTerm) ||
+      u.lastName?.toLowerCase().includes(searchTerm) ||
+      u.email?.toLowerCase().includes(searchTerm)
+    );
+    
+    return filtered.slice(0, 10);
   }
 
   async getUserOwnedGroups(userId: number): Promise<any[]> {
@@ -1255,30 +1296,48 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTeachers(): Promise<User[]> {
-    return await db
+    const teachers = await db
       .select()
       .from(users)
       .where(eq(users.role, "teacher"));
+    return hasEncryptionKey() ? teachers.map(t => decryptUserPII(t)) : teachers;
   }
 
   async searchTeachers(query: string): Promise<User[]> {
-    const searchTerm = `%${query.toLowerCase()}%`;
-    return await db
-      .select()
-      .from(users)
-      .where(
-        and(
-          eq(users.role, "teacher"),
-          or(
-            sql`LOWER(${users.username}) LIKE ${searchTerm}`,
-            sql`LOWER(${users.email}) LIKE ${searchTerm}`,
-            sql`LOWER(${users.firstName}) LIKE ${searchTerm}`,
-            sql`LOWER(${users.lastName}) LIKE ${searchTerm}`,
-            sql`LOWER(CONCAT(${users.firstName}, ' ', ${users.lastName})) LIKE ${searchTerm}`
+    const searchTerm = query.toLowerCase();
+    
+    if (!hasEncryptionKey()) {
+      return await db
+        .select()
+        .from(users)
+        .where(
+          and(
+            eq(users.role, "teacher"),
+            or(
+              sql`LOWER(${users.username}) LIKE ${'%' + searchTerm + '%'}`,
+              sql`LOWER(${users.email}) LIKE ${'%' + searchTerm + '%'}`,
+              sql`LOWER(${users.firstName}) LIKE ${'%' + searchTerm + '%'}`,
+              sql`LOWER(${users.lastName}) LIKE ${'%' + searchTerm + '%'}`,
+              sql`LOWER(CONCAT(${users.firstName}, ' ', ${users.lastName})) LIKE ${'%' + searchTerm + '%'}`
+            )
           )
         )
-      )
-      .limit(10);
+        .limit(10);
+    }
+    
+    const allTeachers = await db
+      .select()
+      .from(users)
+      .where(eq(users.role, "teacher"));
+    
+    const decrypted = allTeachers.map(t => decryptUserPII(t));
+    return decrypted.filter(t =>
+      t.username?.toLowerCase().includes(searchTerm) ||
+      t.email?.toLowerCase().includes(searchTerm) ||
+      t.firstName?.toLowerCase().includes(searchTerm) ||
+      t.lastName?.toLowerCase().includes(searchTerm) ||
+      `${t.firstName || ''} ${t.lastName || ''}`.toLowerCase().includes(searchTerm)
+    ).slice(0, 10);
   }
 
   async createPasswordResetToken(insertToken: InsertPasswordResetToken): Promise<PasswordResetToken> {
@@ -1920,6 +1979,75 @@ export class DatabaseStorage implements IStorage {
     );
 
     return enrichedResults;
+  }
+
+  async getAllUsersWithMetrics(): Promise<{ id: number; username: string; firstName: string | null; lastName: string | null; email: string | null; role: string; accountType: string; stars: number; createdAt: Date; gamesPlayed: number; lastActive: Date | null }[]> {
+    const allUsers = await db.select().from(users);
+    
+    const sessionsPerUser = await db
+      .select({
+        userId: gameSessions.userId,
+        gamesPlayed: sql<number>`count(*)::int`,
+        lastActive: sql<Date>`MAX(${gameSessions.createdAt})`,
+      })
+      .from(gameSessions)
+      .groupBy(gameSessions.userId);
+    
+    const sessionMap = new Map(sessionsPerUser.map(s => [s.userId, { gamesPlayed: s.gamesPlayed, lastActive: s.lastActive }]));
+    
+    const usersWithMetrics = allUsers.map(user => {
+      const decrypted = hasEncryptionKey() ? decryptUserPII(user) : user;
+      const metrics = sessionMap.get(user.id) || { gamesPlayed: 0, lastActive: null };
+      return {
+        id: decrypted.id,
+        username: decrypted.username,
+        firstName: decrypted.firstName,
+        lastName: decrypted.lastName,
+        email: decrypted.email,
+        role: decrypted.role,
+        accountType: decrypted.accountType,
+        stars: decrypted.stars,
+        createdAt: decrypted.createdAt,
+        gamesPlayed: metrics.gamesPlayed,
+        lastActive: metrics.lastActive,
+      };
+    });
+    
+    return usersWithMetrics;
+  }
+
+  async deleteUserAndAllData(userId: number): Promise<boolean> {
+    await db.delete(gameSessions).where(eq(gameSessions.userId, userId));
+    await db.delete(leaderboardScores).where(eq(leaderboardScores.userId, userId));
+    await db.delete(achievements).where(eq(achievements.userId, userId));
+    await db.delete(userStreaks).where(eq(userStreaks.userId, userId));
+    await db.delete(userItems).where(eq(userItems.userId, userId));
+    await db.delete(userToDoItems).where(or(eq(userToDoItems.userId, userId), eq(userToDoItems.requesterId, userId)));
+    await db.delete(userGroupMembership).where(eq(userGroupMembership.userId, userId));
+    await db.delete(wordListCoOwners).where(eq(wordListCoOwners.coOwnerUserId, userId));
+    await db.delete(userGroupCoOwners).where(eq(userGroupCoOwners.coOwnerUserId, userId));
+    await db.delete(userHiddenWordLists).where(eq(userHiddenWordLists.userId, userId));
+    await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
+    await db.delete(headToHeadChallenges).where(or(eq(headToHeadChallenges.initiatorId, userId), eq(headToHeadChallenges.opponentId, userId)));
+    
+    const ownedWordLists = await db.select({ id: customWordLists.id }).from(customWordLists).where(eq(customWordLists.userId, userId));
+    for (const list of ownedWordLists) {
+      await db.delete(wordIllustrations).where(eq(wordIllustrations.wordListId, list.id));
+      await db.delete(wordListUserGroups).where(eq(wordListUserGroups.wordListId, list.id));
+      await db.delete(wordListCoOwners).where(eq(wordListCoOwners.wordListId, list.id));
+    }
+    await db.delete(customWordLists).where(eq(customWordLists.userId, userId));
+    
+    const ownedGroups = await db.select({ id: userGroups.id }).from(userGroups).where(eq(userGroups.ownerUserId, userId));
+    for (const group of ownedGroups) {
+      await db.delete(userGroupMembership).where(eq(userGroupMembership.groupId, group.id));
+      await db.delete(userGroupCoOwners).where(eq(userGroupCoOwners.groupId, group.id));
+      await db.delete(wordListUserGroups).where(eq(wordListUserGroups.groupId, group.id));
+    }
+    await db.delete(userGroups).where(eq(userGroups.ownerUserId, userId));
+    
+    const result = await db.delete(users).where(eq(users.id, userId));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 }
 
