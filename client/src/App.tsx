@@ -20,6 +20,8 @@ import TeacherDashboard from "@/pages/teacher-dashboard";
 import AdminPage from "@/pages/admin";
 import AuthPage from "@/pages/auth-page";
 import ResetPasswordPage from "@/pages/reset-password";
+import FamilySignupPage from "@/pages/family-signup";
+import FamilyDashboardPage from "@/pages/family-dashboard";
 import NotFound from "@/pages/not-found";
 import { useEffect, useRef, createContext, useContext } from "react";
 
@@ -75,8 +77,10 @@ function Router() {
       <ProtectedRoute path="/head-to-head" component={HeadToHead} />
       <ProtectedRoute path="/teacher-dashboard" component={TeacherDashboard} />
       <ProtectedRoute path="/admin" component={AdminPage} />
+      <ProtectedRoute path="/family" component={FamilyDashboardPage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
+      <Route path="/family/signup" component={FamilySignupPage} />
       <Route component={NotFound} />
     </Switch>
   );

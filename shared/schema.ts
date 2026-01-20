@@ -210,6 +210,28 @@ export const userHiddenWordLists = pgTable("user_hidden_word_lists", {
   userWordListUnique: unique("user_hidden_word_list_unique").on(table.userId, table.wordListId),
 }));
 
+export const familyAccounts = pgTable("family_accounts", {
+  id: serial("id").primaryKey(),
+  primaryParentUserId: integer("primary_parent_user_id").notNull(),
+  vpcStatus: text("vpc_status").notNull().default("pending"),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  subscriptionAmount: integer("subscription_amount").default(500),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  vpcVerifiedAt: timestamp("vpc_verified_at"),
+});
+
+export const familyMembers = pgTable("family_members", {
+  id: serial("id").primaryKey(),
+  familyId: integer("family_id").notNull(),
+  userId: integer("user_id").notNull(),
+  role: text("role").notNull().default("child"),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  familyMemberUnique: unique("family_member_unique").on(table.familyId, table.userId),
+}));
+
 export const SHOP_ITEMS = {
   do_over: {
     id: "do_over",
@@ -671,6 +693,17 @@ export const insertUserHiddenWordListSchema = createInsertSchema(userHiddenWordL
   createdAt: true,
 });
 
+export const insertFamilyAccountSchema = createInsertSchema(familyAccounts).omit({
+  id: true,
+  createdAt: true,
+  vpcVerifiedAt: true,
+});
+
+export const insertFamilyMemberSchema = createInsertSchema(familyMembers).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertWord = z.infer<typeof insertWordSchema>;
@@ -711,8 +744,15 @@ export type InsertFlaggedWord = z.infer<typeof insertFlaggedWordSchema>;
 export type FlaggedWord = typeof flaggedWords.$inferSelect;
 export type InsertUserHiddenWordList = z.infer<typeof insertUserHiddenWordListSchema>;
 export type UserHiddenWordList = typeof userHiddenWordLists.$inferSelect;
+export type InsertFamilyAccount = z.infer<typeof insertFamilyAccountSchema>;
+export type FamilyAccount = typeof familyAccounts.$inferSelect;
+export type InsertFamilyMember = z.infer<typeof insertFamilyMemberSchema>;
+export type FamilyMember = typeof familyMembers.$inferSelect;
 
 export type GameMode = "practice" | "timed" | "quiz" | "scramble" | "mistake" | "crossword" | "headtohead";
+export type VpcStatus = "pending" | "verified" | "failed";
+export type FamilyRole = "parent" | "child";
+export type FamilyMemberStatus = "active" | "invited" | "suspended";
 
 export type ChallengeStatus = "pending" | "active" | "completed" | "declined";
 

@@ -1,0 +1,592 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "@/hooks/use-theme";
+import { getThemedTextClasses } from "@/lib/themeText";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Home, Users, Plus, Loader2, UserPlus, Pencil, Trash2, CheckCircle, XCircle, Star } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
+const childSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters").max(50),
+  password: z.string().min(4, "Password must be at least 4 characters"),
+  firstName: z.string().max(100).optional(),
+  lastName: z.string().max(100).optional(),
+});
+
+type ChildFormData = z.infer<typeof childSchema>;
+
+interface FamilyMember {
+  id: number;
+  userId: number;
+  role: string;
+  status: string;
+  user: {
+    id: number;
+    username: string;
+    firstName: string | null;
+    lastName: string | null;
+    stars: number;
+    accountType: string;
+  };
+}
+
+interface FamilyData {
+  family: {
+    id: number;
+    primaryParentUserId: number;
+    vpcStatus: string;
+    createdAt: string;
+  };
+  members: FamilyMember[];
+  isParent: boolean;
+}
+
+export default function FamilyDashboardPage() {
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const { themeAssets, hasDarkBackground } = useTheme();
+  const textClasses = getThemedTextClasses(hasDarkBackground);
+  
+  const [isAddChildOpen, setIsAddChildOpen] = useState(false);
+  const [editingChild, setEditingChild] = useState<FamilyMember | null>(null);
+  
+  const form = useForm<ChildFormData>({
+    resolver: zodResolver(childSchema),
+    defaultValues: {
+      username: "",
+      password: "",
+      firstName: "",
+      lastName: "",
+    },
+  });
+
+  const { data: familyData, isLoading, error } = useQuery<FamilyData>({
+    queryKey: ["/api/family"],
+    queryFn: async () => {
+      const response = await fetch("/api/family");
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Failed to fetch family data");
+      }
+      return response.json();
+    },
+  });
+
+  const createChildMutation = useMutation({
+    mutationFn: async (data: ChildFormData) => {
+      const response = await apiRequest("POST", "/api/family/children", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Child account created!" });
+      queryClient.invalidateQueries({ queryKey: ["/api/family"] });
+      setIsAddChildOpen(false);
+      form.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to create child account",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateChildMutation = useMutation({
+    mutationFn: async ({ childId, data }: { childId: number; data: Partial<ChildFormData> }) => {
+      const response = await apiRequest("PATCH", `/api/family/children/${childId}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Child account updated!" });
+      queryClient.invalidateQueries({ queryKey: ["/api/family"] });
+      setEditingChild(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to update child account",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeChildMutation = useMutation({
+    mutationFn: async (childId: number) => {
+      const response = await apiRequest("DELETE", `/api/family/children/${childId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Child removed from family" });
+      queryClient.invalidateQueries({ queryKey: ["/api/family"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to remove child",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmitChild = (data: ChildFormData) => {
+    createChildMutation.mutate(data);
+  };
+
+  const children = familyData?.members.filter(m => m.role === "child") || [];
+  const parents = familyData?.members.filter(m => m.role === "parent") || [];
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error || !familyData) {
+    return (
+      <div className="min-h-screen p-4 relative">
+        <div className="max-w-lg mx-auto mt-20">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-destructive">
+                <XCircle className="w-5 h-5" />
+                Not a Family Member
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">
+                You are not currently part of a family account. Would you like to create one?
+              </p>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setLocation("/")} data-testid="button-home">
+                  <Home className="w-4 h-4 mr-2" />
+                  Home
+                </Button>
+                <Button onClick={() => setLocation("/family/signup")} data-testid="button-create-family">
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Create Family Account
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen p-4 relative">
+      <div 
+        className="fixed inset-0 landscape:hidden portrait:block"
+        style={{
+          backgroundImage: `url(${themeAssets.backgroundPortrait})`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center top',
+        }}
+      ></div>
+      <div 
+        className="fixed inset-0 portrait:hidden landscape:block"
+        style={{
+          backgroundImage: `url(${themeAssets.backgroundLandscape})`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center top',
+        }}
+      ></div>
+      <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
+
+      <div className="max-w-4xl mx-auto space-y-6 relative z-10">
+        <header className="flex items-center justify-start mb-4">
+          <Button
+            variant="default"
+            onClick={() => setLocation("/")}
+            className="bg-white/90 dark:bg-black/70 text-foreground hover:bg-white dark:hover:bg-black/80 shadow-lg"
+            data-testid="button-home"
+          >
+            <Home className="h-4 w-4 mr-2" />
+            Home
+          </Button>
+        </header>
+
+        <div className="text-center mb-8">
+          <h1 className={`text-3xl font-bold ${textClasses.headline}`} data-testid="text-family-dashboard-title">
+            Family Dashboard
+          </h1>
+          <p className={`mt-2 ${textClasses.subtitle}`}>
+            Manage your family's accounts and track progress
+          </p>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  Family Status
+                </CardTitle>
+                <CardDescription>Your family account information</CardDescription>
+              </div>
+              <Badge variant={familyData.family.vpcStatus === "verified" ? "default" : "secondary"}>
+                {familyData.family.vpcStatus === "verified" ? (
+                  <>
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Verified
+                  </>
+                ) : (
+                  "Pending Verification"
+                )}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground">Parent(s)</p>
+                <p className="font-medium">
+                  {parents.map(p => p.user.firstName || p.user.username).join(", ")}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Children</p>
+                <p className="font-medium">{children.length} account(s)</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Children's Accounts</CardTitle>
+                <CardDescription>Manage accounts for your children</CardDescription>
+              </div>
+              {familyData.isParent && familyData.family.vpcStatus === "verified" && (
+                <Dialog open={isAddChildOpen} onOpenChange={setIsAddChildOpen}>
+                  <DialogTrigger asChild>
+                    <Button data-testid="button-add-child">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Child
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Create Child Account</DialogTitle>
+                      <DialogDescription>
+                        Create a new account for your child. They'll use these credentials to log in.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(onSubmitChild)} className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="firstName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>First Name (optional)</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Emma" {...field} data-testid="input-child-first-name" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="lastName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Last Name (optional)</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Smith" {...field} data-testid="input-child-last-name" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        <FormField
+                          control={form.control}
+                          name="username"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Username</FormLabel>
+                              <FormControl>
+                                <Input placeholder="emma_speller" {...field} data-testid="input-child-username" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="password"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Password</FormLabel>
+                              <FormControl>
+                                <Input type="password" placeholder="At least 4 characters" {...field} data-testid="input-child-password" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <DialogFooter>
+                          <Button type="submit" disabled={createChildMutation.isPending} data-testid="button-create-child">
+                            {createChildMutation.isPending ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Creating...
+                              </>
+                            ) : (
+                              <>
+                                <UserPlus className="w-4 h-4 mr-2" />
+                                Create Account
+                              </>
+                            )}
+                          </Button>
+                        </DialogFooter>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {children.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No children's accounts yet</p>
+                {familyData.family.vpcStatus !== "verified" && (
+                  <p className="text-sm mt-2">Complete payment verification to add children</p>
+                )}
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Username</TableHead>
+                    <TableHead className="text-right">Stars</TableHead>
+                    <TableHead>Status</TableHead>
+                    {familyData.isParent && <TableHead className="text-right">Actions</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {children.map((child) => (
+                    <TableRow key={child.id} data-testid={`row-child-${child.userId}`}>
+                      <TableCell>
+                        {child.user.firstName || child.user.lastName
+                          ? `${child.user.firstName || ""} ${child.user.lastName || ""}`.trim()
+                          : "-"}
+                      </TableCell>
+                      <TableCell className="font-medium">{child.user.username}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Star className="w-4 h-4 text-yellow-500" />
+                          {child.user.stars}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="capitalize">{child.status}</Badge>
+                      </TableCell>
+                      {familyData.isParent && (
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setEditingChild(child)}
+                              data-testid={`button-edit-child-${child.userId}`}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  data-testid={`button-remove-child-${child.userId}`}
+                                >
+                                  <Trash2 className="w-4 h-4 text-destructive" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Remove Child from Family</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will remove {child.user.username} from your family. Their account and progress will still exist, but they won't be linked to your family anymore.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => removeChildMutation.mutate(child.userId)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Remove
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Dialog open={!!editingChild} onOpenChange={(open) => !open && setEditingChild(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Child Account</DialogTitle>
+            <DialogDescription>
+              Update {editingChild?.user.username}'s account details
+            </DialogDescription>
+          </DialogHeader>
+          {editingChild && (
+            <EditChildForm
+              child={editingChild}
+              onSubmit={(data) => updateChildMutation.mutate({ childId: editingChild.userId, data })}
+              isPending={updateChildMutation.isPending}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function EditChildForm({
+  child,
+  onSubmit,
+  isPending,
+}: {
+  child: FamilyMember;
+  onSubmit: (data: Partial<ChildFormData>) => void;
+  isPending: boolean;
+}) {
+  const editSchema = z.object({
+    firstName: z.string().max(100).optional(),
+    lastName: z.string().max(100).optional(),
+    password: z.string().min(4).optional().or(z.literal("")),
+  });
+
+  const form = useForm<z.infer<typeof editSchema>>({
+    resolver: zodResolver(editSchema),
+    defaultValues: {
+      firstName: child.user.firstName || "",
+      lastName: child.user.lastName || "",
+      password: "",
+    },
+  });
+
+  const handleSubmit = (data: z.infer<typeof editSchema>) => {
+    const updates: Partial<ChildFormData> = {};
+    if (data.firstName) updates.firstName = data.firstName;
+    if (data.lastName) updates.lastName = data.lastName;
+    if (data.password) updates.password = data.password;
+    onSubmit(updates);
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="firstName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>First Name</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-edit-first-name" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="lastName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Last Name</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-edit-last-name" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>New Password (leave blank to keep current)</FormLabel>
+              <FormControl>
+                <Input type="password" placeholder="New password" {...field} data-testid="input-edit-password" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <DialogFooter>
+          <Button type="submit" disabled={isPending} data-testid="button-save-child">
+            {isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Save Changes"
+            )}
+          </Button>
+        </DialogFooter>
+      </form>
+    </Form>
+  );
+}

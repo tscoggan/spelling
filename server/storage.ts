@@ -31,6 +31,10 @@ import {
   type FlaggedWord,
   type InsertFlaggedWord,
   type UserHiddenWordList,
+  type FamilyAccount,
+  type InsertFamilyAccount,
+  type FamilyMember,
+  type InsertFamilyMember,
   words,
   gameSessions,
   users,
@@ -51,6 +55,8 @@ import {
   appSettings,
   flaggedWords,
   userHiddenWordLists,
+  familyAccounts,
+  familyMembers,
   SHOP_ITEMS,
   type ShopItemId,
 } from "@shared/schema";
@@ -200,6 +206,19 @@ export interface IStorage {
   getUsageMetrics(dateRange: 'today' | 'week' | 'month' | 'all'): Promise<{ userId: number | null; username: string; gamesPlayed: number }[]>;
   getAllUsersWithMetrics(): Promise<{ id: number; username: string; firstName: string | null; lastName: string | null; email: string | null; role: string; accountType: string; stars: number; createdAt: Date; gamesPlayed: number; lastActive: Date | null }[]>;
   deleteUserAndAllData(userId: number): Promise<boolean>;
+  
+  // Family account methods
+  createFamilyAccount(parentUserId: number): Promise<FamilyAccount>;
+  getFamilyAccount(id: number): Promise<FamilyAccount | undefined>;
+  getFamilyAccountByParentId(parentUserId: number): Promise<FamilyAccount | undefined>;
+  updateFamilyAccount(id: number, updates: Partial<FamilyAccount>): Promise<FamilyAccount | undefined>;
+  verifyFamilyVpc(familyId: number): Promise<FamilyAccount | undefined>;
+  
+  createFamilyMember(member: InsertFamilyMember): Promise<FamilyMember>;
+  getFamilyMembers(familyId: number): Promise<(FamilyMember & { user: User })[]>;
+  getFamilyMemberByUserId(userId: number): Promise<FamilyMember | undefined>;
+  updateFamilyMember(id: number, updates: Partial<FamilyMember>): Promise<FamilyMember | undefined>;
+  removeFamilyMember(familyId: number, userId: number): Promise<boolean>;
   
   sessionStore: session.Store;
 }
@@ -2047,6 +2066,82 @@ export class DatabaseStorage implements IStorage {
     await db.delete(userGroups).where(eq(userGroups.ownerUserId, userId));
     
     const result = await db.delete(users).where(eq(users.id, userId));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Family account methods
+  async createFamilyAccount(parentUserId: number): Promise<FamilyAccount> {
+    const [family] = await db.insert(familyAccounts).values({
+      primaryParentUserId: parentUserId,
+      vpcStatus: "pending",
+    }).returning();
+    
+    await db.insert(familyMembers).values({
+      familyId: family.id,
+      userId: parentUserId,
+      role: "parent",
+      status: "active",
+    });
+    
+    return family;
+  }
+
+  async getFamilyAccount(id: number): Promise<FamilyAccount | undefined> {
+    const [family] = await db.select().from(familyAccounts).where(eq(familyAccounts.id, id));
+    return family || undefined;
+  }
+
+  async getFamilyAccountByParentId(parentUserId: number): Promise<FamilyAccount | undefined> {
+    const [family] = await db.select().from(familyAccounts).where(eq(familyAccounts.primaryParentUserId, parentUserId));
+    return family || undefined;
+  }
+
+  async updateFamilyAccount(id: number, updates: Partial<FamilyAccount>): Promise<FamilyAccount | undefined> {
+    const [updated] = await db.update(familyAccounts).set(updates).where(eq(familyAccounts.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async verifyFamilyVpc(familyId: number): Promise<FamilyAccount | undefined> {
+    const [updated] = await db.update(familyAccounts).set({
+      vpcStatus: "verified",
+      vpcVerifiedAt: new Date(),
+    }).where(eq(familyAccounts.id, familyId)).returning();
+    return updated || undefined;
+  }
+
+  async createFamilyMember(member: InsertFamilyMember): Promise<FamilyMember> {
+    const [created] = await db.insert(familyMembers).values(member).returning();
+    return created;
+  }
+
+  async getFamilyMembers(familyId: number): Promise<(FamilyMember & { user: User })[]> {
+    const members = await db.select().from(familyMembers).where(eq(familyMembers.familyId, familyId));
+    
+    const result = await Promise.all(members.map(async (member) => {
+      const user = await this.getUser(member.userId);
+      if (!user) throw new Error(`User ${member.userId} not found for family member`);
+      return { ...member, user };
+    }));
+    
+    return result;
+  }
+
+  async getFamilyMemberByUserId(userId: number): Promise<FamilyMember | undefined> {
+    const [member] = await db.select().from(familyMembers).where(
+      and(eq(familyMembers.userId, userId), eq(familyMembers.status, "active"))
+    );
+    return member || undefined;
+  }
+
+  async updateFamilyMember(id: number, updates: Partial<FamilyMember>): Promise<FamilyMember | undefined> {
+    const [updated] = await db.update(familyMembers).set(updates).where(eq(familyMembers.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async removeFamilyMember(familyId: number, userId: number): Promise<boolean> {
+    const result = await db.delete(familyMembers).where(
+      and(eq(familyMembers.familyId, familyId), eq(familyMembers.userId, userId))
+    );
     return result.rowCount ? result.rowCount > 0 : false;
   }
 }

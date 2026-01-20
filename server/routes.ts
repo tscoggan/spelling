@@ -70,6 +70,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     '/api/auth/reset-password',
     '/api/auth/validate-reset-token',
     '/api/guest/pixabay-search', // Guest image search (no persistence)
+    '/api/family/signup', // Family account creation
     '/objects',
   ];
   
@@ -388,10 +389,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { firstName, lastName, email, selectedAvatar } = validationResult.data;
       
       // Build updates object with only provided fields
-      const updates: { firstName?: string; lastName?: string; email?: string | null; selectedAvatar?: string } = {};
+      const updates: { firstName?: string; lastName?: string; email?: string; selectedAvatar?: string } = {};
       if (firstName !== undefined) updates.firstName = firstName;
       if (lastName !== undefined) updates.lastName = lastName;
-      if (email !== undefined) updates.email = email;
+      if (email !== undefined && email !== null) updates.email = email;
       if (selectedAvatar !== undefined) updates.selectedAvatar = selectedAvatar;
 
       if (Object.keys(updates).length === 0) {
@@ -3553,6 +3554,309 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting user:", error);
       res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+
+  // ========== FAMILY ACCOUNT ROUTES ==========
+  
+  // Family signup - Create parent account and family
+  app.post("/api/family/signup", async (req, res) => {
+    try {
+      const schema = z.object({
+        username: z.string().min(3).max(50),
+        password: z.string().min(6),
+        firstName: z.string().min(1).max(100),
+        lastName: z.string().min(1).max(100),
+        email: z.string().email(),
+      });
+      
+      const { username, password, firstName, lastName, email } = schema.parse(req.body);
+      
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ error: "Username already taken" });
+      }
+      
+      const existingEmail = await storage.getUserByEmail(email);
+      if (existingEmail) {
+        return res.status(400).json({ error: "Email already registered" });
+      }
+      
+      const hashedPassword = await hashPassword(password);
+      
+      const user = await storage.createUser({
+        username,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        email,
+        role: "student",
+        accountType: "family_parent",
+      });
+      
+      const family = await storage.createFamilyAccount(user.id);
+      
+      req.login(user, (err) => {
+        if (err) {
+          console.error("Login error after family signup:", err);
+          return res.status(500).json({ error: "Account created but login failed" });
+        }
+        
+        res.json({
+          user: {
+            id: user.id,
+            username: user.username,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            role: user.role,
+            accountType: user.accountType,
+            stars: user.stars,
+          },
+          family: {
+            id: family.id,
+            vpcStatus: family.vpcStatus,
+          },
+          requiresPayment: true,
+        });
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("Error in family signup:", error);
+      res.status(500).json({ error: "Failed to create family account" });
+    }
+  });
+  
+  // Stubbed payment confirmation (simulates successful Stripe payment)
+  // Requires authentication and verifies the caller is the family's parent
+  app.post("/api/family/payment/confirm", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const userId = (req.user as User).id;
+      
+      // Get the user's family membership to verify they are a parent
+      const membership = await storage.getFamilyMemberByUserId(userId);
+      if (!membership || membership.role !== "parent") {
+        return res.status(403).json({ error: "Only family parents can verify VPC" });
+      }
+      
+      const family = await storage.getFamilyAccount(membership.familyId);
+      if (!family) {
+        return res.status(404).json({ error: "Family account not found" });
+      }
+      
+      if (family.vpcStatus === "verified") {
+        return res.json({ message: "VPC already verified", family });
+      }
+      
+      const updatedFamily = await storage.verifyFamilyVpc(family.id);
+      
+      res.json({
+        success: true,
+        message: "VPC verified successfully (stubbed payment)",
+        family: updatedFamily,
+      });
+    } catch (error) {
+      console.error("Error confirming payment:", error);
+      res.status(500).json({ error: "Failed to confirm payment" });
+    }
+  });
+  
+  // Get current user's family info
+  app.get("/api/family", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      
+      const familyMember = await storage.getFamilyMemberByUserId(userId);
+      if (!familyMember) {
+        return res.status(404).json({ error: "Not a member of any family" });
+      }
+      
+      const family = await storage.getFamilyAccount(familyMember.familyId);
+      if (!family) {
+        return res.status(404).json({ error: "Family account not found" });
+      }
+      
+      const members = await storage.getFamilyMembers(family.id);
+      
+      res.json({
+        family,
+        members: members.map(m => ({
+          id: m.id,
+          userId: m.userId,
+          role: m.role,
+          status: m.status,
+          user: {
+            id: m.user.id,
+            username: m.user.username,
+            firstName: m.user.firstName,
+            lastName: m.user.lastName,
+            stars: m.user.stars,
+            accountType: m.user.accountType,
+          },
+        })),
+        isParent: familyMember.role === "parent",
+      });
+    } catch (error) {
+      console.error("Error fetching family:", error);
+      res.status(500).json({ error: "Failed to fetch family info" });
+    }
+  });
+  
+  // Create child account (parent only)
+  app.post("/api/family/children", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      
+      const familyMember = await storage.getFamilyMemberByUserId(userId);
+      if (!familyMember || familyMember.role !== "parent") {
+        return res.status(403).json({ error: "Only parents can create child accounts" });
+      }
+      
+      const family = await storage.getFamilyAccount(familyMember.familyId);
+      if (!family || family.vpcStatus !== "verified") {
+        return res.status(403).json({ error: "VPC verification required before adding children" });
+      }
+      
+      const schema = z.object({
+        username: z.string().min(3).max(50),
+        password: z.string().min(4),
+        firstName: z.string().min(1).max(100).optional(),
+        lastName: z.string().min(1).max(100).optional(),
+      });
+      
+      const { username, password, firstName, lastName } = schema.parse(req.body);
+      
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ error: "Username already taken" });
+      }
+      
+      const hashedPassword = await hashPassword(password);
+      
+      const child = await storage.createUser({
+        username,
+        password: hashedPassword,
+        firstName: firstName || null,
+        lastName: lastName || null,
+        role: "student",
+        accountType: "family_child",
+      });
+      
+      await storage.createFamilyMember({
+        familyId: family.id,
+        userId: child.id,
+        role: "child",
+        status: "active",
+      });
+      
+      res.json({
+        success: true,
+        child: {
+          id: child.id,
+          username: child.username,
+          firstName: child.firstName,
+          lastName: child.lastName,
+          accountType: child.accountType,
+        },
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("Error creating child account:", error);
+      res.status(500).json({ error: "Failed to create child account" });
+    }
+  });
+  
+  // Update child account (parent only)
+  app.patch("/api/family/children/:childId", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const childId = parseInt(req.params.childId);
+      
+      if (isNaN(childId)) {
+        return res.status(400).json({ error: "Invalid child ID" });
+      }
+      
+      const familyMember = await storage.getFamilyMemberByUserId(userId);
+      if (!familyMember || familyMember.role !== "parent") {
+        return res.status(403).json({ error: "Only parents can update child accounts" });
+      }
+      
+      const childMember = await storage.getFamilyMemberByUserId(childId);
+      if (!childMember || childMember.familyId !== familyMember.familyId) {
+        return res.status(404).json({ error: "Child not found in your family" });
+      }
+      
+      const schema = z.object({
+        firstName: z.string().min(1).max(100).optional(),
+        lastName: z.string().min(1).max(100).optional(),
+        password: z.string().min(4).optional(),
+      });
+      
+      const updates = schema.parse(req.body);
+      
+      const profileUpdates: any = {};
+      if (updates.firstName !== undefined) profileUpdates.firstName = updates.firstName;
+      if (updates.lastName !== undefined) profileUpdates.lastName = updates.lastName;
+      
+      if (Object.keys(profileUpdates).length > 0) {
+        await storage.updateUserProfile(childId, profileUpdates);
+      }
+      
+      if (updates.password) {
+        const hashedPassword = await hashPassword(updates.password);
+        await storage.updateUserPassword(childId, hashedPassword);
+      }
+      
+      const updatedChild = await storage.getUser(childId);
+      
+      res.json({
+        success: true,
+        child: {
+          id: updatedChild!.id,
+          username: updatedChild!.username,
+          firstName: updatedChild!.firstName,
+          lastName: updatedChild!.lastName,
+        },
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("Error updating child account:", error);
+      res.status(500).json({ error: "Failed to update child account" });
+    }
+  });
+  
+  // Remove child from family (parent only)
+  app.delete("/api/family/children/:childId", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const childId = parseInt(req.params.childId);
+      
+      if (isNaN(childId)) {
+        return res.status(400).json({ error: "Invalid child ID" });
+      }
+      
+      const familyMember = await storage.getFamilyMemberByUserId(userId);
+      if (!familyMember || familyMember.role !== "parent") {
+        return res.status(403).json({ error: "Only parents can remove child accounts" });
+      }
+      
+      const childMember = await storage.getFamilyMemberByUserId(childId);
+      if (!childMember || childMember.familyId !== familyMember.familyId || childMember.role !== "child") {
+        return res.status(404).json({ error: "Child not found in your family" });
+      }
+      
+      await storage.removeFamilyMember(familyMember.familyId, childId);
+      
+      res.json({ success: true, message: "Child removed from family" });
+    } catch (error) {
+      console.error("Error removing child:", error);
+      res.status(500).json({ error: "Failed to remove child" });
     }
   });
 
