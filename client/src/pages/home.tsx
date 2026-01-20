@@ -44,6 +44,7 @@ import achievementsButton from "@assets/Achievements_button_4_1764949081693.png"
 import starShopButton from "@assets/Star_Shop_button_3_1764949081694.png";
 import h2hChallengeResultsButton from "@assets/H2H_Challenge_Results_button_1764699075884.png";
 import adminDashboardButton from "@assets/Admin_Dashboard_button_1765395988735.png";
+import myFamilyButton from "@assets/My_Family_button_1768927283926.png";
 
 const useRefreshNotifications = (userId: number | undefined) => {
   const refresh = useCallback(() => {
@@ -831,6 +832,21 @@ export default function Home() {
               />
             </div>
           </button>
+          {user?.accountType === "family_parent" && (
+            <button
+              onClick={() => setLocation("/family")}
+              className="hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-full"
+              data-testid="button-my-family"
+            >
+              <div className="h-24 w-24 md:h-28 md:w-28 rounded-full bg-white/90 border-2 border-purple-400 flex items-center justify-center p-2">
+                <img 
+                  src={myFamilyButton} 
+                  alt="My Family" 
+                  className="h-full w-full object-contain"
+                />
+              </div>
+            </button>
+          )}
           {user?.role === "admin" && (
             <button
               onClick={() => setLocation("/admin")}

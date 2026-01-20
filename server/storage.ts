@@ -35,6 +35,8 @@ import {
   type InsertFamilyAccount,
   type FamilyMember,
   type InsertFamilyMember,
+  type PaymentHistory,
+  type InsertPaymentHistory,
   words,
   gameSessions,
   users,
@@ -57,6 +59,7 @@ import {
   userHiddenWordLists,
   familyAccounts,
   familyMembers,
+  paymentHistory,
   SHOP_ITEMS,
   type ShopItemId,
 } from "@shared/schema";
@@ -219,6 +222,10 @@ export interface IStorage {
   getFamilyMemberByUserId(userId: number): Promise<FamilyMember | undefined>;
   updateFamilyMember(id: number, updates: Partial<FamilyMember>): Promise<FamilyMember | undefined>;
   removeFamilyMember(familyId: number, userId: number): Promise<boolean>;
+  
+  createPaymentRecord(payment: InsertPaymentHistory): Promise<PaymentHistory>;
+  getPaymentHistory(familyId: number): Promise<PaymentHistory[]>;
+  getPaymentsByUser(userId: number): Promise<PaymentHistory[]>;
   
   sessionStore: session.Store;
 }
@@ -2143,6 +2150,23 @@ export class DatabaseStorage implements IStorage {
       and(eq(familyMembers.familyId, familyId), eq(familyMembers.userId, userId))
     );
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async createPaymentRecord(payment: InsertPaymentHistory): Promise<PaymentHistory> {
+    const [result] = await db.insert(paymentHistory).values(payment).returning();
+    return result;
+  }
+
+  async getPaymentHistory(familyId: number): Promise<PaymentHistory[]> {
+    return await db.select().from(paymentHistory)
+      .where(eq(paymentHistory.familyId, familyId))
+      .orderBy(desc(paymentHistory.paymentDate));
+  }
+
+  async getPaymentsByUser(userId: number): Promise<PaymentHistory[]> {
+    return await db.select().from(paymentHistory)
+      .where(eq(paymentHistory.userId, userId))
+      .orderBy(desc(paymentHistory.paymentDate));
   }
 }
 

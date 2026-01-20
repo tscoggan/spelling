@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertGameSessionSchema, insertWordSchema, insertCustomWordListSchema, insertFlaggedWordSchema, type CustomWordList } from "@shared/schema";
+import { insertGameSessionSchema, insertWordSchema, insertCustomWordListSchema, insertFlaggedWordSchema, type CustomWordList, type User } from "@shared/schema";
 import { z } from "zod";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import { IllustrationJobService } from "./services/illustrationJobService";
@@ -3648,6 +3648,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (family.vpcStatus === "verified") {
         return res.json({ message: "VPC already verified", family });
+      }
+      
+      // Record payment first before verifying VPC
+      try {
+        await storage.createPaymentRecord({
+          familyId: family.id,
+          userId: userId,
+          amount: 500,
+          paymentMethod: "stripe",
+          description: "Family account annual subscription",
+          status: "completed",
+        });
+      } catch (paymentError) {
+        console.error("Error recording payment:", paymentError);
+        return res.status(500).json({ error: "Failed to record payment" });
       }
       
       const updatedFamily = await storage.verifyFamilyVpc(family.id);

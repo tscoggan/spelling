@@ -232,6 +232,18 @@ export const familyMembers = pgTable("family_members", {
   familyMemberUnique: unique("family_member_unique").on(table.familyId, table.userId),
 }));
 
+export const paymentHistory = pgTable("payment_history", {
+  id: serial("id").primaryKey(),
+  familyId: integer("family_id").notNull(),
+  userId: integer("user_id").notNull(),
+  amount: integer("amount").notNull(),
+  paymentMethod: text("payment_method").notNull(),
+  paymentDate: timestamp("payment_date").defaultNow().notNull(),
+  description: text("description"),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  status: text("status").notNull().default("completed"),
+});
+
 export const SHOP_ITEMS = {
   do_over: {
     id: "do_over",
@@ -704,6 +716,11 @@ export const insertFamilyMemberSchema = createInsertSchema(familyMembers).omit({
   createdAt: true,
 });
 
+export const insertPaymentHistorySchema = createInsertSchema(paymentHistory).omit({
+  id: true,
+  paymentDate: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertWord = z.infer<typeof insertWordSchema>;
@@ -748,6 +765,8 @@ export type InsertFamilyAccount = z.infer<typeof insertFamilyAccountSchema>;
 export type FamilyAccount = typeof familyAccounts.$inferSelect;
 export type InsertFamilyMember = z.infer<typeof insertFamilyMemberSchema>;
 export type FamilyMember = typeof familyMembers.$inferSelect;
+export type InsertPaymentHistory = z.infer<typeof insertPaymentHistorySchema>;
+export type PaymentHistory = typeof paymentHistory.$inferSelect;
 
 export type GameMode = "practice" | "timed" | "quiz" | "scramble" | "mistake" | "crossword" | "headtohead";
 export type VpcStatus = "pending" | "verified" | "failed";
