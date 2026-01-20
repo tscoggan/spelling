@@ -211,13 +211,13 @@ export default function AuthPage() {
         <Button
           variant="outline"
           size="lg"
-          className="h-auto py-4 px-3 flex flex-col gap-1 text-center opacity-60"
-          onClick={() => setAccountType("family")}
+          className="h-auto py-4 px-3 flex flex-col gap-1 text-center"
+          onClick={() => setLocation("/family/signup")}
           data-testid="button-family-account"
         >
           <Users className="w-6 h-6" />
           <span className="text-base font-bold leading-tight text-wrap">Create Family Account</span>
-          <span className="text-xs opacity-80 font-normal leading-tight text-wrap">Coming soon</span>
+          <span className="text-xs opacity-80 font-normal leading-tight text-wrap">$0.50 one-time fee</span>
         </Button>
 
         <Button
