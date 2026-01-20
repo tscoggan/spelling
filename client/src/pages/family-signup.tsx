@@ -318,7 +318,7 @@ export default function FamilySignupPage() {
             <CardHeader>
               <CardTitle>Parental Consent Verification</CardTitle>
               <CardDescription>
-                To comply with children's privacy laws (COPPA), we require a small payment of $0.50 to verify you are an adult with access to a credit card.
+                To comply with children's privacy laws (COPPA), we require a $5 annual subscription to verify you are an adult with access to a credit card.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -332,9 +332,9 @@ export default function FamilySignupPage() {
               <div className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-6 text-center space-y-4">
                 <CreditCard className="w-12 h-12 mx-auto text-muted-foreground" />
                 <div>
-                  <p className="font-semibold text-lg">Verification Payment: $0.50</p>
+                  <p className="font-semibold text-lg">Annual Subscription: $5/year</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    This small charge verifies parental consent
+                    This payment verifies parental consent and unlocks all family features
                   </p>
                 </div>
                 <p className="text-xs text-muted-foreground">
