@@ -40,3 +40,8 @@ waitForPort = 5000
 
 [agent]
 integrations = ["javascript_mem_db:1.0.0", "javascript_database:1.0.0", "javascript_object_storage:1.0.0", "github:1.0.0", "resend:1.0.0"]
+
+[userenv]
+
+[userenv.shared]
+USER_DATA_ENCRYPTION_KEY = "7ACE0DCD4358508AD67751449FECFE600F4B13C366F0BFE6F11FCA8063CD4CD0"
