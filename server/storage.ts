@@ -2037,7 +2037,7 @@ export class DatabaseStorage implements IStorage {
     return enrichedResults;
   }
 
-  async getAllUsersWithMetrics(): Promise<{ id: number; username: string; firstName: string | null; lastName: string | null; email: string | null; role: string; accountType: string; stars: number; createdAt: Date; gamesPlayed: number; lastActive: Date | null }[]> {
+  async getAllUsersWithMetrics(): Promise<{ id: number; username: string; firstName: string | null; lastName: string | null; email: string | null; role: string; accountType: string; stars: number; createdAt: Date; gamesPlayed: number; lastActive: Date | null; familyId: number | null; familyRole: string | null }[]> {
     const allUsers = await db.select().from(users);
     
     const sessionsPerUser = await db
@@ -2051,21 +2051,37 @@ export class DatabaseStorage implements IStorage {
     
     const sessionMap = new Map(sessionsPerUser.map(s => [s.userId, { gamesPlayed: s.gamesPlayed, lastActive: s.lastActive }]));
     
+    // Get all family memberships
+    const allFamilyMembers = await db.select().from(familyMembers);
+    const familyMemberMap = new Map(allFamilyMembers.map(fm => [fm.userId, { familyId: fm.familyId, role: fm.role }]));
+    
     const usersWithMetrics = allUsers.map(user => {
       const decrypted = hasEncryptionKey() ? decryptUserPII(user) : user;
       const metrics = sessionMap.get(user.id) || { gamesPlayed: 0, lastActive: null };
+      const familyMembership = familyMemberMap.get(user.id);
+      
+      // Determine role: use family role for family members, otherwise use user role
+      let displayRole = decrypted.role;
+      if (decrypted.accountType === 'family_parent') {
+        displayRole = 'parent';
+      } else if (decrypted.accountType === 'family_child') {
+        displayRole = 'child';
+      }
+      
       return {
         id: decrypted.id,
         username: decrypted.username,
         firstName: decrypted.firstName,
         lastName: decrypted.lastName,
         email: decrypted.email,
-        role: decrypted.role,
+        role: displayRole,
         accountType: decrypted.accountType,
         stars: decrypted.stars,
         createdAt: decrypted.createdAt,
         gamesPlayed: metrics.gamesPlayed,
         lastActive: metrics.lastActive,
+        familyId: familyMembership?.familyId || null,
+        familyRole: familyMembership?.role || null,
       };
     });
     

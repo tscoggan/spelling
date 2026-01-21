@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
-import { Upload, Search, Users, FileText, ArrowUpDown, Loader2, Check, X, AlertCircle, Ban, Copy, BookX, Home, UserX, Trash2, Shield } from "lucide-react";
+import { Upload, Search, Users, FileText, ArrowUpDown, Loader2, Check, X, AlertCircle, Ban, Copy, BookX, Home, UserX, Trash2, Shield, ChevronDown, ChevronRight } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -69,6 +69,15 @@ interface AdminUser {
   createdAt: string;
   gamesPlayed: number;
   lastActive: string | null;
+  familyId: number | null;
+  familyRole: string | null;
+}
+
+interface UserGroup {
+  type: 'family' | 'school' | 'individual';
+  id: number | null;
+  parentUser: AdminUser | null;
+  members: AdminUser[];
 }
 
 export default function AdminPage() {
@@ -91,6 +100,8 @@ export default function AdminPage() {
     wordOrigin: "",
     partOfSpeech: "",
   });
+  
+  const [expandedFamilies, setExpandedFamilies] = useState<Set<number>>(new Set());
 
   const { data: usageMetrics = [], isLoading: isLoadingMetrics } = useQuery<UsageMetric[]>({
     queryKey: ['/api/admin/usage', dateRange],
@@ -149,6 +160,76 @@ export default function AdminPage() {
       toast({ title: "Failed to delete user", description: error.message, variant: "destructive" });
     },
   });
+
+  const toggleFamilyExpansion = useCallback((familyId: number) => {
+    setExpandedFamilies(prev => {
+      const next = new Set(prev);
+      if (next.has(familyId)) {
+        next.delete(familyId);
+      } else {
+        next.add(familyId);
+      }
+      return next;
+    });
+  }, []);
+
+  const groupedUsers = useMemo(() => {
+    const groups: UserGroup[] = [];
+    const familyGroups = new Map<number, { parent: AdminUser | null; children: AdminUser[] }>();
+    const individualUsers: AdminUser[] = [];
+
+    for (const user of adminUsers) {
+      if (user.familyId !== null) {
+        if (!familyGroups.has(user.familyId)) {
+          familyGroups.set(user.familyId, { parent: null, children: [] });
+        }
+        const group = familyGroups.get(user.familyId)!;
+        if (user.familyRole === 'parent') {
+          group.parent = user;
+        } else {
+          group.children.push(user);
+        }
+      } else if (user.accountType === 'school') {
+        groups.push({
+          type: 'school',
+          id: user.id,
+          parentUser: user,
+          members: [],
+        });
+      } else {
+        individualUsers.push(user);
+      }
+    }
+
+    Array.from(familyGroups.entries()).forEach(([familyId, familyData]) => {
+      groups.push({
+        type: 'family',
+        id: familyId,
+        parentUser: familyData.parent,
+        members: familyData.children,
+      });
+    });
+
+    for (const user of individualUsers) {
+      groups.push({
+        type: 'individual',
+        id: null,
+        parentUser: user,
+        members: [],
+      });
+    }
+
+    groups.sort((a, b) => {
+      const aUser = a.parentUser;
+      const bUser = b.parentUser;
+      if (!aUser && !bUser) return 0;
+      if (!aUser) return 1;
+      if (!bUser) return -1;
+      return new Date(bUser.createdAt).getTime() - new Date(aUser.createdAt).getTime();
+    });
+
+    return groups;
+  }, [adminUsers]);
 
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -780,85 +861,199 @@ export default function AdminPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {adminUsers.map((user) => (
-                          <TableRow key={user.id} data-testid={`row-user-${user.id}`}>
-                            <TableCell className="font-mono text-xs">{user.id}</TableCell>
-                            <TableCell className="font-medium">{user.username}</TableCell>
-                            <TableCell>
-                              {user.firstName || user.lastName 
-                                ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
-                                : <span className="text-muted-foreground">-</span>}
-                            </TableCell>
-                            <TableCell>
-                              {user.email || <span className="text-muted-foreground">-</span>}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={user.role === 'admin' ? 'default' : user.role === 'teacher' ? 'secondary' : 'outline'}>
-                                {user.role}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="capitalize">
-                                {user.accountType}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">{user.stars}</TableCell>
-                            <TableCell className="text-right">{user.gamesPlayed}</TableCell>
-                            <TableCell className="text-xs">
-                              {new Date(user.createdAt).toLocaleDateString()}
-                            </TableCell>
-                            <TableCell className="text-xs">
-                              {user.lastActive 
-                                ? new Date(user.lastActive).toLocaleDateString()
-                                : <span className="text-muted-foreground">Never</span>}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon"
-                                    disabled={user.role === 'admin'}
-                                    data-testid={`button-delete-user-${user.id}`}
-                                  >
-                                    <Trash2 className="w-4 h-4 text-destructive" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete User Account</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      This will permanently delete the user "{user.username}" and ALL associated data including:
-                                      <ul className="list-disc ml-6 mt-2 space-y-1">
-                                        <li>Game sessions and scores</li>
-                                        <li>Achievements and streaks</li>
-                                        <li>Word lists and groups they own</li>
-                                        <li>Group memberships</li>
-                                        <li>Star shop purchases</li>
-                                      </ul>
-                                      <p className="mt-3 font-medium text-destructive">This action cannot be undone.</p>
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => deleteUserMutation.mutate(user.id)}
-                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                      data-testid={`button-confirm-delete-user-${user.id}`}
+                        {groupedUsers.map((group) => {
+                          const isExpanded = group.id !== null && expandedFamilies.has(group.id);
+                          const hasMembers = group.members.length > 0;
+                          const renderUserRow = (user: AdminUser, isChild = false) => (
+                            <TableRow key={user.id} data-testid={`row-user-${user.id}`} className={isChild ? "bg-muted/30" : ""}>
+                              <TableCell className="font-mono text-xs">
+                                <div className="flex items-center gap-1">
+                                  {isChild && <span className="pl-4">↳</span>}
+                                  {user.id}
+                                </div>
+                              </TableCell>
+                              <TableCell className="font-medium">{user.username}</TableCell>
+                              <TableCell>
+                                {user.firstName || user.lastName 
+                                  ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
+                                  : <span className="text-muted-foreground">-</span>}
+                              </TableCell>
+                              <TableCell>
+                                {user.email || <span className="text-muted-foreground">-</span>}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={user.role === 'admin' ? 'default' : user.role === 'teacher' ? 'secondary' : user.role === 'parent' ? 'default' : 'outline'}>
+                                  {user.role}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="capitalize">
+                                  {user.accountType.replace(/_/g, ' ')}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">{user.stars}</TableCell>
+                              <TableCell className="text-right">{user.gamesPlayed}</TableCell>
+                              <TableCell className="text-xs">
+                                {new Date(user.createdAt).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                {user.lastActive 
+                                  ? new Date(user.lastActive).toLocaleDateString()
+                                  : <span className="text-muted-foreground">Never</span>}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon"
+                                      disabled={user.role === 'admin'}
+                                      data-testid={`button-delete-user-${user.id}`}
                                     >
-                                      {deleteUserMutation.isPending ? (
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                      ) : (
-                                        <Trash2 className="w-4 h-4 mr-2" />
+                                      <Trash2 className="w-4 h-4 text-destructive" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete User Account</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This will permanently delete the user "{user.username}" and ALL associated data including:
+                                        <ul className="list-disc ml-6 mt-2 space-y-1">
+                                          <li>Game sessions and scores</li>
+                                          <li>Achievements and streaks</li>
+                                          <li>Word lists and groups they own</li>
+                                          <li>Group memberships</li>
+                                          <li>Star shop purchases</li>
+                                        </ul>
+                                        <p className="mt-3 font-medium text-destructive">This action cannot be undone.</p>
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => deleteUserMutation.mutate(user.id)}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        data-testid={`button-confirm-delete-user-${user.id}`}
+                                      >
+                                        {deleteUserMutation.isPending ? (
+                                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        ) : (
+                                          <Trash2 className="w-4 h-4 mr-2" />
+                                        )}
+                                        Delete User
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </TableCell>
+                            </TableRow>
+                          );
+
+                          return (
+                            <>
+                              {group.parentUser && (
+                                <TableRow 
+                                  key={`parent-${group.parentUser.id}`} 
+                                  data-testid={`row-user-${group.parentUser.id}`}
+                                  className={hasMembers ? "cursor-pointer hover-elevate" : ""}
+                                  onClick={hasMembers && group.id !== null ? () => toggleFamilyExpansion(group.id!) : undefined}
+                                >
+                                  <TableCell className="font-mono text-xs">
+                                    <div className="flex items-center gap-1">
+                                      {hasMembers && (
+                                        isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />
                                       )}
-                                      Delete User
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                                      {group.parentUser.id}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="font-medium">
+                                    <div className="flex items-center gap-2">
+                                      {group.parentUser.username}
+                                      {group.type === 'family' && (
+                                        <Badge variant="secondary" className="text-xs">Family ({group.members.length + 1})</Badge>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    {group.parentUser.firstName || group.parentUser.lastName 
+                                      ? `${group.parentUser.firstName || ''} ${group.parentUser.lastName || ''}`.trim()
+                                      : <span className="text-muted-foreground">-</span>}
+                                  </TableCell>
+                                  <TableCell>
+                                    {group.parentUser.email || <span className="text-muted-foreground">-</span>}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge variant={group.parentUser.role === 'admin' ? 'default' : group.parentUser.role === 'teacher' ? 'secondary' : group.parentUser.role === 'parent' ? 'default' : 'outline'}>
+                                      {group.parentUser.role}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge variant="outline" className="capitalize">
+                                      {group.parentUser.accountType.replace(/_/g, ' ')}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="text-right">{group.parentUser.stars}</TableCell>
+                                  <TableCell className="text-right">{group.parentUser.gamesPlayed}</TableCell>
+                                  <TableCell className="text-xs">
+                                    {new Date(group.parentUser.createdAt).toLocaleDateString()}
+                                  </TableCell>
+                                  <TableCell className="text-xs">
+                                    {group.parentUser.lastActive 
+                                      ? new Date(group.parentUser.lastActive).toLocaleDateString()
+                                      : <span className="text-muted-foreground">Never</span>}
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon"
+                                          disabled={group.parentUser.role === 'admin'}
+                                          data-testid={`button-delete-user-${group.parentUser.id}`}
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          <Trash2 className="w-4 h-4 text-destructive" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Delete User Account</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            This will permanently delete the user "{group.parentUser.username}" and ALL associated data including:
+                                            <ul className="list-disc ml-6 mt-2 space-y-1">
+                                              <li>Game sessions and scores</li>
+                                              <li>Achievements and streaks</li>
+                                              <li>Word lists and groups they own</li>
+                                              <li>Group memberships</li>
+                                              <li>Star shop purchases</li>
+                                            </ul>
+                                            <p className="mt-3 font-medium text-destructive">This action cannot be undone.</p>
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction
+                                            onClick={() => deleteUserMutation.mutate(group.parentUser!.id)}
+                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                            data-testid={`button-confirm-delete-user-${group.parentUser.id}`}
+                                          >
+                                            {deleteUserMutation.isPending ? (
+                                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            ) : (
+                                              <Trash2 className="w-4 h-4 mr-2" />
+                                            )}
+                                            Delete User
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                              {isExpanded && group.members.map((member) => renderUserRow(member, true))}
+                            </>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                     <div className="mt-4 text-sm text-muted-foreground">
