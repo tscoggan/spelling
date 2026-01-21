@@ -102,6 +102,7 @@ export default function AdminPage() {
   });
   
   const [expandedFamilies, setExpandedFamilies] = useState<Set<number>>(new Set());
+  const [userSearchQuery, setUserSearchQuery] = useState("");
 
   const { data: usageMetrics = [], isLoading: isLoadingMetrics } = useQuery<UsageMetric[]>({
     queryKey: ['/api/admin/usage', dateRange],
@@ -148,12 +149,15 @@ export default function AdminPage() {
   });
 
   const deleteUserMutation = useMutation({
-    mutationFn: async (userId: number) => {
-      const response = await apiRequest('DELETE', `/api/admin/users/${userId}`);
+    mutationFn: async ({ userId, deleteFamily }: { userId: number; deleteFamily?: boolean }) => {
+      const url = deleteFamily 
+        ? `/api/admin/users/${userId}?deleteFamily=true` 
+        : `/api/admin/users/${userId}`;
+      const response = await apiRequest('DELETE', url);
       return response.json();
     },
-    onSuccess: () => {
-      toast({ title: "User deleted", description: "User and all associated data have been removed" });
+    onSuccess: (data) => {
+      toast({ title: "Deleted", description: data.message || "User and all associated data have been removed" });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
     },
     onError: (error: Error) => {
@@ -230,6 +234,32 @@ export default function AdminPage() {
 
     return groups;
   }, [adminUsers]);
+
+  const filteredGroupedUsers = useMemo(() => {
+    if (!userSearchQuery.trim()) {
+      return groupedUsers;
+    }
+
+    const query = userSearchQuery.toLowerCase().trim();
+    const userMatchesQuery = (user: AdminUser): boolean => {
+      const idMatch = user.id.toString() === query;
+      const usernameMatch = user.username.toLowerCase().includes(query);
+      const firstNameMatch = user.firstName?.toLowerCase().includes(query) || false;
+      const lastNameMatch = user.lastName?.toLowerCase().includes(query) || false;
+      const fullNameMatch = `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase().includes(query);
+      return idMatch || usernameMatch || firstNameMatch || lastNameMatch || fullNameMatch;
+    };
+
+    return groupedUsers.filter((group) => {
+      if (group.parentUser && userMatchesQuery(group.parentUser)) {
+        return true;
+      }
+      if (group.members.some(member => userMatchesQuery(member))) {
+        return true;
+      }
+      return false;
+    });
+  }, [groupedUsers, userSearchQuery]);
 
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -843,7 +873,36 @@ export default function AdminPage() {
                     <p>No registered users found</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1 max-w-sm">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search by name or user ID..."
+                          value={userSearchQuery}
+                          onChange={(e) => setUserSearchQuery(e.target.value)}
+                          className="pl-9"
+                          data-testid="input-user-search"
+                        />
+                      </div>
+                      {userSearchQuery && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setUserSearchQuery("")}
+                          data-testid="button-clear-user-search"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                    {userSearchQuery && filteredGroupedUsers.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <p>No users found matching "{userSearchQuery}"</p>
+                      </div>
+                    ) : (
+                    <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -861,7 +920,7 @@ export default function AdminPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {groupedUsers.map((group) => {
+                        {filteredGroupedUsers.map((group) => {
                           const isExpanded = group.id !== null && expandedFamilies.has(group.id);
                           const hasMembers = group.members.length > 0;
                           const renderUserRow = (user: AdminUser, isChild = false) => (
@@ -928,10 +987,24 @@ export default function AdminPage() {
                                         <p className="mt-3 font-medium text-destructive">This action cannot be undone.</p>
                                       </AlertDialogDescription>
                                     </AlertDialogHeader>
-                                    <AlertDialogFooter>
+                                    <AlertDialogFooter className="flex-col sm:flex-row gap-2">
                                       <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      {group.type === 'family' && (group.members.length > 0 || group.parentUser) && (
+                                        <AlertDialogAction
+                                          onClick={() => deleteUserMutation.mutate({ userId: user.id, deleteFamily: true })}
+                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                          data-testid={`button-delete-family-${user.id}`}
+                                        >
+                                          {deleteUserMutation.isPending ? (
+                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                          ) : (
+                                            <Users className="w-4 h-4 mr-2" />
+                                          )}
+                                          Delete Entire Family
+                                        </AlertDialogAction>
+                                      )}
                                       <AlertDialogAction
-                                        onClick={() => deleteUserMutation.mutate(user.id)}
+                                        onClick={() => deleteUserMutation.mutate({ userId: user.id })}
                                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                         data-testid={`button-confirm-delete-user-${user.id}`}
                                       >
@@ -940,7 +1013,7 @@ export default function AdminPage() {
                                         ) : (
                                           <Trash2 className="w-4 h-4 mr-2" />
                                         )}
-                                        Delete User
+                                        {group.type === 'family' ? 'Delete Only This User' : 'Delete User'}
                                       </AlertDialogAction>
                                     </AlertDialogFooter>
                                   </AlertDialogContent>
@@ -1030,10 +1103,24 @@ export default function AdminPage() {
                                             <p className="mt-3 font-medium text-destructive">This action cannot be undone.</p>
                                           </AlertDialogDescription>
                                         </AlertDialogHeader>
-                                        <AlertDialogFooter>
+                                        <AlertDialogFooter className="flex-col sm:flex-row gap-2">
                                           <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          {group.type === 'family' && group.members.length > 0 && (
+                                            <AlertDialogAction
+                                              onClick={() => deleteUserMutation.mutate({ userId: group.parentUser!.id, deleteFamily: true })}
+                                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                              data-testid={`button-delete-family-${group.parentUser.id}`}
+                                            >
+                                              {deleteUserMutation.isPending ? (
+                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                              ) : (
+                                                <Users className="w-4 h-4 mr-2" />
+                                              )}
+                                              Delete Entire Family ({group.members.length + 1})
+                                            </AlertDialogAction>
+                                          )}
                                           <AlertDialogAction
-                                            onClick={() => deleteUserMutation.mutate(group.parentUser!.id)}
+                                            onClick={() => deleteUserMutation.mutate({ userId: group.parentUser!.id })}
                                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                             data-testid={`button-confirm-delete-user-${group.parentUser.id}`}
                                           >
@@ -1042,7 +1129,7 @@ export default function AdminPage() {
                                             ) : (
                                               <Trash2 className="w-4 h-4 mr-2" />
                                             )}
-                                            Delete User
+                                            {group.type === 'family' && group.members.length > 0 ? 'Delete Only This User' : 'Delete User'}
                                           </AlertDialogAction>
                                         </AlertDialogFooter>
                                       </AlertDialogContent>
@@ -1057,8 +1144,12 @@ export default function AdminPage() {
                       </TableBody>
                     </Table>
                     <div className="mt-4 text-sm text-muted-foreground">
-                      Total users: {adminUsers.length}
+                      {userSearchQuery 
+                        ? `Showing ${filteredGroupedUsers.length} group(s) matching "${userSearchQuery}" (${filteredGroupedUsers.reduce((sum, g) => sum + 1 + g.members.length, 0)} users)`
+                        : `Total users: ${adminUsers.length}`}
                     </div>
+                    </div>
+                    )}
                   </div>
                 )}
               </CardContent>

@@ -3541,6 +3541,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Admin: Delete user and all associated data
+  // Query param: deleteFamily=true to delete entire family group
   app.delete("/api/admin/users/:id", async (req, res) => {
     if (!req.user || req.user.role !== "admin") {
       return res.status(403).json({ error: "Admin access required" });
@@ -3553,6 +3554,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (id === req.user.id) {
         return res.status(400).json({ error: "Cannot delete your own account" });
+      }
+      
+      const deleteFamily = req.query.deleteFamily === 'true';
+      
+      if (deleteFamily) {
+        const familyMember = await storage.getFamilyMemberByUserId(id);
+        if (familyMember && familyMember.familyId) {
+          const familyMembers = await storage.getFamilyMembers(familyMember.familyId);
+          let deletedCount = 0;
+          for (const member of familyMembers) {
+            if (member.userId !== req.user.id) {
+              await storage.deleteUserAndAllData(member.userId);
+              deletedCount++;
+            }
+          }
+          await storage.deleteFamilyAccount(familyMember.familyId);
+          return res.json({ success: true, message: `Family account and ${deletedCount} member(s) deleted` });
+        }
       }
       
       const deleted = await storage.deleteUserAndAllData(id);

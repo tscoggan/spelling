@@ -217,6 +217,7 @@ export interface IStorage {
   getFamilyAccount(id: number): Promise<FamilyAccount | undefined>;
   getFamilyAccountByParentId(parentUserId: number): Promise<FamilyAccount | undefined>;
   updateFamilyAccount(id: number, updates: Partial<FamilyAccount>): Promise<FamilyAccount | undefined>;
+  deleteFamilyAccount(id: number): Promise<boolean>;
   verifyFamilyVpc(familyId: number): Promise<FamilyAccount | undefined>;
   
   createFamilyMember(member: InsertFamilyMember): Promise<FamilyMember>;
@@ -2152,6 +2153,12 @@ export class DatabaseStorage implements IStorage {
   async updateFamilyAccount(id: number, updates: Partial<FamilyAccount>): Promise<FamilyAccount | undefined> {
     const [updated] = await db.update(familyAccounts).set(updates).where(eq(familyAccounts.id, id)).returning();
     return updated || undefined;
+  }
+
+  async deleteFamilyAccount(id: number): Promise<boolean> {
+    await db.delete(familyMembers).where(eq(familyMembers.familyId, id));
+    const result = await db.delete(familyAccounts).where(eq(familyAccounts.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
   }
 
   async verifyFamilyVpc(familyId: number): Promise<FamilyAccount | undefined> {
