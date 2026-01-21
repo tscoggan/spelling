@@ -3867,8 +3867,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       await storage.removeFamilyMember(familyMember.familyId, childId);
+      await storage.deleteUserAndAllData(childId);
       
-      res.json({ success: true, message: "Child removed from family" });
+      res.json({ success: true, message: "Child account deleted" });
     } catch (error) {
       console.error("Error removing child:", error);
       res.status(500).json({ error: "Failed to remove child" });
