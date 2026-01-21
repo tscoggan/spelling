@@ -3737,8 +3737,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const schema = z.object({
         username: z.string().min(3).max(50),
         password: z.string().min(4),
-        firstName: z.string().min(1).max(100).optional(),
-        lastName: z.string().min(1).max(100).optional(),
+        firstName: z.string().min(1, "First name is required").max(100),
+        lastName: z.string().min(1, "Last name is required").max(100),
       });
       
       const { username, password, firstName, lastName } = schema.parse(req.body);

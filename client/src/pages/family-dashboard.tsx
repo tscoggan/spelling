@@ -39,8 +39,8 @@ import {
 const childSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters").max(50),
   password: z.string().min(4, "Password must be at least 4 characters"),
-  firstName: z.string().max(100).optional(),
-  lastName: z.string().max(100).optional(),
+  firstName: z.string().min(1, "First name is required").max(100),
+  lastName: z.string().min(1, "Last name is required").max(100),
 });
 
 type ChildFormData = z.infer<typeof childSchema>;
@@ -165,6 +165,19 @@ export default function FamilyDashboardPage() {
 
   const children = familyData?.members.filter(m => m.role === "child") || [];
   const parents = familyData?.members.filter(m => m.role === "parent") || [];
+  
+  const handleOpenAddChild = (open: boolean) => {
+    if (open && parents.length > 0) {
+      const parentLastName = parents[0].user.lastName || "";
+      form.reset({
+        username: "",
+        password: "",
+        firstName: "",
+        lastName: parentLastName,
+      });
+    }
+    setIsAddChildOpen(open);
+  };
 
   if (isLoading) {
     return (
@@ -296,7 +309,7 @@ export default function FamilyDashboardPage() {
                 <CardDescription>Manage accounts for your children</CardDescription>
               </div>
               {familyData.isParent && familyData.family.vpcStatus === "verified" && (
-                <Dialog open={isAddChildOpen} onOpenChange={setIsAddChildOpen}>
+                <Dialog open={isAddChildOpen} onOpenChange={handleOpenAddChild}>
                   <DialogTrigger asChild>
                     <Button data-testid="button-add-child">
                       <Plus className="w-4 h-4 mr-2" />
@@ -318,7 +331,7 @@ export default function FamilyDashboardPage() {
                             name="firstName"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>First Name (optional)</FormLabel>
+                                <FormLabel>First Name</FormLabel>
                                 <FormControl>
                                   <Input placeholder="Emma" {...field} data-testid="input-child-first-name" />
                                 </FormControl>
@@ -331,7 +344,7 @@ export default function FamilyDashboardPage() {
                             name="lastName"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Last Name (optional)</FormLabel>
+                                <FormLabel>Last Name</FormLabel>
                                 <FormControl>
                                   <Input placeholder="Smith" {...field} data-testid="input-child-last-name" />
                                 </FormControl>
