@@ -889,6 +889,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.setWordListSharedGroups(wordList.id, req.body.groupIds);
       }
       
+      // Auto-share with family children if user is a family parent
+      const familyMember = await storage.getFamilyMemberByUserId(req.user!.id);
+      if (familyMember && familyMember.role === "parent") {
+        await storage.shareWordListWithFamilyChildren(wordList.id, familyMember.familyId);
+      }
+      
       let illustrationJobId: number | undefined;
       if (listData.assignImages !== false) {
         const jobService = new IllustrationJobService();
@@ -3678,10 +3684,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Get current user's family info
+  // Get current user's family info with optional date filter for metrics
   app.get("/api/family", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
       const userId = req.user!.id;
+      const dateFilter = req.query.dateFilter as string | undefined;
       
       const familyMember = await storage.getFamilyMemberByUserId(userId);
       if (!familyMember) {
@@ -3695,22 +3702,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const members = await storage.getFamilyMembers(family.id);
       
+      // Get metrics for children
+      const childUserIds = members.filter(m => m.role === "child").map(m => m.userId);
+      const childMetrics = await storage.getChildrenMetrics(childUserIds, dateFilter);
+      const metricsMap = new Map(childMetrics.map(m => [m.userId, m]));
+      
       res.json({
         family,
-        members: members.map(m => ({
-          id: m.id,
-          userId: m.userId,
-          role: m.role,
-          status: m.status,
-          user: {
-            id: m.user.id,
-            username: m.user.username,
-            firstName: m.user.firstName,
-            lastName: m.user.lastName,
-            stars: m.user.stars,
-            accountType: m.user.accountType,
-          },
-        })),
+        members: members.map(m => {
+          const metrics = metricsMap.get(m.userId);
+          return {
+            id: m.id,
+            userId: m.userId,
+            role: m.role,
+            status: m.status,
+            user: {
+              id: m.user.id,
+              username: m.user.username,
+              firstName: m.user.firstName,
+              lastName: m.user.lastName,
+              stars: m.user.stars,
+              accountType: m.user.accountType,
+              gamesPlayed: metrics?.gamesPlayed || 0,
+              lastActive: metrics?.lastActive || null,
+            },
+          };
+        }),
         isParent: familyMember.role === "parent",
       });
     } catch (error) {

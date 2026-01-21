@@ -8,7 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Home, Users, Plus, Loader2, UserPlus, Pencil, Trash2, CheckCircle, XCircle, Star } from "lucide-react";
+import { Home, Users, Plus, Loader2, UserPlus, Pencil, Trash2, CheckCircle, XCircle, Star, Gamepad2, Calendar } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -45,6 +46,8 @@ const childSchema = z.object({
 
 type ChildFormData = z.infer<typeof childSchema>;
 
+type DateFilter = "all" | "month" | "week" | "today";
+
 interface FamilyMember {
   id: number;
   userId: number;
@@ -57,6 +60,8 @@ interface FamilyMember {
     lastName: string | null;
     stars: number;
     accountType: string;
+    gamesPlayed: number;
+    lastActive: string | null;
   };
 }
 
@@ -71,6 +76,13 @@ interface FamilyData {
   isParent: boolean;
 }
 
+const dateFilterLabels: { [key in DateFilter]: string } = {
+  all: "All Time",
+  month: "Last 30 Days",
+  week: "Last 7 Days",
+  today: "Today",
+};
+
 export default function FamilyDashboardPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -79,6 +91,7 @@ export default function FamilyDashboardPage() {
   
   const [isAddChildOpen, setIsAddChildOpen] = useState(false);
   const [editingChild, setEditingChild] = useState<FamilyMember | null>(null);
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   
   const form = useForm<ChildFormData>({
     resolver: zodResolver(childSchema),
@@ -91,9 +104,9 @@ export default function FamilyDashboardPage() {
   });
 
   const { data: familyData, isLoading, error } = useQuery<FamilyData>({
-    queryKey: ["/api/family"],
+    queryKey: ["/api/family", dateFilter],
     queryFn: async () => {
-      const response = await fetch("/api/family");
+      const response = await fetch(`/api/family?dateFilter=${dateFilter}`);
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error || "Failed to fetch family data");
@@ -411,13 +424,30 @@ export default function FamilyDashboardPage() {
                 )}
               </div>
             ) : (
-              <Table>
+              <>
+                <div className="flex items-center justify-end mb-4 gap-2">
+                  <Calendar className="w-4 h-4 text-muted-foreground" />
+                  <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as DateFilter)}>
+                    <SelectTrigger className="w-40" data-testid="select-date-filter">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(dateFilterLabels) as DateFilter[]).map((key) => (
+                        <SelectItem key={key} value={key} data-testid={`select-date-${key}`}>
+                          {dateFilterLabels[key]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Username</TableHead>
                     <TableHead className="text-right">Stars</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Games Played</TableHead>
+                    <TableHead>Last Active</TableHead>
                     {familyData.isParent && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
@@ -436,8 +466,16 @@ export default function FamilyDashboardPage() {
                           {child.user.stars}
                         </div>
                       </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Gamepad2 className="w-4 h-4 text-muted-foreground" />
+                          {child.user.gamesPlayed}
+                        </div>
+                      </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="capitalize">{child.status}</Badge>
+                        {child.user.lastActive
+                          ? new Date(child.user.lastActive).toLocaleDateString()
+                          : "Never"}
                       </TableCell>
                       {familyData.isParent && (
                         <TableCell className="text-right">
@@ -484,7 +522,8 @@ export default function FamilyDashboardPage() {
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
+                </Table>
+              </>
             )}
           </CardContent>
         </Card>

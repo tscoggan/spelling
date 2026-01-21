@@ -57,6 +57,7 @@ import {
   appSettings,
   flaggedWords,
   userHiddenWordLists,
+  wordListUserShares,
   familyAccounts,
   familyMembers,
   paymentHistory,
@@ -222,6 +223,8 @@ export interface IStorage {
   getFamilyMemberByUserId(userId: number): Promise<FamilyMember | undefined>;
   updateFamilyMember(id: number, updates: Partial<FamilyMember>): Promise<FamilyMember | undefined>;
   removeFamilyMember(familyId: number, userId: number): Promise<boolean>;
+  getChildrenMetrics(userIds: number[], dateFilter?: string): Promise<{ userId: number; gamesPlayed: number; lastActive: Date | null }[]>;
+  shareWordListWithFamilyChildren(wordListId: number, familyId: number): Promise<void>;
   
   createPaymentRecord(payment: InsertPaymentHistory): Promise<PaymentHistory>;
   getPaymentHistory(familyId: number): Promise<PaymentHistory[]>;
@@ -617,21 +620,32 @@ export class DatabaseStorage implements IStorage {
       ...ownedGroups.map(g => g.groupId)
     ];
     
-    if (allGroupIds.length === 0) {
+    // Get word lists shared via groups
+    let groupSharedListIds: number[] = [];
+    if (allGroupIds.length > 0) {
+      const sharedListIds = await db
+        .select({ wordListId: wordListUserGroups.wordListId })
+        .from(wordListUserGroups)
+        .where(inArray(wordListUserGroups.groupId, allGroupIds));
+      groupSharedListIds = sharedListIds.map(s => s.wordListId);
+    }
+    
+    // Get word lists shared directly with the user (e.g., from family parents)
+    const directSharedListIds = await db
+      .select({ wordListId: wordListUserShares.wordListId })
+      .from(wordListUserShares)
+      .where(eq(wordListUserShares.sharedWithUserId, userId));
+    
+    const allSharedListIds = [
+      ...groupSharedListIds,
+      ...directSharedListIds.map(s => s.wordListId)
+    ];
+    
+    if (allSharedListIds.length === 0) {
       return [];
     }
     
-    // Get word lists shared with these groups
-    const sharedListIds = await db
-      .select({ wordListId: wordListUserGroups.wordListId })
-      .from(wordListUserGroups)
-      .where(inArray(wordListUserGroups.groupId, allGroupIds));
-    
-    if (sharedListIds.length === 0) {
-      return [];
-    }
-    
-    const uniqueListIds = Array.from(new Set(sharedListIds.map(s => s.wordListId)));
+    const uniqueListIds = Array.from(new Set(allSharedListIds));
     
     // Fetch the actual word lists (excluding ones owned by the user to avoid duplicates)
     const wordLists = await db
@@ -2152,6 +2166,50 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount ? result.rowCount > 0 : false;
   }
 
+  async getChildrenMetrics(userIds: number[], dateFilter?: string): Promise<{ userId: number; gamesPlayed: number; lastActive: Date | null }[]> {
+    if (userIds.length === 0) return [];
+    
+    let whereClause;
+    if (dateFilter === "today") {
+      whereClause = and(
+        inArray(gameSessions.userId, userIds),
+        sql`${gameSessions.createdAt} >= NOW() - INTERVAL '1 day'`
+      );
+    } else if (dateFilter === "week") {
+      whereClause = and(
+        inArray(gameSessions.userId, userIds),
+        sql`${gameSessions.createdAt} >= NOW() - INTERVAL '7 days'`
+      );
+    } else if (dateFilter === "month") {
+      whereClause = and(
+        inArray(gameSessions.userId, userIds),
+        sql`${gameSessions.createdAt} >= NOW() - INTERVAL '30 days'`
+      );
+    } else {
+      whereClause = inArray(gameSessions.userId, userIds);
+    }
+    
+    const results = await db
+      .select({
+        userId: gameSessions.userId,
+        gamesPlayed: sql<number>`count(*)::int`,
+        lastActive: sql<Date | null>`MAX(${gameSessions.createdAt})`,
+      })
+      .from(gameSessions)
+      .where(whereClause)
+      .groupBy(gameSessions.userId);
+    
+    // Return metrics for all users, with defaults for those without sessions
+    return userIds.map(id => {
+      const found = results.find(r => r.userId === id);
+      return {
+        userId: id,
+        gamesPlayed: found?.gamesPlayed || 0,
+        lastActive: found?.lastActive || null,
+      };
+    });
+  }
+
   async createPaymentRecord(payment: InsertPaymentHistory): Promise<PaymentHistory> {
     const [result] = await db.insert(paymentHistory).values(payment).returning();
     return result;
@@ -2167,6 +2225,22 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(paymentHistory)
       .where(eq(paymentHistory.userId, userId))
       .orderBy(desc(paymentHistory.paymentDate));
+  }
+
+  async shareWordListWithFamilyChildren(wordListId: number, familyId: number): Promise<void> {
+    const members = await this.getFamilyMembers(familyId);
+    const children = members.filter(m => m.role === "child");
+    
+    for (const child of children) {
+      try {
+        await db.insert(wordListUserShares).values({
+          wordListId,
+          sharedWithUserId: child.userId,
+        }).onConflictDoNothing();
+      } catch (err) {
+        // Ignore duplicate key errors
+      }
+    }
   }
 }
 

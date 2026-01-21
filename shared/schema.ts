@@ -210,6 +210,15 @@ export const userHiddenWordLists = pgTable("user_hidden_word_lists", {
   userWordListUnique: unique("user_hidden_word_list_unique").on(table.userId, table.wordListId),
 }));
 
+export const wordListUserShares = pgTable("word_list_user_shares", {
+  id: serial("id").primaryKey(),
+  wordListId: integer("word_list_id").notNull(),
+  sharedWithUserId: integer("shared_with_user_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  wordListUserUnique: unique("word_list_user_share_unique").on(table.wordListId, table.sharedWithUserId),
+}));
+
 export const familyAccounts = pgTable("family_accounts", {
   id: serial("id").primaryKey(),
   primaryParentUserId: integer("primary_parent_user_id").notNull(),
