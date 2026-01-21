@@ -6,7 +6,7 @@ import { z } from "zod";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import { IllustrationJobService } from "./services/illustrationJobService";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
-import { sendPasswordResetEmail, sendEmailUpdateNotification, sendContactEmail } from "./services/emailService";
+import { sendPasswordResetEmail, sendEmailUpdateNotification, sendContactEmail, sendAccountDeletionEmail } from "./services/emailService";
 import multer from "multer";
 import crypto from "crypto";
 import { APP_VERSION } from "@shared/version";
@@ -3556,27 +3556,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Cannot delete your own account" });
       }
       
+      const userToDelete = await storage.getUser(id);
+      if (!userToDelete) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
       const deleteFamily = req.query.deleteFamily === 'true';
       
       if (deleteFamily) {
         const familyMember = await storage.getFamilyMemberByUserId(id);
         if (familyMember && familyMember.familyId) {
           const familyMembers = await storage.getFamilyMembers(familyMember.familyId);
-          let deletedCount = 0;
+          const deletedUsers: { username: string; firstName?: string | null; lastName?: string | null }[] = [];
+          
+          const parentMember = familyMembers.find(m => m.role === 'parent');
+          const parentEmail = parentMember?.user?.email;
+          const parentUsername = parentMember?.user?.username || 'User';
+          
           for (const member of familyMembers) {
             if (member.userId !== req.user.id) {
+              deletedUsers.push({
+                username: member.user.username,
+                firstName: member.user.firstName,
+                lastName: member.user.lastName,
+              });
               await storage.deleteUserAndAllData(member.userId);
-              deletedCount++;
             }
           }
           await storage.deleteFamilyAccount(familyMember.familyId);
-          return res.json({ success: true, message: `Family account and ${deletedCount} member(s) deleted` });
+          
+          if (parentEmail) {
+            try {
+              await sendAccountDeletionEmail(parentEmail, parentUsername, deletedUsers, true, 'family');
+            } catch (emailError) {
+              console.error("Failed to send deletion confirmation email:", emailError);
+            }
+          }
+          
+          return res.json({ success: true, message: `Family account and ${deletedUsers.length} member(s) deleted` });
         }
+      }
+      
+      const familyMember = await storage.getFamilyMemberByUserId(id);
+      let notificationEmail: string | null = null;
+      let notificationUsername = 'User';
+      let groupType: 'family' | 'school' | 'individual' = 'individual';
+      
+      if (familyMember && familyMember.familyId) {
+        const familyMembers = await storage.getFamilyMembers(familyMember.familyId);
+        const parentMember = familyMembers.find(m => m.role === 'parent');
+        if (parentMember?.user?.email) {
+          notificationEmail = parentMember.user.email;
+          notificationUsername = parentMember.user.username;
+          groupType = 'family';
+        }
+      } else if (userToDelete.accountType === 'school' && userToDelete.email) {
+        notificationEmail = userToDelete.email;
+        notificationUsername = userToDelete.username;
+        groupType = 'school';
+      } else if (userToDelete.email) {
+        notificationEmail = userToDelete.email;
+        notificationUsername = userToDelete.username;
       }
       
       const deleted = await storage.deleteUserAndAllData(id);
       if (!deleted) {
         return res.status(404).json({ error: "User not found" });
+      }
+      
+      if (notificationEmail) {
+        try {
+          await sendAccountDeletionEmail(
+            notificationEmail,
+            notificationUsername,
+            [{ username: userToDelete.username, firstName: userToDelete.firstName, lastName: userToDelete.lastName }],
+            false,
+            groupType
+          );
+        } catch (emailError) {
+          console.error("Failed to send deletion confirmation email:", emailError);
+        }
       }
       
       res.json({ success: true, message: "User and all associated data deleted" });

@@ -168,3 +168,74 @@ export async function sendEmailUpdateNotification(
     `,
   });
 }
+
+export async function sendAccountDeletionEmail(
+  toEmail: string,
+  username: string,
+  deletedUsers: { username: string; firstName?: string | null; lastName?: string | null }[],
+  isEntireGroup: boolean,
+  groupType: 'family' | 'school' | 'individual'
+): Promise<void> {
+  const { client, fromEmail } = getResendClient();
+  
+  const deletedUsersList = deletedUsers.map(u => {
+    const name = u.firstName || u.lastName 
+      ? `${u.firstName || ''} ${u.lastName || ''}`.trim() 
+      : u.username;
+    return `<li>${name} (${u.username})</li>`;
+  }).join('');
+  
+  const groupLabel = groupType === 'family' ? 'family' : groupType === 'school' ? 'school' : 'account';
+  const subject = isEntireGroup 
+    ? `Spelling Champions - ${groupType === 'family' ? 'Family' : 'School'} Account Deleted`
+    : 'Spelling Champions - Account Deleted';
+  
+  const headerText = isEntireGroup
+    ? `Your ${groupLabel} account has been deleted`
+    : 'An account has been deleted';
+
+  await client.emails.send({
+    from: fromEmail,
+    to: toEmail,
+    subject,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff); padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+            .header h1 { color: white; margin: 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+            .deleted-list { background: white; padding: 15px; border-radius: 4px; border-left: 4px solid #ef4444; margin: 15px 0; }
+            .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Spelling Champions</h1>
+            </div>
+            <div class="content">
+              <h2>${headerText}</h2>
+              <p>Hi ${username},</p>
+              <p>This is a confirmation that the following account${deletedUsers.length > 1 ? 's have' : ' has'} been permanently deleted from Spelling Champions:</p>
+              <div class="deleted-list">
+                <ul>
+                  ${deletedUsersList}
+                </ul>
+              </div>
+              <p>All associated data including game sessions, scores, word lists, and achievements have been removed.</p>
+              <p>If you did not authorize this action, please contact support immediately.</p>
+              <p>Thank you for using Spelling Champions.</p>
+            </div>
+            <div class="footer">
+              <p>This is an automated message from Spelling Champions. Please do not reply to this email.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  });
+}
