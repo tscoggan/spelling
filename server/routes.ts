@@ -3600,7 +3600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName,
         lastName,
         email,
-        role: "student",
+        role: "parent",
         accountType: "family_parent",
       });
       
