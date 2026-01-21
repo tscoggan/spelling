@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
 import { Upload, Search, Users, FileText, ArrowUpDown, Loader2, Check, X, AlertCircle, Ban, Copy, BookX, Home, UserX, Trash2, Shield, ChevronDown, ChevronRight } from "lucide-react";
+import { UserHeader } from "@/components/user-header";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -397,6 +398,7 @@ export default function AdminPage() {
       <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
 
       <div className="max-w-6xl mx-auto space-y-6 relative z-10">
+        <UserHeader />
         <header className="flex items-center justify-start mb-4">
           <Button
             variant="default"

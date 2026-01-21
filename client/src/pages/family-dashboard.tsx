@@ -9,6 +9,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Home, Users, Plus, Loader2, UserPlus, Pencil, Trash2, CheckCircle, XCircle, Star, Gamepad2, Calendar } from "lucide-react";
+import { UserHeader } from "@/components/user-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -257,6 +258,7 @@ export default function FamilyDashboardPage() {
       <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
 
       <div className="max-w-4xl mx-auto space-y-6 relative z-10">
+        <UserHeader />
         <header className="flex items-center justify-start mb-4">
           <Button
             variant="default"
