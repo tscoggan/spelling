@@ -1063,7 +1063,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!isH2HParticipant) {
           // Not an H2H participant, check normal visibility rules
           if (wordList.visibility === 'private' && req.user!.id !== wordList.userId) {
-            return res.status(403).json({ error: "Access denied" });
+            // Check if list is directly shared with the user (e.g., family sharing)
+            const isDirectlyShared = await storage.isWordListDirectlySharedWithUser(id, req.user!.id);
+            if (!isDirectlyShared) {
+              return res.status(403).json({ error: "Access denied" });
+            }
           } else if (wordList.visibility === 'groups') {
             // Check if user is owner or member of any groups this list is shared with
             const isOwner = req.user!.id === wordList.userId;

@@ -143,6 +143,7 @@ export interface IStorage {
   getWordListSharedGroupIds(wordListId: number): Promise<number[]>;
   setWordListSharedGroups(wordListId: number, groupIds: number[]): Promise<void>;
   isUserMemberOfWordListGroups(userId: number, wordListId: number): Promise<boolean>;
+  isWordListDirectlySharedWithUser(wordListId: number, userId: number): Promise<boolean>;
   isUserGroupMember(userId: number, groupId: number): Promise<boolean>;
   
   getWordListCoOwners(wordListId: number): Promise<WordListCoOwner[]>;
@@ -1236,6 +1237,21 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
     
     return membership.length > 0;
+  }
+
+  async isWordListDirectlySharedWithUser(wordListId: number, userId: number): Promise<boolean> {
+    const [share] = await db
+      .select()
+      .from(wordListUserShares)
+      .where(
+        and(
+          eq(wordListUserShares.wordListId, wordListId),
+          eq(wordListUserShares.sharedWithUserId, userId)
+        )
+      )
+      .limit(1);
+    
+    return !!share;
   }
 
   async isUserGroupMember(userId: number, groupId: number): Promise<boolean> {
