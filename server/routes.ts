@@ -3725,6 +3725,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               accountType: m.user.accountType,
               gamesPlayed: metrics?.gamesPlayed || 0,
               lastActive: metrics?.lastActive || null,
+              starsEarned: metrics?.starsEarned || 0,
+              accuracy: metrics?.accuracy || 0,
             },
           };
         }),

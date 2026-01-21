@@ -62,6 +62,8 @@ interface FamilyMember {
     accountType: string;
     gamesPlayed: number;
     lastActive: string | null;
+    starsEarned: number;
+    accuracy: number;
   };
 }
 
@@ -445,8 +447,9 @@ export default function FamilyDashboardPage() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Username</TableHead>
-                    <TableHead className="text-right">Stars</TableHead>
+                    <TableHead className="text-right">Stars Earned</TableHead>
                     <TableHead className="text-right">Games Played</TableHead>
+                    <TableHead className="text-right">Accuracy</TableHead>
                     <TableHead>Last Active</TableHead>
                     {familyData.isParent && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
@@ -463,7 +466,7 @@ export default function FamilyDashboardPage() {
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
                           <Star className="w-4 h-4 text-yellow-500" />
-                          {child.user.stars}
+                          {child.user.starsEarned}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
@@ -471,6 +474,9 @@ export default function FamilyDashboardPage() {
                           <Gamepad2 className="w-4 h-4 text-muted-foreground" />
                           {child.user.gamesPlayed}
                         </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {child.user.accuracy}%
                       </TableCell>
                       <TableCell>
                         {child.user.lastActive

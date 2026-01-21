@@ -2166,7 +2166,7 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount ? result.rowCount > 0 : false;
   }
 
-  async getChildrenMetrics(userIds: number[], dateFilter?: string): Promise<{ userId: number; gamesPlayed: number; lastActive: Date | null }[]> {
+  async getChildrenMetrics(userIds: number[], dateFilter?: string): Promise<{ userId: number; gamesPlayed: number; lastActive: Date | null; starsEarned: number; accuracy: number }[]> {
     if (userIds.length === 0) return [];
     
     let whereClause;
@@ -2194,6 +2194,9 @@ export class DatabaseStorage implements IStorage {
         userId: gameSessions.userId,
         gamesPlayed: sql<number>`count(*)::int`,
         lastActive: sql<Date | null>`MAX(${gameSessions.createdAt})`,
+        starsEarned: sql<number>`COALESCE(SUM(${gameSessions.starsEarned}), 0)::int`,
+        totalWords: sql<number>`COALESCE(SUM(${gameSessions.totalWords}), 0)::int`,
+        correctWords: sql<number>`COALESCE(SUM(${gameSessions.correctWords}), 0)::int`,
       })
       .from(gameSessions)
       .where(whereClause)
@@ -2202,10 +2205,15 @@ export class DatabaseStorage implements IStorage {
     // Return metrics for all users, with defaults for those without sessions
     return userIds.map(id => {
       const found = results.find(r => r.userId === id);
+      const totalWords = found?.totalWords || 0;
+      const correctWords = found?.correctWords || 0;
+      const accuracy = totalWords > 0 ? Math.round((correctWords / totalWords) * 100) : 0;
       return {
         userId: id,
         gamesPlayed: found?.gamesPlayed || 0,
         lastActive: found?.lastActive || null,
+        starsEarned: found?.starsEarned || 0,
+        accuracy,
       };
     });
   }
