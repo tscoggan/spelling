@@ -987,34 +987,36 @@ export default function AdminPage() {
                                         <p className="mt-3 font-medium text-destructive">This action cannot be undone.</p>
                                       </AlertDialogDescription>
                                     </AlertDialogHeader>
-                                    <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                                    <AlertDialogFooter>
                                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                      {group.type === 'family' && (group.members.length > 0 || group.parentUser) && (
+                                      <div className="flex flex-wrap gap-2">
+                                        {group.type === 'family' && (group.members.length > 0 || group.parentUser) && (
+                                          <AlertDialogAction
+                                            onClick={() => deleteUserMutation.mutate({ userId: user.id, deleteFamily: true })}
+                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                            data-testid={`button-delete-family-${user.id}`}
+                                          >
+                                            {deleteUserMutation.isPending ? (
+                                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            ) : (
+                                              <Users className="w-4 h-4 mr-2" />
+                                            )}
+                                            Delete Entire Family
+                                          </AlertDialogAction>
+                                        )}
                                         <AlertDialogAction
-                                          onClick={() => deleteUserMutation.mutate({ userId: user.id, deleteFamily: true })}
+                                          onClick={() => deleteUserMutation.mutate({ userId: user.id })}
                                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                          data-testid={`button-delete-family-${user.id}`}
+                                          data-testid={`button-confirm-delete-user-${user.id}`}
                                         >
                                           {deleteUserMutation.isPending ? (
                                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                           ) : (
-                                            <Users className="w-4 h-4 mr-2" />
+                                            <Trash2 className="w-4 h-4 mr-2" />
                                           )}
-                                          Delete Entire Family
+                                          {group.type === 'family' ? 'Delete Only This User' : 'Delete User'}
                                         </AlertDialogAction>
-                                      )}
-                                      <AlertDialogAction
-                                        onClick={() => deleteUserMutation.mutate({ userId: user.id })}
-                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                        data-testid={`button-confirm-delete-user-${user.id}`}
-                                      >
-                                        {deleteUserMutation.isPending ? (
-                                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                        ) : (
-                                          <Trash2 className="w-4 h-4 mr-2" />
-                                        )}
-                                        {group.type === 'family' ? 'Delete Only This User' : 'Delete User'}
-                                      </AlertDialogAction>
+                                      </div>
                                     </AlertDialogFooter>
                                   </AlertDialogContent>
                                 </AlertDialog>
@@ -1103,34 +1105,36 @@ export default function AdminPage() {
                                             <p className="mt-3 font-medium text-destructive">This action cannot be undone.</p>
                                           </AlertDialogDescription>
                                         </AlertDialogHeader>
-                                        <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                                        <AlertDialogFooter>
                                           <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                          {group.type === 'family' && group.members.length > 0 && (
+                                          <div className="flex flex-wrap gap-2">
+                                            {group.type === 'family' && group.members.length > 0 && (
+                                              <AlertDialogAction
+                                                onClick={() => deleteUserMutation.mutate({ userId: group.parentUser!.id, deleteFamily: true })}
+                                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                                data-testid={`button-delete-family-${group.parentUser.id}`}
+                                              >
+                                                {deleteUserMutation.isPending ? (
+                                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                ) : (
+                                                  <Users className="w-4 h-4 mr-2" />
+                                                )}
+                                                Delete Entire Family ({group.members.length + 1})
+                                              </AlertDialogAction>
+                                            )}
                                             <AlertDialogAction
-                                              onClick={() => deleteUserMutation.mutate({ userId: group.parentUser!.id, deleteFamily: true })}
+                                              onClick={() => deleteUserMutation.mutate({ userId: group.parentUser!.id })}
                                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                              data-testid={`button-delete-family-${group.parentUser.id}`}
+                                              data-testid={`button-confirm-delete-user-${group.parentUser.id}`}
                                             >
                                               {deleteUserMutation.isPending ? (
                                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                               ) : (
-                                                <Users className="w-4 h-4 mr-2" />
+                                                <Trash2 className="w-4 h-4 mr-2" />
                                               )}
-                                              Delete Entire Family ({group.members.length + 1})
+                                              {group.type === 'family' && group.members.length > 0 ? 'Delete Only This User' : 'Delete User'}
                                             </AlertDialogAction>
-                                          )}
-                                          <AlertDialogAction
-                                            onClick={() => deleteUserMutation.mutate({ userId: group.parentUser!.id })}
-                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                            data-testid={`button-confirm-delete-user-${group.parentUser.id}`}
-                                          >
-                                            {deleteUserMutation.isPending ? (
-                                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                            ) : (
-                                              <Trash2 className="w-4 h-4 mr-2" />
-                                            )}
-                                            {group.type === 'family' && group.members.length > 0 ? 'Delete Only This User' : 'Delete User'}
-                                          </AlertDialogAction>
+                                          </div>
                                         </AlertDialogFooter>
                                       </AlertDialogContent>
                                     </AlertDialog>
