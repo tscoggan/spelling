@@ -3854,25 +3854,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const paymentHistory = await storage.getPaymentHistory(family.id);
       
-      // Calculate subscription expiration as 1 year after most recent payment
-      let calculatedExpiresAt = family.subscriptionExpiresAt;
-      if (paymentHistory.length > 0) {
-        // Find the most recent completed payment
-        const completedPayments = paymentHistory.filter(p => p.status === 'completed');
-        if (completedPayments.length > 0) {
-          const mostRecentPayment = completedPayments.reduce((latest, p) => 
-            new Date(p.paymentDate) > new Date(latest.paymentDate) ? p : latest
-          );
-          const expirationDate = new Date(mostRecentPayment.paymentDate);
-          expirationDate.setFullYear(expirationDate.getFullYear() + 1);
-          calculatedExpiresAt = expirationDate;
-        }
-      }
+      // Use the stored subscriptionExpiresAt from the family account
+      // This is calculated correctly when payments are made:
+      // - 1 year from payment date if subscription was expired
+      // - 1 year from previous expiration date if subscription was still active
       
       res.json({
         accountType: user.accountType,
         createdAt: family.createdAt,
-        subscriptionExpiresAt: calculatedExpiresAt,
+        subscriptionExpiresAt: family.subscriptionExpiresAt,
         lastPaymentMethod: family.lastPaymentMethod,
         subscriptionAmount: family.subscriptionAmount,
         vpcStatus: family.vpcStatus,
