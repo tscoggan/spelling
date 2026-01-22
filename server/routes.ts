@@ -3854,10 +3854,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const paymentHistory = await storage.getPaymentHistory(family.id);
       
+      // Calculate subscription expiration as 1 year after most recent payment
+      let calculatedExpiresAt = family.subscriptionExpiresAt;
+      if (paymentHistory.length > 0) {
+        // Find the most recent completed payment
+        const completedPayments = paymentHistory.filter(p => p.status === 'completed');
+        if (completedPayments.length > 0) {
+          const mostRecentPayment = completedPayments.reduce((latest, p) => 
+            new Date(p.paymentDate) > new Date(latest.paymentDate) ? p : latest
+          );
+          const expirationDate = new Date(mostRecentPayment.paymentDate);
+          expirationDate.setFullYear(expirationDate.getFullYear() + 1);
+          calculatedExpiresAt = expirationDate;
+        }
+      }
+      
       res.json({
         accountType: user.accountType,
         createdAt: family.createdAt,
-        subscriptionExpiresAt: family.subscriptionExpiresAt,
+        subscriptionExpiresAt: calculatedExpiresAt,
         lastPaymentMethod: family.lastPaymentMethod,
         subscriptionAmount: family.subscriptionAmount,
         vpcStatus: family.vpcStatus,
@@ -3874,6 +3889,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching account info:", error);
       res.status(500).json({ error: "Failed to fetch account info" });
+    }
+  });
+  
+  // Renew subscription (parent only) - stubbed for Stripe
+  app.post("/api/family/renew", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      
+      const familyMember = await storage.getFamilyMemberByUserId(userId);
+      if (!familyMember || familyMember.role !== "parent") {
+        return res.status(403).json({ error: "Only parents can renew subscriptions" });
+      }
+      
+      const family = await storage.getFamilyAccount(familyMember.familyId);
+      if (!family) {
+        return res.status(404).json({ error: "Family account not found" });
+      }
+      
+      // STUBBED: In production, this would integrate with Stripe
+      // For now, we simulate a successful payment
+      const paymentMethod = req.body.paymentMethod || family.lastPaymentMethod || "card_stub";
+      const amount = 500; // $5.00 in cents
+      
+      // Add payment record
+      await storage.createPaymentRecord({
+        familyId: family.id,
+        userId,
+        amount,
+        paymentMethod,
+        description: "Annual subscription renewal",
+        status: "completed",
+      });
+      
+      // Calculate new expiration date (1 year from now or 1 year from current expiration if still valid)
+      const now = new Date();
+      let newExpirationDate: Date;
+      if (family.subscriptionExpiresAt && new Date(family.subscriptionExpiresAt) > now) {
+        // Extend from current expiration
+        newExpirationDate = new Date(family.subscriptionExpiresAt);
+        newExpirationDate.setFullYear(newExpirationDate.getFullYear() + 1);
+      } else {
+        // Set to 1 year from now
+        newExpirationDate = new Date();
+        newExpirationDate.setFullYear(newExpirationDate.getFullYear() + 1);
+      }
+      
+      // Update family account
+      await storage.updateFamilyAccount(family.id, {
+        subscriptionExpiresAt: newExpirationDate,
+        lastPaymentMethod: paymentMethod,
+      });
+      
+      res.json({
+        success: true,
+        message: "Subscription renewed successfully",
+        newExpirationDate,
+      });
+    } catch (error) {
+      console.error("Error renewing subscription:", error);
+      res.status(500).json({ error: "Failed to renew subscription" });
     }
   });
   

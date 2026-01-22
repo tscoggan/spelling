@@ -155,6 +155,27 @@ export function UserHeader() {
     enabled: !isGuestMode && !!user && myAccountOpen,
   });
 
+  const renewSubscriptionMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/family/renew", {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/family/account", user?.id] });
+      toast({
+        title: "Subscription Renewed",
+        description: "Your subscription has been extended for another year.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Renewal Failed",
+        description: error.message || "Unable to renew subscription. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const completeTodoMutation = useMutation({
     mutationFn: async (todoId: number) => {
       await apiRequest("POST", `/api/user-to-dos/${todoId}/complete`, {});
@@ -1687,6 +1708,32 @@ export function UserHeader() {
               {accountInfo.paymentHistory.length === 0 && (accountInfo.accountType === 'family_parent' || accountInfo.accountType === 'family_child') && (
                 <div className="text-center py-4 text-muted-foreground">
                   <p>No payment history available</p>
+                </div>
+              )}
+              
+              {accountInfo.isParent && accountInfo.accountType === 'family_parent' && (
+                <div className="pt-4 border-t">
+                  <Button
+                    onClick={() => renewSubscriptionMutation.mutate()}
+                    disabled={renewSubscriptionMutation.isPending}
+                    className="w-full"
+                    data-testid="button-renew-subscription"
+                  >
+                    {renewSubscriptionMutation.isPending ? (
+                      <>
+                        <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="w-4 h-4 mr-2" />
+                        Renew Subscription ($5/year)
+                      </>
+                    )}
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center mt-2">
+                    Extends your subscription by 1 year from the current expiration date
+                  </p>
                 </div>
               )}
             </div>
