@@ -3753,6 +3753,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ error: "Failed to record payment" });
       }
       
+      // Set subscription expiration to 1 year from now
+      const subscriptionExpiresAt = new Date();
+      subscriptionExpiresAt.setFullYear(subscriptionExpiresAt.getFullYear() + 1);
+      
+      await storage.updateFamilyAccount(family.id, {
+        subscriptionExpiresAt,
+        lastPaymentMethod: "stripe",
+      });
+      
       const updatedFamily = await storage.verifyFamilyVpc(family.id);
       
       res.json({
