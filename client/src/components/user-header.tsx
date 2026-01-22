@@ -1597,7 +1597,7 @@ export function UserHeader() {
       />
 
       <Dialog open={myAccountOpen} onOpenChange={setMyAccountOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CreditCard className="w-5 h-5" />
@@ -1613,6 +1613,7 @@ export function UserHeader() {
               <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
             </div>
           ) : accountInfo ? (
+            <ScrollArea className="flex-1 pr-4">
             <div className="space-y-6">
               <div className="space-y-4">
                 <div className="flex items-center justify-between py-2 border-b">
@@ -1745,6 +1746,7 @@ export function UserHeader() {
                 </div>
               )}
             </div>
+            </ScrollArea>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <p>Unable to load account information</p>
