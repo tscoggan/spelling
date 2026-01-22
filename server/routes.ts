@@ -3820,6 +3820,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get account info with payment history (for My Account dialog)
+  app.get("/api/family/account", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // For non-family accounts, return basic info
+      if (user.accountType !== 'family_parent' && user.accountType !== 'family_child') {
+        return res.json({
+          accountType: user.accountType,
+          createdAt: user.createdAt,
+          paymentHistory: [],
+          subscriptionExpiresAt: null,
+          lastPaymentMethod: null,
+          isParent: false,
+        });
+      }
+      
+      const familyMember = await storage.getFamilyMemberByUserId(userId);
+      if (!familyMember) {
+        return res.status(404).json({ error: "Family membership not found" });
+      }
+      
+      const family = await storage.getFamilyAccount(familyMember.familyId);
+      if (!family) {
+        return res.status(404).json({ error: "Family account not found" });
+      }
+      
+      const paymentHistory = await storage.getPaymentHistory(family.id);
+      
+      res.json({
+        accountType: user.accountType,
+        createdAt: family.createdAt,
+        subscriptionExpiresAt: family.subscriptionExpiresAt,
+        lastPaymentMethod: family.lastPaymentMethod,
+        subscriptionAmount: family.subscriptionAmount,
+        vpcStatus: family.vpcStatus,
+        isParent: familyMember.role === 'parent',
+        paymentHistory: paymentHistory.map(p => ({
+          id: p.id,
+          amount: p.amount,
+          paymentMethod: p.paymentMethod,
+          paymentDate: p.paymentDate,
+          description: p.description,
+          status: p.status,
+        })),
+      });
+    } catch (error) {
+      console.error("Error fetching account info:", error);
+      res.status(500).json({ error: "Failed to fetch account info" });
+    }
+  });
+  
   // Create child account (parent only)
   app.post("/api/family/children", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {

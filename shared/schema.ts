@@ -228,6 +228,8 @@ export const familyAccounts = pgTable("family_accounts", {
   subscriptionAmount: integer("subscription_amount").default(500),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   vpcVerifiedAt: timestamp("vpc_verified_at"),
+  subscriptionExpiresAt: timestamp("subscription_expires_at"),
+  lastPaymentMethod: text("last_payment_method"),
 });
 
 export const familyMembers = pgTable("family_members", {

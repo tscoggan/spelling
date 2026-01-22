@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { LogOut, Bell, Settings, Volume2, HelpCircle, Mail, BookOpen, Trophy, Gamepad2, List, Send, UserCircle, Palette, Lock, ShoppingCart, Info } from "lucide-react";
+import { LogOut, Bell, Settings, Volume2, HelpCircle, Mail, BookOpen, Trophy, Gamepad2, List, Send, UserCircle, Palette, Lock, ShoppingCart, Info, CreditCard, Calendar, DollarSign } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useGuestSession } from "@/hooks/use-guest-session";
 import { useTheme } from "@/hooks/use-theme";
@@ -56,6 +56,7 @@ export function UserHeader() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [featureComparisonOpen, setFeatureComparisonOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [myAccountOpen, setMyAccountOpen] = useState(false);
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactMessage, setContactMessage] = useState("");
@@ -124,6 +125,34 @@ export function UserHeader() {
       return await res.json();
     },
     staleTime: 60000,
+  });
+
+  interface AccountInfo {
+    accountType: string;
+    createdAt: string;
+    subscriptionExpiresAt: string | null;
+    lastPaymentMethod: string | null;
+    subscriptionAmount: number | null;
+    vpcStatus?: string;
+    isParent: boolean;
+    paymentHistory: {
+      id: number;
+      amount: number;
+      paymentMethod: string;
+      paymentDate: string;
+      description: string | null;
+      status: string;
+    }[];
+  }
+
+  const { data: accountInfo, isLoading: isLoadingAccount } = useQuery<AccountInfo>({
+    queryKey: ["/api/family/account", user?.id],
+    queryFn: async () => {
+      const res = await fetch("/api/family/account", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch account info");
+      return await res.json();
+    },
+    enabled: !isGuestMode && !!user && myAccountOpen,
   });
 
   const completeTodoMutation = useMutation({
@@ -662,6 +691,23 @@ export function UserHeader() {
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>Settings</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              {!isGuestMode && (user?.accountType === 'family_parent' || user?.accountType === 'family_child' || user?.accountType === 'school') && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setMyAccountOpen(true)}
+                      data-testid="button-my-account"
+                    >
+                      <CreditCard className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>My Account</p>
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -1527,6 +1573,130 @@ export function UserHeader() {
         open={featureComparisonOpen} 
         onOpenChange={setFeatureComparisonOpen} 
       />
+
+      <Dialog open={myAccountOpen} onOpenChange={setMyAccountOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              My Account
+            </DialogTitle>
+            <DialogDescription>
+              View your account details and payment history
+            </DialogDescription>
+          </DialogHeader>
+          
+          {isLoadingAccount ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
+            </div>
+          ) : accountInfo ? (
+            <div className="space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between py-2 border-b">
+                  <span className="text-muted-foreground">Account Type</span>
+                  <Badge variant="secondary">
+                    {accountInfo.accountType === 'family_parent' ? 'Family (Parent)' :
+                     accountInfo.accountType === 'family_child' ? 'Family (Child)' :
+                     accountInfo.accountType === 'school' ? 'School' :
+                     accountInfo.accountType}
+                  </Badge>
+                </div>
+                
+                <div className="flex items-center justify-between py-2 border-b">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    Account Created
+                  </span>
+                  <span className="font-medium">
+                    {accountInfo.createdAt ? new Date(accountInfo.createdAt).toLocaleDateString() : 'N/A'}
+                  </span>
+                </div>
+                
+                {(accountInfo.accountType === 'family_parent' || accountInfo.accountType === 'family_child') && (
+                  <>
+                    <div className="flex items-center justify-between py-2 border-b">
+                      <span className="text-muted-foreground flex items-center gap-2">
+                        <Calendar className="w-4 h-4" />
+                        Subscription Expires
+                      </span>
+                      <span className="font-medium">
+                        {accountInfo.subscriptionExpiresAt 
+                          ? new Date(accountInfo.subscriptionExpiresAt).toLocaleDateString()
+                          : 'N/A'}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between py-2 border-b">
+                      <span className="text-muted-foreground flex items-center gap-2">
+                        <CreditCard className="w-4 h-4" />
+                        Payment Method
+                      </span>
+                      <span className="font-medium">
+                        {accountInfo.lastPaymentMethod || 'Not set'}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between py-2 border-b">
+                      <span className="text-muted-foreground flex items-center gap-2">
+                        <DollarSign className="w-4 h-4" />
+                        Subscription Amount
+                      </span>
+                      <span className="font-medium">
+                        ${((accountInfo.subscriptionAmount || 500) / 100).toFixed(2)}/year
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+              
+              {accountInfo.paymentHistory.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="font-semibold flex items-center gap-2">
+                    <DollarSign className="w-4 h-4" />
+                    Payment History
+                  </h4>
+                  <ScrollArea className="max-h-[200px]">
+                    <div className="space-y-2">
+                      {accountInfo.paymentHistory.map((payment) => (
+                        <div key={payment.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                          <div>
+                            <p className="font-medium">${(payment.amount / 100).toFixed(2)}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {payment.description || 'Subscription payment'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(payment.paymentDate).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end gap-1">
+                            <Badge variant={payment.status === 'completed' ? 'default' : 'secondary'}>
+                              {payment.status}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {payment.paymentMethod}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+              
+              {accountInfo.paymentHistory.length === 0 && (accountInfo.accountType === 'family_parent' || accountInfo.accountType === 'family_child') && (
+                <div className="text-center py-4 text-muted-foreground">
+                  <p>No payment history available</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>Unable to load account information</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
