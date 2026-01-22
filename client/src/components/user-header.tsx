@@ -57,6 +57,7 @@ export function UserHeader() {
   const [featureComparisonOpen, setFeatureComparisonOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [myAccountOpen, setMyAccountOpen] = useState(false);
+  const [renewConfirmOpen, setRenewConfirmOpen] = useState(false);
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactMessage, setContactMessage] = useState("");
@@ -1714,7 +1715,14 @@ export function UserHeader() {
               {accountInfo.isParent && accountInfo.accountType === 'family_parent' && (
                 <div className="pt-4 border-t">
                   <Button
-                    onClick={() => renewSubscriptionMutation.mutate()}
+                    onClick={() => {
+                      const isActive = accountInfo.subscriptionExpiresAt && new Date(accountInfo.subscriptionExpiresAt) > new Date();
+                      if (isActive) {
+                        setRenewConfirmOpen(true);
+                      } else {
+                        renewSubscriptionMutation.mutate();
+                      }
+                    }}
                     disabled={renewSubscriptionMutation.isPending}
                     className="w-full"
                     data-testid="button-renew-subscription"
@@ -1742,6 +1750,44 @@ export function UserHeader() {
               <p>Unable to load account information</p>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={renewConfirmOpen} onOpenChange={setRenewConfirmOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Subscription Renewal</DialogTitle>
+            <DialogDescription>
+              Your subscription is still active until{' '}
+              {accountInfo?.subscriptionExpiresAt 
+                ? new Date(accountInfo.subscriptionExpiresAt).toLocaleDateString() 
+                : 'N/A'}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to renew now? This will extend your subscription by 1 year from your current expiration date and charge $5 to your payment method.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setRenewConfirmOpen(false)}
+                data-testid="button-cancel-renew"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  setRenewConfirmOpen(false);
+                  renewSubscriptionMutation.mutate();
+                }}
+                disabled={renewSubscriptionMutation.isPending}
+                data-testid="button-confirm-renew"
+              >
+                {renewSubscriptionMutation.isPending ? "Processing..." : "Yes, Renew Now"}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </>
