@@ -69,6 +69,29 @@ export const customWordLists = pgTable("custom_word_lists", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// New word lists table - stores word IDs via junction table instead of text array
+export const wordLists = pgTable("word_lists", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  name: text("name").notNull(),
+  isPublic: boolean("is_public").notNull().default(false),
+  visibility: text("visibility").notNull().default("private"),
+  assignImages: boolean("assign_images").notNull().default(true),
+  gradeLevel: text("grade_level"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Junction table linking word lists to words
+export const wordListWords = pgTable("word_list_words", {
+  id: serial("id").primaryKey(),
+  wordListId: integer("word_list_id").notNull(),
+  wordId: integer("word_id").notNull(),
+  position: integer("position").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  wordListWordUnique: unique("word_list_word_unique").on(table.wordListId, table.wordId),
+}));
+
 export const wordIllustrations = pgTable("word_illustrations", {
   id: serial("id").primaryKey(),
   word: text("word").notNull(),
@@ -631,6 +654,21 @@ export const insertCustomWordListSchema = createInsertSchema(customWordLists).om
   assignImages: z.boolean().optional(),
 });
 
+export const insertWordListSchema = createInsertSchema(wordLists).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  name: z.string().min(1).max(100),
+  gradeLevel: z.string().max(50).optional(),
+  visibility: z.enum(["public", "private", "groups"]).optional(),
+  assignImages: z.boolean().optional(),
+});
+
+export const insertWordListWordSchema = createInsertSchema(wordListWords).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertWordIllustrationSchema = createInsertSchema(wordIllustrations).omit({
   id: true,
   createdAt: true,
@@ -742,6 +780,10 @@ export type InsertLeaderboardScore = z.infer<typeof insertLeaderboardScoreSchema
 export type LeaderboardScore = typeof leaderboardScores.$inferSelect;
 export type InsertCustomWordList = z.infer<typeof insertCustomWordListSchema>;
 export type CustomWordList = typeof customWordLists.$inferSelect;
+export type InsertWordList = z.infer<typeof insertWordListSchema>;
+export type WordList = typeof wordLists.$inferSelect;
+export type InsertWordListWord = z.infer<typeof insertWordListWordSchema>;
+export type WordListWord = typeof wordListWords.$inferSelect;
 export type InsertWordIllustration = z.infer<typeof insertWordIllustrationSchema>;
 export type WordIllustration = typeof wordIllustrations.$inferSelect;
 export type InsertUserGroup = z.infer<typeof insertUserGroupSchema>;
