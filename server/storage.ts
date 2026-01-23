@@ -9,6 +9,10 @@ import {
   type InsertLeaderboardScore,
   type CustomWordList,
   type InsertCustomWordList,
+  type WordList,
+  type InsertWordList,
+  type WordListWord,
+  type InsertWordListWord,
   type WordIllustration,
   type InsertWordIllustration,
   type UserGroup,
@@ -42,6 +46,8 @@ import {
   users,
   leaderboardScores,
   customWordLists,
+  wordLists,
+  wordListWords,
   wordIllustrations,
   userGroups,
   userGroupMembership,
@@ -105,6 +111,20 @@ export interface IStorage {
   getGroupSharedWordLists(userId: number): Promise<CustomWordList[]>;
   updateCustomWordList(id: number, updates: Partial<InsertCustomWordList>): Promise<CustomWordList | undefined>;
   deleteCustomWordList(id: number): Promise<boolean>;
+  
+  // New WordList methods (using word IDs via junction table)
+  createWordList(list: InsertWordList): Promise<WordList>;
+  getWordList(id: number): Promise<WordList | undefined>;
+  getUserWordListsNew(userId: number): Promise<WordList[]>;
+  getPublicWordLists(): Promise<WordList[]>;
+  updateWordList(id: number, updates: Partial<InsertWordList>): Promise<WordList | undefined>;
+  deleteWordList(id: number): Promise<boolean>;
+  
+  // WordListWord junction table methods
+  addWordToWordList(wordListId: number, wordId: number, position: number): Promise<WordListWord>;
+  removeWordFromWordList(wordListId: number, wordId: number): Promise<boolean>;
+  getWordListWords(wordListId: number): Promise<{ wordId: number; word: Word; position: number }[]>;
+  setWordListWords(wordListId: number, wordIds: number[]): Promise<void>;
   
   createWordIllustration(illustration: InsertWordIllustration): Promise<WordIllustration>;
   getWordIllustration(word: string, wordListId: number): Promise<WordIllustration | undefined>;
@@ -716,6 +736,99 @@ export class DatabaseStorage implements IStorage {
   async deleteCustomWordList(id: number): Promise<boolean> {
     const result = await db.delete(customWordLists).where(eq(customWordLists.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // New WordList methods (using word IDs via junction table)
+  async createWordList(list: InsertWordList): Promise<WordList> {
+    const [result] = await db.insert(wordLists).values(list).returning();
+    return result;
+  }
+
+  async getWordList(id: number): Promise<WordList | undefined> {
+    const [result] = await db.select().from(wordLists).where(eq(wordLists.id, id));
+    return result || undefined;
+  }
+
+  async getUserWordListsNew(userId: number): Promise<WordList[]> {
+    return await db
+      .select()
+      .from(wordLists)
+      .where(eq(wordLists.userId, userId))
+      .orderBy(desc(wordLists.createdAt));
+  }
+
+  async getPublicWordLists(): Promise<WordList[]> {
+    return await db
+      .select()
+      .from(wordLists)
+      .where(eq(wordLists.visibility, 'public'))
+      .orderBy(desc(wordLists.createdAt));
+  }
+
+  async updateWordList(id: number, updates: Partial<InsertWordList>): Promise<WordList | undefined> {
+    const [result] = await db
+      .update(wordLists)
+      .set(updates)
+      .where(eq(wordLists.id, id))
+      .returning();
+    return result || undefined;
+  }
+
+  async deleteWordList(id: number): Promise<boolean> {
+    // Also delete all word associations
+    await db.delete(wordListWords).where(eq(wordListWords.wordListId, id));
+    const result = await db.delete(wordLists).where(eq(wordLists.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // WordListWord junction table methods
+  async addWordToWordList(wordListId: number, wordId: number, position: number): Promise<WordListWord> {
+    const [result] = await db
+      .insert(wordListWords)
+      .values({ wordListId, wordId, position })
+      .returning();
+    return result;
+  }
+
+  async removeWordFromWordList(wordListId: number, wordId: number): Promise<boolean> {
+    const result = await db
+      .delete(wordListWords)
+      .where(and(eq(wordListWords.wordListId, wordListId), eq(wordListWords.wordId, wordId)));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getWordListWords(wordListId: number): Promise<{ wordId: number; word: Word; position: number }[]> {
+    const results = await db
+      .select({
+        wordId: wordListWords.wordId,
+        position: wordListWords.position,
+        word: words,
+      })
+      .from(wordListWords)
+      .innerJoin(words, eq(wordListWords.wordId, words.id))
+      .where(eq(wordListWords.wordListId, wordListId))
+      .orderBy(wordListWords.position);
+    
+    return results.map(r => ({
+      wordId: r.wordId,
+      word: r.word,
+      position: r.position,
+    }));
+  }
+
+  async setWordListWords(wordListId: number, wordIds: number[]): Promise<void> {
+    // Delete existing associations
+    await db.delete(wordListWords).where(eq(wordListWords.wordListId, wordListId));
+    
+    // Add new associations with positions
+    if (wordIds.length > 0) {
+      const values = wordIds.map((wordId, index) => ({
+        wordListId,
+        wordId,
+        position: index,
+      }));
+      await db.insert(wordListWords).values(values);
+    }
   }
 
   async createWordIllustration(illustration: InsertWordIllustration): Promise<WordIllustration> {
