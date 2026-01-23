@@ -45,7 +45,6 @@ import {
   gameSessions,
   users,
   leaderboardScores,
-  customWordLists,
   wordLists,
   wordListWords,
   wordIllustrations,
@@ -1416,11 +1415,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserWordLists(userId: number): Promise<CustomWordList[]> {
-    return await db
+    // Use new wordLists table
+    const lists = await db
       .select()
-      .from(customWordLists)
-      .where(eq(customWordLists.userId, userId))
-      .orderBy(desc(customWordLists.createdAt));
+      .from(wordLists)
+      .where(eq(wordLists.userId, userId))
+      .orderBy(desc(wordLists.createdAt));
+    
+    // Fetch words for each list
+    const result: CustomWordList[] = [];
+    for (const list of lists) {
+      const wordAssociations = await db
+        .select({ wordText: words.word })
+        .from(wordListWords)
+        .innerJoin(words, eq(wordListWords.wordId, words.id))
+        .where(eq(wordListWords.wordListId, list.id))
+        .orderBy(wordListWords.position);
+      
+      result.push({
+        ...list,
+        words: wordAssociations.map(w => w.wordText),
+      } as unknown as CustomWordList);
+    }
+    return result;
   }
 
   async getWordListsSharedWithGroups(groupIds: number[]): Promise<CustomWordList[]> {
@@ -1441,11 +1458,29 @@ export class DatabaseStorage implements IStorage {
     // Get unique word list IDs
     const uniqueListIds = Array.from(new Set(sharedWordListIds.map(s => s.wordListId)));
     
-    return await db
+    // Use new wordLists table
+    const lists = await db
       .select()
-      .from(customWordLists)
-      .where(inArray(customWordLists.id, uniqueListIds))
-      .orderBy(desc(customWordLists.createdAt));
+      .from(wordLists)
+      .where(inArray(wordLists.id, uniqueListIds))
+      .orderBy(desc(wordLists.createdAt));
+    
+    // Fetch words for each list
+    const result: CustomWordList[] = [];
+    for (const list of lists) {
+      const wordAssociations = await db
+        .select({ wordText: words.word })
+        .from(wordListWords)
+        .innerJoin(words, eq(wordListWords.wordId, words.id))
+        .where(eq(wordListWords.wordListId, list.id))
+        .orderBy(wordListWords.position);
+      
+      result.push({
+        ...list,
+        words: wordAssociations.map(w => w.wordText),
+      } as unknown as CustomWordList);
+    }
+    return result;
   }
 
   async getGameSessionsByUserAndList(userId: number, wordListId: number): Promise<GameSession[]> {
@@ -2415,13 +2450,15 @@ export class DatabaseStorage implements IStorage {
     await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
     await db.delete(headToHeadChallenges).where(or(eq(headToHeadChallenges.initiatorId, userId), eq(headToHeadChallenges.opponentId, userId)));
     
-    const ownedWordLists = await db.select({ id: customWordLists.id }).from(customWordLists).where(eq(customWordLists.userId, userId));
+    // Use new wordLists table
+    const ownedWordLists = await db.select({ id: wordLists.id }).from(wordLists).where(eq(wordLists.userId, userId));
     for (const list of ownedWordLists) {
+      await db.delete(wordListWords).where(eq(wordListWords.wordListId, list.id));
       await db.delete(wordIllustrations).where(eq(wordIllustrations.wordListId, list.id));
       await db.delete(wordListUserGroups).where(eq(wordListUserGroups.wordListId, list.id));
       await db.delete(wordListCoOwners).where(eq(wordListCoOwners.wordListId, list.id));
     }
-    await db.delete(customWordLists).where(eq(customWordLists.userId, userId));
+    await db.delete(wordLists).where(eq(wordLists.userId, userId));
     
     const ownedGroups = await db.select({ id: userGroups.id }).from(userGroups).where(eq(userGroups.ownerUserId, userId));
     for (const group of ownedGroups) {

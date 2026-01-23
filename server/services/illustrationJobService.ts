@@ -1,5 +1,5 @@
 import { db } from '../db';
-import { wordIllustrations, customWordLists, words } from '@shared/schema';
+import { wordIllustrations, wordLists, wordListWords, words } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { PixabayService } from './pixabay';
 
@@ -39,14 +39,23 @@ export class IllustrationJobService {
   async createJob(wordListId: number): Promise<number> {
     const [wordList] = await db
       .select()
-      .from(customWordLists)
-      .where(eq(customWordLists.id, wordListId));
+      .from(wordLists)
+      .where(eq(wordLists.id, wordListId));
 
     if (!wordList) {
       throw new Error(`Word list ${wordListId} not found`);
     }
 
-    const uniqueWords = Array.from(new Set(wordList.words.map(w => w.toLowerCase())));
+    // Fetch words from junction table
+    const wordAssociations = await db
+      .select({ wordText: words.word })
+      .from(wordListWords)
+      .innerJoin(words, eq(wordListWords.wordId, words.id))
+      .where(eq(wordListWords.wordListId, wordListId))
+      .orderBy(wordListWords.position);
+    
+    const wordTexts = wordAssociations.map(w => w.wordText);
+    const uniqueWords = Array.from(new Set(wordTexts.map(w => w.toLowerCase())));
 
     const existingIllustrations = await db
       .select()
@@ -217,13 +226,21 @@ export class IllustrationJobService {
     }
     console.log(`📖 Found ${canonicalWords.length} canonical words from words table`);
     
-    const allWordLists = await db.select().from(customWordLists);
-    for (const list of allWordLists) {
-      for (const word of list.words) {
-        allWords.add(word.toLowerCase());
+    // Get all word list IDs
+    const allWordListsData = await db.select().from(wordLists);
+    // For each list, fetch words from junction table
+    for (const list of allWordListsData) {
+      const wordAssociations = await db
+        .select({ wordText: words.word })
+        .from(wordListWords)
+        .innerJoin(words, eq(wordListWords.wordId, words.id))
+        .where(eq(wordListWords.wordListId, list.id));
+      
+      for (const wa of wordAssociations) {
+        allWords.add(wa.wordText.toLowerCase());
       }
     }
-    console.log(`📝 Found ${allWordLists.length} custom word lists`);
+    console.log(`📝 Found ${allWordListsData.length} word lists`);
 
     const uniqueWords = Array.from(allWords).filter(word => {
       const isTestWord = /^(word|extra|dinosau)\d*$/.test(word);

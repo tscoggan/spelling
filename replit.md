@@ -50,7 +50,7 @@ The frontend is built with React, utilizing Wouter for routing, TanStack Query f
 
 ### System Design Choices
 - **Client-Server Architecture**: React frontend communicates with an Express.js backend.
-- **Database Schema**: PostgreSQL stores user data, game sessions, leaderboards, custom word lists (with new fields for groups, images, visibility), word illustrations, and background job tracking. Word metadata is populated on-demand from Merriam-Webster APIs.
+- **Database Schema**: PostgreSQL stores user data, game sessions, leaderboards, word lists (using `word_lists` table with `word_list_words` junction table linking to `words` table for normalized word storage), word illustrations, and background job tracking. Word metadata is populated on-demand from Merriam-Webster APIs.
 - **Word Management**: All words are dynamically added by users through custom word lists.
 - **Authentication Flow**: Passport.js manages user authentication and session persistence.
 - **Object Storage Architecture**: Replit Object Storage hosts all word illustration images publicly.

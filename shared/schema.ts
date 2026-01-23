@@ -57,19 +57,7 @@ export const leaderboardScores = pgTable("leaderboard_scores", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const customWordLists = pgTable("custom_word_lists", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  name: text("name").notNull(),
-  words: text("words").array().notNull(),
-  isPublic: boolean("is_public").notNull().default(false),
-  visibility: text("visibility").notNull().default("private"),
-  assignImages: boolean("assign_images").notNull().default(true),
-  gradeLevel: text("grade_level"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-// New word lists table - stores word IDs via junction table instead of text array
+// Word lists table - stores word IDs via junction table instead of text array
 export const wordLists = pgTable("word_lists", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
@@ -487,7 +475,7 @@ export const achievements = pgTable("achievements", {
 export const usersRelations = relations(users, ({ many, one }) => ({
   gameSessions: many(gameSessions),
   leaderboardScores: many(leaderboardScores),
-  customWordLists: many(customWordLists),
+  wordLists: many(wordLists),
   ownedGroups: many(userGroups),
   groupMemberships: many(userGroupMembership),
   toDoItems: many(userToDoItems),
@@ -526,23 +514,15 @@ export const wordsRelations = relations(words, ({ many }) => ({
   wordListWordsJunction: many(wordListWords),
 }));
 
-export const customWordListsRelations = relations(customWordLists, ({ one, many }) => ({
-  user: one(users, {
-    fields: [customWordLists.userId],
-    references: [users.id],
-  }),
-  wordListUserGroups: many(wordListUserGroups),
-  wordIllustrations: many(wordIllustrations),
-  achievements: many(achievements),
-}));
-
-// Relations for new wordLists table
 export const wordListsRelations = relations(wordLists, ({ one, many }) => ({
   user: one(users, {
     fields: [wordLists.userId],
     references: [users.id],
   }),
   wordListWordsJunction: many(wordListWords),
+  wordListUserGroups: many(wordListUserGroups),
+  wordIllustrations: many(wordIllustrations),
+  achievements: many(achievements),
 }));
 
 // Relations for wordListWords junction table
@@ -558,9 +538,9 @@ export const wordListWordsRelations = relations(wordListWords, ({ one }) => ({
 }));
 
 export const wordIllustrationsRelations = relations(wordIllustrations, ({ one }) => ({
-  wordList: one(customWordLists, {
+  wordList: one(wordLists, {
     fields: [wordIllustrations.wordListId],
-    references: [customWordLists.id],
+    references: [wordLists.id],
   }),
 }));
 
@@ -585,9 +565,9 @@ export const userGroupMembershipRelations = relations(userGroupMembership, ({ on
 }));
 
 export const wordListUserGroupsRelations = relations(wordListUserGroups, ({ one }) => ({
-  wordList: one(customWordLists, {
+  wordList: one(wordLists, {
     fields: [wordListUserGroups.wordListId],
-    references: [customWordLists.id],
+    references: [wordLists.id],
   }),
   group: one(userGroups, {
     fields: [wordListUserGroups.groupId],
@@ -614,9 +594,9 @@ export const achievementsRelations = relations(achievements, ({ one }) => ({
     fields: [achievements.userId],
     references: [users.id],
   }),
-  wordList: one(customWordLists, {
+  wordList: one(wordLists, {
     fields: [achievements.wordListId],
-    references: [customWordLists.id],
+    references: [wordLists.id],
   }),
 }));
 
@@ -636,9 +616,9 @@ export const headToHeadChallengesRelations = relations(headToHeadChallenges, ({ 
     fields: [headToHeadChallenges.opponentId],
     references: [users.id],
   }),
-  wordList: one(customWordLists, {
+  wordList: one(wordLists, {
     fields: [headToHeadChallenges.wordListId],
-    references: [customWordLists.id],
+    references: [wordLists.id],
   }),
   winner: one(users, {
     fields: [headToHeadChallenges.winnerUserId],
@@ -666,7 +646,8 @@ export const insertLeaderboardScoreSchema = createInsertSchema(leaderboardScores
   createdAt: true,
 });
 
-export const insertCustomWordListSchema = createInsertSchema(customWordLists).omit({
+// InsertCustomWordList schema using wordLists table but with words array for backward compatibility
+export const insertCustomWordListSchema = createInsertSchema(wordLists).omit({
   id: true,
   createdAt: true,
 }).extend({
@@ -802,7 +783,8 @@ export type GameSession = typeof gameSessions.$inferSelect;
 export type InsertLeaderboardScore = z.infer<typeof insertLeaderboardScoreSchema>;
 export type LeaderboardScore = typeof leaderboardScores.$inferSelect;
 export type InsertCustomWordList = z.infer<typeof insertCustomWordListSchema>;
-export type CustomWordList = typeof customWordLists.$inferSelect;
+// CustomWordList type using wordLists table but with words array for backward compatibility
+export type CustomWordList = typeof wordLists.$inferSelect & { words: string[] };
 export type InsertWordList = z.infer<typeof insertWordListSchema>;
 export type WordList = typeof wordLists.$inferSelect;
 export type InsertWordListWord = z.infer<typeof insertWordListWordSchema>;
