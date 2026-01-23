@@ -3682,7 +3682,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName: lastName || null,
         email: email || null,
         role: "admin",
-        accountType: "school",
+        accountType: "admin",
         stars: 0,
       });
       
