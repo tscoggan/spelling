@@ -121,6 +121,15 @@ export default function AdminPage() {
     email: "",
   });
 
+  const { data: currentUser } = useQuery<{ id: number; username: string; role: string }>({
+    queryKey: ['/api/user'],
+    queryFn: async () => {
+      const response = await fetch('/api/user');
+      if (!response.ok) throw new Error('Failed to fetch current user');
+      return response.json();
+    },
+  });
+
   const { data: usageMetrics = [], isLoading: isLoadingMetrics } = useQuery<UsageMetric[]>({
     queryKey: ['/api/admin/usage', dateRange],
     queryFn: async () => {
@@ -1031,7 +1040,7 @@ export default function AdminPage() {
                                     <Button 
                                       variant="ghost" 
                                       size="icon"
-                                      disabled={user.role === 'admin'}
+                                      disabled={user.username === 'admin' || user.id === currentUser?.id}
                                       data-testid={`button-delete-user-${user.id}`}
                                     >
                                       <Trash2 className="w-4 h-4 text-destructive" />
@@ -1148,7 +1157,7 @@ export default function AdminPage() {
                                         <Button 
                                           variant="ghost" 
                                           size="icon"
-                                          disabled={group.parentUser.role === 'admin'}
+                                          disabled={group.parentUser.username === 'admin' || group.parentUser.id === currentUser?.id}
                                           data-testid={`button-delete-user-${group.parentUser.id}`}
                                           onClick={(e) => e.stopPropagation()}
                                         >

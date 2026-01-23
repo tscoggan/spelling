@@ -10,9 +10,30 @@ import { sendPasswordResetEmail, sendEmailUpdateNotification, sendContactEmail, 
 import multer from "multer";
 import crypto from "crypto";
 import { APP_VERSION } from "@shared/version";
+import { DEFAULT_ADMIN } from "./config/admin";
+
+async function ensureDefaultAdmin() {
+  const existingAdmin = await storage.getUserByUsername(DEFAULT_ADMIN.username);
+  if (!existingAdmin) {
+    const hashedPassword = await hashPassword(DEFAULT_ADMIN.password);
+    await storage.createUser({
+      username: DEFAULT_ADMIN.username,
+      password: hashedPassword,
+      firstName: DEFAULT_ADMIN.firstName,
+      lastName: DEFAULT_ADMIN.lastName,
+      email: null,
+      role: "admin",
+      accountType: "admin",
+      stars: 0,
+    });
+    console.log("Default admin account created");
+  }
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
+  
+  await ensureDefaultAdmin();
 
   const requirePaidAccount = (req: any, res: any, next: any) => {
     const user = req.user;
@@ -3559,6 +3580,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userToDelete = await storage.getUser(id);
       if (!userToDelete) {
         return res.status(404).json({ error: "User not found" });
+      }
+      
+      if (userToDelete.username === DEFAULT_ADMIN.username) {
+        return res.status(400).json({ error: "Cannot delete the default admin account" });
       }
       
       const deleteFamily = req.query.deleteFamily === 'true';
