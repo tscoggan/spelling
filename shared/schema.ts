@@ -522,7 +522,9 @@ export const leaderboardScoresRelations = relations(leaderboardScores, ({ one })
   }),
 }));
 
-export const wordsRelations = relations(words, ({ }) => ({}));
+export const wordsRelations = relations(words, ({ many }) => ({
+  wordListWordsJunction: many(wordListWords),
+}));
 
 export const customWordListsRelations = relations(customWordLists, ({ one, many }) => ({
   user: one(users, {
@@ -532,6 +534,27 @@ export const customWordListsRelations = relations(customWordLists, ({ one, many 
   wordListUserGroups: many(wordListUserGroups),
   wordIllustrations: many(wordIllustrations),
   achievements: many(achievements),
+}));
+
+// Relations for new wordLists table
+export const wordListsRelations = relations(wordLists, ({ one, many }) => ({
+  user: one(users, {
+    fields: [wordLists.userId],
+    references: [users.id],
+  }),
+  wordListWordsJunction: many(wordListWords),
+}));
+
+// Relations for wordListWords junction table
+export const wordListWordsRelations = relations(wordListWords, ({ one }) => ({
+  wordList: one(wordLists, {
+    fields: [wordListWords.wordListId],
+    references: [wordLists.id],
+  }),
+  word: one(words, {
+    fields: [wordListWords.wordId],
+    references: [words.id],
+  }),
 }));
 
 export const wordIllustrationsRelations = relations(wordIllustrations, ({ one }) => ({
