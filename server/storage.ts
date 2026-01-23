@@ -527,103 +527,202 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCustomWordList(list: InsertCustomWordList): Promise<CustomWordList> {
-    const [wordList] = await db.insert(customWordLists).values(list).returning();
-    return wordList;
+    // Use new wordLists table - create list and then add words via junction table
+    const { words: wordTexts, ...listData } = list;
+    
+    const [newList] = await db.insert(wordLists).values(listData).returning();
+    
+    // Ensure all words exist in words table and create junction records
+    for (let position = 0; position < wordTexts.length; position++) {
+      const wordText = wordTexts[position].toLowerCase().trim();
+      
+      // Find or create the word
+      let [existingWord] = await db
+        .select()
+        .from(words)
+        .where(eq(words.word, wordText));
+      
+      if (!existingWord) {
+        [existingWord] = await db.insert(words).values({ word: wordText }).returning();
+      }
+      
+      // Create junction record
+      await db.insert(wordListWords).values({
+        wordListId: newList.id,
+        wordId: existingWord.id,
+        position: position,
+      }).onConflictDoNothing();
+    }
+    
+    // Return in the expected CustomWordList format (with words array)
+    return {
+      ...newList,
+      isPublic: newList.isPublic,
+      words: wordTexts,
+    } as unknown as CustomWordList;
   }
 
   async getCustomWordList(id: number): Promise<CustomWordList | undefined> {
-    const [wordList] = await db.select().from(customWordLists).where(eq(customWordLists.id, id));
-    return wordList || undefined;
+    // Use new wordLists table
+    const [list] = await db.select().from(wordLists).where(eq(wordLists.id, id));
+    if (!list) return undefined;
+    
+    // Fetch words from junction table
+    const wordAssociations = await db
+      .select({ wordText: words.word })
+      .from(wordListWords)
+      .innerJoin(words, eq(wordListWords.wordId, words.id))
+      .where(eq(wordListWords.wordListId, id))
+      .orderBy(wordListWords.position);
+    
+    const wordTexts = wordAssociations.map(w => w.wordText);
+    
+    return {
+      ...list,
+      words: wordTexts,
+    } as unknown as CustomWordList;
   }
 
   async getSystemWordListId(): Promise<number | null> {
+    // Use new wordLists table
     const [systemList] = await db
-      .select({ id: customWordLists.id })
-      .from(customWordLists)
+      .select({ id: wordLists.id })
+      .from(wordLists)
       .where(
         and(
-          eq(customWordLists.name, 'System Illustrations'),
-          eq(customWordLists.gradeLevel, 'System')
+          eq(wordLists.name, 'System Illustrations'),
+          eq(wordLists.gradeLevel, 'System')
         )
       );
     return systemList?.id || null;
   }
 
   async getUserCustomWordLists(userId: number): Promise<any[]> {
-    const wordLists = await db
+    // Use new wordLists table instead of customWordLists
+    const lists = await db
       .select({
-        id: customWordLists.id,
-        userId: customWordLists.userId,
-        name: customWordLists.name,
-        words: customWordLists.words,
-        visibility: customWordLists.visibility,
-        assignImages: customWordLists.assignImages,
-        gradeLevel: customWordLists.gradeLevel,
-        createdAt: customWordLists.createdAt,
+        id: wordLists.id,
+        userId: wordLists.userId,
+        name: wordLists.name,
+        visibility: wordLists.visibility,
+        assignImages: wordLists.assignImages,
+        gradeLevel: wordLists.gradeLevel,
+        createdAt: wordLists.createdAt,
         authorUsername: users.username,
       })
-      .from(customWordLists)
-      .leftJoin(users, eq(customWordLists.userId, users.id))
-      .where(eq(customWordLists.userId, userId))
-      .orderBy(desc(customWordLists.createdAt));
+      .from(wordLists)
+      .leftJoin(users, eq(wordLists.userId, users.id))
+      .where(eq(wordLists.userId, userId))
+      .orderBy(desc(wordLists.createdAt));
+    
+    if (lists.length === 0) {
+      return [];
+    }
+    
+    // Fetch words for all lists from junction table
+    const listIds = lists.map(l => l.id);
+    const wordAssociations = await db
+      .select({
+        wordListId: wordListWords.wordListId,
+        wordText: words.word,
+        position: wordListWords.position,
+      })
+      .from(wordListWords)
+      .innerJoin(words, eq(wordListWords.wordId, words.id))
+      .where(inArray(wordListWords.wordListId, listIds))
+      .orderBy(wordListWords.wordListId, wordListWords.position);
+    
+    // Group words by list ID
+    const wordsByList = new Map<number, string[]>();
+    for (const assoc of wordAssociations) {
+      if (!wordsByList.has(assoc.wordListId)) {
+        wordsByList.set(assoc.wordListId, []);
+      }
+      wordsByList.get(assoc.wordListId)!.push(assoc.wordText);
+    }
     
     // Fetch group information for lists with 'groups' visibility
-    const wordListIds = wordLists.filter(list => list.visibility === 'groups').map(list => list.id);
-    if (wordListIds.length === 0) {
-      return wordLists;
-    }
-    
-    // Fetch all group mappings for these word lists
-    const groupMappings = await db
-      .select({
-        wordListId: wordListUserGroups.wordListId,
-        groupId: wordListUserGroups.groupId,
-        groupName: userGroups.name,
-      })
-      .from(wordListUserGroups)
-      .leftJoin(userGroups, eq(wordListUserGroups.groupId, userGroups.id))
-      .where(inArray(wordListUserGroups.wordListId, wordListIds));
-    
-    // Create a map of word list ID to groups
+    const groupVisibleListIds = lists.filter(list => list.visibility === 'groups').map(list => list.id);
     const groupsByWordList = new Map<number, any[]>();
-    for (const mapping of groupMappings) {
-      if (!groupsByWordList.has(mapping.wordListId)) {
-        groupsByWordList.set(mapping.wordListId, []);
+    
+    if (groupVisibleListIds.length > 0) {
+      const groupMappings = await db
+        .select({
+          wordListId: wordListUserGroups.wordListId,
+          groupId: wordListUserGroups.groupId,
+          groupName: userGroups.name,
+        })
+        .from(wordListUserGroups)
+        .leftJoin(userGroups, eq(wordListUserGroups.groupId, userGroups.id))
+        .where(inArray(wordListUserGroups.wordListId, groupVisibleListIds));
+      
+      for (const mapping of groupMappings) {
+        if (!groupsByWordList.has(mapping.wordListId)) {
+          groupsByWordList.set(mapping.wordListId, []);
+        }
+        groupsByWordList.get(mapping.wordListId)!.push({
+          id: mapping.groupId,
+          name: mapping.groupName,
+        });
       }
-      groupsByWordList.get(mapping.wordListId)!.push({
-        id: mapping.groupId,
-        name: mapping.groupName,
-      });
     }
     
-    // Add group information to word lists (always return an array, never undefined)
-    return wordLists.map(list => ({
+    // Build result with words array and group info
+    return lists.map(list => ({
       ...list,
+      words: wordsByList.get(list.id) || [],
       sharedGroups: list.visibility === 'groups' ? (groupsByWordList.get(list.id) || []) : [],
     }));
   }
 
   async getPublicCustomWordLists(): Promise<any[]> {
-    const wordLists = await db
+    // Use new wordLists table
+    const lists = await db
       .select({
-        id: customWordLists.id,
-        userId: customWordLists.userId,
-        name: customWordLists.name,
-        words: customWordLists.words,
-        visibility: customWordLists.visibility,
-        assignImages: customWordLists.assignImages,
-        gradeLevel: customWordLists.gradeLevel,
-        createdAt: customWordLists.createdAt,
+        id: wordLists.id,
+        userId: wordLists.userId,
+        name: wordLists.name,
+        visibility: wordLists.visibility,
+        assignImages: wordLists.assignImages,
+        gradeLevel: wordLists.gradeLevel,
+        createdAt: wordLists.createdAt,
         authorUsername: users.username,
       })
-      .from(customWordLists)
-      .leftJoin(users, eq(customWordLists.userId, users.id))
-      .where(eq(customWordLists.visibility, 'public'))
-      .orderBy(desc(customWordLists.createdAt));
+      .from(wordLists)
+      .leftJoin(users, eq(wordLists.userId, users.id))
+      .where(eq(wordLists.visibility, 'public'))
+      .orderBy(desc(wordLists.createdAt));
+    
+    if (lists.length === 0) {
+      return [];
+    }
+    
+    // Fetch words for all lists from junction table
+    const listIds = lists.map(l => l.id);
+    const wordAssociations = await db
+      .select({
+        wordListId: wordListWords.wordListId,
+        wordText: words.word,
+        position: wordListWords.position,
+      })
+      .from(wordListWords)
+      .innerJoin(words, eq(wordListWords.wordId, words.id))
+      .where(inArray(wordListWords.wordListId, listIds))
+      .orderBy(wordListWords.wordListId, wordListWords.position);
+    
+    // Group words by list ID
+    const wordsByList = new Map<number, string[]>();
+    for (const assoc of wordAssociations) {
+      if (!wordsByList.has(assoc.wordListId)) {
+        wordsByList.set(assoc.wordListId, []);
+      }
+      wordsByList.get(assoc.wordListId)!.push(assoc.wordText);
+    }
     
     // Public lists don't need group information, but return in consistent format
-    return wordLists.map(list => ({
+    return lists.map(list => ({
       ...list,
+      words: wordsByList.get(list.id) || [],
       sharedGroups: [],
     }));
   }
@@ -672,28 +771,53 @@ export class DatabaseStorage implements IStorage {
     
     const uniqueListIds = Array.from(new Set(allSharedListIds));
     
-    // Fetch the actual word lists (excluding ones owned by the user to avoid duplicates)
-    const wordLists = await db
+    // Use new wordLists table - Fetch the actual word lists (excluding ones owned by the user)
+    const lists = await db
       .select({
-        id: customWordLists.id,
-        userId: customWordLists.userId,
-        name: customWordLists.name,
-        words: customWordLists.words,
-        visibility: customWordLists.visibility,
-        assignImages: customWordLists.assignImages,
-        gradeLevel: customWordLists.gradeLevel,
-        createdAt: customWordLists.createdAt,
+        id: wordLists.id,
+        userId: wordLists.userId,
+        name: wordLists.name,
+        visibility: wordLists.visibility,
+        assignImages: wordLists.assignImages,
+        gradeLevel: wordLists.gradeLevel,
+        createdAt: wordLists.createdAt,
         authorUsername: users.username,
       })
-      .from(customWordLists)
-      .leftJoin(users, eq(customWordLists.userId, users.id))
+      .from(wordLists)
+      .leftJoin(users, eq(wordLists.userId, users.id))
       .where(
         and(
-          inArray(customWordLists.id, uniqueListIds),
-          not(eq(customWordLists.userId, userId))
+          inArray(wordLists.id, uniqueListIds),
+          not(eq(wordLists.userId, userId))
         )
       )
-      .orderBy(desc(customWordLists.createdAt));
+      .orderBy(desc(wordLists.createdAt));
+    
+    if (lists.length === 0) {
+      return [];
+    }
+    
+    // Fetch words for all lists from junction table
+    const listIds = lists.map(l => l.id);
+    const wordAssociations = await db
+      .select({
+        wordListId: wordListWords.wordListId,
+        wordText: words.word,
+        position: wordListWords.position,
+      })
+      .from(wordListWords)
+      .innerJoin(words, eq(wordListWords.wordId, words.id))
+      .where(inArray(wordListWords.wordListId, listIds))
+      .orderBy(wordListWords.wordListId, wordListWords.position);
+    
+    // Group words by list ID
+    const wordsByList = new Map<number, string[]>();
+    for (const assoc of wordAssociations) {
+      if (!wordsByList.has(assoc.wordListId)) {
+        wordsByList.set(assoc.wordListId, []);
+      }
+      wordsByList.get(assoc.wordListId)!.push(assoc.wordText);
+    }
     
     // Fetch group information for these lists
     const groupMappings = await db
@@ -704,7 +828,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(wordListUserGroups)
       .leftJoin(userGroups, eq(wordListUserGroups.groupId, userGroups.id))
-      .where(inArray(wordListUserGroups.wordListId, uniqueListIds));
+      .where(inArray(wordListUserGroups.wordListId, listIds));
     
     // Create a map of word list ID to groups
     const groupsByWordList = new Map<number, any[]>();
@@ -718,23 +842,62 @@ export class DatabaseStorage implements IStorage {
       });
     }
     
-    // Add group information to word lists
-    return wordLists.map(list => ({
+    // Add group information and words to word lists
+    return lists.map(list => ({
       ...list,
+      words: wordsByList.get(list.id) || [],
       sharedGroups: groupsByWordList.get(list.id) || [],
     }));
   }
 
   async updateCustomWordList(id: number, updates: Partial<InsertCustomWordList>): Promise<CustomWordList | undefined> {
-    const [wordList] = await db.update(customWordLists)
-      .set(updates)
-      .where(eq(customWordLists.id, id))
+    // Use new wordLists table
+    const { words: wordTexts, ...listUpdates } = updates;
+    
+    // Update list properties
+    const [updatedList] = await db.update(wordLists)
+      .set(listUpdates)
+      .where(eq(wordLists.id, id))
       .returning();
-    return wordList || undefined;
+    
+    if (!updatedList) return undefined;
+    
+    // If words array was provided, update the junction table
+    if (wordTexts !== undefined) {
+      // Delete existing word associations
+      await db.delete(wordListWords).where(eq(wordListWords.wordListId, id));
+      
+      // Add new word associations
+      for (let position = 0; position < wordTexts.length; position++) {
+        const wordText = wordTexts[position].toLowerCase().trim();
+        
+        // Find or create the word
+        let [existingWord] = await db
+          .select()
+          .from(words)
+          .where(eq(words.word, wordText));
+        
+        if (!existingWord) {
+          [existingWord] = await db.insert(words).values({ word: wordText }).returning();
+        }
+        
+        // Create junction record
+        await db.insert(wordListWords).values({
+          wordListId: id,
+          wordId: existingWord.id,
+          position: position,
+        }).onConflictDoNothing();
+      }
+    }
+    
+    // Fetch the updated word list with words
+    return this.getCustomWordList(id);
   }
 
   async deleteCustomWordList(id: number): Promise<boolean> {
-    const result = await db.delete(customWordLists).where(eq(customWordLists.id, id));
+    // Use new wordLists table - delete word associations first, then the list
+    await db.delete(wordListWords).where(eq(wordListWords.wordListId, id));
+    const result = await db.delete(wordLists).where(eq(wordLists.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
   }
 
