@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
-import { Upload, Search, Users, FileText, ArrowUpDown, Loader2, Check, X, AlertCircle, Ban, Copy, BookX, Home, UserX, Trash2, Shield, ChevronDown, ChevronRight } from "lucide-react";
+import { Upload, Search, Users, FileText, ArrowUpDown, Loader2, Check, X, AlertCircle, Ban, Copy, BookX, Home, UserX, Trash2, Shield, ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { UserHeader } from "@/components/user-header";
 import {
   AlertDialog,
@@ -26,6 +26,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Word } from "@shared/schema";
@@ -104,6 +112,14 @@ export default function AdminPage() {
   
   const [expandedFamilies, setExpandedFamilies] = useState<Set<number>>(new Set());
   const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [createAdminOpen, setCreateAdminOpen] = useState(false);
+  const [newAdminForm, setNewAdminForm] = useState({
+    username: "",
+    password: "",
+    firstName: "",
+    lastName: "",
+    email: "",
+  });
 
   const { data: usageMetrics = [], isLoading: isLoadingMetrics } = useQuery<UsageMetric[]>({
     queryKey: ['/api/admin/usage', dateRange],
@@ -165,6 +181,44 @@ export default function AdminPage() {
       toast({ title: "Failed to delete user", description: error.message, variant: "destructive" });
     },
   });
+
+  const createAdminMutation = useMutation({
+    mutationFn: async (data: { username: string; password: string; firstName?: string; lastName?: string; email?: string }) => {
+      const response = await apiRequest('POST', '/api/admin/create-admin', data);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create admin');
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Admin Created", description: `Admin account "${data.user.username}" created successfully` });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+      setCreateAdminOpen(false);
+      setNewAdminForm({ username: "", password: "", firstName: "", lastName: "", email: "" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to create admin", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleCreateAdmin = () => {
+    if (!newAdminForm.username || !newAdminForm.password) {
+      toast({ title: "Required fields", description: "Username and password are required", variant: "destructive" });
+      return;
+    }
+    if (newAdminForm.password.length < 6) {
+      toast({ title: "Password too short", description: "Password must be at least 6 characters", variant: "destructive" });
+      return;
+    }
+    createAdminMutation.mutate({
+      username: newAdminForm.username,
+      password: newAdminForm.password,
+      firstName: newAdminForm.firstName || undefined,
+      lastName: newAdminForm.lastName || undefined,
+      email: newAdminForm.email || undefined,
+    });
+  };
 
   const toggleFamilyExpansion = useCallback((familyId: number) => {
     setExpandedFamilies(prev => {
@@ -856,10 +910,19 @@ export default function AdminPage() {
           <TabsContent value="user-management">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="w-5 h-5" />
-                  User Management
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="w-5 h-5" />
+                    User Management
+                  </CardTitle>
+                  <Button 
+                    onClick={() => setCreateAdminOpen(true)}
+                    data-testid="button-create-admin"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Admin
+                  </Button>
+                </div>
                 <CardDescription>
                   View all registered users, their activity metrics, and manage accounts.
                 </CardDescription>
@@ -1163,6 +1226,99 @@ export default function AdminPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog open={createAdminOpen} onOpenChange={setCreateAdminOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="w-5 h-5" />
+              Create Admin Account
+            </DialogTitle>
+            <DialogDescription>
+              Create a new administrator account with full access to the admin dashboard.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="admin-username">Username *</Label>
+              <Input
+                id="admin-username"
+                placeholder="Enter username"
+                value={newAdminForm.username}
+                onChange={(e) => setNewAdminForm(prev => ({ ...prev, username: e.target.value }))}
+                data-testid="input-admin-username"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="admin-password">Password *</Label>
+              <Input
+                id="admin-password"
+                type="password"
+                placeholder="At least 6 characters"
+                value={newAdminForm.password}
+                onChange={(e) => setNewAdminForm(prev => ({ ...prev, password: e.target.value }))}
+                data-testid="input-admin-password"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="admin-firstname">First Name</Label>
+                <Input
+                  id="admin-firstname"
+                  placeholder="First name"
+                  value={newAdminForm.firstName}
+                  onChange={(e) => setNewAdminForm(prev => ({ ...prev, firstName: e.target.value }))}
+                  data-testid="input-admin-firstname"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="admin-lastname">Last Name</Label>
+                <Input
+                  id="admin-lastname"
+                  placeholder="Last name"
+                  value={newAdminForm.lastName}
+                  onChange={(e) => setNewAdminForm(prev => ({ ...prev, lastName: e.target.value }))}
+                  data-testid="input-admin-lastname"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="admin-email">Email</Label>
+              <Input
+                id="admin-email"
+                type="email"
+                placeholder="admin@example.com"
+                value={newAdminForm.email}
+                onChange={(e) => setNewAdminForm(prev => ({ ...prev, email: e.target.value }))}
+                data-testid="input-admin-email"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setCreateAdminOpen(false)}
+              data-testid="button-cancel-create-admin"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateAdmin}
+              disabled={createAdminMutation.isPending}
+              data-testid="button-submit-create-admin"
+            >
+              {createAdminMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Create Admin"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -3645,6 +3645,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create admin account
+  app.post("/api/admin/create-admin", async (req, res) => {
+    if (!req.user || req.user.role !== "admin") {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    try {
+      const schema = z.object({
+        username: z.string().min(3).max(50),
+        password: z.string().min(6),
+        firstName: z.string().optional(),
+        lastName: z.string().optional(),
+        email: z.string().email().optional(),
+      });
+      
+      const { username, password, firstName, lastName, email } = schema.parse(req.body);
+      
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ error: "Username already taken" });
+      }
+      
+      if (email) {
+        const existingEmail = await storage.getUserByEmail(email);
+        if (existingEmail) {
+          return res.status(400).json({ error: "Email already registered" });
+        }
+      }
+      
+      const hashedPassword = await hashPassword(password);
+      
+      const newAdmin = await storage.createUser({
+        username,
+        password: hashedPassword,
+        firstName: firstName || null,
+        lastName: lastName || null,
+        email: email || null,
+        role: "admin",
+        accountType: "school",
+        stars: 0,
+      });
+      
+      res.json({ 
+        success: true, 
+        message: "Admin account created successfully",
+        user: {
+          id: newAdmin.id,
+          username: newAdmin.username,
+          firstName: newAdmin.firstName,
+          lastName: newAdmin.lastName,
+          email: newAdmin.email,
+          role: newAdmin.role,
+        }
+      });
+    } catch (error) {
+      console.error("Error creating admin:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create admin account" });
+    }
+  });
+
   // ========== FAMILY ACCOUNT ROUTES ==========
   
   // Family signup - Create parent account and family
