@@ -200,6 +200,7 @@ export interface IStorage {
   createFlaggedWord(flag: InsertFlaggedWord): Promise<FlaggedWord>;
   getAllFlaggedWords(): Promise<(FlaggedWord & { word: string })[]>;
   deleteFlaggedWord(id: number): Promise<boolean>;
+  getAdminEmails(): Promise<string[]>;
   
   getUserHiddenWordLists(userId: number): Promise<UserHiddenWordList[]>;
   hideWordList(userId: number, wordListId: number): Promise<UserHiddenWordList>;
@@ -1927,14 +1928,27 @@ export class DatabaseStorage implements IStorage {
         word: words.word,
       })
       .from(flaggedWords)
-      .innerJoin(words, eq(flaggedWords.wordId, words.id))
+      .leftJoin(words, eq(flaggedWords.wordId, words.id))
       .orderBy(desc(flaggedWords.createdAt));
-    return results;
+    return results.map(r => ({
+      ...r,
+      word: r.word || '[Deleted Word]',
+    }));
   }
 
   async deleteFlaggedWord(id: number): Promise<boolean> {
     const result = await db.delete(flaggedWords).where(eq(flaggedWords.id, id)).returning();
     return result.length > 0;
+  }
+
+  async getAdminEmails(): Promise<string[]> {
+    const admins = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.role, 'admin'));
+    return admins
+      .map(a => a.email)
+      .filter((email): email is string => email !== null && email.length > 0);
   }
 
   async getUserHiddenWordLists(userId: number): Promise<UserHiddenWordList[]> {

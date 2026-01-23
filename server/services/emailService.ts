@@ -169,6 +169,74 @@ export async function sendEmailUpdateNotification(
   });
 }
 
+export async function sendFlaggedContentNotification(
+  adminEmails: string[],
+  word: string,
+  flaggedContentTypes: string[],
+  gameMode: string,
+  comments: string | null
+): Promise<void> {
+  if (adminEmails.length === 0) {
+    console.log('No admin emails to notify about flagged content');
+    return;
+  }
+
+  const { client, fromEmail } = getResendClient();
+  
+  const domain = process.env.REPLIT_DOMAINS || 'localhost:5000';
+  const protocol = process.env.REPLIT_DOMAINS ? 'https' : 'http';
+  const adminUrl = `${protocol}://${domain}/admin`;
+
+  const contentTypesList = flaggedContentTypes.map(type => `<li>${type}</li>`).join('');
+
+  await client.emails.send({
+    from: fromEmail,
+    to: adminEmails,
+    subject: `Spelling Champions - Content Flagged: "${word}"`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #ef4444; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+            .header h1 { color: white; margin: 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+            .alert-box { background: white; padding: 15px; border-radius: 4px; border-left: 4px solid #ef4444; margin: 15px 0; }
+            .button { display: inline-block; padding: 12px 30px; background: #4f46e5; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Content Flagged</h1>
+            </div>
+            <div class="content">
+              <h2>A user has flagged content for review</h2>
+              <div class="alert-box">
+                <p><strong>Word:</strong> ${word}</p>
+                <p><strong>Game Mode:</strong> ${gameMode}</p>
+                <p><strong>Flagged Content Types:</strong></p>
+                <ul>${contentTypesList}</ul>
+                ${comments ? `<p><strong>User Comment:</strong> ${comments}</p>` : ''}
+              </div>
+              <p>Please review this content in the Admin Dashboard:</p>
+              <p style="text-align: center;">
+                <a href="${adminUrl}" class="button">Go to Admin Dashboard</a>
+              </p>
+            </div>
+            <div class="footer">
+              <p>This is an automated message from Spelling Champions.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  });
+}
+
 export async function sendAccountDeletionEmail(
   toEmail: string,
   username: string,

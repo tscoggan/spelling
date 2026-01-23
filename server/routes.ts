@@ -3360,6 +3360,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const flaggedWord = await storage.createFlaggedWord(validatedData);
       
+      // Send notification to admins (async, don't wait)
+      (async () => {
+        try {
+          const { sendFlaggedContentNotification } = await import('./services/emailService');
+          const adminEmails = await storage.getAdminEmails();
+          const word = await storage.getWord(validatedData.wordId);
+          if (adminEmails.length > 0 && word) {
+            await sendFlaggedContentNotification(
+              adminEmails,
+              word.word,
+              validatedData.flaggedContentTypes,
+              validatedData.gameMode,
+              validatedData.comments || null
+            );
+            console.log(`Sent flagged content notification to ${adminEmails.length} admin(s)`);
+          }
+        } catch (emailError) {
+          console.error("Failed to send flagged content notification:", emailError);
+        }
+      })();
+      
       res.status(201).json(flaggedWord);
     } catch (error) {
       console.error("Error creating flagged word report:", error);
