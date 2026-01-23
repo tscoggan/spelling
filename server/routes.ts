@@ -3370,6 +3370,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin: Get all flagged words
+  app.get("/api/admin/flagged-words", async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user || user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const flaggedWords = await storage.getAllFlaggedWords();
+      res.json(flaggedWords);
+    } catch (error) {
+      console.error("Error fetching flagged words:", error);
+      res.status(500).json({ error: "Failed to fetch flagged words" });
+    }
+  });
+
+  // Admin: Dismiss a flagged word report
+  app.delete("/api/admin/flagged-words/:id", async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user || user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID" });
+      }
+      const deleted = await storage.deleteFlaggedWord(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Flagged word not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error dismissing flagged word:", error);
+      res.status(500).json({ error: "Failed to dismiss report" });
+    }
+  });
+
   // ==================== ADMIN ENDPOINTS ====================
   // These endpoints are not protected - admin authentication will be added later
   

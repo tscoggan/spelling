@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
-import { Upload, Search, Users, FileText, ArrowUpDown, Loader2, Check, X, AlertCircle, Ban, Copy, BookX, Home, UserX, Trash2, Shield, ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { Upload, Search, Users, FileText, ArrowUpDown, Loader2, Check, X, AlertCircle, Ban, Copy, BookX, Home, UserX, Trash2, Shield, ChevronDown, ChevronRight, Plus, Flag, Eye, Edit } from "lucide-react";
 import { UserHeader } from "@/components/user-header";
 import {
   AlertDialog,
@@ -87,6 +87,17 @@ interface UserGroup {
   id: number | null;
   parentUser: AdminUser | null;
   members: AdminUser[];
+}
+
+interface FlaggedWordReport {
+  id: number;
+  wordId: number;
+  word: string;
+  userId: number | null;
+  gameMode: string;
+  flaggedContentTypes: string[];
+  comments: string | null;
+  createdAt: string;
 }
 
 export default function AdminPage() {
@@ -208,6 +219,30 @@ export default function AdminPage() {
     },
     onError: (error: Error) => {
       toast({ title: "Failed to create admin", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const { data: flaggedWords = [], isLoading: isLoadingFlagged } = useQuery<FlaggedWordReport[]>({
+    queryKey: ['/api/admin/flagged-words'],
+    queryFn: async () => {
+      const response = await fetch('/api/admin/flagged-words');
+      if (!response.ok) throw new Error('Failed to fetch flagged words');
+      return response.json();
+    },
+  });
+
+  const dismissFlagMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest('DELETE', `/api/admin/flagged-words/${id}`);
+      if (!response.ok) throw new Error('Failed to dismiss report');
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Report dismissed" });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/flagged-words'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to dismiss report", description: error.message, variant: "destructive" });
     },
   });
 
@@ -914,6 +949,105 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
             </div>
+
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Flag className="w-5 h-5" />
+                  Flagged Content Reports
+                  {flaggedWords.length > 0 && (
+                    <Badge variant="destructive" data-testid="badge-flagged-count">{flaggedWords.length}</Badge>
+                  )}
+                </CardTitle>
+                <CardDescription>
+                  Review words that users have reported as having inappropriate content
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingFlagged ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : flaggedWords.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Flag className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No flagged content reports</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {flaggedWords.map((flag) => (
+                      <div
+                        key={flag.id}
+                        className="p-4 border rounded-lg space-y-2"
+                        data-testid={`flagged-word-${flag.id}`}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-lg">{flag.word}</span>
+                              <Badge variant="outline">{flag.gameMode}</Badge>
+                              {flag.flaggedContentTypes.map((type) => (
+                                <Badge key={type} variant="secondary">{type}</Badge>
+                              ))}
+                            </div>
+                            {flag.comments && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                Comment: {flag.comments}
+                              </p>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Reported: {new Date(flag.createdAt).toLocaleDateString()} 
+                              {flag.userId ? ` by user #${flag.userId}` : ' by guest'}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSearchQuery(flag.word);
+                              }}
+                              data-testid={`button-edit-flagged-${flag.id}`}
+                            >
+                              <Edit className="w-4 h-4 mr-1" />
+                              Edit Word
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  data-testid={`button-dismiss-flag-${flag.id}`}
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Dismiss Report</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to dismiss this report for "{flag.word}"? This will remove the report but keep the word unchanged.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => dismissFlagMutation.mutate(flag.id)}
+                                    data-testid={`button-confirm-dismiss-${flag.id}`}
+                                  >
+                                    Dismiss
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="user-management">

@@ -198,6 +198,8 @@ export interface IStorage {
   bumpAppVersion(): Promise<string>;
   
   createFlaggedWord(flag: InsertFlaggedWord): Promise<FlaggedWord>;
+  getAllFlaggedWords(): Promise<(FlaggedWord & { word: string })[]>;
+  deleteFlaggedWord(id: number): Promise<boolean>;
   
   getUserHiddenWordLists(userId: number): Promise<UserHiddenWordList[]>;
   hideWordList(userId: number, wordListId: number): Promise<UserHiddenWordList>;
@@ -1910,6 +1912,29 @@ export class DatabaseStorage implements IStorage {
   async createFlaggedWord(flag: InsertFlaggedWord): Promise<FlaggedWord> {
     const [flaggedWord] = await db.insert(flaggedWords).values(flag).returning();
     return flaggedWord;
+  }
+
+  async getAllFlaggedWords(): Promise<(FlaggedWord & { word: string })[]> {
+    const results = await db
+      .select({
+        id: flaggedWords.id,
+        wordId: flaggedWords.wordId,
+        userId: flaggedWords.userId,
+        gameMode: flaggedWords.gameMode,
+        flaggedContentTypes: flaggedWords.flaggedContentTypes,
+        comments: flaggedWords.comments,
+        createdAt: flaggedWords.createdAt,
+        word: words.word,
+      })
+      .from(flaggedWords)
+      .innerJoin(words, eq(flaggedWords.wordId, words.id))
+      .orderBy(desc(flaggedWords.createdAt));
+    return results;
+  }
+
+  async deleteFlaggedWord(id: number): Promise<boolean> {
+    const result = await db.delete(flaggedWords).where(eq(flaggedWords.id, id)).returning();
+    return result.length > 0;
   }
 
   async getUserHiddenWordLists(userId: number): Promise<UserHiddenWordList[]> {
