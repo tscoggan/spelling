@@ -5315,7 +5315,6 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
         <ReportInappropriateDialog
           open={showReportDialog}
           onOpenChange={setShowReportDialog}
-          wordId={currentWord.id}
           wordText={currentWord.word}
           gameMode={gameMode as "practice" | "timed" | "quiz" | "scramble"}
         />

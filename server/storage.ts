@@ -1928,12 +1928,9 @@ export class DatabaseStorage implements IStorage {
         word: words.word,
       })
       .from(flaggedWords)
-      .leftJoin(words, eq(flaggedWords.wordId, words.id))
+      .innerJoin(words, eq(flaggedWords.wordId, words.id))
       .orderBy(desc(flaggedWords.createdAt));
-    return results.map(r => ({
-      ...r,
-      word: r.word || '[Deleted Word]',
-    }));
+    return results;
   }
 
   async deleteFlaggedWord(id: number): Promise<boolean> {

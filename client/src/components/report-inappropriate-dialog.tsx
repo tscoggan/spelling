@@ -21,7 +21,6 @@ type ReportableGameMode = "practice" | "timed" | "quiz" | "scramble";
 interface ReportInappropriateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  wordId: number;
   wordText: string;
   gameMode: ReportableGameMode;
 }
@@ -31,7 +30,6 @@ type ContentType = "definition" | "sentence" | "origin";
 export function ReportInappropriateDialog({
   open,
   onOpenChange,
-  wordId,
   wordText,
   gameMode,
 }: ReportInappropriateDialogProps) {
@@ -40,7 +38,7 @@ export function ReportInappropriateDialog({
   const [comments, setComments] = useState("");
 
   const reportMutation = useMutation({
-    mutationFn: async (data: { wordId: number; gameMode: string; flaggedContentTypes: ContentType[]; comments?: string }) => {
+    mutationFn: async (data: { wordText: string; gameMode: string; flaggedContentTypes: ContentType[]; comments?: string }) => {
       const response = await apiRequest("POST", "/api/flagged-words", data);
       return response.json();
     },
@@ -83,7 +81,7 @@ export function ReportInappropriateDialog({
     }
 
     reportMutation.mutate({
-      wordId,
+      wordText,
       gameMode,
       flaggedContentTypes: selectedTypes,
       comments: comments.trim() || undefined,

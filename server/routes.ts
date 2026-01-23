@@ -3349,14 +3349,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/flagged-words", async (req, res) => {
     try {
       const user = req.user as any;
+      const { wordText, gameMode, flaggedContentTypes, comments } = req.body;
       
-      // Add userId from session before validation (overrides any client-provided value)
-      const dataWithUserId = {
-        ...req.body,
+      // Look up the actual word ID from the word text
+      if (!wordText || typeof wordText !== 'string') {
+        return res.status(400).json({ error: "wordText is required" });
+      }
+      
+      const word = await storage.getWordByText(wordText.toLowerCase().trim());
+      if (!word) {
+        return res.status(404).json({ error: "Word not found in database" });
+      }
+      
+      // Build the data with the correct wordId
+      const dataWithCorrectId = {
+        wordId: word.id,
         userId: user?.id || null,
+        gameMode,
+        flaggedContentTypes,
+        comments,
       };
       
-      const validatedData = insertFlaggedWordSchema.parse(dataWithUserId);
+      const validatedData = insertFlaggedWordSchema.parse(dataWithCorrectId);
       
       const flaggedWord = await storage.createFlaggedWord(validatedData);
       
@@ -3365,8 +3379,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const { sendFlaggedContentNotification } = await import('./services/emailService');
           const adminEmails = await storage.getAdminEmails();
-          const word = await storage.getWord(validatedData.wordId);
-          if (adminEmails.length > 0 && word) {
+          if (adminEmails.length > 0) {
             await sendFlaggedContentNotification(
               adminEmails,
               word.word,
