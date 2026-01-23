@@ -1678,31 +1678,29 @@ export function UserHeader() {
                     <DollarSign className="w-4 h-4" />
                     Payment History
                   </h4>
-                  <ScrollArea className="max-h-[200px]">
-                    <div className="space-y-2">
-                      {accountInfo.paymentHistory.map((payment) => (
-                        <div key={payment.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                          <div>
-                            <p className="font-medium">${(payment.amount / 100).toFixed(2)}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {payment.description || 'Subscription payment'}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(payment.paymentDate).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <div className="flex flex-col items-end gap-1">
-                            <Badge variant={payment.status === 'completed' ? 'default' : 'secondary'}>
-                              {payment.status}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {payment.paymentMethod}
-                            </span>
-                          </div>
+                  <div className="space-y-2">
+                    {accountInfo.paymentHistory.map((payment) => (
+                      <div key={payment.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                        <div>
+                          <p className="font-medium">${(payment.amount / 100).toFixed(2)}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {payment.description || 'Subscription payment'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(payment.paymentDate).toLocaleDateString()}
+                          </p>
                         </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
+                        <div className="flex flex-col items-end gap-1">
+                          <Badge variant={payment.status === 'completed' ? 'default' : 'secondary'}>
+                            {payment.status}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {payment.paymentMethod}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
               
