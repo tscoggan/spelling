@@ -163,12 +163,12 @@ export default function FamilyDashboardPage() {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: "Child removed from family" });
+      toast({ title: "Child account deleted", description: "The account and all associated data have been permanently removed." });
       queryClient.invalidateQueries({ queryKey: ["/api/family"] });
     },
     onError: (error: Error) => {
       toast({
-        title: "Failed to remove child",
+        title: "Failed to delete child account",
         description: error.message,
         variant: "destructive",
       });
@@ -508,9 +508,9 @@ export default function FamilyDashboardPage() {
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>Remove Child from Family</AlertDialogTitle>
+                                  <AlertDialogTitle>Delete Child Account</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    This will remove {child.user.username} from your family. Their account and progress will still exist, but they won't be linked to your family anymore.
+                                    This will permanently delete {child.user.username}'s account and all their game progress, scores, and data. This action cannot be undone.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
@@ -519,7 +519,7 @@ export default function FamilyDashboardPage() {
                                     onClick={() => removeChildMutation.mutate(child.userId)}
                                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                   >
-                                    Remove
+                                    Delete
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
