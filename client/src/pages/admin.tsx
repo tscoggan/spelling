@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -124,6 +124,11 @@ export default function AdminPage() {
     // If there's a search query in the URL, go directly to word-editor tab
     const params = new URLSearchParams(searchParams);
     return params.get('search') ? 'word-editor' : 'word-loader';
+  });
+  // Track if we came from a URL with search param (notification link)
+  const [autoSelectWord, setAutoSelectWord] = useState(() => {
+    const params = new URLSearchParams(searchParams);
+    return params.get('search') || null;
   });
   const [selectedWord, setSelectedWord] = useState<Word | null>(null);
   const [editForm, setEditForm] = useState({
@@ -454,6 +459,21 @@ export default function AdminPage() {
       partOfSpeech: word.partOfSpeech || "",
     });
   };
+
+  // Auto-select word when coming from a notification link
+  useEffect(() => {
+    if (autoSelectWord && searchResults.length > 0) {
+      // Find exact match first, then partial match
+      const exactMatch = searchResults.find(
+        (w) => w.word.toLowerCase() === autoSelectWord.toLowerCase()
+      );
+      const wordToSelect = exactMatch || searchResults[0];
+      if (wordToSelect) {
+        handleSelectWord(wordToSelect);
+        setAutoSelectWord(null); // Only auto-select once
+      }
+    }
+  }, [autoSelectWord, searchResults]);
 
   const handleUpdateWord = () => {
     if (!selectedWord) return;
