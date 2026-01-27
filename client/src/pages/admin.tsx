@@ -1007,8 +1007,7 @@ export default function AdminPage() {
                                 <span>
                                   {' by '}
                                   {flag.reporterName ? `${flag.reporterName} ` : ''}
-                                  {flag.reporterEmail ? `(${flag.reporterEmail}) ` : ''}
-                                  <span className="text-muted-foreground/70">ID #{flag.userId}</span>
+                                  {flag.reporterEmail ? `(${flag.reporterEmail})` : ''}
                                 </span>
                               ) : ' by guest'}
                             </p>
