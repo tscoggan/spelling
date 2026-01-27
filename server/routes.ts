@@ -3444,10 +3444,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid ID" });
       }
+      
+      // Get the flagged word info before deleting (to find the word text)
+      const flaggedWords = await storage.getAllFlaggedWords();
+      const flaggedWord = flaggedWords.find(fw => fw.id === id);
+      
       const deleted = await storage.deleteFlaggedWord(id);
       if (!deleted) {
         return res.status(404).json({ error: "Flagged word not found" });
       }
+      
+      // Also delete related in-app notifications for all admins
+      if (flaggedWord) {
+        const deletedNotifications = await storage.deleteFlaggedContentToDos(flaggedWord.word);
+        console.log(`Deleted ${deletedNotifications} flagged content notification(s) for word "${flaggedWord.word}"`);
+      }
+      
       res.json({ success: true });
     } catch (error) {
       console.error("Error dismissing flagged word:", error);

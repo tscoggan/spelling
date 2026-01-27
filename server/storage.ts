@@ -70,7 +70,7 @@ import {
   type ShopItemId,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql, inArray, not, or } from "drizzle-orm";
+import { eq, desc, and, sql, inArray, not, or, like } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -149,6 +149,7 @@ export interface IStorage {
   getToDoItem(todoId: number): Promise<any>;
   updateToDoItem(todoId: number, updates: any): Promise<any>;
   deleteToDoItem(todoId: number): Promise<boolean>;
+  deleteFlaggedContentToDos(word: string): Promise<number>;
   
   searchUsers(query: string): Promise<any[]>;
   
@@ -1344,6 +1345,18 @@ export class DatabaseStorage implements IStorage {
   async deleteToDoItem(todoId: number): Promise<boolean> {
     const result = await db.delete(userToDoItems).where(eq(userToDoItems.id, todoId));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async deleteFlaggedContentToDos(word: string): Promise<number> {
+    const result = await db
+      .delete(userToDoItems)
+      .where(
+        and(
+          eq(userToDoItems.type, 'flagged_content'),
+          like(userToDoItems.message, `%"${word}"%`)
+        )
+      );
+    return result.rowCount || 0;
   }
 
   async searchUsers(query: string): Promise<any[]> {

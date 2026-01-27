@@ -1012,12 +1012,23 @@ export default function AdminPage() {
                               <Edit className="w-4 h-4 mr-1" />
                               Edit Word
                             </Button>
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => dismissFlagMutation.mutate(flag.id)}
+                              disabled={dismissFlagMutation.isPending}
+                              data-testid={`button-mark-fixed-${flag.id}`}
+                            >
+                              <Check className="w-4 h-4 mr-1" />
+                              Mark as Fixed
+                            </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button
                                   size="sm"
                                   variant="ghost"
                                   data-testid={`button-dismiss-flag-${flag.id}`}
+                                  title="Dismiss without fixing"
                                 >
                                   <X className="w-4 h-4" />
                                 </Button>
