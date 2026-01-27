@@ -220,6 +220,7 @@ export interface IStorage {
   getAllFlaggedWords(): Promise<(FlaggedWord & { word: string })[]>;
   deleteFlaggedWord(id: number): Promise<boolean>;
   getAdminEmails(): Promise<string[]>;
+  getAdminUserIds(): Promise<number[]>;
   
   getUserHiddenWordLists(userId: number): Promise<UserHiddenWordList[]>;
   hideWordList(userId: number, wordListId: number): Promise<UserHiddenWordList>;
@@ -2257,6 +2258,14 @@ export class DatabaseStorage implements IStorage {
     return admins
       .map(a => a.email)
       .filter((email): email is string => email !== null && email.length > 0);
+  }
+
+  async getAdminUserIds(): Promise<number[]> {
+    const admins = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.role, 'admin'));
+    return admins.map(a => a.id);
   }
 
   async getUserHiddenWordLists(userId: number): Promise<UserHiddenWordList[]> {

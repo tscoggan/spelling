@@ -3374,9 +3374,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const flaggedWord = await storage.createFlaggedWord(validatedData);
       
-      // Send notification to admins (async, don't wait)
+      // Send notifications to admins (async, don't wait)
       (async () => {
         try {
+          // Send email notifications
           const { sendFlaggedContentNotification } = await import('./services/emailService');
           const adminEmails = await storage.getAdminEmails();
           if (adminEmails.length > 0) {
@@ -3387,10 +3388,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
               validatedData.gameMode,
               validatedData.comments || null
             );
-            console.log(`Sent flagged content notification to ${adminEmails.length} admin(s)`);
+            console.log(`Sent flagged content email notification to ${adminEmails.length} admin(s)`);
           }
-        } catch (emailError) {
-          console.error("Failed to send flagged content notification:", emailError);
+          
+          // Create in-app notifications for all admins
+          const adminUserIds = await storage.getAdminUserIds();
+          const contentTypes = validatedData.flaggedContentTypes.join(', ');
+          for (const adminId of adminUserIds) {
+            await storage.createToDoItem({
+              userId: adminId,
+              message: `Flagged content: "${word.word}" (${contentTypes}) needs review`,
+              type: 'flagged_content',
+              completed: false,
+            });
+          }
+          console.log(`Created in-app notifications for ${adminUserIds.length} admin(s)`);
+        } catch (notificationError) {
+          console.error("Failed to send flagged content notification:", notificationError);
         }
       })();
       
@@ -3408,12 +3422,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/flagged-words", async (req, res) => {
     try {
       const user = req.user as any;
-      console.log("Fetching flagged words, user:", user?.id, user?.role);
       if (!user || user.role !== "admin") {
         return res.status(403).json({ error: "Admin access required" });
       }
       const flaggedWords = await storage.getAllFlaggedWords();
-      console.log("Flagged words found:", flaggedWords.length, flaggedWords);
       res.json(flaggedWords);
     } catch (error) {
       console.error("Error fetching flagged words:", error);
