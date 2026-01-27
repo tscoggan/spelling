@@ -18,7 +18,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Check, X, UserPlus, Users } from "lucide-react";
+import { Check, X, UserPlus, Users, Flag, Edit } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -782,6 +782,7 @@ export function UserHeader() {
                   const isAccessRequest = todo.type === 'join_request';
                   const isChallengeInvite = todo.type === 'challenge_invite';
                   const isChallengeComplete = todo.type === 'challenge_complete';
+                  const isFlaggedContent = todo.type === 'flagged_content';
 
                   return (
                     <Card key={todo.id} className="p-4" data-testid={`todo-item-${todo.id}`}>
@@ -792,6 +793,7 @@ export function UserHeader() {
                             {isAccessRequest && <Users className="w-4 h-4 text-green-600 mt-1 flex-shrink-0" />}
                             {isChallengeInvite && <Gamepad2 className="w-4 h-4 text-orange-600 mt-1 flex-shrink-0" />}
                             {isChallengeComplete && <Trophy className="w-4 h-4 text-yellow-600 mt-1 flex-shrink-0" />}
+                            {isFlaggedContent && <Flag className="w-4 h-4 text-red-600 mt-1 flex-shrink-0" />}
                             <div>
                               <p className="text-sm font-medium">{todo.message}</p>
                               {metadata && (
@@ -854,6 +856,21 @@ export function UserHeader() {
                             >
                               <Trophy className="w-4 h-4 mr-1" />
                               View Results
+                            </Button>
+                          )}
+                          {isFlaggedContent && metadata?.word && (
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                completeTodoMutation.mutate(todo.id);
+                                setTodoModalOpen(false);
+                                // Navigate to admin page with the word in the search query
+                                setLocation(`/admin?search=${encodeURIComponent(metadata.word)}`);
+                              }}
+                              data-testid={`button-edit-word-${todo.id}`}
+                            >
+                              <Edit className="w-4 h-4 mr-1" />
+                              Edit Word
                             </Button>
                           )}
                           <Button

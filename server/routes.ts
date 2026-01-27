@@ -3400,6 +3400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               message: `Flagged content: "${word.word}" (${contentTypes}) needs review`,
               type: 'flagged_content',
               completed: false,
+              metadata: JSON.stringify({ word: word.word, wordId: word.id }),
             });
           }
           console.log(`Created in-app notifications for ${adminUserIds.length} admin(s)`);
@@ -3418,7 +3419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin: Get all flagged words
+  // Admin: Get all flagged words with reporter details
   app.get("/api/admin/flagged-words", async (req, res) => {
     try {
       const user = req.user as any;
@@ -3426,7 +3427,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Admin access required" });
       }
       const flaggedWords = await storage.getAllFlaggedWords();
-      res.json(flaggedWords);
+      
+      // Enrich with reporter user details
+      const enrichedFlaggedWords = await Promise.all(
+        flaggedWords.map(async (fw) => {
+          if (fw.userId) {
+            const reporter = await storage.getUser(fw.userId);
+            if (reporter) {
+              return {
+                ...fw,
+                reporterName: [reporter.firstName, reporter.lastName].filter(Boolean).join(' ') || null,
+                reporterEmail: reporter.email || null,
+              };
+            }
+          }
+          return { ...fw, reporterName: null, reporterEmail: null };
+        })
+      );
+      
+      res.json(enrichedFlaggedWords);
     } catch (error) {
       console.error("Error fetching flagged words:", error);
       res.status(500).json({ error: "Failed to fetch flagged words" });

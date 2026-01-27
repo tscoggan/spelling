@@ -141,6 +141,7 @@ export const userToDoItems = pgTable("user_to_do_items", {
   requesterUsername: text("requester_username"),
   requesterId: integer("requester_id"),
   challengeId: integer("challenge_id"),
+  metadata: text("metadata"),
   completed: boolean("completed").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

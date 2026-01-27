@@ -34,7 +34,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Word } from "@shared/schema";
 
@@ -98,6 +98,8 @@ interface FlaggedWordReport {
   flaggedContentTypes: string[];
   comments: string | null;
   createdAt: string;
+  reporterName: string | null;
+  reporterEmail: string | null;
 }
 
 export default function AdminPage() {
@@ -112,7 +114,12 @@ export default function AdminPage() {
   const [sortField, setSortField] = useState<SortField>('gamesPlayed');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   
-  const [searchQuery, setSearchQuery] = useState("");
+  const searchParams = useSearch();
+  const [searchQuery, setSearchQuery] = useState(() => {
+    // Initialize search query from URL if present
+    const params = new URLSearchParams(searchParams);
+    return params.get('search') || "";
+  });
   const [selectedWord, setSelectedWord] = useState<Word | null>(null);
   const [editForm, setEditForm] = useState({
     definition: "",
@@ -985,8 +992,7 @@ export default function AdminPage() {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-semibold text-lg">{flag.word}</span>
-                              <Badge variant="outline">{flag.gameMode}</Badge>
-                              {flag.flaggedContentTypes.map((type) => (
+                              {flag.flaggedContentTypes.map((type: string) => (
                                 <Badge key={type} variant="secondary">{type}</Badge>
                               ))}
                             </div>
@@ -997,7 +1003,14 @@ export default function AdminPage() {
                             )}
                             <p className="text-xs text-muted-foreground mt-1">
                               Reported: {new Date(flag.createdAt).toLocaleDateString()} 
-                              {flag.userId ? ` by user #${flag.userId}` : ' by guest'}
+                              {flag.userId ? (
+                                <span>
+                                  {' by '}
+                                  {flag.reporterName ? `${flag.reporterName} ` : ''}
+                                  {flag.reporterEmail ? `(${flag.reporterEmail}) ` : ''}
+                                  <span className="text-muted-foreground/70">ID #{flag.userId}</span>
+                                </span>
+                              ) : ' by guest'}
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
