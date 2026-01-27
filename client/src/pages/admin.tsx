@@ -120,6 +120,11 @@ export default function AdminPage() {
     const params = new URLSearchParams(searchParams);
     return params.get('search') || "";
   });
+  const [activeTab, setActiveTab] = useState(() => {
+    // If there's a search query in the URL, go directly to word-editor tab
+    const params = new URLSearchParams(searchParams);
+    return params.get('search') ? 'word-editor' : 'word-loader';
+  });
   const [selectedWord, setSelectedWord] = useState<Word | null>(null);
   const [editForm, setEditForm] = useState({
     definition: "",
@@ -521,7 +526,7 @@ export default function AdminPage() {
           <p className={`mt-2 ${textClasses.subtitle}`}>Manage words, view usage metrics, and edit content</p>
         </div>
 
-        <Tabs defaultValue="word-loader" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4" data-testid="tabs-admin">
             <TabsTrigger value="word-loader" data-testid="tab-word-loader">
               <Upload className="w-4 h-4 mr-2" />
