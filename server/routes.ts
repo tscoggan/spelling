@@ -3408,10 +3408,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/flagged-words", async (req, res) => {
     try {
       const user = req.user as any;
+      console.log("Fetching flagged words, user:", user?.id, user?.role);
       if (!user || user.role !== "admin") {
         return res.status(403).json({ error: "Admin access required" });
       }
       const flaggedWords = await storage.getAllFlaggedWords();
+      console.log("Flagged words found:", flaggedWords.length, flaggedWords);
       res.json(flaggedWords);
     } catch (error) {
       console.error("Error fetching flagged words:", error);
