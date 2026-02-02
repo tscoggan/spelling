@@ -65,7 +65,7 @@ export default function StarShop() {
   const { user, isGuestMode } = useAuth();
   const { state: guestState, spendStars: guestSpendStars, addItem: guestAddItem, getItemQuantity: guestGetItemQuantity } = useGuestSession();
   const { toast } = useToast();
-  const { forceSetTheme } = useTheme();
+  const { forceSetTheme, currentTheme } = useTheme();
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<{ id: ShopItemId; item: ShopItem } | null>(null);
   const [purchaseQuantity, setPurchaseQuantity] = useState(1);
@@ -308,15 +308,30 @@ export default function StarShop() {
                       )}
                       
                       {isThemeOwned ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled
-                          className="ml-auto"
-                          data-testid={`button-owned-${itemId}`}
-                        >
-                          Already Owned
-                        </Button>
+                        (() => {
+                          const themeId = "themeId" in item ? (item as { themeId: ThemeId }).themeId : null;
+                          const isCurrentTheme = themeId === currentTheme;
+                          return (
+                            <Button
+                              size="sm"
+                              variant={isCurrentTheme ? "outline" : "default"}
+                              disabled={isCurrentTheme}
+                              onClick={() => {
+                                if (themeId) {
+                                  forceSetTheme(themeId);
+                                  toast({
+                                    title: "Theme Applied!",
+                                    description: "Your theme is now active.",
+                                  });
+                                }
+                              }}
+                              className="ml-auto"
+                              data-testid={`button-apply-${itemId}`}
+                            >
+                              {isCurrentTheme ? 'Active' : 'Apply'}
+                            </Button>
+                          );
+                        })()
                       ) : (
                         <Button
                           size="sm"
