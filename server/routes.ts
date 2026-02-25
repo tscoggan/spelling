@@ -4699,6 +4699,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // School usage metrics (admin/teacher access)
+  app.get("/api/school/metrics", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const member = await storage.getSchoolMemberByUserId(userId);
+      if (!member) return res.status(403).json({ error: "Not a school member" });
+
+      const { startDate, endDate } = req.query;
+      const start = startDate ? new Date(startDate as string) : undefined;
+      let end: Date | undefined;
+      if (endDate) {
+        end = new Date(endDate as string);
+        end.setHours(23, 59, 59, 999);
+      }
+
+      const metrics = await storage.getSchoolMetrics(member.schoolId, start, end);
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching school metrics:", error);
+      res.status(500).json({ error: "Failed to fetch metrics" });
+    }
+  });
+
+  // Bulk create teachers
+  app.post("/api/school/teachers/bulk", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const adminUserId = req.user!.id;
+      const school = await storage.getSchoolAccountByAdminId(adminUserId);
+      if (!school) return res.status(403).json({ error: "Only school admins can bulk-import teachers" });
+      if (school.verificationStatus !== "verified") return res.status(403).json({ error: "School must be verified before adding members" });
+
+      const rowSchema = z.object({
+        username: z.string().min(3).max(50),
+        password: z.string().min(6),
+        firstName: z.string().min(1).max(100),
+        lastName: z.string().min(1).max(100),
+        email: z.string().email().optional().or(z.literal("")),
+      });
+
+      const rows: unknown[] = req.body.teachers;
+      if (!Array.isArray(rows) || rows.length === 0) return res.status(400).json({ error: "No teacher rows provided" });
+
+      const results: { row: number; username: string; status: "ok" | "error"; error?: string }[] = [];
+      for (let i = 0; i < rows.length; i++) {
+        try {
+          const data = rowSchema.parse(rows[i]);
+          const existing = await storage.getUserByUsername(data.username);
+          if (existing) { results.push({ row: i + 1, username: data.username, status: "error", error: "Username already taken" }); continue; }
+          const hashed = await hashPassword(data.password);
+          const teacher = await storage.createUser({ username: data.username, password: hashed, firstName: data.firstName, lastName: data.lastName, email: data.email || null, role: "teacher", accountType: "school" });
+          await storage.addSchoolMember(school.id, teacher.id, "teacher");
+          results.push({ row: i + 1, username: data.username, status: "ok" });
+        } catch (e: any) {
+          results.push({ row: i + 1, username: (rows[i] as any)?.username ?? `row ${i + 1}`, status: "error", error: e instanceof z.ZodError ? e.errors.map((x: any) => x.message).join(", ") : (e.message ?? "Unknown error") });
+        }
+      }
+
+      res.json({ results, created: results.filter(r => r.status === "ok").length, failed: results.filter(r => r.status === "error").length });
+    } catch (error) {
+      console.error("Error bulk-importing teachers:", error);
+      res.status(500).json({ error: "Failed to bulk-import teachers" });
+    }
+  });
+
+  // Bulk create students
+  app.post("/api/school/students/bulk", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const callerUserId = req.user!.id;
+      const callerMember = await storage.getSchoolMemberByUserId(callerUserId);
+      if (!callerMember || !["admin", "teacher"].includes(callerMember.role)) return res.status(403).json({ error: "Only school admins or teachers can bulk-import students" });
+
+      const school = await storage.getSchoolAccount(callerMember.schoolId);
+      if (!school) return res.status(404).json({ error: "School not found" });
+      if (school.verificationStatus !== "verified") return res.status(403).json({ error: "School must be verified before adding members" });
+
+      const rowSchema = z.object({
+        username: z.string().min(3).max(50),
+        password: z.string().min(4),
+        firstName: z.string().min(1).max(100),
+        lastInitial: z.string().min(1).max(1).regex(/^[a-zA-Z]$/),
+      });
+
+      const rows: unknown[] = req.body.students;
+      if (!Array.isArray(rows) || rows.length === 0) return res.status(400).json({ error: "No student rows provided" });
+
+      const results: { row: number; username: string; status: "ok" | "error"; error?: string }[] = [];
+      for (let i = 0; i < rows.length; i++) {
+        try {
+          const data = rowSchema.parse(rows[i]);
+          const existing = await storage.getUserByUsername(data.username);
+          if (existing) { results.push({ row: i + 1, username: data.username, status: "error", error: "Username already taken" }); continue; }
+          const hashed = await hashPassword(data.password);
+          const student = await storage.createUser({ username: data.username, password: hashed, firstName: data.firstName, lastName: data.lastName ? data.lastName : data.lastInitial.toUpperCase(), email: null, role: "student", accountType: "school" });
+          await storage.addSchoolMember(school.id, student.id, "student");
+          results.push({ row: i + 1, username: data.username, status: "ok" });
+        } catch (e: any) {
+          results.push({ row: i + 1, username: (rows[i] as any)?.username ?? `row ${i + 1}`, status: "error", error: e instanceof z.ZodError ? e.errors.map((x: any) => x.message).join(", ") : (e.message ?? "Unknown error") });
+        }
+      }
+
+      res.json({ results, created: results.filter(r => r.status === "ok").length, failed: results.filter(r => r.status === "error").length });
+    } catch (error) {
+      console.error("Error bulk-importing students:", error);
+      res.status(500).json({ error: "Failed to bulk-import students" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

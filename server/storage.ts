@@ -85,7 +85,7 @@ import {
   type InsertAgreementAcceptance,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql, inArray, not, or, like } from "drizzle-orm";
+import { eq, desc, and, sql, inArray, not, or, like, gte, lte } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -287,6 +287,7 @@ export interface IStorage {
   createAgreementAcceptance(record: InsertAgreementAcceptance): Promise<AgreementAcceptance>;
   getAgreementAcceptances(userId: number): Promise<AgreementAcceptance[]>;
   createSchoolCertification(record: InsertSchoolCertification): Promise<SchoolCertification>;
+  getSchoolMetrics(schoolId: number, startDate?: Date, endDate?: Date): Promise<any>;
 
   sessionStore: session.Store;
 }
@@ -2798,6 +2799,91 @@ export class DatabaseStorage implements IStorage {
   async createSchoolCertification(record: InsertSchoolCertification): Promise<SchoolCertification> {
     const [result] = await db.insert(schoolCertifications).values(record).returning();
     return result;
+  }
+
+  async getSchoolMetrics(schoolId: number, startDate?: Date, endDate?: Date): Promise<any> {
+    const members = await this.getSchoolMembers(schoolId);
+    const memberUserIds = members.map(m => m.userId).filter(Boolean);
+
+    if (memberUserIds.length === 0) {
+      return { byStudent: [], byGrade: [], summary: { totalStudents: 0, totalTeachers: 0, totalSessions: 0, totalWords: 0, totalCorrect: 0 } };
+    }
+
+    const conditions: any[] = [inArray(gameSessions.userId, memberUserIds)];
+    if (startDate) conditions.push(gte(gameSessions.createdAt, startDate));
+    if (endDate) conditions.push(lte(gameSessions.createdAt, endDate));
+
+    const sessionData = await db
+      .select({
+        userId: gameSessions.userId,
+        gameMode: gameSessions.gameMode,
+        score: gameSessions.score,
+        totalWords: gameSessions.totalWords,
+        correctWords: gameSessions.correctWords,
+        createdAt: gameSessions.createdAt,
+        gradeLevel: wordLists.gradeLevel,
+      })
+      .from(gameSessions)
+      .leftJoin(wordLists, eq(wordLists.id, gameSessions.wordListId))
+      .where(and(...conditions));
+
+    const byStudent = members
+      .filter(m => m.role !== 'admin')
+      .map(member => {
+        const sessions = sessionData.filter(s => s.userId === member.userId);
+        const totalWords = sessions.reduce((sum, s) => sum + (s.totalWords ?? 0), 0);
+        const correctWords = sessions.reduce((sum, s) => sum + (s.correctWords ?? 0), 0);
+        const gameModes = [...new Set(sessions.map(s => s.gameMode))];
+        return {
+          userId: member.userId,
+          firstName: (member as any).user?.firstName ?? null,
+          lastName: (member as any).user?.lastName ?? null,
+          username: (member as any).user?.username ?? '',
+          role: member.role,
+          sessionsCount: sessions.length,
+          totalWords,
+          correctWords,
+          accuracy: totalWords > 0 ? Math.round(correctWords / totalWords * 100) : null,
+          avgScore: sessions.length > 0 ? Math.round(sessions.reduce((s, g) => s + (g.score ?? 0), 0) / sessions.length) : 0,
+          gameModes,
+        };
+      })
+      .sort((a, b) => b.sessionsCount - a.sessionsCount);
+
+    const gradeMap = new Map<string, { sessions: number; totalWords: number; correctWords: number; students: Set<number> }>();
+    for (const s of sessionData) {
+      const grade = s.gradeLevel ?? 'Not Specified';
+      if (!gradeMap.has(grade)) gradeMap.set(grade, { sessions: 0, totalWords: 0, correctWords: 0, students: new Set() });
+      const g = gradeMap.get(grade)!;
+      g.sessions++;
+      g.totalWords += s.totalWords ?? 0;
+      g.correctWords += s.correctWords ?? 0;
+      if (s.userId) g.students.add(s.userId);
+    }
+
+    const byGrade = Array.from(gradeMap.entries())
+      .map(([gradeLevel, data]) => ({
+        gradeLevel,
+        studentsCount: data.students.size,
+        sessionsCount: data.sessions,
+        totalWords: data.totalWords,
+        accuracy: data.totalWords > 0 ? Math.round(data.correctWords / data.totalWords * 100) : null,
+      }))
+      .sort((a, b) => b.sessionsCount - a.sessionsCount);
+
+    const totalWords = sessionData.reduce((s, g) => s + (g.totalWords ?? 0), 0);
+    const totalCorrect = sessionData.reduce((s, g) => s + (g.correctWords ?? 0), 0);
+
+    const summary = {
+      totalStudents: members.filter(m => m.role === 'student').length,
+      totalTeachers: members.filter(m => m.role === 'teacher').length,
+      totalSessions: sessionData.length,
+      totalWords,
+      totalCorrect,
+      overallAccuracy: totalWords > 0 ? Math.round(totalCorrect / totalWords * 100) : null,
+    };
+
+    return { byStudent, byGrade, summary };
   }
 }
 

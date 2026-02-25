@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Sparkles, Trophy, Clock, Target, List, ChevronRight, Shuffle, AlertCircle, Grid3x3, Users, BarChart3, LayoutDashboard, Swords, Search, Eye, Loader2, Lock, School, GraduationCap, UserPlus, Plus, Trash2, CheckCircle, CreditCard, Receipt } from "lucide-react";
+import { BookOpen, Sparkles, Trophy, Clock, Target, List, ChevronRight, Shuffle, AlertCircle, Grid3x3, Users, BarChart3, LayoutDashboard, Swords, Search, Eye, Loader2, Lock, School, GraduationCap, UserPlus, Plus, Trash2, CheckCircle, CreditCard, Receipt, FileUp, TrendingUp, BookOpenCheck, CalendarDays, X } from "lucide-react";
 import type { GameMode, HeadToHeadChallenge } from "@shared/schema";
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -250,6 +250,14 @@ function SchoolAdminHome() {
 
   const [addTeacherOpen, setAddTeacherOpen] = useState(false);
   const [addStudentOpen, setAddStudentOpen] = useState(false);
+  const [bulkTeacherOpen, setBulkTeacherOpen] = useState(false);
+  const [bulkStudentOpen, setBulkStudentOpen] = useState(false);
+  const [bulkTeacherText, setBulkTeacherText] = useState("");
+  const [bulkStudentText, setBulkStudentText] = useState("");
+  const [bulkTeacherResults, setBulkTeacherResults] = useState<null | { created: number; failed: number; results: any[] }>(null);
+  const [bulkStudentResults, setBulkStudentResults] = useState<null | { created: number; failed: number; results: any[] }>(null);
+  const [metricsStartDate, setMetricsStartDate] = useState("");
+  const [metricsEndDate, setMetricsEndDate] = useState("");
 
   const teacherForm = useForm<SchoolTeacherFormData>({
     resolver: zodResolver(schoolTeacherSchema),
@@ -273,6 +281,76 @@ function SchoolAdminHome() {
   });
 
   const payments = paymentsData?.payments ?? [];
+
+  const metricsQueryParams = new URLSearchParams();
+  if (metricsStartDate) metricsQueryParams.set("startDate", metricsStartDate);
+  if (metricsEndDate) metricsQueryParams.set("endDate", metricsEndDate);
+  const metricsQS = metricsQueryParams.toString();
+
+  const { data: metricsData, isLoading: metricsLoading, refetch: refetchMetrics } = useQuery<{
+    byStudent: any[];
+    byGrade: any[];
+    summary: { totalStudents: number; totalTeachers: number; totalSessions: number; totalWords: number; totalCorrect: number; overallAccuracy: number | null };
+  }>({
+    queryKey: ["/api/school/metrics", metricsQS],
+    queryFn: async () => {
+      const url = `/api/school/metrics${metricsQS ? `?${metricsQS}` : ""}`;
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load metrics");
+      return res.json();
+    },
+    refetchOnMount: "always",
+  });
+
+  function parseCsvToObjects(text: string, fieldNames: string[]): Record<string, string>[] {
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l && !l.startsWith("#"));
+    if (lines.length === 0) return [];
+    const firstLine = lines[0].split(/[,\t]/).map(c => c.trim().toLowerCase().replace(/[^a-z]/g, ""));
+    const hasHeader = firstLine.every(f => fieldNames.some(n => n.toLowerCase().startsWith(f) || f.startsWith(n.toLowerCase())));
+    const dataLines = hasHeader ? lines.slice(1) : lines;
+    return dataLines.map(line => {
+      const cols = line.split(/[,\t]/).map(c => c.trim());
+      if (hasHeader) {
+        const obj: Record<string, string> = {};
+        firstLine.forEach((h, i) => { const match = fieldNames.find(n => n.toLowerCase().startsWith(h) || h.startsWith(n.toLowerCase())); if (match) obj[match] = cols[i] ?? ""; });
+        return obj;
+      } else {
+        const obj: Record<string, string> = {};
+        fieldNames.forEach((n, i) => { obj[n] = cols[i] ?? ""; });
+        return obj;
+      }
+    }).filter(o => Object.values(o).some(v => v));
+  }
+
+  const bulkTeacherMutation = useMutation({
+    mutationFn: async (teachers: any[]) => {
+      const response = await apiRequest("POST", "/api/school/teachers/bulk", { teachers });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/school/account"] });
+      setBulkTeacherResults(data);
+      toast({ title: `Imported ${data.created} teacher${data.created !== 1 ? "s" : ""}${data.failed > 0 ? `, ${data.failed} failed` : ""}` });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Bulk import failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const bulkStudentMutation = useMutation({
+    mutationFn: async (students: any[]) => {
+      const response = await apiRequest("POST", "/api/school/students/bulk", { students });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/school/account"] });
+      setBulkStudentResults(data);
+      toast({ title: `Imported ${data.created} student${data.created !== 1 ? "s" : ""}${data.failed > 0 ? `, ${data.failed} failed` : ""}` });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Bulk import failed", description: error.message, variant: "destructive" });
+    },
+  });
 
   const addTeacherMutation = useMutation({
     mutationFn: async (data: SchoolTeacherFormData) => {
@@ -434,16 +512,20 @@ function SchoolAdminHome() {
         <Tabs defaultValue="teachers" className="w-full">
           <TabsList className="w-full mb-4">
             <TabsTrigger value="teachers" className="flex-1" data-testid="tab-teachers">
-              <GraduationCap className="w-4 h-4 mr-2" />
+              <GraduationCap className="w-4 h-4 mr-2 hidden sm:inline" />
               Teachers ({teachers.length})
             </TabsTrigger>
             <TabsTrigger value="students" className="flex-1" data-testid="tab-students">
-              <Users className="w-4 h-4 mr-2" />
+              <Users className="w-4 h-4 mr-2 hidden sm:inline" />
               Students ({students.length})
+            </TabsTrigger>
+            <TabsTrigger value="metrics" className="flex-1" data-testid="tab-metrics">
+              <TrendingUp className="w-4 h-4 mr-2 hidden sm:inline" />
+              Metrics
             </TabsTrigger>
             {isAdmin && (
               <TabsTrigger value="billing" className="flex-1" data-testid="tab-billing">
-                <CreditCard className="w-4 h-4 mr-2" />
+                <CreditCard className="w-4 h-4 mr-2 hidden sm:inline" />
                 Billing
               </TabsTrigger>
             )}
@@ -457,10 +539,16 @@ function SchoolAdminHome() {
                   <CardDescription>Manage teacher accounts for your school</CardDescription>
                 </div>
                 {isAdmin && isVerified && (
-                  <Button size="sm" onClick={() => setAddTeacherOpen(true)} data-testid="button-add-teacher">
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Add Teacher
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => { setBulkTeacherText(""); setBulkTeacherResults(null); setBulkTeacherOpen(true); }} data-testid="button-bulk-import-teachers">
+                      <FileUp className="w-4 h-4 mr-2" />
+                      Bulk Import
+                    </Button>
+                    <Button size="sm" onClick={() => setAddTeacherOpen(true)} data-testid="button-add-teacher">
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Add Teacher
+                    </Button>
+                  </div>
                 )}
               </CardHeader>
               <CardContent>
@@ -529,10 +617,16 @@ function SchoolAdminHome() {
                   <CardDescription>Manage student accounts for your school</CardDescription>
                 </div>
                 {isVerified && (
-                  <Button size="sm" onClick={() => setAddStudentOpen(true)} data-testid="button-add-student">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Student
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => { setBulkStudentText(""); setBulkStudentResults(null); setBulkStudentOpen(true); }} data-testid="button-bulk-import-students">
+                      <FileUp className="w-4 h-4 mr-2" />
+                      Bulk Import
+                    </Button>
+                    <Button size="sm" onClick={() => setAddStudentOpen(true)} data-testid="button-add-student">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Student
+                    </Button>
+                  </div>
                 )}
               </CardHeader>
               <CardContent>
@@ -645,6 +739,189 @@ function SchoolAdminHome() {
               </Card>
             </TabsContent>
           )}
+
+          <TabsContent value="metrics">
+            <div className="space-y-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex flex-wrap items-end justify-between gap-3">
+                    <div>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <TrendingUp className="w-5 h-5" />
+                        Usage Metrics
+                      </CardTitle>
+                      <CardDescription>Activity across your school by student and grade level</CardDescription>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-1.5 text-sm">
+                        <CalendarDays className="w-4 h-4 text-muted-foreground" />
+                        <Input
+                          type="date"
+                          value={metricsStartDate}
+                          onChange={e => setMetricsStartDate(e.target.value)}
+                          className="h-8 w-36 text-sm"
+                          data-testid="input-metrics-start-date"
+                        />
+                        <span className="text-muted-foreground text-xs">to</span>
+                        <Input
+                          type="date"
+                          value={metricsEndDate}
+                          onChange={e => setMetricsEndDate(e.target.value)}
+                          className="h-8 w-36 text-sm"
+                          data-testid="input-metrics-end-date"
+                        />
+                      </div>
+                      {(metricsStartDate || metricsEndDate) && (
+                        <Button size="sm" variant="ghost" onClick={() => { setMetricsStartDate(""); setMetricsEndDate(""); }} data-testid="button-clear-metrics-filter">
+                          <X className="w-3.5 h-3.5 mr-1" />
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {metricsLoading ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : metricsData ? (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="rounded-lg bg-muted/40 p-3 text-center">
+                        <p className="text-2xl font-bold" data-testid="metric-total-sessions">{metricsData.summary.totalSessions}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Total Sessions</p>
+                      </div>
+                      <div className="rounded-lg bg-muted/40 p-3 text-center">
+                        <p className="text-2xl font-bold">{metricsData.summary.totalWords.toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Words Practiced</p>
+                      </div>
+                      <div className="rounded-lg bg-muted/40 p-3 text-center">
+                        <p className="text-2xl font-bold">
+                          {metricsData.summary.overallAccuracy !== null ? `${metricsData.summary.overallAccuracy}%` : "—"}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Overall Accuracy</p>
+                      </div>
+                      <div className="rounded-lg bg-muted/40 p-3 text-center">
+                        <p className="text-2xl font-bold">{metricsData.summary.totalStudents}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Students</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">No data available.</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <GraduationCap className="w-4 h-4" />
+                    By Student
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {metricsLoading ? (
+                    <div className="flex justify-center py-6">
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : !metricsData || metricsData.byStudent.length === 0 ? (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <BookOpenCheck className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                      <p className="text-sm">No activity recorded yet.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Name</th>
+                            <th className="text-left py-2 pr-4 font-medium text-muted-foreground hidden sm:table-cell">Role</th>
+                            <th className="text-right py-2 pr-4 font-medium text-muted-foreground">Sessions</th>
+                            <th className="text-right py-2 pr-4 font-medium text-muted-foreground hidden sm:table-cell">Words</th>
+                            <th className="text-right py-2 font-medium text-muted-foreground">Accuracy</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {metricsData.byStudent.map((row: any) => (
+                            <tr key={row.userId} className="border-b last:border-0" data-testid={`row-metric-student-${row.userId}`}>
+                              <td className="py-2 pr-4">
+                                <p className="font-medium">{row.firstName} {row.lastName}{row.role === "student" ? "." : ""}</p>
+                                <p className="text-xs text-muted-foreground">@{row.username}</p>
+                              </td>
+                              <td className="py-2 pr-4 hidden sm:table-cell">
+                                <Badge variant="secondary" className="text-xs capitalize">{row.role}</Badge>
+                              </td>
+                              <td className="py-2 pr-4 text-right tabular-nums">{row.sessionsCount}</td>
+                              <td className="py-2 pr-4 text-right tabular-nums hidden sm:table-cell">{row.totalWords.toLocaleString()}</td>
+                              <td className="py-2 text-right tabular-nums">
+                                {row.accuracy !== null ? (
+                                  <span className={row.accuracy >= 80 ? "text-green-600 dark:text-green-400 font-medium" : row.accuracy >= 60 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"}>
+                                    {row.accuracy}%
+                                  </span>
+                                ) : "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4" />
+                    By Grade Level
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {metricsLoading ? (
+                    <div className="flex justify-center py-6">
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : !metricsData || metricsData.byGrade.length === 0 ? (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <BarChart3 className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                      <p className="text-sm">No grade-level data available yet.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-2 pr-4 font-medium text-muted-foreground">Grade Level</th>
+                            <th className="text-right py-2 pr-4 font-medium text-muted-foreground">Students</th>
+                            <th className="text-right py-2 pr-4 font-medium text-muted-foreground">Sessions</th>
+                            <th className="text-right py-2 pr-4 font-medium text-muted-foreground hidden sm:table-cell">Words</th>
+                            <th className="text-right py-2 font-medium text-muted-foreground">Accuracy</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {metricsData.byGrade.map((row: any) => (
+                            <tr key={row.gradeLevel} className="border-b last:border-0" data-testid={`row-metric-grade-${row.gradeLevel.replace(/\s+/g, "-").toLowerCase()}`}>
+                              <td className="py-2 pr-4 font-medium">{row.gradeLevel}</td>
+                              <td className="py-2 pr-4 text-right tabular-nums">{row.studentsCount}</td>
+                              <td className="py-2 pr-4 text-right tabular-nums">{row.sessionsCount}</td>
+                              <td className="py-2 pr-4 text-right tabular-nums hidden sm:table-cell">{row.totalWords.toLocaleString()}</td>
+                              <td className="py-2 text-right tabular-nums">
+                                {row.accuracy !== null ? (
+                                  <span className={row.accuracy >= 80 ? "text-green-600 dark:text-green-400 font-medium" : row.accuracy >= 60 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"}>
+                                    {row.accuracy}%
+                                  </span>
+                                ) : "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
         </Tabs>
 
         <div className="pt-4 border-t flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground" data-testid="section-legal-footer">
@@ -794,6 +1071,132 @@ function SchoolAdminHome() {
               </div>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Import Teachers Dialog */}
+      <Dialog open={bulkTeacherOpen} onOpenChange={(open) => { setBulkTeacherOpen(open); if (!open) { setBulkTeacherText(""); setBulkTeacherResults(null); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Bulk Import Teachers</DialogTitle>
+            <DialogDescription>
+              Paste CSV or tab-separated data. One teacher per line. Columns: <strong>firstName, lastName, username, password, email</strong> (email optional). A header row is auto-detected.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {!bulkTeacherResults ? (
+              <>
+                <textarea
+                  className="w-full h-40 rounded-md border border-input bg-background px-3 py-2 text-sm font-mono resize-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  placeholder={"firstName,lastName,username,password,email\nJane,Doe,teacher_jane,secret123,jane@school.edu\nJohn,Smith,teacher_john,secret456,"}
+                  value={bulkTeacherText}
+                  onChange={e => setBulkTeacherText(e.target.value)}
+                  data-testid="textarea-bulk-teachers"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {parseCsvToObjects(bulkTeacherText, ["firstName","lastName","username","password","email"]).length} rows parsed
+                </p>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" className="flex-1" onClick={() => setBulkTeacherOpen(false)}>Cancel</Button>
+                  <Button
+                    type="button"
+                    className="flex-1"
+                    disabled={bulkTeacherMutation.isPending || parseCsvToObjects(bulkTeacherText, ["firstName","lastName","username","password","email"]).length === 0}
+                    onClick={() => bulkTeacherMutation.mutate(parseCsvToObjects(bulkTeacherText, ["firstName","lastName","username","password","email"]))}
+                    data-testid="button-confirm-bulk-teachers"
+                  >
+                    {bulkTeacherMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : `Import ${parseCsvToObjects(bulkTeacherText, ["firstName","lastName","username","password","email"]).length} Teacher${parseCsvToObjects(bulkTeacherText, ["firstName","lastName","username","password","email"]).length !== 1 ? "s" : ""}`}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex gap-3 p-3 rounded-lg bg-muted/40">
+                  <div className="text-center flex-1">
+                    <p className="text-xl font-bold text-green-600 dark:text-green-400">{bulkTeacherResults.created}</p>
+                    <p className="text-xs text-muted-foreground">Created</p>
+                  </div>
+                  <div className="text-center flex-1">
+                    <p className="text-xl font-bold text-destructive">{bulkTeacherResults.failed}</p>
+                    <p className="text-xs text-muted-foreground">Failed</p>
+                  </div>
+                </div>
+                {bulkTeacherResults.failed > 0 && (
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {bulkTeacherResults.results.filter((r: any) => r.status === "error").map((r: any) => (
+                      <div key={r.row} className="text-xs p-2 rounded bg-destructive/10 text-destructive">
+                        Row {r.row} ({r.username}): {r.error}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <Button type="button" className="w-full" onClick={() => { setBulkTeacherText(""); setBulkTeacherResults(null); setBulkTeacherOpen(false); }}>Done</Button>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Import Students Dialog */}
+      <Dialog open={bulkStudentOpen} onOpenChange={(open) => { setBulkStudentOpen(open); if (!open) { setBulkStudentText(""); setBulkStudentResults(null); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Bulk Import Students</DialogTitle>
+            <DialogDescription>
+              Paste CSV or tab-separated data. One student per line. Columns: <strong>firstName, lastInitial, username, password</strong>. A header row is auto-detected.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {!bulkStudentResults ? (
+              <>
+                <textarea
+                  className="w-full h-40 rounded-md border border-input bg-background px-3 py-2 text-sm font-mono resize-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  placeholder={"firstName,lastInitial,username,password\nAlex,S,alex_s,pass1234\nJordan,M,jordan_m,pass5678"}
+                  value={bulkStudentText}
+                  onChange={e => setBulkStudentText(e.target.value)}
+                  data-testid="textarea-bulk-students"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {parseCsvToObjects(bulkStudentText, ["firstName","lastInitial","username","password"]).length} rows parsed
+                </p>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" className="flex-1" onClick={() => setBulkStudentOpen(false)}>Cancel</Button>
+                  <Button
+                    type="button"
+                    className="flex-1"
+                    disabled={bulkStudentMutation.isPending || parseCsvToObjects(bulkStudentText, ["firstName","lastInitial","username","password"]).length === 0}
+                    onClick={() => bulkStudentMutation.mutate(parseCsvToObjects(bulkStudentText, ["firstName","lastInitial","username","password"]))}
+                    data-testid="button-confirm-bulk-students"
+                  >
+                    {bulkStudentMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : `Import ${parseCsvToObjects(bulkStudentText, ["firstName","lastInitial","username","password"]).length} Student${parseCsvToObjects(bulkStudentText, ["firstName","lastInitial","username","password"]).length !== 1 ? "s" : ""}`}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex gap-3 p-3 rounded-lg bg-muted/40">
+                  <div className="text-center flex-1">
+                    <p className="text-xl font-bold text-green-600 dark:text-green-400">{bulkStudentResults.created}</p>
+                    <p className="text-xs text-muted-foreground">Created</p>
+                  </div>
+                  <div className="text-center flex-1">
+                    <p className="text-xl font-bold text-destructive">{bulkStudentResults.failed}</p>
+                    <p className="text-xs text-muted-foreground">Failed</p>
+                  </div>
+                </div>
+                {bulkStudentResults.failed > 0 && (
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {bulkStudentResults.results.filter((r: any) => r.status === "error").map((r: any) => (
+                      <div key={r.row} className="text-xs p-2 rounded bg-destructive/10 text-destructive">
+                        Row {r.row} ({r.username}): {r.error}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <Button type="button" className="w-full" onClick={() => { setBulkStudentText(""); setBulkStudentResults(null); setBulkStudentOpen(false); }}>Done</Button>
+              </>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
