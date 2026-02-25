@@ -69,6 +69,7 @@ import {
   schoolAccounts,
   schoolMembers,
   schoolPaymentHistory,
+  agreementAcceptances,
   SHOP_ITEMS,
   type ShopItemId,
   type SchoolAccount,
@@ -77,6 +78,8 @@ import {
   type InsertSchoolMember,
   type SchoolPaymentHistory,
   type InsertSchoolPaymentHistory,
+  type AgreementAcceptance,
+  type InsertAgreementAcceptance,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, inArray, not, or, like } from "drizzle-orm";
@@ -278,6 +281,8 @@ export interface IStorage {
   getSchoolMembersBySchoolId(schoolId: number): Promise<SchoolMember[]>;
   createSchoolPayment(payment: InsertSchoolPaymentHistory): Promise<SchoolPaymentHistory>;
   getSchoolPayments(schoolId: number): Promise<SchoolPaymentHistory[]>;
+  createAgreementAcceptance(record: InsertAgreementAcceptance): Promise<AgreementAcceptance>;
+  getAgreementAcceptances(userId: number): Promise<AgreementAcceptance[]>;
 
   sessionStore: session.Store;
 }
@@ -2771,6 +2776,19 @@ export class DatabaseStorage implements IStorage {
       .from(schoolPaymentHistory)
       .where(eq(schoolPaymentHistory.schoolId, schoolId))
       .orderBy(desc(schoolPaymentHistory.paymentDate));
+  }
+
+  async createAgreementAcceptance(record: InsertAgreementAcceptance): Promise<AgreementAcceptance> {
+    const [result] = await db.insert(agreementAcceptances).values(record).returning();
+    return result;
+  }
+
+  async getAgreementAcceptances(userId: number): Promise<AgreementAcceptance[]> {
+    return await db
+      .select()
+      .from(agreementAcceptances)
+      .where(eq(agreementAcceptances.userId, userId))
+      .orderBy(desc(agreementAcceptances.acceptedAt));
   }
 }
 

@@ -11,6 +11,14 @@ import multer from "multer";
 import crypto from "crypto";
 import { APP_VERSION } from "@shared/version";
 import { DEFAULT_ADMIN } from "./config/admin";
+import { AGREEMENT_VERSIONS, hashAgreementText } from "@shared/agreements";
+import { encrypt } from "./services/encryption";
+
+function getClientIp(req: any): string {
+  const forwarded = req.headers["x-forwarded-for"];
+  const ip = typeof forwarded === "string" ? forwarded.split(",")[0].trim() : req.ip ?? req.socket?.remoteAddress ?? "unknown";
+  return ip;
+}
 
 async function ensureDefaultAdmin() {
   const existingAdmin = await storage.getUserByUsername(DEFAULT_ADMIN.username);
@@ -4370,7 +4378,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Permanently record the COPPA certification timestamp
       await storage.updateSchoolAccount(school.id, { coppaCertifiedAt: new Date() });
-      console.log(`[COPPA] School admin ${user.username} (${email}) certified COPPA authorization for school "${schoolName}" at ${new Date().toISOString()}`);
+
+      // Log legally-binding agreement acceptances (append-only)
+      const clientIp = getClientIp(req);
+      const encryptedIp = (() => { try { return encrypt(clientIp); } catch { return null; } })();
+      const userAgentStr = req.headers["user-agent"] ?? null;
+
+      await Promise.all([
+        storage.createAgreementAcceptance({
+          userId: user.id,
+          accountType: "school_admin",
+          agreementType: "coppa_certification",
+          agreementVersion: AGREEMENT_VERSIONS.coppa_certification,
+          ipAddress: encryptedIp,
+          userAgent: userAgentStr,
+          textSnapshot: hashAgreementText("coppa_certification"),
+          certificationCheckbox: true,
+        }),
+        storage.createAgreementAcceptance({
+          userId: user.id,
+          accountType: "school_admin",
+          agreementType: "school_tos",
+          agreementVersion: AGREEMENT_VERSIONS.school_tos,
+          ipAddress: encryptedIp,
+          userAgent: userAgentStr,
+          textSnapshot: hashAgreementText("school_tos"),
+          certificationCheckbox: true,
+        }),
+      ]);
+
+      console.log(`[LEGAL] School admin ${user.username} (${email}) accepted COPPA certification v${AGREEMENT_VERSIONS.coppa_certification} and School TOS v${AGREEMENT_VERSIONS.school_tos} for school "${schoolName}" at ${new Date().toISOString()}`);
 
       req.login(user, (err) => {
         if (err) {

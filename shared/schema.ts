@@ -825,6 +825,24 @@ export const insertSchoolPaymentHistorySchema = createInsertSchema(schoolPayment
   paymentDate: true,
 });
 
+export const agreementAcceptances = pgTable("agreement_acceptances", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  accountType: text("account_type").notNull(),
+  agreementType: text("agreement_type").notNull(),
+  agreementVersion: text("agreement_version").notNull(),
+  acceptedAt: timestamp("accepted_at").defaultNow().notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  textSnapshot: text("text_snapshot"),
+  certificationCheckbox: boolean("certification_checkbox").notNull().default(true),
+});
+
+export const insertAgreementAcceptanceSchema = createInsertSchema(agreementAcceptances).omit({
+  id: true,
+  acceptedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertWord = z.infer<typeof insertWordSchema>;
@@ -882,6 +900,8 @@ export type InsertSchoolMember = z.infer<typeof insertSchoolMemberSchema>;
 export type SchoolMember = typeof schoolMembers.$inferSelect;
 export type InsertSchoolPaymentHistory = z.infer<typeof insertSchoolPaymentHistorySchema>;
 export type SchoolPaymentHistory = typeof schoolPaymentHistory.$inferSelect;
+export type InsertAgreementAcceptance = z.infer<typeof insertAgreementAcceptanceSchema>;
+export type AgreementAcceptance = typeof agreementAcceptances.$inferSelect;
 
 export type GameMode = "practice" | "timed" | "quiz" | "scramble" | "mistake" | "crossword" | "headtohead";
 export type VpcStatus = "pending" | "verified" | "failed";
