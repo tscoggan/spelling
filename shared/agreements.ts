@@ -1,5 +1,7 @@
 import { createHash } from "crypto";
 
+export const SCHOOL_CERTIFICATION_VERSION = "1.0";
+
 export const AGREEMENT_VERSIONS = {
   coppa_certification: "1.1",
   school_tos: "1.0",

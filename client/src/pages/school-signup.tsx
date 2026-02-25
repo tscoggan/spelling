@@ -9,7 +9,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
-  Home, School, CreditCard, CheckCircle, Loader2, ArrowRight, ArrowLeft, ShieldCheck, FileText, Lock,
+  Home, School, CreditCard, CheckCircle, Loader2, ArrowRight, ArrowLeft, FileText, Lock,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -59,8 +59,20 @@ const legalSchema = z.object({
   agreedToDpa: z.boolean().refine((val) => val === true, {
     message: "You must agree to the Student Data Privacy Addendum to continue",
   }),
-  certifiedCoppa: z.boolean().refine((val) => val === true, {
-    message: "You must certify your COPPA authorization to continue",
+  certifiedAuthority: z.boolean().refine((val) => val === true, {
+    message: "You must certify your authority to enter into binding agreements on behalf of the school",
+  }),
+  certifiedCoppaSchoolException: z.boolean().refine((val) => val === true, {
+    message: "You must certify COPPA school consent and that parental consents have been obtained",
+  }),
+  certifiedEducationalUseOnly: z.boolean().refine((val) => val === true, {
+    message: "You must certify that the service will be used solely for educational purposes",
+  }),
+  certifiedFerpaAcknowledgment: z.boolean().refine((val) => val === true, {
+    message: "You must acknowledge the FERPA obligations described",
+  }),
+  certifiedAccuracyOfInfo: z.boolean().refine((val) => val === true, {
+    message: "You must certify that the information provided is accurate and complete",
   }),
 });
 
@@ -121,7 +133,11 @@ export default function SchoolSignupPage() {
     defaultValues: {
       agreedToTos: false,
       agreedToDpa: false,
-      certifiedCoppa: false,
+      certifiedAuthority: false,
+      certifiedCoppaSchoolException: false,
+      certifiedEducationalUseOnly: false,
+      certifiedFerpaAcknowledgment: false,
+      certifiedAccuracyOfInfo: false,
     },
   });
 
@@ -136,7 +152,11 @@ export default function SchoolSignupPage() {
         schoolName: data.schoolName,
         agreedToTos: data.agreedToTos,
         agreedToDpa: data.agreedToDpa,
-        certifiedCoppa: data.certifiedCoppa,
+        certifiedAuthority: data.certifiedAuthority,
+        certifiedCoppaSchoolException: data.certifiedCoppaSchoolException,
+        certifiedEducationalUseOnly: data.certifiedEducationalUseOnly,
+        certifiedFerpaAcknowledgment: data.certifiedFerpaAcknowledgment,
+        certifiedAccuracyOfInfo: data.certifiedAccuracyOfInfo,
       });
       return response.json() as Promise<SchoolSignupResponse>;
     },
@@ -389,48 +409,35 @@ export default function SchoolSignupPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-primary" />
-                Legal Acceptance
+                School Authorization &amp; Legal Certification
               </CardTitle>
               <CardDescription>
-                By creating a school account you take on legal responsibility for student data
-                and COPPA compliance. Please read and agree to each document below before
-                proceeding.
+                You must read and affirmatively acknowledge each statement below. None of these
+                boxes may be pre-checked. You cannot proceed without checking all required boxes.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="mb-5 p-3 rounded-md bg-muted text-sm space-y-1">
-                <p className="font-medium">Review the documents linked below before checking each box:</p>
+                <p className="font-medium">Review all documents before proceeding:</p>
                 <ul className="space-y-1 mt-2">
                   <li>
-                    <a
-                      href="/legal/school-tos"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <a href="/legal/school-tos" target="_blank" rel="noopener noreferrer"
                       className="text-primary underline underline-offset-2 hover:opacity-80"
-                      data-testid="link-school-tos"
-                    >
+                      data-testid="link-school-tos">
                       School Terms of Service
                     </a>
                   </li>
                   <li>
-                    <a
-                      href="/legal/student-dpa"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <a href="/legal/student-dpa" target="_blank" rel="noopener noreferrer"
                       className="text-primary underline underline-offset-2 hover:opacity-80"
-                      data-testid="link-student-dpa"
-                    >
+                      data-testid="link-student-dpa">
                       Student Data Privacy Addendum
                     </a>
                   </li>
                   <li>
-                    <a
-                      href="/legal/privacy-policy"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <a href="/legal/privacy-policy" target="_blank" rel="noopener noreferrer"
                       className="text-primary underline underline-offset-2 hover:opacity-80"
-                      data-testid="link-privacy-policy"
-                    >
+                      data-testid="link-privacy-policy">
                       Privacy Policy
                     </a>
                   </li>
@@ -438,31 +445,29 @@ export default function SchoolSignupPage() {
               </div>
 
               <Form {...legalForm}>
-                <form onSubmit={legalForm.handleSubmit(onSubmitLegal)} className="space-y-4">
+                <form onSubmit={legalForm.handleSubmit(onSubmitLegal)} className="space-y-3">
+
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-1 pb-0.5">
+                    Document Agreements
+                  </div>
+
                   <FormField
                     control={legalForm.control}
                     name="agreedToTos"
                     render={({ field }) => (
                       <FormItem className="flex flex-row items-start gap-3 rounded-lg border p-3">
                         <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            data-testid="checkbox-agree-tos"
-                          />
+                          <Checkbox checked={field.value} onCheckedChange={field.onChange}
+                            data-testid="checkbox-agree-tos" />
                         </FormControl>
                         <div className="space-y-1 leading-none">
-                          <FormLabel className="text-sm font-medium leading-tight cursor-pointer">
-                            <FileText className="inline w-3.5 h-3.5 mr-1 text-primary" />
+                          <FormLabel className="text-sm font-medium leading-snug cursor-pointer">
                             I have read and agree to the{" "}
-                            <a
-                              href="/legal/school-tos"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary underline underline-offset-2"
-                            >
+                            <a href="/legal/school-tos" target="_blank" rel="noopener noreferrer"
+                              className="text-primary underline underline-offset-2">
                               School Terms of Service
                             </a>
+                            {" "}and related agreements.
                           </FormLabel>
                           <FormMessage />
                         </div>
@@ -476,25 +481,46 @@ export default function SchoolSignupPage() {
                     render={({ field }) => (
                       <FormItem className="flex flex-row items-start gap-3 rounded-lg border p-3">
                         <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            data-testid="checkbox-agree-dpa"
-                          />
+                          <Checkbox checked={field.value} onCheckedChange={field.onChange}
+                            data-testid="checkbox-agree-dpa" />
                         </FormControl>
                         <div className="space-y-1 leading-none">
-                          <FormLabel className="text-sm font-medium leading-tight cursor-pointer">
-                            <Lock className="inline w-3.5 h-3.5 mr-1 text-primary" />
+                          <FormLabel className="text-sm font-medium leading-snug cursor-pointer">
                             I agree to the{" "}
-                            <a
-                              href="/legal/student-dpa"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary underline underline-offset-2"
-                            >
+                            <a href="/legal/student-dpa" target="_blank" rel="noopener noreferrer"
+                              className="text-primary underline underline-offset-2">
                               Student Data Privacy Addendum
                             </a>
+                            {" "}governing the collection, use, and protection of Student Data.
                           </FormLabel>
+                          <FormMessage />
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2 pb-0.5">
+                    School Authorization &amp; Certification
+                  </div>
+
+                  <FormField
+                    control={legalForm.control}
+                    name="certifiedAuthority"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start gap-3 rounded-lg border p-3">
+                        <FormControl>
+                          <Checkbox checked={field.value} onCheckedChange={field.onChange}
+                            data-testid="checkbox-certified-authority" />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm font-semibold leading-snug cursor-pointer">
+                            Authority to Bind the School
+                          </FormLabel>
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            I represent and warrant that I am duly authorized to enter into binding
+                            agreements on behalf of the School identified in this registration and to
+                            accept the School Terms of Service and related agreements.
+                          </p>
                           <FormMessage />
                         </div>
                       </FormItem>
@@ -503,28 +529,24 @@ export default function SchoolSignupPage() {
 
                   <FormField
                     control={legalForm.control}
-                    name="certifiedCoppa"
+                    name="certifiedCoppaSchoolException"
                     render={({ field }) => (
                       <FormItem className="flex flex-row items-start gap-3 rounded-lg border p-3">
                         <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            data-testid="checkbox-coppa-certification"
-                          />
+                          <Checkbox checked={field.value} onCheckedChange={field.onChange}
+                            data-testid="checkbox-certified-coppa" />
                         </FormControl>
                         <div className="space-y-1 leading-none">
-                          <FormLabel className="text-sm font-medium leading-tight cursor-pointer">
-                            <ShieldCheck className="inline w-3.5 h-3.5 mr-1 text-primary" />
-                            COPPA Authorization
+                          <FormLabel className="text-sm font-semibold leading-snug cursor-pointer">
+                            COPPA School Consent Certification
                           </FormLabel>
-                          <p className="text-xs text-muted-foreground">
-                            I certify that I am an authorized representative of this school and am
-                            legally permitted to create student accounts on behalf of the school
-                            under COPPA and applicable law. The school assumes responsibility for
-                            obtaining any required parental consents. The School represents and
-                            warrants that it has obtained all necessary parental consents under
-                            COPPA and applicable law.
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            I certify that the School is providing consent for the collection, use,
+                            and disclosure of Student Data in connection with the Service pursuant to
+                            the school consent exception under the Children's Online Privacy Protection
+                            Act (COPPA). I further certify that the School has obtained any and all
+                            required parental consents under applicable federal, state, and local laws
+                            and policies.
                           </p>
                           <FormMessage />
                         </div>
@@ -532,23 +554,91 @@ export default function SchoolSignupPage() {
                     )}
                   />
 
+                  <FormField
+                    control={legalForm.control}
+                    name="certifiedEducationalUseOnly"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start gap-3 rounded-lg border p-3">
+                        <FormControl>
+                          <Checkbox checked={field.value} onCheckedChange={field.onChange}
+                            data-testid="checkbox-certified-educational-use" />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm font-semibold leading-snug cursor-pointer">
+                            Educational Purpose and Data Use Limitation
+                          </FormLabel>
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            I acknowledge and agree that the Service will be used solely for
+                            legitimate educational purposes and that Student Data will be used only
+                            for instructional and educational activities authorized by the School.
+                          </p>
+                          <FormMessage />
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={legalForm.control}
+                    name="certifiedFerpaAcknowledgment"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start gap-3 rounded-lg border p-3">
+                        <FormControl>
+                          <Checkbox checked={field.value} onCheckedChange={field.onChange}
+                            data-testid="checkbox-certified-ferpa" />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm font-semibold leading-snug cursor-pointer">
+                            FERPA Acknowledgment
+                          </FormLabel>
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            I acknowledge that student performance and progress data may constitute
+                            education records under FERPA, and that the Company will act as a
+                            "school official" with legitimate educational interests in accordance
+                            with applicable law.
+                          </p>
+                          <FormMessage />
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={legalForm.control}
+                    name="certifiedAccuracyOfInfo"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start gap-3 rounded-lg border p-3">
+                        <FormControl>
+                          <Checkbox checked={field.value} onCheckedChange={field.onChange}
+                            data-testid="checkbox-certified-accuracy" />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm font-semibold leading-snug cursor-pointer">
+                            Accuracy of Information
+                          </FormLabel>
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            I certify that all information provided in connection with this
+                            registration is accurate and complete to the best of my knowledge.
+                          </p>
+                          <FormMessage />
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  <p className="text-xs text-muted-foreground italic pt-1 px-1">
+                    The Company relies upon the foregoing representations and certifications in
+                    providing access to the Service.
+                  </p>
+
                   <div className="flex gap-3 pt-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setStep(1)}
-                      className="flex-1"
-                      data-testid="button-back-to-details"
-                    >
+                    <Button type="button" variant="outline" onClick={() => setStep(1)}
+                      className="flex-1" data-testid="button-back-to-details">
                       <ArrowLeft className="w-4 h-4 mr-2" />
                       Back
                     </Button>
-                    <Button
-                      type="submit"
-                      className="flex-1"
-                      disabled={signupMutation.isPending}
-                      data-testid="button-create-account"
-                    >
+                    <Button type="submit" className="flex-1" disabled={signupMutation.isPending}
+                      data-testid="button-create-account">
                       {signupMutation.isPending ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />

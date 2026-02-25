@@ -11,7 +11,7 @@ import multer from "multer";
 import crypto from "crypto";
 import { APP_VERSION } from "@shared/version";
 import { DEFAULT_ADMIN } from "./config/admin";
-import { AGREEMENT_VERSIONS, hashAgreementText } from "@shared/agreements";
+import { AGREEMENT_VERSIONS, hashAgreementText, SCHOOL_CERTIFICATION_VERSION } from "@shared/agreements";
 import { encrypt } from "./services/encryption";
 
 function getClientIp(req: any): string {
@@ -4342,10 +4342,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         schoolName: z.string().min(1).max(200),
         agreedToTos: z.boolean(),
         agreedToDpa: z.boolean(),
-        certifiedCoppa: z.boolean(),
+        certifiedAuthority: z.boolean(),
+        certifiedCoppaSchoolException: z.boolean(),
+        certifiedEducationalUseOnly: z.boolean(),
+        certifiedFerpaAcknowledgment: z.boolean(),
+        certifiedAccuracyOfInfo: z.boolean(),
       });
 
-      const { username, password, firstName, lastName, email, schoolName, agreedToTos, agreedToDpa, certifiedCoppa } = schema.parse(req.body);
+      const {
+        username, password, firstName, lastName, email, schoolName,
+        agreedToTos, agreedToDpa,
+        certifiedAuthority, certifiedCoppaSchoolException, certifiedEducationalUseOnly,
+        certifiedFerpaAcknowledgment, certifiedAccuracyOfInfo,
+      } = schema.parse(req.body);
 
       // Enforce school-issued email (block free providers + require school TLD)
       const emailDomain = email.split("@")[1]?.toLowerCase() ?? "";
@@ -4358,16 +4367,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "School email must end in .edu, .org, .school, or another recognized educational domain (e.g. .ac.uk, .k12.*.us)." });
       }
 
-      // All three legal agreements are required
-      if (!agreedToTos) {
-        return res.status(400).json({ error: "You must agree to the School Terms of Service." });
-      }
-      if (!agreedToDpa) {
-        return res.status(400).json({ error: "You must agree to the Student Data Privacy Addendum." });
-      }
-      if (!certifiedCoppa) {
-        return res.status(400).json({ error: "You must certify COPPA authorization to create a school account." });
-      }
+      // All legal agreements and certifications are required
+      if (!agreedToTos) return res.status(400).json({ error: "You must agree to the School Terms of Service." });
+      if (!agreedToDpa) return res.status(400).json({ error: "You must agree to the Student Data Privacy Addendum." });
+      if (!certifiedAuthority) return res.status(400).json({ error: "You must certify your authority to bind the school." });
+      if (!certifiedCoppaSchoolException) return res.status(400).json({ error: "You must certify COPPA school consent and parental consent obtained." });
+      if (!certifiedEducationalUseOnly) return res.status(400).json({ error: "You must certify educational use only." });
+      if (!certifiedFerpaAcknowledgment) return res.status(400).json({ error: "You must acknowledge FERPA obligations." });
+      if (!certifiedAccuracyOfInfo) return res.status(400).json({ error: "You must certify the accuracy of registration information." });
 
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) return res.status(400).json({ error: "Username already taken" });
@@ -4398,6 +4405,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userAgentStr = req.headers["user-agent"] ?? null;
 
       await Promise.all([
+        // Document text-snapshot logs (append-only, immutable)
         storage.createAgreementAcceptance({
           userId: user.id,
           accountType: "school_admin",
@@ -4418,19 +4426,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           textSnapshot: hashAgreementText("student_dpa"),
           certificationCheckbox: true,
         }),
-        storage.createAgreementAcceptance({
-          userId: user.id,
-          accountType: "school_admin",
-          agreementType: "coppa_certification",
-          agreementVersion: AGREEMENT_VERSIONS.coppa_certification,
+        // Structured certification record with all required boolean fields
+        storage.createSchoolCertification({
+          schoolId: school.id,
+          adminUserId: user.id,
+          certifiedAuthority: true,
+          certifiedCoppaSchoolException: true,
+          certifiedParentalConsentObtained: true,
+          certifiedEducationalUseOnly: true,
+          certifiedFerpaAcknowledgment: true,
+          certifiedAccuracyOfInfo: true,
+          agreedToTos: true,
+          agreedToDpa: true,
+          agreementVersion: SCHOOL_CERTIFICATION_VERSION,
           ipAddress: encryptedIp,
           userAgent: userAgentStr,
-          textSnapshot: hashAgreementText("coppa_certification"),
-          certificationCheckbox: true,
         }),
       ]);
 
-      console.log(`[LEGAL] School admin ${user.username} (${email}) accepted School TOS v${AGREEMENT_VERSIONS.school_tos}, Student DPA v${AGREEMENT_VERSIONS.student_dpa}, and COPPA certification v${AGREEMENT_VERSIONS.coppa_certification} for school "${schoolName}" at ${new Date().toISOString()}`);
+      console.log(`[LEGAL] School admin ${user.username} (${email}) completed full legal certification v${SCHOOL_CERTIFICATION_VERSION} for school "${schoolName}" (school_id=${school.id}) at ${new Date().toISOString()} — TOS v${AGREEMENT_VERSIONS.school_tos}, DPA v${AGREEMENT_VERSIONS.student_dpa}, authority+COPPA+FERPA+edu-use+accuracy all certified`);
 
       req.login(user, (err) => {
         if (err) {

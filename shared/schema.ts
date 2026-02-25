@@ -809,6 +809,32 @@ export const schoolPaymentHistory = pgTable("school_payment_history", {
   paymentDate: timestamp("payment_date").defaultNow().notNull(),
 });
 
+export const schoolCertifications = pgTable("school_certifications", {
+  id: serial("id").primaryKey(),
+  schoolId: integer("school_id").notNull(),
+  adminUserId: integer("admin_user_id").notNull(),
+  certifiedAuthority: boolean("certified_authority").notNull(),
+  certifiedCoppaSchoolException: boolean("certified_coppa_school_exception").notNull(),
+  certifiedParentalConsentObtained: boolean("certified_parental_consent_obtained").notNull(),
+  certifiedEducationalUseOnly: boolean("certified_educational_use_only").notNull(),
+  certifiedFerpaAcknowledgment: boolean("certified_ferpa_acknowledgment").notNull(),
+  certifiedAccuracyOfInfo: boolean("certified_accuracy_of_info").notNull(),
+  agreedToTos: boolean("agreed_to_tos").notNull(),
+  agreedToDpa: boolean("agreed_to_dpa").notNull(),
+  agreementVersion: text("agreement_version").notNull(),
+  acceptedAtUtc: timestamp("accepted_at_utc", { withTimezone: true }).defaultNow().notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+});
+
+export const insertSchoolCertificationSchema = createInsertSchema(schoolCertifications).omit({
+  id: true,
+  acceptedAtUtc: true,
+});
+
+export type InsertSchoolCertification = z.infer<typeof insertSchoolCertificationSchema>;
+export type SchoolCertification = typeof schoolCertifications.$inferSelect;
+
 export const insertSchoolAccountSchema = createInsertSchema(schoolAccounts).omit({
   id: true,
   createdAt: true,

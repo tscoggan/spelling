@@ -69,6 +69,7 @@ import {
   schoolAccounts,
   schoolMembers,
   schoolPaymentHistory,
+  schoolCertifications,
   agreementAcceptances,
   SHOP_ITEMS,
   type ShopItemId,
@@ -78,6 +79,8 @@ import {
   type InsertSchoolMember,
   type SchoolPaymentHistory,
   type InsertSchoolPaymentHistory,
+  type SchoolCertification,
+  type InsertSchoolCertification,
   type AgreementAcceptance,
   type InsertAgreementAcceptance,
 } from "@shared/schema";
@@ -283,6 +286,7 @@ export interface IStorage {
   getSchoolPayments(schoolId: number): Promise<SchoolPaymentHistory[]>;
   createAgreementAcceptance(record: InsertAgreementAcceptance): Promise<AgreementAcceptance>;
   getAgreementAcceptances(userId: number): Promise<AgreementAcceptance[]>;
+  createSchoolCertification(record: InsertSchoolCertification): Promise<SchoolCertification>;
 
   sessionStore: session.Store;
 }
@@ -2789,6 +2793,11 @@ export class DatabaseStorage implements IStorage {
       .from(agreementAcceptances)
       .where(eq(agreementAcceptances.userId, userId))
       .orderBy(desc(agreementAcceptances.acceptedAt));
+  }
+
+  async createSchoolCertification(record: InsertSchoolCertification): Promise<SchoolCertification> {
+    const [result] = await db.insert(schoolCertifications).values(record).returning();
+    return result;
   }
 }
 

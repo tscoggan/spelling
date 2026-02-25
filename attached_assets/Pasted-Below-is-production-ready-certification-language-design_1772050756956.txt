@@ -1,0 +1,126 @@
+Below is **production-ready certification language** designed to support reliance on the school consent exception under the Children's Online Privacy Protection Act and to align with obligations under the Family Educational Rights and Privacy Act.
+
+This is written in formal, defensible language suitable for implementation in your school admin signup flow.
+
+You may use the “Full Certification Version” for maximum protection, or the “Streamlined Version” if you prefer shorter UI text.
+
+---
+
+# OPTION A — FULL CERTIFICATION (Maximum Legal Protection)
+
+Display this on a dedicated “School Authorization & Consent Certification” screen with required checkboxes.
+
+---
+
+## School Authorization & Legal Certification
+
+☐ **Authority to Bind the School**
+
+I represent and warrant that I am duly authorized to enter into binding agreements on behalf of the School identified in this registration and to accept the School Terms of Service and related agreements.
+
+---
+
+☐ **COPPA School Consent Certification**
+
+I certify that the School is providing consent for the collection, use, and disclosure of Student Data in connection with the Service pursuant to the school consent exception under the Children’s Online Privacy Protection Act (COPPA). I further certify that the School has obtained any and all required parental consents under applicable federal, state, and local laws and policies.
+
+---
+
+☐ **Educational Purpose and Data Use Limitation**
+
+I acknowledge and agree that the Service will be used solely for legitimate educational purposes and that Student Data will be used only for instructional and educational activities authorized by the School.
+
+---
+
+☐ **FERPA Acknowledgment**
+
+I acknowledge that student performance and progress data may constitute education records under FERPA, and that the Company will act as a “school official” with legitimate educational interests in accordance with applicable law.
+
+---
+
+☐ **Accuracy of Information**
+
+I certify that all information provided in connection with this registration is accurate and complete to the best of my knowledge.
+
+---
+
+### Important Implementation Notes
+
+* None of these boxes may be pre-checked.
+* User must check all required boxes before proceeding.
+* Store acceptance as individual boolean fields.
+* Log timestamp (UTC), IP address, user agent, agreement version.
+
+---
+
+# OPTION B — CONSOLIDATED BULLETPROOF CERTIFICATION (Cleaner UI)
+
+If you prefer one checkbox instead of multiple, use:
+
+---
+
+☐ **School Authorization and Legal Certification**
+
+By checking this box, I represent and warrant that:
+
+1. I am authorized to enter into binding agreements on behalf of the School identified above.
+2. The School is providing consent for the collection and use of Student Data pursuant to the school consent exception under the Children’s Online Privacy Protection Act (COPPA).
+3. The School has obtained any required parental consents under applicable federal, state, and local laws.
+4. The Service will be used solely for legitimate educational purposes.
+5. The information provided during registration is accurate and complete.
+
+---
+
+This consolidated version is typically sufficient for early-stage EdTech.
+
+---
+
+# OPTIONAL ADDITIONAL PROTECTION CLAUSE (Recommended)
+
+You may add this sentence below either version:
+
+> The Company relies upon the foregoing representations and certifications in providing access to the Service.
+
+That single sentence materially strengthens your legal position.
+
+---
+
+# IMPLEMENTATION REQUIREMENTS FOR DEV TEAM
+
+When this checkbox is submitted:
+
+System must store:
+
+* `certified_authority = true`
+* `certified_coppa_school_exception = true`
+* `certified_parental_consent_obtained = true`
+* `certified_educational_use_only = true`
+* `agreement_version = X.X`
+* `accepted_at_utc`
+* `ip_address`
+* `user_agent`
+* `school_id`
+* `admin_user_id`
+
+Records must be immutable (append-only).
+
+---
+
+# WHEN TO REQUIRE RE-CERTIFICATION
+
+Force re-certification if:
+
+* You materially change data use
+* You introduce new categories of student data
+* You add analytics beyond instructional purposes
+* You introduce advertising
+
+---
+
+If you’d like next, I can:
+
+* Draft the exact UI layout copy for the acceptance screen
+* Create the database schema for compliance logging
+* Or write a short-form “District Procurement Version” certification
+
+Which direction do you want to go?
