@@ -804,7 +804,7 @@ export const schoolPaymentHistory = pgTable("school_payment_history", {
   userId: integer("user_id").notNull(),
   amount: integer("amount").notNull(),
   description: text("description"),
-  paymentType: text("payment_type").notNull().default("adult_verification"),
+  paymentMethod: text("payment_method").notNull().default("adult_verification"),
   status: text("status").notNull().default("completed"),
   paymentDate: timestamp("payment_date").defaultNow().notNull(),
 });

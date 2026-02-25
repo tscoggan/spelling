@@ -4432,7 +4432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: (req.user as User).id,
         amount: schoolAccount.subscriptionAmount ?? 99,
         description: "Adult verification fee",
-        paymentType: "adult_verification",
+        paymentMethod: "adult_verification",
         status: "completed",
       });
 

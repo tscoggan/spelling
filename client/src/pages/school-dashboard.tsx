@@ -88,7 +88,7 @@ interface SchoolPaymentRecord {
   userId: number;
   amount: number;
   description: string | null;
-  paymentType: string;
+  paymentMethod: string;
   status: string;
   paymentDate: string;
 }
@@ -498,7 +498,7 @@ export default function SchoolDashboardPage() {
                         >
                           <div>
                             <p className="font-medium text-sm">
-                              {payment.description ?? payment.paymentType.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+                              {payment.description ?? payment.paymentMethod.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {new Date(payment.paymentDate).toLocaleDateString("en-US", {
