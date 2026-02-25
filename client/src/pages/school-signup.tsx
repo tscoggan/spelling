@@ -346,7 +346,7 @@ export default function SchoolSignupPage() {
                             COPPA Authorization
                           </FormLabel>
                           <p className="text-xs text-muted-foreground">
-                            I certify that I am an authorized representative of this school and am legally permitted to create student accounts on behalf of the school under COPPA and applicable law. The school assumes responsibility for obtaining any required parental consents.
+                            I certify that I am an authorized representative of this school and am legally permitted to create student accounts on behalf of the school under COPPA and applicable law. The school assumes responsibility for obtaining any required parental consents. The School represents and warrants that it has obtained all necessary parental consents under COPPA and applicable law.
                           </p>
                           <FormMessage />
                         </div>
