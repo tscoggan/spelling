@@ -25,9 +25,15 @@ const FREE_EMAIL_DOMAINS = [
   "yahoo.co.uk", "hotmail.co.uk", "yahoo.ca",
 ];
 
+const ALLOWED_SCHOOL_TLDS = [".edu", ".org", ".school", ".ac.uk", ".sch.uk", ".edu.au", ".edu.ca", ".ac.nz", ".edu.in"];
+
+function hasSchoolTld(domain: string): boolean {
+  return ALLOWED_SCHOOL_TLDS.some((tld) => domain.endsWith(tld)) || domain.includes(".k12.");
+}
+
 function isSchoolEmail(email: string): boolean {
   const domain = email.split("@")[1]?.toLowerCase() ?? "";
-  return !FREE_EMAIL_DOMAINS.includes(domain);
+  return !FREE_EMAIL_DOMAINS.includes(domain) && hasSchoolTld(domain);
 }
 
 const accountSchema = z.object({
@@ -36,7 +42,7 @@ const accountSchema = z.object({
   lastName: z.string().min(1, "Last name is required").max(100),
   email: z.string().email("Please enter a valid email address").refine(
     isSchoolEmail,
-    "Please use your school-issued email address (not Gmail, Yahoo, Hotmail, etc.)"
+    "Please use a school-issued email ending in .edu, .org, .school, or similar (not Gmail, Yahoo, Hotmail, etc.)"
   ),
   username: z.string().min(3, "Username must be at least 3 characters").max(50),
   password: z.string().min(6, "Password must be at least 6 characters"),
@@ -317,7 +323,7 @@ export default function SchoolSignupPage() {
                           <Input type="email" placeholder="admin@school.edu" {...field} data-testid="input-email" />
                         </FormControl>
                         <FormMessage />
-                        <p className="text-xs text-muted-foreground">Must be a school-issued email, not Gmail or Yahoo</p>
+                        <p className="text-xs text-muted-foreground">Must end in .edu, .org, .school, .k12.*.us, .ac.uk, or similar — not Gmail, Yahoo, etc.</p>
                       </FormItem>
                     )}
                   />

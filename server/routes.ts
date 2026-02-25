@@ -4347,10 +4347,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { username, password, firstName, lastName, email, schoolName, agreedToTos, agreedToDpa, certifiedCoppa } = schema.parse(req.body);
 
-      // Enforce school-issued email (block free providers)
+      // Enforce school-issued email (block free providers + require school TLD)
       const emailDomain = email.split("@")[1]?.toLowerCase() ?? "";
       if (FREE_EMAIL_DOMAINS.has(emailDomain)) {
         return res.status(400).json({ error: "Please use a school-issued email address. Free email providers (Gmail, Yahoo, Hotmail, etc.) are not accepted." });
+      }
+      const ALLOWED_SCHOOL_TLDS = [".edu", ".org", ".school", ".ac.uk", ".sch.uk", ".edu.au", ".edu.ca", ".ac.nz", ".edu.in"];
+      const hasSchoolTld = ALLOWED_SCHOOL_TLDS.some((tld) => emailDomain.endsWith(tld)) || emailDomain.includes(".k12.");
+      if (!hasSchoolTld) {
+        return res.status(400).json({ error: "School email must end in .edu, .org, .school, or another recognized educational domain (e.g. .ac.uk, .k12.*.us)." });
       }
 
       // All three legal agreements are required
