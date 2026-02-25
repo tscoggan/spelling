@@ -784,6 +784,7 @@ export const schoolAccounts = pgTable("school_accounts", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   verifiedAt: timestamp("verified_at"),
   subscriptionExpiresAt: timestamp("subscription_expires_at"),
+  coppaCertifiedAt: timestamp("coppa_certified_at"),
 });
 
 export const schoolMembers = pgTable("school_members", {

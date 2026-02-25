@@ -4315,6 +4315,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ── School Account Routes ──────────────────────────────────────────────
 
   // Create a school admin account + school record
+  const FREE_EMAIL_DOMAINS = new Set([
+    "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "aol.com",
+    "icloud.com", "live.com", "msn.com", "me.com", "mac.com",
+    "protonmail.com", "proton.me", "ymail.com", "googlemail.com",
+    "mail.com", "zoho.com", "gmx.com", "tutanota.com", "fastmail.com",
+    "yahoo.co.uk", "hotmail.co.uk", "yahoo.ca",
+  ]);
+
   app.post("/api/school/signup", async (req, res) => {
     try {
       const schema = z.object({
@@ -4324,9 +4332,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName: z.string().min(1).max(100),
         email: z.string().email(),
         schoolName: z.string().min(1).max(200),
+        certifiedCoppa: z.boolean(),
       });
 
-      const { username, password, firstName, lastName, email, schoolName } = schema.parse(req.body);
+      const { username, password, firstName, lastName, email, schoolName, certifiedCoppa } = schema.parse(req.body);
+
+      // Enforce school-issued email (block free providers)
+      const emailDomain = email.split("@")[1]?.toLowerCase() ?? "";
+      if (FREE_EMAIL_DOMAINS.has(emailDomain)) {
+        return res.status(400).json({ error: "Please use a school-issued email address. Free email providers (Gmail, Yahoo, Hotmail, etc.) are not accepted." });
+      }
+
+      // COPPA certification is required
+      if (!certifiedCoppa) {
+        return res.status(400).json({ error: "You must certify COPPA authorization to create a school account." });
+      }
 
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) return res.status(400).json({ error: "Username already taken" });
@@ -4347,6 +4367,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const school = await storage.createSchoolAccount(user.id, schoolName);
+
+      // Permanently record the COPPA certification timestamp
+      await storage.updateSchoolAccount(school.id, { coppaCertifiedAt: new Date() });
+      console.log(`[COPPA] School admin ${user.username} (${email}) certified COPPA authorization for school "${schoolName}" at ${new Date().toISOString()}`);
 
       req.login(user, (err) => {
         if (err) {
@@ -4514,10 +4538,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         username: z.string().min(3).max(50),
         password: z.string().min(4),
         firstName: z.string().min(1).max(100),
-        lastName: z.string().min(1).max(100),
+        lastInitial: z.string().min(1).max(1).regex(/^[a-zA-Z]$/),
       });
 
-      const { username, password, firstName, lastName } = schema.parse(req.body);
+      const { username, password, firstName, lastInitial } = schema.parse(req.body);
 
       const existing = await storage.getUserByUsername(username);
       if (existing) return res.status(400).json({ error: "Username already taken" });
@@ -4527,7 +4551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         username,
         password: hashedPassword,
         firstName,
-        lastName,
+        lastName: lastInitial.toUpperCase(),
         email: null,
         role: "student",
         accountType: "school",

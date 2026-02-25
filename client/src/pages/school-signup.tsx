@@ -8,11 +8,25 @@ import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Home, School, CreditCard, CheckCircle, Loader2, ArrowRight, ArrowLeft } from "lucide-react";
+import { Home, School, CreditCard, CheckCircle, Loader2, ArrowRight, ArrowLeft, ShieldCheck } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Checkbox } from "@/components/ui/checkbox";
+
+const FREE_EMAIL_DOMAINS = [
+  "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "aol.com",
+  "icloud.com", "live.com", "msn.com", "me.com", "mac.com",
+  "protonmail.com", "proton.me", "ymail.com", "googlemail.com",
+  "mail.com", "zoho.com", "gmx.com", "tutanota.com", "fastmail.com",
+  "yahoo.co.uk", "hotmail.co.uk", "yahoo.ca",
+];
+
+function isSchoolEmail(email: string): boolean {
+  const domain = email.split("@")[1]?.toLowerCase() ?? "";
+  return !FREE_EMAIL_DOMAINS.includes(domain);
+}
 
 const signupSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters").max(50),
@@ -20,8 +34,14 @@ const signupSchema = z.object({
   confirmPassword: z.string(),
   firstName: z.string().min(1, "First name is required").max(100),
   lastName: z.string().min(1, "Last name is required").max(100),
-  email: z.string().email("Please enter a valid email address"),
+  email: z.string().email("Please enter a valid email address").refine(
+    isSchoolEmail,
+    "Please use your school-issued email address (not Gmail, Yahoo, Hotmail, etc.)"
+  ),
   schoolName: z.string().min(1, "School name is required").max(200),
+  certifiedCoppa: z.boolean().refine((val) => val === true, {
+    message: "You must certify that you are authorized to create accounts on behalf of your school",
+  }),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -67,6 +87,7 @@ export default function SchoolSignupPage() {
       lastName: "",
       email: "",
       schoolName: "",
+      certifiedCoppa: false,
     },
   });
 
@@ -79,6 +100,7 @@ export default function SchoolSignupPage() {
         lastName: data.lastName,
         email: data.email,
         schoolName: data.schoolName,
+        certifiedCoppa: data.certifiedCoppa,
       });
       return response.json() as Promise<SchoolSignupResponse>;
     },
@@ -302,6 +324,32 @@ export default function SchoolSignupPage() {
                           <Input type="password" placeholder="Re-enter your password" {...field} data-testid="input-confirm-password" />
                         </FormControl>
                         <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="certifiedCoppa"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start gap-3 rounded-lg border p-3 mt-2">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-coppa-certification"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm font-medium leading-tight cursor-pointer">
+                            <ShieldCheck className="inline w-3.5 h-3.5 mr-1 text-primary" />
+                            COPPA Authorization
+                          </FormLabel>
+                          <p className="text-xs text-muted-foreground">
+                            I certify that I am an authorized representative of this school and am legally permitted to create student accounts on behalf of the school under COPPA and applicable law. The school assumes responsibility for obtaining any required parental consents.
+                          </p>
+                          <FormMessage />
+                        </div>
                       </FormItem>
                     )}
                   />

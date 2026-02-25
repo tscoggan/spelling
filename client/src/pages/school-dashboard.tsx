@@ -48,7 +48,7 @@ const studentSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters").max(50),
   password: z.string().min(4, "Password must be at least 4 characters"),
   firstName: z.string().min(1, "First name is required").max(100),
-  lastName: z.string().min(1, "Last name is required").max(100),
+  lastInitial: z.string().min(1, "Last initial is required").max(1, "Enter one letter only").regex(/^[a-zA-Z]$/, "Must be a single letter"),
 });
 
 type TeacherFormData = z.infer<typeof teacherSchema>;
@@ -99,7 +99,7 @@ export default function SchoolDashboardPage() {
 
   const studentForm = useForm<StudentFormData>({
     resolver: zodResolver(studentSchema),
-    defaultValues: { username: "", password: "", firstName: "", lastName: "" },
+    defaultValues: { username: "", password: "", firstName: "", lastInitial: "" },
   });
 
   const { data: schoolData, isLoading } = useQuery<SchoolData>({
@@ -128,7 +128,12 @@ export default function SchoolDashboardPage() {
 
   const addStudentMutation = useMutation({
     mutationFn: async (data: StudentFormData) => {
-      const response = await apiRequest("POST", "/api/school/students", data);
+      const response = await apiRequest("POST", "/api/school/students", {
+        username: data.username,
+        password: data.password,
+        firstName: data.firstName,
+        lastInitial: data.lastInitial,
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -561,12 +566,12 @@ export default function SchoolDashboardPage() {
                 />
                 <FormField
                   control={studentForm.control}
-                  name="lastName"
+                  name="lastInitial"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Last Name</FormLabel>
+                      <FormLabel>Last Initial</FormLabel>
                       <FormControl>
-                        <Input placeholder="Smith" {...field} data-testid="input-student-last-name" />
+                        <Input placeholder="S" maxLength={1} {...field} data-testid="input-student-last-initial" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
