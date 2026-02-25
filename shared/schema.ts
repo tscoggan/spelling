@@ -775,6 +775,39 @@ export const insertPaymentHistorySchema = createInsertSchema(paymentHistory).omi
   paymentDate: true,
 });
 
+export const schoolAccounts = pgTable("school_accounts", {
+  id: serial("id").primaryKey(),
+  schoolAdminUserId: integer("school_admin_user_id").notNull(),
+  schoolName: text("school_name").notNull(),
+  verificationStatus: text("verification_status").notNull().default("pending"),
+  subscriptionAmount: integer("subscription_amount").default(99),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  verifiedAt: timestamp("verified_at"),
+  subscriptionExpiresAt: timestamp("subscription_expires_at"),
+});
+
+export const schoolMembers = pgTable("school_members", {
+  id: serial("id").primaryKey(),
+  schoolId: integer("school_id").notNull(),
+  userId: integer("user_id").notNull(),
+  role: text("role").notNull().default("student"),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  schoolMemberUnique: unique("school_member_unique").on(table.schoolId, table.userId),
+}));
+
+export const insertSchoolAccountSchema = createInsertSchema(schoolAccounts).omit({
+  id: true,
+  createdAt: true,
+  verifiedAt: true,
+});
+
+export const insertSchoolMemberSchema = createInsertSchema(schoolMembers).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertWord = z.infer<typeof insertWordSchema>;
@@ -826,11 +859,17 @@ export type InsertFamilyMember = z.infer<typeof insertFamilyMemberSchema>;
 export type FamilyMember = typeof familyMembers.$inferSelect;
 export type InsertPaymentHistory = z.infer<typeof insertPaymentHistorySchema>;
 export type PaymentHistory = typeof paymentHistory.$inferSelect;
+export type InsertSchoolAccount = z.infer<typeof insertSchoolAccountSchema>;
+export type SchoolAccount = typeof schoolAccounts.$inferSelect;
+export type InsertSchoolMember = z.infer<typeof insertSchoolMemberSchema>;
+export type SchoolMember = typeof schoolMembers.$inferSelect;
 
 export type GameMode = "practice" | "timed" | "quiz" | "scramble" | "mistake" | "crossword" | "headtohead";
 export type VpcStatus = "pending" | "verified" | "failed";
+export type SchoolVerificationStatus = "pending" | "verified";
 export type FamilyRole = "parent" | "child";
 export type FamilyMemberStatus = "active" | "invited" | "suspended";
+export type SchoolRole = "admin" | "teacher" | "student";
 
 export type ChallengeStatus = "pending" | "active" | "completed" | "declined";
 

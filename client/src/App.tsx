@@ -22,6 +22,8 @@ import AuthPage from "@/pages/auth-page";
 import ResetPasswordPage from "@/pages/reset-password";
 import FamilySignupPage from "@/pages/family-signup";
 import FamilyDashboardPage from "@/pages/family-dashboard";
+import SchoolSignupPage from "@/pages/school-signup";
+import SchoolDashboardPage from "@/pages/school-dashboard";
 import NotFound from "@/pages/not-found";
 import { useEffect, useRef, createContext, useContext } from "react";
 
@@ -81,6 +83,8 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/family/signup" component={FamilySignupPage} />
+      <Route path="/school/signup" component={SchoolSignupPage} />
+      <ProtectedRoute path="/school" component={SchoolDashboardPage} />
       <Route component={NotFound} />
     </Switch>
   );

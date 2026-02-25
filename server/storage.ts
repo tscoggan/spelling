@@ -66,8 +66,14 @@ import {
   familyAccounts,
   familyMembers,
   paymentHistory,
+  schoolAccounts,
+  schoolMembers,
   SHOP_ITEMS,
   type ShopItemId,
+  type SchoolAccount,
+  type InsertSchoolAccount,
+  type SchoolMember,
+  type InsertSchoolMember,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, inArray, not, or, like } from "drizzle-orm";
@@ -255,7 +261,19 @@ export interface IStorage {
   createPaymentRecord(payment: InsertPaymentHistory): Promise<PaymentHistory>;
   getPaymentHistory(familyId: number): Promise<PaymentHistory[]>;
   getPaymentsByUser(userId: number): Promise<PaymentHistory[]>;
-  
+
+  // School account methods
+  createSchoolAccount(adminUserId: number, schoolName: string): Promise<SchoolAccount>;
+  getSchoolAccount(id: number): Promise<SchoolAccount | undefined>;
+  getSchoolAccountByAdminId(adminUserId: number): Promise<SchoolAccount | undefined>;
+  updateSchoolAccount(id: number, updates: Partial<SchoolAccount>): Promise<SchoolAccount | undefined>;
+  verifySchoolAccount(schoolId: number): Promise<SchoolAccount | undefined>;
+  addSchoolMember(schoolId: number, userId: number, role: string): Promise<SchoolMember>;
+  getSchoolMembers(schoolId: number): Promise<(SchoolMember & { user: User })[]>;
+  getSchoolMemberByUserId(userId: number): Promise<SchoolMember | undefined>;
+  removeSchoolMember(memberId: number): Promise<boolean>;
+  getSchoolMembersBySchoolId(schoolId: number): Promise<SchoolMember[]>;
+
   sessionStore: session.Store;
 }
 
@@ -2659,6 +2677,82 @@ export class DatabaseStorage implements IStorage {
         // Ignore duplicate key errors
       }
     }
+  }
+
+  async createSchoolAccount(adminUserId: number, schoolName: string): Promise<SchoolAccount> {
+    const [school] = await db.insert(schoolAccounts).values({
+      schoolAdminUserId: adminUserId,
+      schoolName,
+      verificationStatus: "pending",
+      subscriptionAmount: 99,
+    }).returning();
+    await db.insert(schoolMembers).values({
+      schoolId: school.id,
+      userId: adminUserId,
+      role: "admin",
+      status: "active",
+    });
+    return school;
+  }
+
+  async getSchoolAccount(id: number): Promise<SchoolAccount | undefined> {
+    const [school] = await db.select().from(schoolAccounts).where(eq(schoolAccounts.id, id));
+    return school;
+  }
+
+  async getSchoolAccountByAdminId(adminUserId: number): Promise<SchoolAccount | undefined> {
+    const [school] = await db.select().from(schoolAccounts).where(eq(schoolAccounts.schoolAdminUserId, adminUserId));
+    return school;
+  }
+
+  async updateSchoolAccount(id: number, updates: Partial<SchoolAccount>): Promise<SchoolAccount | undefined> {
+    const [updated] = await db.update(schoolAccounts).set(updates).where(eq(schoolAccounts.id, id)).returning();
+    return updated;
+  }
+
+  async verifySchoolAccount(schoolId: number): Promise<SchoolAccount | undefined> {
+    const subscriptionExpiresAt = new Date();
+    subscriptionExpiresAt.setFullYear(subscriptionExpiresAt.getFullYear() + 1);
+    const [updated] = await db.update(schoolAccounts).set({
+      verificationStatus: "verified",
+      verifiedAt: new Date(),
+      subscriptionExpiresAt,
+    }).where(eq(schoolAccounts.id, schoolId)).returning();
+    return updated;
+  }
+
+  async addSchoolMember(schoolId: number, userId: number, role: string): Promise<SchoolMember> {
+    const [member] = await db.insert(schoolMembers).values({
+      schoolId,
+      userId,
+      role,
+      status: "active",
+    }).returning();
+    return member;
+  }
+
+  async getSchoolMembers(schoolId: number): Promise<(SchoolMember & { user: User })[]> {
+    const members = await db.select().from(schoolMembers).where(eq(schoolMembers.schoolId, schoolId));
+    const result: (SchoolMember & { user: User })[] = [];
+    for (const member of members) {
+      const user = await this.getUser(member.userId);
+      if (user) result.push({ ...member, user });
+    }
+    return result;
+  }
+
+  async getSchoolMemberByUserId(userId: number): Promise<SchoolMember | undefined> {
+    const [member] = await db.select().from(schoolMembers).where(eq(schoolMembers.userId, userId));
+    return member;
+  }
+
+  async removeSchoolMember(memberId: number): Promise<boolean> {
+    const result = await db.delete(schoolMembers).where(eq(schoolMembers.id, memberId));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getSchoolMembersBySchoolId(schoolId: number): Promise<SchoolMember[]> {
+    return await db.select().from(schoolMembers).where(eq(schoolMembers.schoolId, schoolId));
   }
 }
 

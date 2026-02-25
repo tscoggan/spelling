@@ -92,6 +92,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     '/api/auth/validate-reset-token',
     '/api/guest/pixabay-search', // Guest image search (no persistence)
     '/api/family/signup', // Family account creation
+    '/api/school/signup', // School account creation
     '/objects',
   ];
   
@@ -4308,6 +4309,263 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error removing child:", error);
       res.status(500).json({ error: "Failed to remove child" });
+    }
+  });
+
+  // ── School Account Routes ──────────────────────────────────────────────
+
+  // Create a school admin account + school record
+  app.post("/api/school/signup", async (req, res) => {
+    try {
+      const schema = z.object({
+        username: z.string().min(3).max(50),
+        password: z.string().min(6),
+        firstName: z.string().min(1).max(100),
+        lastName: z.string().min(1).max(100),
+        email: z.string().email(),
+        schoolName: z.string().min(1).max(200),
+      });
+
+      const { username, password, firstName, lastName, email, schoolName } = schema.parse(req.body);
+
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) return res.status(400).json({ error: "Username already taken" });
+
+      const existingEmail = await storage.getUserByEmail(email);
+      if (existingEmail) return res.status(400).json({ error: "Email already registered" });
+
+      const hashedPassword = await hashPassword(password);
+
+      const user = await storage.createUser({
+        username,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        email,
+        role: "school_admin",
+        accountType: "school",
+      });
+
+      const school = await storage.createSchoolAccount(user.id, schoolName);
+
+      req.login(user, (err) => {
+        if (err) {
+          console.error("Login error after school signup:", err);
+          return res.status(500).json({ error: "Account created but login failed" });
+        }
+        res.json({
+          user: {
+            id: user.id,
+            username: user.username,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            role: user.role,
+            accountType: user.accountType,
+            stars: user.stars,
+          },
+          school: {
+            id: school.id,
+            schoolName: school.schoolName,
+            verificationStatus: school.verificationStatus,
+          },
+          requiresPayment: true,
+        });
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("Error in school signup:", error);
+      res.status(500).json({ error: "Failed to create school account" });
+    }
+  });
+
+  // Simulate adult-verification payment for school account
+  app.post("/api/school/payment/confirm", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const userId = (req.user as User).id;
+
+      const school = await storage.getSchoolAccountByAdminId(userId);
+      if (!school) {
+        const member = await storage.getSchoolMemberByUserId(userId);
+        if (!member || member.role !== "admin") {
+          return res.status(403).json({ error: "Only the school admin can verify the account" });
+        }
+      }
+
+      const schoolAccount = school || (await storage.getSchoolAccount((await storage.getSchoolMemberByUserId(userId))!.schoolId));
+      if (!schoolAccount) return res.status(404).json({ error: "School account not found" });
+
+      if (schoolAccount.verificationStatus === "verified") {
+        return res.json({ message: "School already verified", school: schoolAccount });
+      }
+
+      const updatedSchool = await storage.verifySchoolAccount(schoolAccount.id);
+
+      res.json({
+        success: true,
+        message: "School account verified (simulated payment)",
+        school: updatedSchool,
+      });
+    } catch (error) {
+      console.error("Error confirming school payment:", error);
+      res.status(500).json({ error: "Failed to confirm payment" });
+    }
+  });
+
+  // Get current school account info + members
+  app.get("/api/school/account", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+
+      let school = await storage.getSchoolAccountByAdminId(userId);
+      if (!school) {
+        const member = await storage.getSchoolMemberByUserId(userId);
+        if (!member) return res.status(404).json({ error: "Not a member of any school" });
+        school = await storage.getSchoolAccount(member.schoolId);
+      }
+      if (!school) return res.status(404).json({ error: "School account not found" });
+
+      const members = await storage.getSchoolMembers(school.id);
+
+      res.json({
+        school,
+        members: members.map(m => ({
+          id: m.id,
+          userId: m.userId,
+          role: m.role,
+          status: m.status,
+          user: {
+            id: m.user.id,
+            username: m.user.username,
+            firstName: m.user.firstName,
+            lastName: m.user.lastName,
+            email: m.user.email,
+            stars: m.user.stars,
+          },
+        })),
+        isAdmin: school.schoolAdminUserId === userId,
+      });
+    } catch (error) {
+      console.error("Error fetching school account:", error);
+      res.status(500).json({ error: "Failed to fetch school info" });
+    }
+  });
+
+  // Add a teacher to the school (admin only)
+  app.post("/api/school/teachers", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const adminUserId = req.user!.id;
+
+      const school = await storage.getSchoolAccountByAdminId(adminUserId);
+      if (!school) return res.status(403).json({ error: "Only the school admin can add teachers" });
+      if (school.verificationStatus !== "verified") return res.status(403).json({ error: "School must be verified before adding members" });
+
+      const schema = z.object({
+        username: z.string().min(3).max(50),
+        password: z.string().min(6),
+        firstName: z.string().min(1).max(100),
+        lastName: z.string().min(1).max(100),
+        email: z.string().email().optional(),
+      });
+
+      const { username, password, firstName, lastName, email } = schema.parse(req.body);
+
+      const existing = await storage.getUserByUsername(username);
+      if (existing) return res.status(400).json({ error: "Username already taken" });
+
+      const hashedPassword = await hashPassword(password);
+      const teacher = await storage.createUser({
+        username,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        email: email || null,
+        role: "teacher",
+        accountType: "school",
+      });
+
+      await storage.addSchoolMember(school.id, teacher.id, "teacher");
+
+      res.json({ success: true, teacher: { id: teacher.id, username: teacher.username, firstName: teacher.firstName, lastName: teacher.lastName } });
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ error: "Invalid input", details: error.errors });
+      console.error("Error adding teacher:", error);
+      res.status(500).json({ error: "Failed to add teacher" });
+    }
+  });
+
+  // Add a student to the school (admin or teacher)
+  app.post("/api/school/students", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const callerUserId = req.user!.id;
+
+      const callerMember = await storage.getSchoolMemberByUserId(callerUserId);
+      if (!callerMember || !["admin", "teacher"].includes(callerMember.role)) {
+        return res.status(403).json({ error: "Only school admins or teachers can add students" });
+      }
+
+      const school = await storage.getSchoolAccount(callerMember.schoolId);
+      if (!school) return res.status(404).json({ error: "School not found" });
+      if (school.verificationStatus !== "verified") return res.status(403).json({ error: "School must be verified before adding members" });
+
+      const schema = z.object({
+        username: z.string().min(3).max(50),
+        password: z.string().min(4),
+        firstName: z.string().min(1).max(100),
+        lastName: z.string().min(1).max(100),
+      });
+
+      const { username, password, firstName, lastName } = schema.parse(req.body);
+
+      const existing = await storage.getUserByUsername(username);
+      if (existing) return res.status(400).json({ error: "Username already taken" });
+
+      const hashedPassword = await hashPassword(password);
+      const student = await storage.createUser({
+        username,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        email: null,
+        role: "student",
+        accountType: "school",
+      });
+
+      await storage.addSchoolMember(school.id, student.id, "student");
+
+      res.json({ success: true, student: { id: student.id, username: student.username, firstName: student.firstName, lastName: student.lastName } });
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ error: "Invalid input", details: error.errors });
+      console.error("Error adding student:", error);
+      res.status(500).json({ error: "Failed to add student" });
+    }
+  });
+
+  // Remove a school member (admin only)
+  app.delete("/api/school/members/:memberId", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const adminUserId = req.user!.id;
+      const memberId = parseInt(req.params.memberId);
+
+      if (isNaN(memberId)) return res.status(400).json({ error: "Invalid member ID" });
+
+      const school = await storage.getSchoolAccountByAdminId(adminUserId);
+      if (!school) return res.status(403).json({ error: "Only the school admin can remove members" });
+
+      const members = await storage.getSchoolMembersBySchoolId(school.id);
+      const target = members.find(m => m.id === memberId);
+      if (!target) return res.status(404).json({ error: "Member not found in your school" });
+      if (target.role === "admin") return res.status(400).json({ error: "Cannot remove the school admin" });
+
+      await storage.removeSchoolMember(memberId);
+      await storage.deleteUserAndAllData(target.userId);
+
+      res.json({ success: true, message: "Member removed" });
+    } catch (error) {
+      console.error("Error removing school member:", error);
+      res.status(500).json({ error: "Failed to remove member" });
     }
   });
 
