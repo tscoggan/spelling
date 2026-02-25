@@ -10,7 +10,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { Home, School, Plus, Loader2, UserPlus, Trash2, CheckCircle, GraduationCap, Users } from "lucide-react";
+import { Home, School, Plus, Loader2, UserPlus, Trash2, CheckCircle, GraduationCap, Users, CreditCard, Receipt } from "lucide-react";
 import { UserHeader } from "@/components/user-header";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -82,6 +82,17 @@ interface SchoolData {
   isAdmin: boolean;
 }
 
+interface SchoolPaymentRecord {
+  id: number;
+  schoolId: number;
+  userId: number;
+  amount: number;
+  description: string | null;
+  paymentType: string;
+  status: string;
+  paymentDate: string;
+}
+
 export default function SchoolDashboardPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -106,6 +117,16 @@ export default function SchoolDashboardPage() {
     queryKey: ["/api/school/account"],
     refetchOnMount: "always",
   });
+
+  const isAdmin = schoolData?.isAdmin ?? false;
+
+  const { data: paymentsData } = useQuery<{ payments: SchoolPaymentRecord[] }>({
+    queryKey: ["/api/school/payments"],
+    enabled: isAdmin,
+    refetchOnMount: "always",
+  });
+
+  const payments = paymentsData?.payments ?? [];
 
   const addTeacherMutation = useMutation({
     mutationFn: async (data: TeacherFormData) => {
@@ -163,7 +184,6 @@ export default function SchoolDashboardPage() {
 
   const teachers = schoolData?.members.filter(m => m.role === "teacher") ?? [];
   const students = schoolData?.members.filter(m => m.role === "student") ?? [];
-  const isAdmin = schoolData?.isAdmin ?? false;
   const isVerified = schoolData?.school.verificationStatus === "verified";
 
   if (isLoading) {
@@ -280,6 +300,12 @@ export default function SchoolDashboardPage() {
               <Users className="w-4 h-4 mr-2" />
               Students ({students.length})
             </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="billing" className="flex-1" data-testid="tab-billing">
+                <CreditCard className="w-4 h-4 mr-2" />
+                Billing
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="teachers">
@@ -445,6 +471,57 @@ export default function SchoolDashboardPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {isAdmin && (
+            <TabsContent value="billing">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Receipt className="w-5 h-5" />
+                    Payment History
+                  </CardTitle>
+                  <CardDescription>A record of all payments made for this school account</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {payments.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <CreditCard className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                      <p className="text-sm">No payment records found.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {payments.map((payment) => (
+                        <div
+                          key={payment.id}
+                          className="flex items-center justify-between p-3 rounded-lg bg-muted/40"
+                          data-testid={`row-payment-${payment.id}`}
+                        >
+                          <div>
+                            <p className="font-medium text-sm">
+                              {payment.description ?? payment.paymentType.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(payment.paymentDate).toLocaleDateString("en-US", {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              })}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold text-sm">${(payment.amount / 100).toFixed(2)}</p>
+                            <span className={`text-xs font-medium ${payment.status === "completed" ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}`}>
+                              {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 

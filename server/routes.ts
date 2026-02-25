@@ -4427,6 +4427,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updatedSchool = await storage.verifySchoolAccount(schoolAccount.id);
 
+      await storage.createSchoolPayment({
+        schoolId: schoolAccount.id,
+        userId: (req.user as User).id,
+        amount: schoolAccount.subscriptionAmount ?? 99,
+        description: "Adult verification fee",
+        paymentType: "adult_verification",
+        status: "completed",
+      });
+
       res.json({
         success: true,
         message: "School account verified (simulated payment)",
@@ -4435,6 +4444,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error confirming school payment:", error);
       res.status(500).json({ error: "Failed to confirm payment" });
+    }
+  });
+
+  // Get payment history for the school (admin only)
+  app.get("/api/school/payments", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+
+      let school = await storage.getSchoolAccountByAdminId(userId);
+      if (!school) {
+        const member = await storage.getSchoolMemberByUserId(userId);
+        if (!member || member.role !== "admin") {
+          return res.status(403).json({ error: "Only school admins can view payment history" });
+        }
+        school = await storage.getSchoolAccount(member.schoolId);
+      }
+      if (!school) return res.status(404).json({ error: "School account not found" });
+
+      const payments = await storage.getSchoolPayments(school.id);
+      res.json({ payments });
+    } catch (error) {
+      console.error("Error fetching school payments:", error);
+      res.status(500).json({ error: "Failed to fetch payment history" });
     }
   });
 

@@ -68,12 +68,15 @@ import {
   paymentHistory,
   schoolAccounts,
   schoolMembers,
+  schoolPaymentHistory,
   SHOP_ITEMS,
   type ShopItemId,
   type SchoolAccount,
   type InsertSchoolAccount,
   type SchoolMember,
   type InsertSchoolMember,
+  type SchoolPaymentHistory,
+  type InsertSchoolPaymentHistory,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, inArray, not, or, like } from "drizzle-orm";
@@ -273,6 +276,8 @@ export interface IStorage {
   getSchoolMemberByUserId(userId: number): Promise<SchoolMember | undefined>;
   removeSchoolMember(memberId: number): Promise<boolean>;
   getSchoolMembersBySchoolId(schoolId: number): Promise<SchoolMember[]>;
+  createSchoolPayment(payment: InsertSchoolPaymentHistory): Promise<SchoolPaymentHistory>;
+  getSchoolPayments(schoolId: number): Promise<SchoolPaymentHistory[]>;
 
   sessionStore: session.Store;
 }
@@ -2753,6 +2758,19 @@ export class DatabaseStorage implements IStorage {
 
   async getSchoolMembersBySchoolId(schoolId: number): Promise<SchoolMember[]> {
     return await db.select().from(schoolMembers).where(eq(schoolMembers.schoolId, schoolId));
+  }
+
+  async createSchoolPayment(payment: InsertSchoolPaymentHistory): Promise<SchoolPaymentHistory> {
+    const [result] = await db.insert(schoolPaymentHistory).values(payment).returning();
+    return result;
+  }
+
+  async getSchoolPayments(schoolId: number): Promise<SchoolPaymentHistory[]> {
+    return await db
+      .select()
+      .from(schoolPaymentHistory)
+      .where(eq(schoolPaymentHistory.schoolId, schoolId))
+      .orderBy(desc(schoolPaymentHistory.paymentDate));
   }
 }
 

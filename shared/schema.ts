@@ -798,6 +798,17 @@ export const schoolMembers = pgTable("school_members", {
   schoolMemberUnique: unique("school_member_unique").on(table.schoolId, table.userId),
 }));
 
+export const schoolPaymentHistory = pgTable("school_payment_history", {
+  id: serial("id").primaryKey(),
+  schoolId: integer("school_id").notNull(),
+  userId: integer("user_id").notNull(),
+  amount: integer("amount").notNull(),
+  description: text("description"),
+  paymentType: text("payment_type").notNull().default("adult_verification"),
+  status: text("status").notNull().default("completed"),
+  paymentDate: timestamp("payment_date").defaultNow().notNull(),
+});
+
 export const insertSchoolAccountSchema = createInsertSchema(schoolAccounts).omit({
   id: true,
   createdAt: true,
@@ -807,6 +818,11 @@ export const insertSchoolAccountSchema = createInsertSchema(schoolAccounts).omit
 export const insertSchoolMemberSchema = createInsertSchema(schoolMembers).omit({
   id: true,
   createdAt: true,
+});
+
+export const insertSchoolPaymentHistorySchema = createInsertSchema(schoolPaymentHistory).omit({
+  id: true,
+  paymentDate: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -864,6 +880,8 @@ export type InsertSchoolAccount = z.infer<typeof insertSchoolAccountSchema>;
 export type SchoolAccount = typeof schoolAccounts.$inferSelect;
 export type InsertSchoolMember = z.infer<typeof insertSchoolMemberSchema>;
 export type SchoolMember = typeof schoolMembers.$inferSelect;
+export type InsertSchoolPaymentHistory = z.infer<typeof insertSchoolPaymentHistorySchema>;
+export type SchoolPaymentHistory = typeof schoolPaymentHistory.$inferSelect;
 
 export type GameMode = "practice" | "timed" | "quiz" | "scramble" | "mistake" | "crossword" | "headtohead";
 export type VpcStatus = "pending" | "verified" | "failed";
