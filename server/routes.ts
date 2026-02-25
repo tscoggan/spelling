@@ -4340,10 +4340,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName: z.string().min(1).max(100),
         email: z.string().email(),
         schoolName: z.string().min(1).max(200),
+        agreedToTos: z.boolean(),
+        agreedToDpa: z.boolean(),
         certifiedCoppa: z.boolean(),
       });
 
-      const { username, password, firstName, lastName, email, schoolName, certifiedCoppa } = schema.parse(req.body);
+      const { username, password, firstName, lastName, email, schoolName, agreedToTos, agreedToDpa, certifiedCoppa } = schema.parse(req.body);
 
       // Enforce school-issued email (block free providers)
       const emailDomain = email.split("@")[1]?.toLowerCase() ?? "";
@@ -4351,7 +4353,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Please use a school-issued email address. Free email providers (Gmail, Yahoo, Hotmail, etc.) are not accepted." });
       }
 
-      // COPPA certification is required
+      // All three legal agreements are required
+      if (!agreedToTos) {
+        return res.status(400).json({ error: "You must agree to the School Terms of Service." });
+      }
+      if (!agreedToDpa) {
+        return res.status(400).json({ error: "You must agree to the Student Data Privacy Addendum." });
+      }
       if (!certifiedCoppa) {
         return res.status(400).json({ error: "You must certify COPPA authorization to create a school account." });
       }
@@ -4388,16 +4396,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.createAgreementAcceptance({
           userId: user.id,
           accountType: "school_admin",
-          agreementType: "coppa_certification",
-          agreementVersion: AGREEMENT_VERSIONS.coppa_certification,
-          ipAddress: encryptedIp,
-          userAgent: userAgentStr,
-          textSnapshot: hashAgreementText("coppa_certification"),
-          certificationCheckbox: true,
-        }),
-        storage.createAgreementAcceptance({
-          userId: user.id,
-          accountType: "school_admin",
           agreementType: "school_tos",
           agreementVersion: AGREEMENT_VERSIONS.school_tos,
           ipAddress: encryptedIp,
@@ -4405,9 +4403,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           textSnapshot: hashAgreementText("school_tos"),
           certificationCheckbox: true,
         }),
+        storage.createAgreementAcceptance({
+          userId: user.id,
+          accountType: "school_admin",
+          agreementType: "student_dpa",
+          agreementVersion: AGREEMENT_VERSIONS.student_dpa,
+          ipAddress: encryptedIp,
+          userAgent: userAgentStr,
+          textSnapshot: hashAgreementText("student_dpa"),
+          certificationCheckbox: true,
+        }),
+        storage.createAgreementAcceptance({
+          userId: user.id,
+          accountType: "school_admin",
+          agreementType: "coppa_certification",
+          agreementVersion: AGREEMENT_VERSIONS.coppa_certification,
+          ipAddress: encryptedIp,
+          userAgent: userAgentStr,
+          textSnapshot: hashAgreementText("coppa_certification"),
+          certificationCheckbox: true,
+        }),
       ]);
 
-      console.log(`[LEGAL] School admin ${user.username} (${email}) accepted COPPA certification v${AGREEMENT_VERSIONS.coppa_certification} and School TOS v${AGREEMENT_VERSIONS.school_tos} for school "${schoolName}" at ${new Date().toISOString()}`);
+      console.log(`[LEGAL] School admin ${user.username} (${email}) accepted School TOS v${AGREEMENT_VERSIONS.school_tos}, Student DPA v${AGREEMENT_VERSIONS.student_dpa}, and COPPA certification v${AGREEMENT_VERSIONS.coppa_certification} for school "${schoolName}" at ${new Date().toISOString()}`);
 
       req.login(user, (err) => {
         if (err) {

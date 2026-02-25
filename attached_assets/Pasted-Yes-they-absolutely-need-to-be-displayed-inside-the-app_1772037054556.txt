@@ -1,0 +1,251 @@
+Yes — they absolutely need to be displayed inside the app, and certain ones must be affirmatively acknowledged during account creation.
+
+For school accounts, this is not optional from a risk perspective.
+
+Below is a clear, implementation-focused breakdown for you and your dev team.
+
+---
+
+# 1️⃣ Which Documents Must Be Actively Accepted?
+
+For School Accounts, you need **clickwrap acceptance** (checkbox + required action) for:
+
+### ✅ School Terms of Service
+
+### ✅ Student Data Privacy Addendum
+
+### ✅ COPPA School Certification Statement
+
+These must be acknowledged during **School Admin account creation**.
+
+You are relying on the school consent exception under the
+Children's Online Privacy Protection Act — so the certification step is critical.
+
+---
+
+# 2️⃣ Which Documents Must Be Displayed But Not Necessarily Signed?
+
+These must be accessible but don’t require separate signatures:
+
+* Full Privacy Policy
+* Data Deletion Policy
+* FERPA compliance section (included within Terms or Privacy Policy)
+
+FERPA relates to the
+Family Educational Rights and Privacy Act
+but it does not require a separate signature — it requires contractual acknowledgment, which your School Terms already provide.
+
+---
+
+# 3️⃣ Where Should These Appear in the App?
+
+## A. During School Admin Account Creation (Mandatory)
+
+Your school signup flow should include:
+
+### Step 1 — School Information
+
+* School name
+* School address
+* School domain email required
+* Role confirmation
+
+### Step 2 — Legal Acceptance Page (Dedicated Screen)
+
+Display:
+
+* Summary paragraph explaining legal responsibility
+* Links to:
+
+  * School Terms (full document)
+  * Student Data Privacy Addendum
+  * Privacy Policy
+
+Then require:
+
+☐ I have read and agree to the School Terms of Service
+☐ I agree to the Student Data Privacy Addendum
+☐ I certify that I am authorized to consent on behalf of this School and that required parental consents have been obtained
+
+No pre-checked boxes.
+No passive acceptance.
+User cannot proceed without checking all required boxes.
+
+This is enforceable clickwrap.
+
+---
+
+## B. Logged Acceptance (Critical)
+
+Upon submission, your system must log:
+
+* User ID
+* School ID
+* Agreement versions
+* Timestamp (UTC)
+* IP address
+* User agent
+* Certification flag
+* Hash of agreement text version
+
+These logs should be immutable.
+
+---
+
+## C. Inside the App (Ongoing Access)
+
+After account creation:
+
+You should provide a permanent “Legal” or “Policies” section in:
+
+* Admin dashboard footer
+* Settings > Legal
+* Public website footer
+
+Schools must be able to:
+
+* Re-access documents
+* View current versions
+* View effective date
+
+---
+
+# 4️⃣ Do Teachers Need to Accept Anything?
+
+Yes — but lighter weight.
+
+When a teacher account is created:
+
+Require:
+
+☐ I agree to the Teacher Terms
+☐ I agree to use Student Data solely for educational purposes
+
+Log it the same way.
+
+Teachers do NOT need to re-certify COPPA authority. That remains with the School.
+
+---
+
+# 5️⃣ Do Students Need to Accept Anything?
+
+For school-managed student accounts:
+
+No.
+
+Students:
+
+* Should not see legal contracts
+* Should not agree to terms
+* Should not create accounts
+
+The contract is between Company and School.
+
+---
+
+# 6️⃣ Do You Need Digital Signatures?
+
+No, not initially.
+
+Clickwrap is legally enforceable if:
+
+* The terms are clearly displayed or linked
+* The user must affirmatively check boxes
+* Acceptance is required before proceeding
+* Acceptance is logged
+
+You do NOT need:
+
+* DocuSign
+* Typed name fields
+* PDF signatures
+* Identity verification
+
+Those are only needed for district enterprise procurement.
+
+---
+
+# 7️⃣ Should Documents Be Public on Your Website?
+
+Yes.
+
+Even for school-specific terms, best practice is:
+
+* Publicly accessible School Terms URL
+* Public Privacy Policy URL
+* Public Data Deletion Policy URL
+
+Regulators expect transparency.
+
+---
+
+# 8️⃣ When Must Re-Acceptance Be Required?
+
+You must force re-acceptance if:
+
+* You materially change data use
+* You change ownership rights
+* You introduce new data collection categories
+* You add advertising
+
+For minor wording changes, you may not need re-acceptance — but version tracking must continue.
+
+---
+
+# 9️⃣ Recommended School Account Workflow (Clean & Low-Risk)
+
+1. Admin enters school email
+2. Email verification
+3. Legal acceptance screen (dedicated page)
+4. Certification checkbox required
+5. Acceptance logged
+6. School account created
+7. Teachers invited
+8. Students created by teacher only
+
+No bypasses.
+
+---
+
+# 🔐 Implementation Summary for Dev Team
+
+Must Implement:
+
+* Dedicated legal acceptance page in school signup
+* Required clickwrap checkboxes
+* Versioned agreement storage
+* Immutable logging
+* Public legal document URLs
+* In-app Legal section
+* Re-acceptance mechanism
+
+Must NOT Implement:
+
+* Student self-registration
+* Student legal acceptance
+* Public posting by student accounts
+* Ads in school accounts
+
+---
+
+# 🚨 If You Skip Acceptance Logging
+
+If a parent complains and you cannot prove:
+
+* The school certified consent
+* The school agreed to terms
+* The admin was authorized
+
+You lose the legal shield of the COPPA school exception.
+
+Logging is your protection.
+
+---
+
+If you’d like next, I can:
+
+* Design the exact UI copy for the acceptance page
+* Draft the certification checkbox language in bulletproof legal phrasing
+* Or create a technical database schema for compliance logging
+
+What would you like to tighten up next?

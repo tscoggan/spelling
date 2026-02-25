@@ -523,6 +523,37 @@ export default function SchoolDashboardPage() {
             </TabsContent>
           )}
         </Tabs>
+
+        <div className="mt-6 pt-4 border-t flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground" data-testid="section-legal-footer">
+          <span className="font-medium">Legal Documents:</span>
+          <a
+            href="/legal/school-tos"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-foreground"
+            data-testid="link-legal-school-tos"
+          >
+            School Terms of Service
+          </a>
+          <a
+            href="/legal/student-dpa"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-foreground"
+            data-testid="link-legal-student-dpa"
+          >
+            Student Data Privacy Addendum
+          </a>
+          <a
+            href="/legal/privacy-policy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-foreground"
+            data-testid="link-legal-privacy-policy"
+          >
+            Privacy Policy
+          </a>
+        </div>
       </div>
 
       {/* Add Teacher Dialog */}
