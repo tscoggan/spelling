@@ -55,10 +55,16 @@ export default function FamilySignupPage() {
   
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [familyData, setFamilyData] = useState<FamilySignupResponse | null>(null);
+  const [priceInterval, setPriceInterval] = useState<"month" | "year">("year");
   const [promoCode, setPromoCode] = useState("");
   const [promoValidating, setPromoValidating] = useState(false);
   const [promoValid, setPromoValid] = useState<{ discountPercent: number; code: string } | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
+
+  const basePrice = priceInterval === "month" ? 1.99 : 19.99;
+  const discountedPrice = promoValid
+    ? basePrice * (1 - promoValid.discountPercent / 100)
+    : basePrice;
   
   const form = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
@@ -101,6 +107,7 @@ export default function FamilySignupPage() {
     mutationFn: async () => {
       const response = await apiRequest("POST", "/api/stripe/create-checkout", {
         type: "family_subscription",
+        priceInterval,
         promoCode: promoValid?.code || undefined,
       });
       return response.json() as Promise<{ url: string }>;
@@ -337,7 +344,7 @@ export default function FamilySignupPage() {
             <CardHeader>
               <CardTitle>Parental Consent Verification</CardTitle>
               <CardDescription>
-                To comply with COPPA, we require a $5/year subscription to verify you are an adult with access to a credit card.
+                To comply with COPPA, a subscription is required to verify you are an adult with access to a credit card.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
@@ -348,19 +355,45 @@ export default function FamilySignupPage() {
                 </p>
               </div>
 
-              <div className="rounded-lg border p-5 text-center space-y-3">
-                <CreditCard className="w-10 h-10 mx-auto text-primary" />
-                <div>
-                  <p className="font-semibold text-lg">Annual Subscription: $5/year</p>
-                  {promoValid && (
-                    <p className="text-sm font-medium text-green-600 dark:text-green-400 mt-1">
-                      Promo applied: {promoValid.discountPercent}% off → ${(5 * (1 - promoValid.discountPercent / 100)).toFixed(2)}/year
-                    </p>
-                  )}
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Verifies parental consent and unlocks all family features. Renews annually.
-                  </p>
+              {/* Plan selector */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Choose your plan:</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => { setPriceInterval("month"); setPromoValid(null); setPromoCode(""); setPromoError(null); }}
+                    data-testid="button-plan-monthly"
+                    className={`rounded-lg border p-4 text-left transition-colors ${
+                      priceInterval === "month"
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-muted-foreground/50"
+                    }`}
+                  >
+                    <p className="font-semibold text-base">Monthly</p>
+                    <p className="text-xl font-bold text-primary mt-1">$1.99</p>
+                    <p className="text-xs text-muted-foreground">per month</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setPriceInterval("year"); setPromoValid(null); setPromoCode(""); setPromoError(null); }}
+                    data-testid="button-plan-annual"
+                    className={`rounded-lg border p-4 text-left transition-colors relative ${
+                      priceInterval === "year"
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-muted-foreground/50"
+                    }`}
+                  >
+                    <span className="absolute top-2 right-2 text-xs bg-green-500 text-white rounded px-1.5 py-0.5 font-medium">Save 16%</span>
+                    <p className="font-semibold text-base">Annual</p>
+                    <p className="text-xl font-bold text-primary mt-1">$19.99</p>
+                    <p className="text-xs text-muted-foreground">per year</p>
+                  </button>
                 </div>
+                {promoValid && (
+                  <p className="text-sm font-medium text-green-600 dark:text-green-400 text-center">
+                    Promo applied: {promoValid.discountPercent}% off → ${discountedPrice.toFixed(2)}/{priceInterval === "month" ? "mo" : "yr"}
+                  </p>
+                )}
               </div>
 
               {/* Promo Code */}

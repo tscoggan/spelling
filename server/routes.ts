@@ -4824,7 +4824,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // promoCode: optional discount code
   app.post("/api/stripe/create-checkout", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      const { type, promoCode } = req.body;
+      const { type, promoCode, priceInterval } = req.body;
       const user = req.user as any;
       if (!["family_subscription", "school_verification"].includes(type)) {
         return res.status(400).json({ error: "Invalid checkout type" });
@@ -4836,23 +4836,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const domain = process.env.REPLIT_DOMAINS?.split(',')[0] || req.get('host');
       const baseUrl = `https://${domain}`;
 
-      // Look up the product by metadata.type from stripe schema
-      const { db } = await import("./db");
-      const { sql: drizzleSql } = await import("drizzle-orm");
+      // Look up the product and price directly via Stripe API (most reliable)
       let priceId: string | undefined;
       try {
-        const rows = await db.execute(drizzleSql`
-          SELECT pr.id as price_id
-          FROM stripe.products p
-          JOIN stripe.prices pr ON pr.product = p.id
-          WHERE p.metadata->>'type' = ${type}
-            AND p.active = true
-            AND pr.active = true
-          ORDER BY pr.unit_amount ASC
-          LIMIT 1
-        `);
-        priceId = (rows.rows[0] as any)?.price_id;
-      } catch (_e) {}
+        const products = await stripe.products.search({
+          query: `metadata['type']:'${type}' AND active:'true'`,
+        });
+        const product = products.data[0];
+        if (product) {
+          const prices = await stripe.prices.list({ product: product.id, active: true });
+          if (type === "family_subscription" && priceInterval) {
+            // Match the requested billing interval (month or year)
+            const interval = priceInterval === "month" ? "month" : "year";
+            const match = prices.data.find(p => p.recurring?.interval === interval);
+            priceId = match?.id ?? prices.data[0]?.id;
+          } else {
+            // Pick lowest price as default
+            prices.data.sort((a, b) => (a.unit_amount ?? 0) - (b.unit_amount ?? 0));
+            priceId = prices.data[0]?.id;
+          }
+        }
+      } catch (_e) {
+        // Fall back to synced DB tables
+        try {
+          const { db } = await import("./db");
+          const { sql: drizzleSql } = await import("drizzle-orm");
+          let intervalFilter = drizzleSql``;
+          if (type === "family_subscription" && priceInterval) {
+            const interval = priceInterval === "month" ? "month" : "year";
+            intervalFilter = drizzleSql` AND pr.recurring->>'interval' = ${interval}`;
+          }
+          const rows = await db.execute(drizzleSql`
+            SELECT pr.id as price_id
+            FROM stripe.products p
+            JOIN stripe.prices pr ON pr.product = p.id
+            WHERE p.metadata->>'type' = ${type}
+              AND p.active = true
+              AND pr.active = true
+              ${intervalFilter}
+            ORDER BY pr.unit_amount ASC
+            LIMIT 1
+          `);
+          priceId = (rows.rows[0] as any)?.price_id;
+        } catch (_e2) {}
+      }
 
       if (!priceId) {
         return res.status(503).json({ error: "Payment product not configured. Please contact support." });
