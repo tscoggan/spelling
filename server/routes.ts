@@ -4806,6 +4806,219 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ── Stripe Checkout ──────────────────────────────────────────────────────────
+
+  // Return the Stripe publishable key (needed by frontend to load Stripe.js)
+  app.get("/api/stripe/publishable-key", async (req, res) => {
+    try {
+      const { getStripePublishableKey } = await import("./stripeClient");
+      const publishableKey = await getStripePublishableKey();
+      res.json({ publishableKey });
+    } catch (error: any) {
+      res.status(500).json({ error: "Stripe not configured" });
+    }
+  });
+
+  // Create a Stripe Checkout session
+  // type: 'family_subscription' | 'school_verification'
+  // promoCode: optional discount code
+  app.post("/api/stripe/create-checkout", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const { type, promoCode } = req.body;
+      const user = req.user as any;
+      if (!["family_subscription", "school_verification"].includes(type)) {
+        return res.status(400).json({ error: "Invalid checkout type" });
+      }
+
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+
+      const domain = process.env.REPLIT_DOMAINS?.split(',')[0] || req.get('host');
+      const baseUrl = `https://${domain}`;
+
+      // Look up the product by metadata.type from stripe schema
+      const { db } = await import("./db");
+      const { sql: drizzleSql } = await import("drizzle-orm");
+      let priceId: string | undefined;
+      try {
+        const rows = await db.execute(drizzleSql`
+          SELECT pr.id as price_id
+          FROM stripe.products p
+          JOIN stripe.prices pr ON pr.product = p.id
+          WHERE p.metadata->>'type' = ${type}
+            AND p.active = true
+            AND pr.active = true
+          ORDER BY pr.unit_amount ASC
+          LIMIT 1
+        `);
+        priceId = (rows.rows[0] as any)?.price_id;
+      } catch (_e) {}
+
+      if (!priceId) {
+        return res.status(503).json({ error: "Payment product not configured. Please contact support." });
+      }
+
+      // Build customer (get or create)
+      let customerId: string | undefined;
+      if (type === "family_subscription") {
+        const family = await storage.getFamilyAccountByParentId(user.id);
+        if (family?.stripeCustomerId) {
+          customerId = family.stripeCustomerId;
+        }
+      } else if (type === "school_verification") {
+        const schoolMember = await storage.getSchoolMemberByUserId(user.id);
+        if (schoolMember) {
+          const school = await storage.getSchoolAccount(schoolMember.schoolId);
+          if (school?.stripeCustomerId) customerId = school.stripeCustomerId;
+        }
+      }
+
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: user.email || undefined,
+          name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.username,
+          metadata: { userId: String(user.id), accountType: type },
+        });
+        customerId = customer.id;
+        // Save customer ID
+        if (type === "family_subscription") {
+          const family = await storage.getFamilyAccountByParentId(user.id);
+          if (family) await storage.updateFamilyAccount(family.id, { stripeCustomerId: customerId });
+        } else {
+          const schoolMember = await storage.getSchoolMemberByUserId(user.id);
+          if (schoolMember) await storage.updateSchoolAccount(schoolMember.schoolId, { stripeCustomerId: customerId });
+        }
+      }
+
+      // Apply promo code as a coupon if provided
+      let discounts: any[] | undefined;
+      if (promoCode) {
+        const promo = await storage.getPromoCodeByCode(promoCode.trim());
+        if (promo && promo.isActive && !(promo.expiresAt && new Date(promo.expiresAt) < new Date()) && !(promo.codeType === "one_time" && promo.usesCount >= 1)) {
+          const coupon = await stripe.coupons.create({
+            percent_off: promo.discountPercent,
+            duration: type === "family_subscription" ? "repeating" : "once",
+            duration_in_months: type === "family_subscription" ? 12 : undefined,
+            name: `Promo: ${promo.code}`,
+            metadata: { promoCodeId: String(promo.id), promoCode: promo.code },
+          });
+          discounts = [{ coupon: coupon.id }];
+        }
+      }
+
+      const isSubscription = type === "family_subscription";
+      const sessionParams: any = {
+        customer: customerId,
+        payment_method_types: ["card"],
+        line_items: [{ price: priceId, quantity: 1 }],
+        mode: isSubscription ? "subscription" : "payment",
+        success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}&type=${type}`,
+        cancel_url: `${baseUrl}/${type === "family_subscription" ? "family/signup" : "school/signup"}`,
+        metadata: { userId: String(user.id), type, promoCode: promoCode || "" },
+      };
+      if (discounts) sessionParams.discounts = discounts;
+
+      const session = await stripe.checkout.sessions.create(sessionParams);
+      res.json({ url: session.url, sessionId: session.id });
+    } catch (error: any) {
+      console.error("Stripe checkout error:", error);
+      res.status(500).json({ error: error.message || "Failed to create checkout session" });
+    }
+  });
+
+  // Verify a completed Stripe Checkout session and activate the account
+  app.get("/api/stripe/verify-session", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const { session_id, type } = req.query as { session_id: string; type: string };
+      if (!session_id || !type) return res.status(400).json({ error: "session_id and type are required" });
+
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+      const session = await stripe.checkout.sessions.retrieve(session_id, { expand: ["subscription", "payment_intent"] });
+
+      if (session.payment_status !== "paid") {
+        return res.status(402).json({ error: "Payment not completed" });
+      }
+
+      const user = req.user as any;
+      const promoCode = session.metadata?.promoCode;
+
+      if (type === "family_subscription") {
+        const family = await storage.getFamilyAccountByParentId(user.id);
+        if (!family) return res.status(404).json({ error: "Family account not found" });
+
+        const subscriptionId = (session.subscription as any)?.id;
+        const expiresAt = new Date();
+        expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+
+        await storage.updateFamilyAccount(family.id, {
+          vpcStatus: "verified",
+          stripeSubscriptionId: subscriptionId || null,
+          subscriptionExpiresAt: expiresAt,
+          lastPaymentMethod: "stripe",
+        });
+
+        // Record payment
+        const amount = session.amount_total ?? 500;
+        await storage.createPaymentHistory({
+          familyId: family.id,
+          userId: user.id,
+          amount,
+          paymentMethod: "stripe",
+          description: "Family account annual subscription",
+          stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : (session.payment_intent as any)?.id,
+          status: "completed",
+        });
+
+        // Record promo code usage
+        if (promoCode) {
+          const promo = await storage.getPromoCodeByCode(promoCode);
+          if (promo) await storage.recordPromoCodeUsage(promo.id, user.id);
+        }
+
+        return res.json({ success: true, accountType: "family" });
+      }
+
+      if (type === "school_verification") {
+        const schoolMember = await storage.getSchoolMemberByUserId(user.id);
+        if (!schoolMember) return res.status(404).json({ error: "School account not found" });
+
+        const now = new Date();
+        const subscriptionExpiresAt = new Date();
+        subscriptionExpiresAt.setFullYear(subscriptionExpiresAt.getFullYear() + 1);
+
+        await storage.updateSchoolAccount(schoolMember.schoolId, {
+          verificationStatus: "verified",
+          verifiedAt: now,
+          subscriptionExpiresAt,
+          coppaCertifiedAt: now,
+        });
+
+        const amount = session.amount_total ?? 99;
+        await storage.createSchoolPayment({
+          schoolId: schoolMember.schoolId,
+          userId: user.id,
+          amount,
+          description: "School adult verification",
+          paymentMethod: "stripe",
+          status: "completed",
+        });
+
+        if (promoCode) {
+          const promo = await storage.getPromoCodeByCode(promoCode);
+          if (promo) await storage.recordPromoCodeUsage(promo.id, user.id);
+        }
+
+        return res.json({ success: true, accountType: "school" });
+      }
+
+      return res.status(400).json({ error: "Unknown checkout type" });
+    } catch (error: any) {
+      console.error("Stripe verify session error:", error);
+      res.status(500).json({ error: error.message || "Failed to verify session" });
+    }
+  });
+
   // ── Promo Codes ─────────────────────────────────────────────────────────────
 
   function generatePromoCode(): string {

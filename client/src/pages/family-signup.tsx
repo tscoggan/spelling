@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Home, Users, CreditCard, CheckCircle, Loader2, ArrowRight, ArrowLeft } from "lucide-react";
+import { Home, Users, CreditCard, CheckCircle, Loader2, ArrowRight, ArrowLeft, Tag, ExternalLink } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -55,6 +55,10 @@ export default function FamilySignupPage() {
   
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [familyData, setFamilyData] = useState<FamilySignupResponse | null>(null);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoValidating, setPromoValidating] = useState(false);
+  const [promoValid, setPromoValid] = useState<{ discountPercent: number; code: string } | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
   
   const form = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
@@ -93,30 +97,45 @@ export default function FamilySignupPage() {
     },
   });
 
-  const paymentMutation = useMutation({
+  const checkoutMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/family/payment/confirm", {});
-      return response.json();
+      const response = await apiRequest("POST", "/api/stripe/create-checkout", {
+        type: "family_subscription",
+        promoCode: promoValid?.code || undefined,
+      });
+      return response.json() as Promise<{ url: string }>;
     },
-    onSuccess: () => {
-      toast({ title: "Payment confirmed!", description: "Your family account is now verified." });
-      setStep(3);
+    onSuccess: (data) => {
+      window.location.href = data.url;
     },
     onError: (error: Error) => {
       toast({
-        title: "Payment failed",
+        title: "Checkout failed",
         description: error.message,
         variant: "destructive",
       });
     },
   });
 
-  const onSubmitSignup = (data: SignupFormData) => {
-    signupMutation.mutate(data);
+  const validatePromo = async () => {
+    if (!promoCode.trim()) return;
+    setPromoValidating(true);
+    setPromoError(null);
+    setPromoValid(null);
+    try {
+      const res = await apiRequest("POST", "/api/promo-codes/validate", { code: promoCode.trim() });
+      const data = await res.json();
+      if (!res.ok) { setPromoError(data.error || "Invalid code"); return; }
+      setPromoValid({ discountPercent: data.discountPercent, code: data.code });
+    } catch {
+      setPromoError("Could not validate code");
+    } finally {
+      setPromoValidating(false);
+    }
   };
 
-  const handlePayment = () => {
-    paymentMutation.mutate();
+  const onSubmitSignup = (data: SignupFormData) => {
+    signupMutation.mutate(data);
   };
 
   const goToFamilyDashboard = () => {
@@ -318,59 +337,80 @@ export default function FamilySignupPage() {
             <CardHeader>
               <CardTitle>Parental Consent Verification</CardTitle>
               <CardDescription>
-                To comply with children's privacy laws (COPPA), we require a $5 annual subscription to verify you are an adult with access to a credit card.
+                To comply with COPPA, we require a $5/year subscription to verify you are an adult with access to a credit card.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="bg-muted p-4 rounded-lg space-y-2">
-                <p className="text-sm font-medium">Account Created:</p>
+            <CardContent className="space-y-5">
+              <div className="bg-muted p-4 rounded-lg space-y-1">
+                <p className="text-sm font-medium">Account created for:</p>
                 <p className="text-sm text-muted-foreground">
                   {familyData?.user.firstName} {familyData?.user.lastName} ({familyData?.user.email})
                 </p>
               </div>
-              
-              <div className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-6 text-center space-y-4">
-                <CreditCard className="w-12 h-12 mx-auto text-muted-foreground" />
+
+              <div className="rounded-lg border p-5 text-center space-y-3">
+                <CreditCard className="w-10 h-10 mx-auto text-primary" />
                 <div>
                   <p className="font-semibold text-lg">Annual Subscription: $5/year</p>
+                  {promoValid && (
+                    <p className="text-sm font-medium text-green-600 dark:text-green-400 mt-1">
+                      Promo applied: {promoValid.discountPercent}% off → ${(5 * (1 - promoValid.discountPercent / 100)).toFixed(2)}/year
+                    </p>
+                  )}
                   <p className="text-sm text-muted-foreground mt-1">
-                    This payment verifies parental consent and unlocks all family features
+                    Verifies parental consent and unlocks all family features. Renews annually.
                   </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  (Payment integration coming soon - click below to simulate verification)
-                </p>
               </div>
-              
+
+              {/* Promo Code */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-1">
+                  <Tag className="w-3.5 h-3.5" /> Promo Code <span className="text-muted-foreground font-normal">(optional)</span>
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="e.g. AB3D-X7K2"
+                    value={promoCode}
+                    onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoValid(null); setPromoError(null); }}
+                    className="font-mono uppercase"
+                    data-testid="input-promo-code"
+                    disabled={!!promoValid}
+                  />
+                  {promoValid ? (
+                    <Button variant="outline" onClick={() => { setPromoValid(null); setPromoCode(""); }} data-testid="button-remove-promo">
+                      Remove
+                    </Button>
+                  ) : (
+                    <Button variant="outline" onClick={validatePromo} disabled={!promoCode.trim() || promoValidating} data-testid="button-apply-promo">
+                      {promoValidating ? <Loader2 className="w-4 h-4 animate-spin" /> : "Apply"}
+                    </Button>
+                  )}
+                </div>
+                {promoValid && <p className="text-sm text-green-600 dark:text-green-400">{promoValid.discountPercent}% discount applied!</p>}
+                {promoError && <p className="text-sm text-destructive">{promoError}</p>}
+              </div>
+
               <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => setStep(1)}
-                  className="flex-1"
-                  data-testid="button-back"
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back
+                <Button variant="outline" onClick={() => setStep(1)} className="flex-1" data-testid="button-back">
+                  <ArrowLeft className="w-4 h-4 mr-2" /> Back
                 </Button>
                 <Button
-                  onClick={handlePayment}
+                  onClick={() => checkoutMutation.mutate()}
                   className="flex-1"
-                  disabled={paymentMutation.isPending}
-                  data-testid="button-verify-payment"
+                  disabled={checkoutMutation.isPending}
+                  data-testid="button-subscribe-stripe"
                 >
-                  {paymentMutation.isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Verifying...
-                    </>
+                  {checkoutMutation.isPending ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Redirecting...</>
                   ) : (
-                    <>
-                      <CreditCard className="w-4 h-4 mr-2" />
-                      Verify Payment (Simulated)
-                    </>
+                    <><ExternalLink className="w-4 h-4 mr-2" /> Subscribe with Stripe</>
                   )}
                 </Button>
               </div>
+              <p className="text-xs text-center text-muted-foreground">
+                You'll be taken to Stripe's secure checkout and returned here when done.
+              </p>
             </CardContent>
           </Card>
         )}
