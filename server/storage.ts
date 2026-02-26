@@ -83,6 +83,10 @@ import {
   type InsertSchoolCertification,
   type AgreementAcceptance,
   type InsertAgreementAcceptance,
+  type PromoCode,
+  type InsertPromoCode,
+  promoCodes,
+  promoCodeUsages,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, inArray, not, or, like, gte, lte } from "drizzle-orm";
@@ -288,6 +292,14 @@ export interface IStorage {
   getAgreementAcceptances(userId: number): Promise<AgreementAcceptance[]>;
   createSchoolCertification(record: InsertSchoolCertification): Promise<SchoolCertification>;
   getSchoolMetrics(schoolId: number, startDate?: Date, endDate?: Date): Promise<any>;
+
+  // Promo codes
+  createPromoCode(data: InsertPromoCode): Promise<PromoCode>;
+  getPromoCodes(): Promise<PromoCode[]>;
+  getPromoCodeByCode(code: string): Promise<PromoCode | undefined>;
+  updatePromoCode(id: number, data: Partial<PromoCode>): Promise<PromoCode | undefined>;
+  deletePromoCode(id: number): Promise<void>;
+  recordPromoCodeUsage(codeId: number, userId?: number): Promise<void>;
 
   sessionStore: session.Store;
 }
@@ -2884,6 +2896,37 @@ export class DatabaseStorage implements IStorage {
     };
 
     return { byStudent, byGrade, summary };
+  }
+
+  async createPromoCode(data: InsertPromoCode): Promise<PromoCode> {
+    const [result] = await db.insert(promoCodes).values(data).returning();
+    return result;
+  }
+
+  async getPromoCodes(): Promise<PromoCode[]> {
+    return db.select().from(promoCodes).orderBy(desc(promoCodes.createdAt));
+  }
+
+  async getPromoCodeByCode(code: string): Promise<PromoCode | undefined> {
+    const [result] = await db.select().from(promoCodes).where(eq(promoCodes.code, code.toUpperCase()));
+    return result;
+  }
+
+  async updatePromoCode(id: number, data: Partial<PromoCode>): Promise<PromoCode | undefined> {
+    const [result] = await db.update(promoCodes).set(data).where(eq(promoCodes.id, id)).returning();
+    return result;
+  }
+
+  async deletePromoCode(id: number): Promise<void> {
+    await db.delete(promoCodeUsages).where(eq(promoCodeUsages.codeId, id));
+    await db.delete(promoCodes).where(eq(promoCodes.id, id));
+  }
+
+  async recordPromoCodeUsage(codeId: number, userId?: number): Promise<void> {
+    await db.insert(promoCodeUsages).values({ codeId, userId });
+    await db.update(promoCodes)
+      .set({ usesCount: sql`${promoCodes.usesCount} + 1` })
+      .where(eq(promoCodes.id, codeId));
   }
 }
 

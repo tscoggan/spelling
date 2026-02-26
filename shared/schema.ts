@@ -929,6 +929,33 @@ export type SchoolPaymentHistory = typeof schoolPaymentHistory.$inferSelect;
 export type InsertAgreementAcceptance = z.infer<typeof insertAgreementAcceptanceSchema>;
 export type AgreementAcceptance = typeof agreementAcceptances.$inferSelect;
 
+// Promo codes table
+export const promoCodes = pgTable("promo_codes", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  discountPercent: integer("discount_percent").notNull(),
+  codeType: text("code_type").notNull().default("one_time"), // 'one_time' | 'ongoing'
+  usesCount: integer("uses_count").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  expiresAt: timestamp("expires_at"),
+  createdByUserId: integer("created_by_user_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPromoCodeSchema = createInsertSchema(promoCodes).omit({ id: true, usesCount: true, createdAt: true });
+export type InsertPromoCode = z.infer<typeof insertPromoCodeSchema>;
+export type PromoCode = typeof promoCodes.$inferSelect;
+
+// Promo code usages
+export const promoCodeUsages = pgTable("promo_code_usages", {
+  id: serial("id").primaryKey(),
+  codeId: integer("code_id").notNull(),
+  userId: integer("user_id"),
+  usedAt: timestamp("used_at").defaultNow().notNull(),
+});
+
+export type InsertPromoCode_ = z.infer<typeof insertPromoCodeSchema>;
+
 export type GameMode = "practice" | "timed" | "quiz" | "scramble" | "mistake" | "crossword" | "headtohead";
 export type VpcStatus = "pending" | "verified" | "failed";
 export type SchoolVerificationStatus = "pending" | "verified";

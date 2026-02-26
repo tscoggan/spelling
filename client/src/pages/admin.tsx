@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
-import { Upload, Search, Users, FileText, ArrowUpDown, Loader2, Check, X, AlertCircle, Ban, Copy, BookX, Home, UserX, Trash2, Shield, ChevronDown, ChevronRight, Plus, Flag, Eye, Edit } from "lucide-react";
+import { Upload, Search, Users, FileText, ArrowUpDown, Loader2, Check, X, AlertCircle, Ban, Copy, BookX, Home, UserX, Trash2, Shield, ChevronDown, ChevronRight, Plus, Flag, Eye, Edit, Tag, ToggleLeft, ToggleRight, Calendar } from "lucide-react";
 import { UserHeader } from "@/components/user-header";
 import {
   AlertDialog,
@@ -261,6 +261,44 @@ export default function AdminPage() {
     onError: (error: Error) => {
       toast({ title: "Failed to dismiss report", description: error.message, variant: "destructive" });
     },
+  });
+
+  // Promo codes state
+  const [promoForm, setPromoForm] = useState({ discountPercent: 10, codeType: "one_time", expiresAt: "" });
+  const [createPromoOpen, setCreatePromoOpen] = useState(false);
+
+  interface PromoCode { id: number; code: string; discountPercent: number; codeType: string; usesCount: number; isActive: boolean; expiresAt: string | null; createdAt: string; }
+
+  const { data: promoCodes = [], isLoading: isLoadingPromos } = useQuery<PromoCode[]>({
+    queryKey: ['/api/admin/promo-codes'],
+  });
+
+  const createPromoMutation = useMutation({
+    mutationFn: async (data: { discountPercent: number; codeType: string; expiresAt?: string }) =>
+      (await apiRequest('POST', '/api/admin/promo-codes', data)).json(),
+    onSuccess: () => {
+      toast({ title: "Promo code created" });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/promo-codes'] });
+      setCreatePromoOpen(false);
+      setPromoForm({ discountPercent: 10, codeType: "one_time", expiresAt: "" });
+    },
+    onError: (e: Error) => toast({ title: "Failed to create code", description: e.message, variant: "destructive" }),
+  });
+
+  const togglePromoMutation = useMutation({
+    mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) =>
+      (await apiRequest('PATCH', `/api/admin/promo-codes/${id}`, { isActive })).json(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/admin/promo-codes'] }),
+    onError: (e: Error) => toast({ title: "Failed to update code", description: e.message, variant: "destructive" }),
+  });
+
+  const deletePromoMutation = useMutation({
+    mutationFn: async (id: number) => (await apiRequest('DELETE', `/api/admin/promo-codes/${id}`)).json(),
+    onSuccess: () => {
+      toast({ title: "Promo code deleted" });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/promo-codes'] });
+    },
+    onError: (e: Error) => toast({ title: "Failed to delete code", description: e.message, variant: "destructive" }),
   });
 
   const handleCreateAdmin = () => {
@@ -547,7 +585,7 @@ export default function AdminPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4" data-testid="tabs-admin">
+          <TabsList className="grid w-full grid-cols-5" data-testid="tabs-admin">
             <TabsTrigger value="word-loader" data-testid="tab-word-loader">
               <Upload className="w-4 h-4 mr-2" />
               Word Loader
@@ -559,6 +597,10 @@ export default function AdminPage() {
             <TabsTrigger value="word-editor" data-testid="tab-word-editor">
               <FileText className="w-4 h-4 mr-2" />
               Word Editor
+            </TabsTrigger>
+            <TabsTrigger value="promo-codes" data-testid="tab-promo-codes">
+              <Tag className="w-4 h-4 mr-2" />
+              Promo Codes
             </TabsTrigger>
             <TabsTrigger value="user-management" data-testid="tab-user-management">
               <Shield className="w-4 h-4 mr-2" />
@@ -1098,6 +1140,119 @@ export default function AdminPage() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="promo-codes">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div>
+                    <CardTitle className="flex items-center gap-2"><Tag className="w-5 h-5" /> Promo Codes</CardTitle>
+                    <CardDescription className="mt-1">Create and manage discount codes for Family and School account subscriptions.</CardDescription>
+                  </div>
+                  <Button onClick={() => setCreatePromoOpen(true)} data-testid="button-create-promo">
+                    <Plus className="w-4 h-4 mr-2" /> New Code
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {isLoadingPromos ? (
+                  <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+                ) : promoCodes.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Tag className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                    <p>No promo codes yet. Create one to get started.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Code</TableHead>
+                          <TableHead>Discount</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Uses</TableHead>
+                          <TableHead>Expires</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {promoCodes.map((promo) => {
+                          const isExpired = promo.expiresAt ? new Date(promo.expiresAt) < new Date() : false;
+                          const effectivelyActive = promo.isActive && !isExpired;
+                          return (
+                            <TableRow key={promo.id} data-testid={`row-promo-${promo.id}`}>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <code className="font-mono font-bold tracking-widest text-sm">{promo.code}</code>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { navigator.clipboard.writeText(promo.code); toast({ title: "Copied to clipboard" }); }} data-testid={`button-copy-promo-${promo.id}`}>
+                                    <Copy className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                              <TableCell><span className="font-semibold text-green-600 dark:text-green-400">{promo.discountPercent}% off</span></TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="text-xs">
+                                  {promo.codeType === "one_time" ? "One-time" : "Ongoing"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">{promo.usesCount}</TableCell>
+                              <TableCell className="text-muted-foreground text-sm">
+                                {promo.expiresAt ? (
+                                  <span className={isExpired ? "text-destructive" : ""}>
+                                    {new Date(promo.expiresAt).toLocaleDateString()}
+                                    {isExpired && " (expired)"}
+                                  </span>
+                                ) : "—"}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={effectivelyActive ? "default" : "secondary"} className="text-xs">
+                                  {effectivelyActive ? "Active" : isExpired ? "Expired" : "Disabled"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  {!isExpired && (
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-7 w-7"
+                                      title={promo.isActive ? "Disable code" : "Enable code"}
+                                      onClick={() => togglePromoMutation.mutate({ id: promo.id, isActive: !promo.isActive })}
+                                      data-testid={`button-toggle-promo-${promo.id}`}
+                                    >
+                                      {promo.isActive ? <ToggleRight className="w-4 h-4 text-green-600" /> : <ToggleLeft className="w-4 h-4 text-muted-foreground" />}
+                                    </Button>
+                                  )}
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" data-testid={`button-delete-promo-${promo.id}`}>
+                                        <Trash2 className="w-3 h-3" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Delete promo code?</AlertDialogTitle>
+                                        <AlertDialogDescription>This will permanently delete <strong>{promo.code}</strong> and all usage records. This cannot be undone.</AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => deletePromoMutation.mutate(promo.id)} className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="user-management">
             <Card>
               <CardHeader>
@@ -1417,6 +1572,81 @@ export default function AdminPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Create Promo Code Dialog */}
+      <Dialog open={createPromoOpen} onOpenChange={setCreatePromoOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Tag className="w-5 h-5" /> Create Promo Code</DialogTitle>
+            <DialogDescription>A unique alphanumeric code will be auto-generated. Share it with users to apply the discount at checkout.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Discount Percentage</Label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min={5} max={100} step={5}
+                  value={promoForm.discountPercent}
+                  onChange={e => setPromoForm(p => ({ ...p, discountPercent: parseInt(e.target.value) }))}
+                  className="flex-1"
+                  data-testid="input-promo-discount-slider"
+                />
+                <span className="font-bold text-lg w-16 text-right">{promoForm.discountPercent}%</span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Code Type</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPromoForm(p => ({ ...p, codeType: "one_time" }))}
+                  className={`rounded-md border-2 p-3 text-left transition-colors ${promoForm.codeType === "one_time" ? "border-primary bg-primary/10" : "border-border"}`}
+                  data-testid="button-promo-type-one-time"
+                >
+                  <p className="font-semibold text-sm">One-time</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Expires after a single use</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPromoForm(p => ({ ...p, codeType: "ongoing" }))}
+                  className={`rounded-md border-2 p-3 text-left transition-colors ${promoForm.codeType === "ongoing" ? "border-primary bg-primary/10" : "border-border"}`}
+                  data-testid="button-promo-type-ongoing"
+                >
+                  <p className="font-semibold text-sm">Ongoing</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Unlimited uses until disabled or expired</p>
+                </button>
+              </div>
+            </div>
+            {promoForm.codeType === "ongoing" && (
+              <div className="space-y-2">
+                <Label htmlFor="promo-expires">Expiration Date <span className="text-muted-foreground">(optional)</span></Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="promo-expires"
+                    type="date"
+                    value={promoForm.expiresAt}
+                    onChange={e => setPromoForm(p => ({ ...p, expiresAt: e.target.value }))}
+                    className="pl-10"
+                    data-testid="input-promo-expires"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreatePromoOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => createPromoMutation.mutate({ discountPercent: promoForm.discountPercent, codeType: promoForm.codeType, expiresAt: promoForm.expiresAt || undefined })}
+              disabled={createPromoMutation.isPending}
+              data-testid="button-confirm-create-promo"
+            >
+              {createPromoMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Generate Code"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={createAdminOpen} onOpenChange={setCreateAdminOpen}>
         <DialogContent className="max-w-md">

@@ -4806,6 +4806,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ── Promo Codes ─────────────────────────────────────────────────────────────
+
+  function generatePromoCode(): string {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "";
+    for (let i = 0; i < 8; i++) {
+      if (i === 4) code += "-";
+      code += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return code;
+  }
+
+  // Create promo code (admin only)
+  app.post("/api/admin/promo-codes", async (req, res) => {
+    try {
+      if (!req.user || (req.user as any).role !== "admin") return res.status(403).json({ error: "Admin access required" });
+      const { discountPercent, codeType, expiresAt } = req.body;
+      if (!discountPercent || discountPercent < 1 || discountPercent > 100) {
+        return res.status(400).json({ error: "discountPercent must be 1–100" });
+      }
+      if (!["one_time", "ongoing"].includes(codeType)) {
+        return res.status(400).json({ error: "codeType must be one_time or ongoing" });
+      }
+      let code: string;
+      let attempts = 0;
+      do {
+        code = generatePromoCode();
+        attempts++;
+        if (attempts > 20) return res.status(500).json({ error: "Could not generate unique code" });
+      } while (await storage.getPromoCodeByCode(code));
+      const promoCode = await storage.createPromoCode({
+        code,
+        discountPercent,
+        codeType,
+        isActive: true,
+        expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+        createdByUserId: (req.user as any)?.id ?? null,
+      });
+      res.status(201).json(promoCode);
+    } catch (error) {
+      console.error("Error creating promo code:", error);
+      res.status(500).json({ error: "Failed to create promo code" });
+    }
+  });
+
+  // List all promo codes (admin only)
+  app.get("/api/admin/promo-codes", async (req, res) => {
+    try {
+      if (!req.user || (req.user as any).role !== "admin") return res.status(403).json({ error: "Admin access required" });
+      const codes = await storage.getPromoCodes();
+      res.json(codes);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch promo codes" });
+    }
+  });
+
+  // Toggle active / update expiry (admin only)
+  app.patch("/api/admin/promo-codes/:id", async (req, res) => {
+    try {
+      if (!req.user || (req.user as any).role !== "admin") return res.status(403).json({ error: "Admin access required" });
+      const id = parseInt(req.params.id);
+      const { isActive, expiresAt } = req.body;
+      const updates: any = {};
+      if (typeof isActive === "boolean") updates.isActive = isActive;
+      if (expiresAt !== undefined) updates.expiresAt = expiresAt ? new Date(expiresAt) : null;
+      const updated = await storage.updatePromoCode(id, updates);
+      if (!updated) return res.status(404).json({ error: "Promo code not found" });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update promo code" });
+    }
+  });
+
+  // Delete promo code (admin only)
+  app.delete("/api/admin/promo-codes/:id", async (req, res) => {
+    try {
+      if (!req.user || (req.user as any).role !== "admin") return res.status(403).json({ error: "Admin access required" });
+      await storage.deletePromoCode(parseInt(req.params.id));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete promo code" });
+    }
+  });
+
+  // Validate a promo code (any authenticated user, used at checkout)
+  app.post("/api/promo-codes/validate", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const { code } = req.body;
+      if (!code) return res.status(400).json({ error: "Code is required" });
+      const promo = await storage.getPromoCodeByCode(code.trim());
+      if (!promo) return res.status(404).json({ error: "Code not found" });
+      if (!promo.isActive) return res.status(400).json({ error: "This code has been disabled" });
+      if (promo.expiresAt && new Date(promo.expiresAt) < new Date()) return res.status(400).json({ error: "This code has expired" });
+      if (promo.codeType === "one_time" && promo.usesCount >= 1) return res.status(400).json({ error: "This code has already been used" });
+      res.json({ valid: true, discountPercent: promo.discountPercent, codeType: promo.codeType, code: promo.code });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to validate promo code" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
