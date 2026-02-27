@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
-import { Upload, Search, Users, FileText, ArrowUpDown, Loader2, Check, X, AlertCircle, Ban, Copy, BookX, Home, UserX, Trash2, Shield, ChevronDown, ChevronRight, Plus, Flag, Eye, Edit, Tag, ToggleLeft, ToggleRight, Calendar } from "lucide-react";
+import { Upload, Search, Users, FileText, ArrowUpDown, Loader2, Check, X, AlertCircle, Ban, Copy, BookX, Home, UserX, Trash2, Shield, ChevronDown, ChevronRight, Plus, Flag, Eye, Edit, Tag, ToggleLeft, ToggleRight, Calendar, Mail } from "lucide-react";
 import { UserHeader } from "@/components/user-header";
 import {
   AlertDialog,
@@ -299,6 +299,20 @@ export default function AdminPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/promo-codes'] });
     },
     onError: (e: Error) => toast({ title: "Failed to delete code", description: e.message, variant: "destructive" }),
+  });
+
+  const [sharePromoCode, setSharePromoCode] = useState<PromoCode | null>(null);
+  const [shareEmailInput, setShareEmailInput] = useState("");
+
+  const sharePromoMutation = useMutation({
+    mutationFn: async ({ id, emails }: { id: number; emails: string[] }) =>
+      (await apiRequest('POST', `/api/admin/promo-codes/${id}/share`, { emails })).json(),
+    onSuccess: (data) => {
+      toast({ title: "Email sent", description: `Promo code sent to ${data.sentTo} recipient${data.sentTo !== 1 ? 's' : ''}.` });
+      setSharePromoCode(null);
+      setShareEmailInput("");
+    },
+    onError: (e: Error) => toast({ title: "Failed to send email", description: e.message, variant: "destructive" }),
   });
 
   const handleCreateAdmin = () => {
@@ -1211,6 +1225,16 @@ export default function AdminPage() {
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex items-center justify-end gap-1">
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7"
+                                    title="Share via email"
+                                    onClick={() => { setSharePromoCode(promo); setShareEmailInput(""); }}
+                                    data-testid={`button-share-promo-${promo.id}`}
+                                  >
+                                    <Mail className="w-3 h-3" />
+                                  </Button>
                                   {!isExpired && (
                                     <Button
                                       size="icon"
@@ -1643,6 +1667,55 @@ export default function AdminPage() {
               data-testid="button-confirm-create-promo"
             >
               {createPromoMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Generate Code"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!sharePromoCode} onOpenChange={(open) => { if (!open) { setSharePromoCode(null); setShareEmailInput(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="w-5 h-5" />
+              Share Promo Code via Email
+            </DialogTitle>
+            <DialogDescription>
+              Send <strong>{sharePromoCode?.code}</strong> ({sharePromoCode?.discountPercent}% off) to one or more email addresses.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Label htmlFor="share-emails">Email Addresses</Label>
+            <Textarea
+              id="share-emails"
+              placeholder={"jane@example.com\njohn@school.org\nparent@family.com"}
+              value={shareEmailInput}
+              onChange={e => setShareEmailInput(e.target.value)}
+              rows={4}
+              data-testid="input-share-emails"
+            />
+            <p className="text-xs text-muted-foreground">
+              Enter one email address per line, or separate with commas.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setSharePromoCode(null); setShareEmailInput(""); }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!sharePromoCode) return;
+                const raw = shareEmailInput.replace(/,/g, '\n');
+                const emails = raw.split('\n').map(e => e.trim()).filter(Boolean);
+                sharePromoMutation.mutate({ id: sharePromoCode.id, emails });
+              }}
+              disabled={sharePromoMutation.isPending || !shareEmailInput.trim()}
+              data-testid="button-send-promo-email"
+            >
+              {sharePromoMutation.isPending ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Sending…</>
+              ) : (
+                <><Mail className="w-4 h-4 mr-2" />Send Email</>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

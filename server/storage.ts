@@ -297,6 +297,7 @@ export interface IStorage {
   createPromoCode(data: InsertPromoCode): Promise<PromoCode>;
   getPromoCodes(): Promise<PromoCode[]>;
   getPromoCodeByCode(code: string): Promise<PromoCode | undefined>;
+  getPromoCodeById(id: number): Promise<PromoCode | undefined>;
   updatePromoCode(id: number, data: Partial<PromoCode>): Promise<PromoCode | undefined>;
   deletePromoCode(id: number): Promise<void>;
   recordPromoCodeUsage(codeId: number, userId?: number): Promise<void>;
@@ -2909,6 +2910,11 @@ export class DatabaseStorage implements IStorage {
 
   async getPromoCodeByCode(code: string): Promise<PromoCode | undefined> {
     const [result] = await db.select().from(promoCodes).where(eq(promoCodes.code, code.toUpperCase()));
+    return result;
+  }
+
+  async getPromoCodeById(id: number): Promise<PromoCode | undefined> {
+    const [result] = await db.select().from(promoCodes).where(eq(promoCodes.id, id));
     return result;
   }
 

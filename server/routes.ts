@@ -5148,6 +5148,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Share promo code via email (admin only)
+  app.post("/api/admin/promo-codes/:id/share", async (req, res) => {
+    try {
+      if (!req.user || (req.user as any).role !== "admin") return res.status(403).json({ error: "Admin access required" });
+      const id = parseInt(req.params.id);
+      const { emails } = req.body;
+      if (!Array.isArray(emails) || emails.length === 0) {
+        return res.status(400).json({ error: "At least one email address is required" });
+      }
+      const validEmails = emails.map((e: string) => e.trim()).filter((e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+      if (validEmails.length === 0) {
+        return res.status(400).json({ error: "No valid email addresses provided" });
+      }
+      const promo = await storage.getPromoCodeById(id);
+      if (!promo) return res.status(404).json({ error: "Promo code not found" });
+      const { sendPromoCodeEmail } = await import('./services/emailService.js');
+      await sendPromoCodeEmail(validEmails, {
+        code: promo.code,
+        discountPercent: promo.discountPercent,
+        codeType: promo.codeType,
+        expiresAt: promo.expiresAt ? promo.expiresAt.toISOString() : null,
+      });
+      res.json({ success: true, sentTo: validEmails.length });
+    } catch (error) {
+      console.error("Error sharing promo code:", error);
+      res.status(500).json({ error: "Failed to send email" });
+    }
+  });
+
   // Validate a promo code (any authenticated user, used at checkout)
   app.post("/api/promo-codes/validate", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
