@@ -87,6 +87,10 @@ export default function FamilySignupPage() {
       setLocation("/family");
     } else if (existingAccount.vpcStatus === "pending" && step === 1) {
       setStep(2);
+      // Auto-validate promo code from URL if present (e.g. returning from Stripe)
+      const params = new URLSearchParams(search);
+      const urlPromo = params.get("promo");
+      if (urlPromo && !promoValid) validatePromo(urlPromo);
     }
   }, [existingAccount, step, setLocation]);
 
@@ -396,7 +400,7 @@ export default function FamilySignupPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => { setPriceInterval("month"); setPromoValid(null); setPromoCode(""); setPromoError(null); }}
+                    onClick={() => setPriceInterval("month")}
                     data-testid="button-plan-monthly"
                     className={`rounded-lg border p-4 text-left transition-colors ${
                       priceInterval === "month"
@@ -405,12 +409,21 @@ export default function FamilySignupPage() {
                     }`}
                   >
                     <p className="font-semibold text-base">Monthly</p>
-                    <p className="text-xl font-bold text-primary mt-1">$1.99</p>
+                    {promoValid ? (
+                      <div className="mt-1">
+                        <span className="text-sm line-through text-muted-foreground mr-1">$1.99</span>
+                        <span className="text-xl font-bold text-green-600 dark:text-green-400">
+                          ${(1.99 * (1 - promoValid.discountPercent / 100)).toFixed(2)}
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-xl font-bold text-primary mt-1">$1.99</p>
+                    )}
                     <p className="text-xs text-muted-foreground">per month</p>
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setPriceInterval("year"); setPromoValid(null); setPromoCode(""); setPromoError(null); }}
+                    onClick={() => setPriceInterval("year")}
                     data-testid="button-plan-annual"
                     className={`rounded-lg border p-4 text-left transition-colors relative ${
                       priceInterval === "year"
@@ -420,13 +433,22 @@ export default function FamilySignupPage() {
                   >
                     <span className="absolute top-2 right-2 text-xs bg-green-500 text-white rounded px-1.5 py-0.5 font-medium">Save 16%</span>
                     <p className="font-semibold text-base">Annual</p>
-                    <p className="text-xl font-bold text-primary mt-1">$19.99</p>
+                    {promoValid ? (
+                      <div className="mt-1">
+                        <span className="text-sm line-through text-muted-foreground mr-1">$19.99</span>
+                        <span className="text-xl font-bold text-green-600 dark:text-green-400">
+                          ${(19.99 * (1 - promoValid.discountPercent / 100)).toFixed(2)}
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-xl font-bold text-primary mt-1">$19.99</p>
+                    )}
                     <p className="text-xs text-muted-foreground">per year</p>
                   </button>
                 </div>
                 {promoValid && (
                   <p className="text-sm font-medium text-green-600 dark:text-green-400 text-center">
-                    Promo applied: {promoValid.discountPercent}% off → ${discountedPrice.toFixed(2)}/{priceInterval === "month" ? "mo" : "yr"}
+                    {promoValid.discountPercent}% off applied!
                   </p>
                 )}
               </div>

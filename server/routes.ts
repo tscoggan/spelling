@@ -4973,7 +4973,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Apply promo code as a coupon if provided
-      let discounts: any[] | undefined;
+      let stripeCouponId: string | undefined;
+      let discountsForPaymentMode: any[] | undefined;
       if (promoCode) {
         const promo = await storage.getPromoCodeByCode(promoCode.trim());
         if (promo && promo.isActive && !(promo.expiresAt && new Date(promo.expiresAt) < new Date()) && !(promo.codeType === "one_time" && promo.usesCount >= 1)) {
@@ -4984,7 +4985,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             name: `Promo: ${promo.code}`,
             metadata: { promoCodeId: String(promo.id), promoCode: promo.code },
           });
-          discounts = [{ coupon: coupon.id }];
+          stripeCouponId = coupon.id;
+          // For payment mode (one-time), use session-level discounts
+          if (type !== "family_subscription") {
+            discountsForPaymentMode = [{ coupon: coupon.id }];
+          }
         }
       }
 
@@ -4998,7 +5003,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cancel_url: `${baseUrl}/${type === "family_subscription" ? "family/signup" : "school/signup"}`,
         metadata: { userId: String(user.id), type, promoCode: promoCode || "", autoRenew: autoRenew === false ? "false" : "true" },
       };
-      if (discounts) sessionParams.discounts = discounts;
+      // For subscriptions, coupon must be applied via subscription_data.discounts so Stripe shows
+      // the discount correctly on the checkout page (session-level discounts don't show for subscriptions)
+      if (isSubscription && stripeCouponId) {
+        sessionParams.subscription_data = { discounts: [{ coupon: stripeCouponId }] };
+      }
+      // For one-time payments, apply via session-level discounts
+      if (!isSubscription && discountsForPaymentMode) {
+        sessionParams.discounts = discountsForPaymentMode;
+      }
 
       const session = await stripe.checkout.sessions.create(sessionParams);
       res.json({ url: session.url, sessionId: session.id });
