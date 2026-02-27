@@ -160,9 +160,11 @@ export function UserHeader() {
 
   const startSubscriptionMutation = useMutation({
     mutationFn: async (priceInterval: "monthly" | "yearly") => {
+      // Normalize to "month"/"year" which is what the checkout endpoint expects
+      const normalizedInterval = priceInterval === "monthly" ? "month" : "year";
       const res = await apiRequest("POST", "/api/stripe/create-checkout", {
         type: "family_subscription",
-        priceInterval,
+        priceInterval: normalizedInterval,
       });
       return res.json() as Promise<{ url: string }>;
     },

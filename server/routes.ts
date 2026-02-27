@@ -5034,17 +5034,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const amount = session.amount_total ?? 0;
         const isMonthly = amount === 199;
 
-        const expiresAt = new Date();
+        // Start from the later of today or the existing expiry (so early renewals stack)
+        const now = new Date();
+        const baseDate = (family.subscriptionExpiresAt && family.subscriptionExpiresAt > now)
+          ? new Date(family.subscriptionExpiresAt)
+          : now;
+        const expiresAt = new Date(baseDate);
         if (isMonthly) {
           expiresAt.setMonth(expiresAt.getMonth() + 1);
         } else {
           expiresAt.setFullYear(expiresAt.getFullYear() + 1);
         }
 
-        // If user opted out of auto-renewal, cancel the Stripe subscription at period end
+        const stripeForOps = await getUncachableStripeClient();
+
+        // If the user had a different previous subscription (plan switch), cancel it immediately
+        if (family.stripeSubscriptionId && subscriptionId && family.stripeSubscriptionId !== subscriptionId) {
+          try {
+            await stripeForOps.subscriptions.cancel(family.stripeSubscriptionId);
+            console.log(`[verify-session] Cancelled old subscription ${family.stripeSubscriptionId} after plan switch`);
+          } catch (cancelErr: any) {
+            console.warn(`[verify-session] Could not cancel old subscription: ${cancelErr.message}`);
+          }
+        }
+
+        // If user opted out of auto-renewal, cancel the new subscription at period end
         if (!autoRenew && subscriptionId) {
-          const stripe = await getUncachableStripeClient();
-          await stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: true });
+          await stripeForOps.subscriptions.update(subscriptionId, { cancel_at_period_end: true });
         }
 
         await storage.updateFamilyAccount(family.id, {
