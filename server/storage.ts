@@ -89,7 +89,7 @@ import {
   promoCodeUsages,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql, inArray, not, or, like, gte, lte } from "drizzle-orm";
+import { eq, desc, and, sql, inArray, not, or, isNull, like, gte, lte } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -262,6 +262,7 @@ export interface IStorage {
   getFamilyAccountByStripeSubscriptionId(subscriptionId: string): Promise<FamilyAccount | undefined>;
   getFamilyAccountByStripeCustomerId(customerId: string): Promise<FamilyAccount | undefined>;
   updateFamilyAccount(id: number, updates: Partial<FamilyAccount>): Promise<FamilyAccount | undefined>;
+  getFamilyAccountsNeedingRenewalReminder(): Promise<FamilyAccount[]>;
   deleteFamilyAccount(id: number): Promise<boolean>;
   verifyFamilyVpc(familyId: number): Promise<FamilyAccount | undefined>;
   
@@ -2583,6 +2584,25 @@ export class DatabaseStorage implements IStorage {
   async updateFamilyAccount(id: number, updates: Partial<FamilyAccount>): Promise<FamilyAccount | undefined> {
     const [updated] = await db.update(familyAccounts).set(updates).where(eq(familyAccounts.id, id)).returning();
     return updated || undefined;
+  }
+
+  async getFamilyAccountsNeedingRenewalReminder(): Promise<FamilyAccount[]> {
+    const now = new Date();
+    const in1Day = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000);
+    const in3Days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+    const cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // don't resend within 7 days
+    return await db.select().from(familyAccounts).where(
+      and(
+        eq(familyAccounts.autoRenew, true),
+        eq(familyAccounts.vpcStatus, 'verified'),
+        sql`${familyAccounts.subscriptionExpiresAt} >= ${in1Day}`,
+        sql`${familyAccounts.subscriptionExpiresAt} <= ${in3Days}`,
+        or(
+          isNull(familyAccounts.renewalReminderSentAt),
+          sql`${familyAccounts.renewalReminderSentAt} < ${cutoff}`
+        )
+      )
+    );
   }
 
   async deleteFamilyAccount(id: number): Promise<boolean> {

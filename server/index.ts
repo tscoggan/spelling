@@ -94,6 +94,36 @@ async function initStripe() {
   }
 }
 
+async function runRenewalReminderJob(): Promise<void> {
+  try {
+    const accounts = await storage.getFamilyAccountsNeedingRenewalReminder();
+    if (accounts.length === 0) return;
+
+    const { sendRenewalReminderEmail } = await import('./services/emailService.js');
+    for (const family of accounts) {
+      try {
+        const parentUser = await storage.getUser(family.primaryParentUserId);
+        if (!parentUser?.email || !family.subscriptionExpiresAt) continue;
+
+        const planType = (family.subscriptionAmount ?? 0) === 199 ? 'monthly' : 'annual';
+        await sendRenewalReminderEmail(parentUser.email, {
+          username: parentUser.username,
+          firstName: parentUser.firstName ?? null,
+          amountCents: family.subscriptionAmount ?? 0,
+          planType,
+          renewsAt: family.subscriptionExpiresAt,
+        });
+        await storage.updateFamilyAccount(family.id, { renewalReminderSentAt: new Date() });
+        log(`Renewal reminder sent to family ${family.id} (user: ${parentUser.username})`);
+      } catch (err: any) {
+        log(`Failed to send renewal reminder to family ${family.id}: ${err.message}`);
+      }
+    }
+  } catch (err: any) {
+    log(`Renewal reminder job error: ${err.message}`);
+  }
+}
+
 (async () => {
   await initStripe();
 
@@ -132,5 +162,9 @@ async function initStripe() {
         .then(newVersion => log(`App version auto-incremented to ${newVersion}`))
         .catch(error => log(`Failed to auto-increment version: ${error}`));
     }
+
+    // Run renewal reminder job once at startup, then every 24 hours
+    runRenewalReminderJob();
+    setInterval(runRenewalReminderJob, 24 * 60 * 60 * 1000);
   });
 })();

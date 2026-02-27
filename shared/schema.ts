@@ -244,6 +244,7 @@ export const familyAccounts = pgTable("family_accounts", {
   subscriptionExpiresAt: timestamp("subscription_expires_at"),
   lastPaymentMethod: text("last_payment_method"),
   autoRenew: boolean("auto_renew").notNull().default(true),
+  renewalReminderSentAt: timestamp("renewal_reminder_sent_at"),
 });
 
 export const familyMembers = pgTable("family_members", {

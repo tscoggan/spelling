@@ -119,6 +119,43 @@ export class WebhookHandlers {
         break;
       }
 
+      case 'invoice.upcoming': {
+        const invoice = event.data.object;
+        // Only handle subscription renewal reminders
+        if (invoice.billing_reason !== 'subscription_cycle') break;
+
+        const subscriptionId = invoice.subscription as string;
+        if (!subscriptionId) break;
+
+        const family = await storage.getFamilyAccountByStripeSubscriptionId(subscriptionId);
+        if (!family || !family.autoRenew) break;
+
+        // Check we haven't already sent a reminder recently (within 7 days)
+        const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        if (family.renewalReminderSentAt && family.renewalReminderSentAt > cutoff) break;
+
+        const parentUser = await storage.getUser(family.primaryParentUserId);
+        if (!parentUser?.email) break;
+
+        try {
+          const { sendRenewalReminderEmail } = await import('./services/emailService.js');
+          const renewsAt = family.subscriptionExpiresAt ?? new Date(invoice.period_end * 1000);
+          const planType = (family.subscriptionAmount ?? 0) === 199 ? 'monthly' : 'annual';
+          await sendRenewalReminderEmail(parentUser.email, {
+            username: parentUser.username,
+            firstName: parentUser.firstName ?? null,
+            amountCents: family.subscriptionAmount ?? 0,
+            planType,
+            renewsAt,
+          });
+          await storage.updateFamilyAccount(family.id, { renewalReminderSentAt: new Date() });
+          console.log(`[webhook] Sent renewal reminder to family ${family.id} (user: ${parentUser.username})`);
+        } catch (emailErr: any) {
+          console.error('[webhook] Failed to send renewal reminder email:', emailErr.message);
+        }
+        break;
+      }
+
       case 'invoice.payment_failed': {
         const invoice = event.data.object;
         if (invoice.billing_reason !== 'subscription_cycle') break;

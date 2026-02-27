@@ -484,3 +484,88 @@ export async function sendPaymentReceiptEmail(
     `,
   });
 }
+
+export async function sendRenewalReminderEmail(
+  toEmail: string,
+  details: {
+    username: string;
+    firstName: string | null;
+    amountCents: number;
+    planType: "monthly" | "annual";
+    renewsAt: Date;
+  }
+): Promise<void> {
+  const { client, fromEmail } = getResendClient();
+  const baseUrl = getAppDomain();
+
+  const displayName = details.firstName || details.username;
+  const amountDollars = (details.amountCents / 100).toFixed(2);
+  const renewsAtStr = details.renewsAt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const planLabel = details.planType === 'monthly' ? 'Monthly Plan' : 'Annual Plan';
+  const interval = details.planType === 'monthly' ? 'month' : 'year';
+
+  await client.emails.send({
+    from: fromEmail,
+    to: toEmail,
+    subject: `Your Spelling Playground subscription renews in 2 days`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+            .info-box { background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0; }
+            .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-size: 15px; }
+            .info-row:last-child { border-bottom: none; }
+            .label { color: #6b7280; }
+            .value { color: #111; text-align: right; }
+            .amount { color: #4f46e5; font-size: 28px; font-weight: bold; text-align: center; margin: 12px 0 4px; }
+            .plan-badge { display: inline-block; background: #4f46e5; color: white; border-radius: 20px; padding: 4px 14px; font-size: 13px; font-weight: bold; margin-bottom: 16px; }
+            .button { display: inline-block; padding: 12px 32px; background: #4f46e5; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px; margin: 20px 0; }
+            .manage-link { color: #4f46e5; }
+            .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #888; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            ${emailHeader()}
+            <div class="content">
+              <h2 style="margin-top:0;">Hi ${displayName}, your subscription renews soon</h2>
+              <p>Just a heads up — your Spelling Playground subscription will renew automatically in <strong>2 days</strong>.</p>
+
+              <div class="info-box">
+                <div style="text-align:center;">
+                  <div class="amount">$${amountDollars}</div>
+                  <div><span class="plan-badge">Family — ${planLabel}</span></div>
+                </div>
+                <div class="info-row">
+                  <span class="label">Renewal date</span>
+                  <span class="value">${renewsAtStr}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">Billed</span>
+                  <span class="value">Every ${interval} via Stripe</span>
+                </div>
+              </div>
+
+              <p style="color:#555;font-size:14px;">
+                No action needed — your subscription will renew automatically and your family keeps their full access.
+                If you'd like to turn off auto-renewal, you can do so from <a href="${baseUrl}/" class="manage-link">your account settings</a> before the renewal date.
+              </p>
+
+              <p style="text-align:center;">
+                <a href="${baseUrl}/" class="button">Manage My Account</a>
+              </p>
+            </div>
+            <div class="footer">
+              <p>You're receiving this because you have an active Spelling Playground subscription.<br>
+              Questions? Contact us at <a href="mailto:support@spellingplayground.com" style="color:#4f46e5;">support@spellingplayground.com</a>.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  });
+}
