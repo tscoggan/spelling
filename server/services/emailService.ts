@@ -242,7 +242,7 @@ export async function sendPromoCodeEmail(
   const { client, fromEmail } = getResendClient();
 
   const baseUrl = getAppDomain();
-  const signupUrl = `${baseUrl}/family/signup`;
+  const signupUrl = `${baseUrl}/family/signup?promo=${encodeURIComponent(promoCode.code)}`;
 
   const expiryNote = promoCode.expiresAt
     ? `<p style="color:#888;font-size:13px;">This code expires on <strong>${new Date(promoCode.expiresAt).toLocaleDateString()}</strong>.</p>`
@@ -294,12 +294,11 @@ export async function sendPromoCodeEmail(
               </p>
 
               <div class="steps">
-                <strong>How to apply your code:</strong>
+                <strong>How to redeem:</strong>
                 <ol>
-                  <li>Click the button above (or go to <a href="${signupUrl}">${signupUrl}</a>)</li>
-                  <li>Fill in your account details on Step 1</li>
-                  <li>On Step 2, enter your promo code: <strong>${promoCode.code}</strong></li>
-                  <li>Your discount will be applied automatically at checkout</li>
+                  <li>Click the button above — your code will be applied automatically</li>
+                  <li>Fill in your account details and click Continue to Payment</li>
+                  <li>Your discount will already be applied on the payment screen</li>
                 </ol>
               </div>
 

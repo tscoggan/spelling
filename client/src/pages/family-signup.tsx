@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,13 +50,17 @@ interface FamilySignupResponse {
 export default function FamilySignupPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const search = useSearch();
   const { themeAssets, hasDarkBackground } = useTheme();
   const textClasses = getThemedTextClasses(hasDarkBackground);
   
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [familyData, setFamilyData] = useState<FamilySignupResponse | null>(null);
   const [priceInterval, setPriceInterval] = useState<"month" | "year">("year");
-  const [promoCode, setPromoCode] = useState("");
+  const [promoCode, setPromoCode] = useState(() => {
+    const params = new URLSearchParams(search);
+    return params.get("promo") || "";
+  });
   const [promoValidating, setPromoValidating] = useState(false);
   const [promoValid, setPromoValid] = useState<{ discountPercent: number; code: string } | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
@@ -93,6 +97,9 @@ export default function FamilySignupPage() {
       setFamilyData(data);
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       setStep(2);
+      const params = new URLSearchParams(search);
+      const urlPromo = params.get("promo");
+      if (urlPromo) validatePromo(urlPromo);
     },
     onError: (error: Error) => {
       toast({
@@ -124,13 +131,14 @@ export default function FamilySignupPage() {
     },
   });
 
-  const validatePromo = async () => {
-    if (!promoCode.trim()) return;
+  const validatePromo = async (codeOverride?: string) => {
+    const code = (codeOverride ?? promoCode).trim();
+    if (!code) return;
     setPromoValidating(true);
     setPromoError(null);
     setPromoValid(null);
     try {
-      const res = await apiRequest("POST", "/api/promo-codes/validate", { code: promoCode.trim() });
+      const res = await apiRequest("POST", "/api/promo-codes/validate", { code });
       const data = await res.json();
       if (!res.ok) { setPromoError(data.error || "Invalid code"); return; }
       setPromoValid({ discountPercent: data.discountPercent, code: data.code });
@@ -140,6 +148,7 @@ export default function FamilySignupPage() {
       setPromoValidating(false);
     }
   };
+
 
   const onSubmitSignup = (data: SignupFormData) => {
     signupMutation.mutate(data);
