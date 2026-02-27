@@ -5005,7 +5005,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Record payment
         const amount = session.amount_total ?? 500;
-        await storage.createPaymentHistory({
+        await storage.createPaymentRecord({
           familyId: family.id,
           userId: user.id,
           amount,
