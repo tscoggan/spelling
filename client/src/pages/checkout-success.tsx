@@ -86,14 +86,26 @@ export default function CheckoutSuccess() {
               <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-2">
                 <XCircle className="w-8 h-8 text-destructive" />
               </div>
-              <CardTitle>Verification Failed</CardTitle>
+              <CardTitle>Payment Verification Failed</CardTitle>
               <CardDescription>{state.message}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground text-center">
-                If you were charged, please contact support. Otherwise, you can try again.
+                Your account was not activated. You can retry your payment below. If you believe you were charged in error, please contact support.
               </p>
-              <Button className="w-full" onClick={() => setLocation("/")} data-testid="button-go-home">
+              <Button
+                className="w-full"
+                onClick={() => setLocation("/family/signup")}
+                data-testid="button-retry-payment"
+              >
+                Retry Payment
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setLocation("/")}
+                data-testid="button-go-home"
+              >
                 Go Home
               </Button>
             </CardContent>

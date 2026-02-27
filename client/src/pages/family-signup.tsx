@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
+import { useAuth } from "@/hooks/use-auth";
 import { getThemedTextClasses } from "@/lib/themeText";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Home, Users, CreditCard, CheckCircle, Loader2, ArrowRight, ArrowLeft, Tag, ExternalLink, RefreshCw } from "lucide-react";
@@ -50,6 +51,7 @@ interface FamilySignupResponse {
 
 export default function FamilySignupPage() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [, setLocation] = useLocation();
   const search = useSearch();
   const { themeAssets, hasDarkBackground } = useTheme();
@@ -66,6 +68,27 @@ export default function FamilySignupPage() {
   const [promoValidating, setPromoValidating] = useState(false);
   const [promoValid, setPromoValid] = useState<{ discountPercent: number; code: string } | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
+
+  // If user is already a family_parent, check their payment status
+  const { data: existingAccount } = useQuery({
+    queryKey: ["/api/family/account", user?.id],
+    queryFn: async () => {
+      const res = await fetch("/api/family/account", { credentials: "include" });
+      if (!res.ok) return null;
+      return await res.json() as { vpcStatus: string };
+    },
+    enabled: !!user && user.accountType === "family_parent",
+  });
+
+  // Redirect verified accounts away; show payment step for pending accounts
+  useEffect(() => {
+    if (!existingAccount) return;
+    if (existingAccount.vpcStatus === "verified") {
+      setLocation("/family");
+    } else if (existingAccount.vpcStatus === "pending" && step === 1) {
+      setStep(2);
+    }
+  }, [existingAccount, step, setLocation]);
 
   const basePrice = priceInterval === "month" ? 1.99 : 19.99;
   const discountedPrice = promoValid
@@ -439,7 +462,10 @@ export default function FamilySignupPage() {
               {/* Auto-renewal opt-in */}
               <div
                 className="flex items-start gap-3 p-3 rounded-md border cursor-pointer"
-                onClick={() => setAutoRenew(v => !v)}
+                onClick={(e) => {
+                  if ((e.target as HTMLElement).closest('[role="checkbox"]')) return;
+                  setAutoRenew(v => !v);
+                }}
                 data-testid="checkbox-auto-renew-container"
               >
                 <Checkbox
