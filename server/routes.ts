@@ -4973,23 +4973,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Apply promo code as a coupon if provided
-      let stripeCouponId: string | undefined;
-      let discountsForPaymentMode: any[] | undefined;
+      let discounts: any[] | undefined;
       if (promoCode) {
         const promo = await storage.getPromoCodeByCode(promoCode.trim());
         if (promo && promo.isActive && !(promo.expiresAt && new Date(promo.expiresAt) < new Date()) && !(promo.codeType === "one_time" && promo.usesCount >= 1)) {
+          // Use "once" duration so the coupon applies to the initial checkout invoice and Stripe shows the reduced amount
           const coupon = await stripe.coupons.create({
             percent_off: promo.discountPercent,
-            duration: type === "family_subscription" ? "repeating" : "once",
-            duration_in_months: type === "family_subscription" ? 12 : undefined,
+            duration: "once",
             name: `Promo: ${promo.code}`,
             metadata: { promoCodeId: String(promo.id), promoCode: promo.code },
           });
-          stripeCouponId = coupon.id;
-          // For payment mode (one-time), use session-level discounts
-          if (type !== "family_subscription") {
-            discountsForPaymentMode = [{ coupon: coupon.id }];
-          }
+          discounts = [{ coupon: coupon.id }];
         }
       }
 
@@ -5003,15 +4998,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cancel_url: `${baseUrl}/${type === "family_subscription" ? "family/signup" : "school/signup"}`,
         metadata: { userId: String(user.id), type, promoCode: promoCode || "", autoRenew: autoRenew === false ? "false" : "true" },
       };
-      // For subscriptions, coupon must be applied via subscription_data.discounts so Stripe shows
-      // the discount correctly on the checkout page (session-level discounts don't show for subscriptions)
-      if (isSubscription && stripeCouponId) {
-        sessionParams.subscription_data = { discounts: [{ coupon: stripeCouponId }] };
-      }
-      // For one-time payments, apply via session-level discounts
-      if (!isSubscription && discountsForPaymentMode) {
-        sessionParams.discounts = discountsForPaymentMode;
-      }
+      if (discounts) sessionParams.discounts = discounts;
 
       const session = await stripe.checkout.sessions.create(sessionParams);
       res.json({ url: session.url, sessionId: session.id });
@@ -5043,9 +5030,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const family = await storage.getFamilyAccountByParentId(user.id);
         if (!family) return res.status(404).json({ error: "Family account not found" });
 
-        const subscriptionId = (session.subscription as any)?.id;
+        const subscriptionObj = session.subscription as any;
+        const subscriptionId = subscriptionObj?.id;
         const amount = session.amount_total ?? 0;
-        const isMonthly = amount === 199;
+        // Determine plan interval from the subscription's price, not amount_total
+        // (amount_total changes when a promo discount is applied)
+        const priceInterval = subscriptionObj?.items?.data?.[0]?.price?.recurring?.interval;
+        const isMonthly = priceInterval === "month" || (!priceInterval && amount < 1000);
 
         // Start from the later of today or the existing expiry (so early renewals stack)
         const now = new Date();
