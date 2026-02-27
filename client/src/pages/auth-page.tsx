@@ -217,7 +217,7 @@ export default function AuthPage() {
         >
           <Users className="w-6 h-6" />
           <span className="text-base font-bold leading-tight text-wrap">Create Family Account</span>
-          <span className="text-xs opacity-80 font-normal leading-tight text-wrap">$5 per year</span>
+          <span className="text-xs opacity-80 font-normal leading-tight text-wrap">$1.99/mo or $19.99/yr</span>
         </Button>
 
         <Button

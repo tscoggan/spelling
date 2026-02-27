@@ -113,7 +113,7 @@ export default function CheckoutSuccess() {
               </CardTitle>
               <CardDescription>
                 {state.accountType === "family_subscription"
-                  ? "Your $5/year family subscription is active. You can now create child accounts and access all family features."
+                  ? "Your family subscription is now active. You can create child accounts and access all family features."
                   : "Your $0.99 adult verification is complete. Your school account is fully activated."}
               </CardDescription>
             </CardHeader>

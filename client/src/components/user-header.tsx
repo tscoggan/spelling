@@ -57,7 +57,7 @@ export function UserHeader() {
   const [featureComparisonOpen, setFeatureComparisonOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [myAccountOpen, setMyAccountOpen] = useState(false);
-  const [renewConfirmOpen, setRenewConfirmOpen] = useState(false);
+  const [renewPlanType, setRenewPlanType] = useState<"monthly" | "yearly">("yearly");
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactMessage, setContactMessage] = useState("");
@@ -156,22 +156,21 @@ export function UserHeader() {
     enabled: !isGuestMode && !!user && myAccountOpen,
   });
 
-  const renewSubscriptionMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/family/renew", {});
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/family/account", user?.id] });
-      toast({
-        title: "Subscription Renewed",
-        description: "Your subscription has been extended for another year.",
+  const startSubscriptionMutation = useMutation({
+    mutationFn: async (priceInterval: "monthly" | "yearly") => {
+      const res = await apiRequest("POST", "/api/stripe/create-checkout", {
+        type: "family_subscription",
+        priceInterval,
       });
+      return res.json() as Promise<{ url: string }>;
+    },
+    onSuccess: (data) => {
+      window.location.href = data.url;
     },
     onError: (error: Error) => {
       toast({
-        title: "Renewal Failed",
-        description: error.message || "Unable to renew subscription. Please try again.",
+        title: "Checkout Failed",
+        description: error.message || "Unable to start checkout. Please try again.",
         variant: "destructive",
       });
     },
@@ -1682,7 +1681,9 @@ export function UserHeader() {
                         Subscription Amount
                       </span>
                       <span className="font-medium">
-                        ${((accountInfo.subscriptionAmount || 500) / 100).toFixed(2)}/year
+                        {accountInfo.subscriptionAmount
+                          ? `$${(accountInfo.subscriptionAmount / 100).toFixed(2)}${accountInfo.subscriptionAmount === 199 ? "/mo" : "/yr"}`
+                          : "—"}
                       </span>
                     </div>
                   </>
@@ -1727,38 +1728,60 @@ export function UserHeader() {
                 </div>
               )}
               
-              {accountInfo.isParent && accountInfo.accountType === 'family_parent' && (
-                <div className="pt-4 border-t">
-                  <Button
-                    onClick={() => {
-                      const isActive = accountInfo.subscriptionExpiresAt && new Date(accountInfo.subscriptionExpiresAt) > new Date();
-                      if (isActive) {
-                        setRenewConfirmOpen(true);
-                      } else {
-                        renewSubscriptionMutation.mutate();
-                      }
-                    }}
-                    disabled={renewSubscriptionMutation.isPending}
-                    className="w-full"
-                    data-testid="button-renew-subscription"
-                  >
-                    {renewSubscriptionMutation.isPending ? (
-                      <>
-                        <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <CreditCard className="w-4 h-4 mr-2" />
-                        Renew Subscription ($5/year)
-                      </>
-                    )}
-                  </Button>
-                  <p className="text-xs text-muted-foreground text-center mt-2">
-                    Extends your subscription by 1 year from the current expiration date
-                  </p>
-                </div>
-              )}
+              {accountInfo.isParent && accountInfo.accountType === 'family_parent' && (() => {
+                const isVerified = accountInfo.vpcStatus === 'verified';
+                const isActive = isVerified && accountInfo.subscriptionExpiresAt && new Date(accountInfo.subscriptionExpiresAt) > new Date();
+                if (isActive) return null;
+                const isPending = !isVerified;
+                return (
+                  <div className="pt-4 border-t space-y-3">
+                    <p className="text-sm font-medium">
+                      {isPending ? "Activate Your Subscription" : "Subscription Expired — Renew"}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant={renewPlanType === "monthly" ? "default" : "outline"}
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => setRenewPlanType("monthly")}
+                        data-testid="button-plan-monthly"
+                      >
+                        $1.99 / month
+                      </Button>
+                      <Button
+                        variant={renewPlanType === "yearly" ? "default" : "outline"}
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => setRenewPlanType("yearly")}
+                        data-testid="button-plan-yearly"
+                      >
+                        $19.99 / year
+                      </Button>
+                    </div>
+                    <Button
+                      onClick={() => startSubscriptionMutation.mutate(renewPlanType)}
+                      disabled={startSubscriptionMutation.isPending}
+                      className="w-full"
+                      data-testid="button-subscribe-stripe"
+                    >
+                      {startSubscriptionMutation.isPending ? (
+                        <>
+                          <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                          Redirecting…
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="w-4 h-4 mr-2" />
+                          {isPending ? "Complete Subscription" : "Renew via Stripe"}
+                        </>
+                      )}
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center">
+                      You'll be taken to Stripe's secure checkout page.
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
@@ -1768,43 +1791,6 @@ export function UserHeader() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={renewConfirmOpen} onOpenChange={setRenewConfirmOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Confirm Subscription Renewal</DialogTitle>
-            <DialogDescription>
-              Your subscription is still active until{' '}
-              {accountInfo?.subscriptionExpiresAt 
-                ? new Date(accountInfo.subscriptionExpiresAt).toLocaleDateString() 
-                : 'N/A'}.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Are you sure you want to renew now? This will extend your subscription by 1 year from your current expiration date and charge $5 to your payment method.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <Button
-                variant="outline"
-                onClick={() => setRenewConfirmOpen(false)}
-                data-testid="button-cancel-renew"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  setRenewConfirmOpen(false);
-                  renewSubscriptionMutation.mutate();
-                }}
-                disabled={renewSubscriptionMutation.isPending}
-                data-testid="button-confirm-renew"
-              >
-                {renewSubscriptionMutation.isPending ? "Processing..." : "Yes, Renew Now"}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }

@@ -43,13 +43,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   await ensureDefaultAdmin();
 
-  const requirePaidAccount = (req: any, res: any, next: any) => {
+  const requirePaidAccount = async (req: any, res: any, next: any) => {
     const user = req.user;
     if (!user) {
       return res.status(401).json({ error: "Authentication required" });
     }
     if (user.accountType === 'free') {
       return res.status(403).json({ error: "This feature requires a paid account. Please upgrade to access social features." });
+    }
+    // Family accounts must have a verified (paid) subscription
+    if (user.accountType === 'family_parent' || user.accountType === 'family_child') {
+      try {
+        const member = await storage.getFamilyMemberByUserId(user.id);
+        if (member) {
+          const family = await storage.getFamilyAccount(member.familyId);
+          if (!family || family.vpcStatus !== 'verified') {
+            return res.status(403).json({
+              error: "Your family subscription is not active. Please complete payment to access this feature.",
+              code: "PAYMENT_REQUIRED",
+            });
+          }
+        }
+      } catch (err) {
+        console.error("requirePaidAccount: error checking family vpcStatus", err);
+        return res.status(500).json({ error: "Unable to verify subscription status" });
+      }
     }
     next();
   };

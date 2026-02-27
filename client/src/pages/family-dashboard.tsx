@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Home, Users, Plus, Loader2, UserPlus, Pencil, Trash2, CheckCircle, XCircle, Star, Gamepad2, Calendar } from "lucide-react";
+import { Home, Users, Plus, Loader2, UserPlus, Pencil, Trash2, CheckCircle, XCircle, Star, Gamepad2, Calendar, CreditCard } from "lucide-react";
 import { UserHeader } from "@/components/user-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
@@ -175,6 +175,28 @@ export default function FamilyDashboardPage() {
     },
   });
 
+  const [subscribePlanType, setSubscribePlanType] = useState<"monthly" | "yearly">("yearly");
+
+  const startSubscriptionMutation = useMutation({
+    mutationFn: async (priceInterval: "monthly" | "yearly") => {
+      const response = await apiRequest("POST", "/api/stripe/create-checkout", {
+        type: "family_subscription",
+        priceInterval,
+      });
+      return response.json() as Promise<{ url: string }>;
+    },
+    onSuccess: (data) => {
+      window.location.href = data.url;
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Checkout Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmitChild = (data: ChildFormData) => {
     createChildMutation.mutate(data);
   };
@@ -279,6 +301,63 @@ export default function FamilyDashboardPage() {
             Manage your family's accounts and track progress
           </p>
         </div>
+
+        {familyData.isParent && familyData.family.vpcStatus !== "verified" && (
+          <Card className="border-amber-400/60 bg-amber-50/30 dark:bg-amber-950/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                <CreditCard className="w-5 h-5" />
+                Complete Your Subscription
+              </CardTitle>
+              <CardDescription>
+                Your family account is not yet active. Choose a plan below to unlock all features.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-2">
+                <Button
+                  variant={subscribePlanType === "monthly" ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => setSubscribePlanType("monthly")}
+                  data-testid="button-dashboard-plan-monthly"
+                >
+                  $1.99 / month
+                </Button>
+                <Button
+                  variant={subscribePlanType === "yearly" ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => setSubscribePlanType("yearly")}
+                  data-testid="button-dashboard-plan-yearly"
+                >
+                  $19.99 / year
+                </Button>
+              </div>
+              <Button
+                className="w-full"
+                onClick={() => startSubscriptionMutation.mutate(subscribePlanType)}
+                disabled={startSubscriptionMutation.isPending}
+                data-testid="button-dashboard-subscribe"
+              >
+                {startSubscriptionMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Redirecting…
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    Subscribe via Stripe
+                  </>
+                )}
+              </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                You'll be taken to Stripe's secure checkout page.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
