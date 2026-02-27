@@ -4996,21 +4996,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const expiresAt = new Date();
         expiresAt.setFullYear(expiresAt.getFullYear() + 1);
 
+        const amount = session.amount_total ?? 0;
+        const isMonthly = amount === 199;
+
         await storage.updateFamilyAccount(family.id, {
           vpcStatus: "verified",
           stripeSubscriptionId: subscriptionId || null,
           subscriptionExpiresAt: expiresAt,
           lastPaymentMethod: "stripe",
+          subscriptionAmount: amount,
         });
 
         // Record payment
-        const amount = session.amount_total ?? 500;
         await storage.createPaymentRecord({
           familyId: family.id,
           userId: user.id,
           amount,
           paymentMethod: "stripe",
-          description: "Family account annual subscription",
+          description: isMonthly ? "Family account monthly subscription" : "Family account annual subscription",
           stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : (session.payment_intent as any)?.id,
           status: "completed",
         });

@@ -1681,9 +1681,15 @@ export function UserHeader() {
                         Subscription Amount
                       </span>
                       <span className="font-medium">
-                        {accountInfo.subscriptionAmount
-                          ? `$${(accountInfo.subscriptionAmount / 100).toFixed(2)}${accountInfo.subscriptionAmount === 199 ? "/mo" : "/yr"}`
-                          : "—"}
+                        {(() => {
+                          const latest = accountInfo.paymentHistory[0];
+                          const amt = latest?.amount ?? accountInfo.subscriptionAmount;
+                          if (amt == null) return "—";
+                          if (amt === 0) return "Free (promo)";
+                          if (amt === 199) return "$1.99 / month";
+                          if (amt === 1999) return "$19.99 / year";
+                          return `$${(amt / 100).toFixed(2)}`;
+                        })()}
                       </span>
                     </div>
                   </>
@@ -1731,12 +1737,11 @@ export function UserHeader() {
               {accountInfo.isParent && accountInfo.accountType === 'family_parent' && (() => {
                 const isVerified = accountInfo.vpcStatus === 'verified';
                 const isActive = isVerified && accountInfo.subscriptionExpiresAt && new Date(accountInfo.subscriptionExpiresAt) > new Date();
-                if (isActive) return null;
                 const isPending = !isVerified;
                 return (
                   <div className="pt-4 border-t space-y-3">
                     <p className="text-sm font-medium">
-                      {isPending ? "Activate Your Subscription" : "Subscription Expired — Renew"}
+                      {isPending ? "Activate Your Subscription" : isActive ? "Renew Subscription Early" : "Subscription Expired — Renew"}
                     </p>
                     <div className="flex gap-2">
                       <Button
@@ -1772,7 +1777,7 @@ export function UserHeader() {
                       ) : (
                         <>
                           <CreditCard className="w-4 h-4 mr-2" />
-                          {isPending ? "Complete Subscription" : "Renew via Stripe"}
+                          {isPending ? "Complete Subscription" : isActive ? "Renew Early via Stripe" : "Renew via Stripe"}
                         </>
                       )}
                     </Button>
