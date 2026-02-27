@@ -4105,6 +4105,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastPaymentMethod: family.lastPaymentMethod,
         subscriptionAmount: family.subscriptionAmount,
         vpcStatus: family.vpcStatus,
+        autoRenew: family.autoRenew,
+        stripeSubscriptionId: family.stripeSubscriptionId,
         isParent: familyMember.role === 'parent',
         paymentHistory: paymentHistory.map(p => ({
           id: p.id,
@@ -4121,6 +4123,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Toggle auto-renewal on/off (parent only)
+  app.post("/api/family/auto-renew", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const { autoRenew } = req.body;
+      if (typeof autoRenew !== 'boolean') return res.status(400).json({ error: "autoRenew must be a boolean" });
+
+      const familyMember = await storage.getFamilyMemberByUserId(userId);
+      if (!familyMember || familyMember.role !== "parent") {
+        return res.status(403).json({ error: "Only parents can manage auto-renewal" });
+      }
+
+      const family = await storage.getFamilyAccount(familyMember.familyId);
+      if (!family) return res.status(404).json({ error: "Family account not found" });
+
+      if (family.stripeSubscriptionId) {
+        const { getUncachableStripeClient } = await import("./stripeClient");
+        const stripe = await getUncachableStripeClient();
+        if (autoRenew) {
+          // Re-enable renewal: unset cancel_at_period_end
+          await stripe.subscriptions.update(family.stripeSubscriptionId, { cancel_at_period_end: false });
+        } else {
+          // Disable renewal: cancel at period end (keeps access until expiry)
+          await stripe.subscriptions.update(family.stripeSubscriptionId, { cancel_at_period_end: true });
+        }
+      }
+
+      await storage.updateFamilyAccount(family.id, { autoRenew });
+      res.json({ success: true, autoRenew });
+    } catch (error: any) {
+      console.error("Error updating auto-renewal:", error);
+      res.status(500).json({ error: error.message || "Failed to update auto-renewal" });
+    }
+  });
+
   // Renew subscription (parent only) - stubbed for Stripe
   app.post("/api/family/renew", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
@@ -4842,7 +4879,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // promoCode: optional discount code
   app.post("/api/stripe/create-checkout", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {
-      const { type, promoCode, priceInterval } = req.body;
+      const { type, promoCode, priceInterval, autoRenew } = req.body;
       const user = req.user as any;
       if (!["family_subscription", "school_verification"].includes(type)) {
         return res.status(400).json({ error: "Invalid checkout type" });
@@ -4959,7 +4996,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mode: isSubscription ? "subscription" : "payment",
         success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}&type=${type}`,
         cancel_url: `${baseUrl}/${type === "family_subscription" ? "family/signup" : "school/signup"}`,
-        metadata: { userId: String(user.id), type, promoCode: promoCode || "" },
+        metadata: { userId: String(user.id), type, promoCode: promoCode || "", autoRenew: autoRenew === false ? "false" : "true" },
       };
       if (discounts) sessionParams.discounts = discounts;
 
@@ -4987,6 +5024,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = req.user as any;
       const promoCode = session.metadata?.promoCode;
+      const autoRenew = session.metadata?.autoRenew !== "false";
 
       if (type === "family_subscription") {
         const family = await storage.getFamilyAccountByParentId(user.id);
@@ -5003,12 +5041,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           expiresAt.setFullYear(expiresAt.getFullYear() + 1);
         }
 
+        // If user opted out of auto-renewal, cancel the Stripe subscription at period end
+        if (!autoRenew && subscriptionId) {
+          const stripe = await getUncachableStripeClient();
+          await stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: true });
+        }
+
         await storage.updateFamilyAccount(family.id, {
           vpcStatus: "verified",
           stripeSubscriptionId: subscriptionId || null,
           subscriptionExpiresAt: expiresAt,
           lastPaymentMethod: "stripe",
           subscriptionAmount: amount,
+          autoRenew,
         });
 
         // Record payment

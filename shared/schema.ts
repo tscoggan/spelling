@@ -243,6 +243,7 @@ export const familyAccounts = pgTable("family_accounts", {
   vpcVerifiedAt: timestamp("vpc_verified_at"),
   subscriptionExpiresAt: timestamp("subscription_expires_at"),
   lastPaymentMethod: text("last_payment_method"),
+  autoRenew: boolean("auto_renew").notNull().default(true),
 });
 
 export const familyMembers = pgTable("family_members", {

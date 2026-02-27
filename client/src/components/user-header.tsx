@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { LogOut, Bell, Settings, Volume2, HelpCircle, Mail, BookOpen, Trophy, Gamepad2, List, Send, UserCircle, Palette, Lock, ShoppingCart, Info, CreditCard, Calendar, DollarSign } from "lucide-react";
+import { LogOut, Bell, Settings, Volume2, HelpCircle, Mail, BookOpen, Trophy, Gamepad2, List, Send, UserCircle, Palette, Lock, ShoppingCart, Info, CreditCard, Calendar, DollarSign, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useGuestSession } from "@/hooks/use-guest-session";
 import { useTheme } from "@/hooks/use-theme";
@@ -135,6 +135,8 @@ export function UserHeader() {
     lastPaymentMethod: string | null;
     subscriptionAmount: number | null;
     vpcStatus?: string;
+    autoRenew: boolean;
+    stripeSubscriptionId: string | null;
     isParent: boolean;
     paymentHistory: {
       id: number;
@@ -173,6 +175,20 @@ export function UserHeader() {
         description: error.message || "Unable to start checkout. Please try again.",
         variant: "destructive",
       });
+    },
+  });
+
+  const autoRenewMutation = useMutation({
+    mutationFn: async (autoRenew: boolean) => {
+      const res = await apiRequest("POST", "/api/family/auto-renew", { autoRenew });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/family/account", user?.id] });
+      toast({ title: "Auto-renewal updated" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to update auto-renewal", description: error.message, variant: "destructive" });
     },
   });
 
@@ -1696,6 +1712,26 @@ export function UserHeader() {
                 )}
               </div>
               
+              {accountInfo.isParent && accountInfo.accountType === 'family_parent' && accountInfo.vpcStatus === 'verified' && (
+                <div className="pt-2 border-t">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-sm">
+                      <RefreshCw className="w-4 h-4 text-muted-foreground" />
+                      <span className="font-medium">Auto-renewal</span>
+                      <span className="text-xs text-muted-foreground">
+                        {accountInfo.autoRenew ? "— renews automatically" : "— will not renew"}
+                      </span>
+                    </div>
+                    <Switch
+                      checked={accountInfo.autoRenew}
+                      onCheckedChange={(checked) => autoRenewMutation.mutate(checked)}
+                      disabled={autoRenewMutation.isPending}
+                      data-testid="switch-auto-renew"
+                    />
+                  </div>
+                </div>
+              )}
+
               {accountInfo.paymentHistory.length > 0 && (
                 <div className="space-y-3">
                   <h4 className="font-semibold flex items-center gap-2">

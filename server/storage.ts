@@ -259,6 +259,8 @@ export interface IStorage {
   createFamilyAccount(parentUserId: number): Promise<FamilyAccount>;
   getFamilyAccount(id: number): Promise<FamilyAccount | undefined>;
   getFamilyAccountByParentId(parentUserId: number): Promise<FamilyAccount | undefined>;
+  getFamilyAccountByStripeSubscriptionId(subscriptionId: string): Promise<FamilyAccount | undefined>;
+  getFamilyAccountByStripeCustomerId(customerId: string): Promise<FamilyAccount | undefined>;
   updateFamilyAccount(id: number, updates: Partial<FamilyAccount>): Promise<FamilyAccount | undefined>;
   deleteFamilyAccount(id: number): Promise<boolean>;
   verifyFamilyVpc(familyId: number): Promise<FamilyAccount | undefined>;
@@ -2565,6 +2567,16 @@ export class DatabaseStorage implements IStorage {
 
   async getFamilyAccountByParentId(parentUserId: number): Promise<FamilyAccount | undefined> {
     const [family] = await db.select().from(familyAccounts).where(eq(familyAccounts.primaryParentUserId, parentUserId));
+    return family || undefined;
+  }
+
+  async getFamilyAccountByStripeSubscriptionId(subscriptionId: string): Promise<FamilyAccount | undefined> {
+    const [family] = await db.select().from(familyAccounts).where(eq(familyAccounts.stripeSubscriptionId, subscriptionId));
+    return family || undefined;
+  }
+
+  async getFamilyAccountByStripeCustomerId(customerId: string): Promise<FamilyAccount | undefined> {
+    const [family] = await db.select().from(familyAccounts).where(eq(familyAccounts.stripeCustomerId, customerId));
     return family || undefined;
   }
 

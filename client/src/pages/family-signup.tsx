@@ -9,7 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Home, Users, CreditCard, CheckCircle, Loader2, ArrowRight, ArrowLeft, Tag, ExternalLink } from "lucide-react";
+import { Home, Users, CreditCard, CheckCircle, Loader2, ArrowRight, ArrowLeft, Tag, ExternalLink, RefreshCw } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -57,6 +58,7 @@ export default function FamilySignupPage() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [familyData, setFamilyData] = useState<FamilySignupResponse | null>(null);
   const [priceInterval, setPriceInterval] = useState<"month" | "year">("year");
+  const [autoRenew, setAutoRenew] = useState(true);
   const [promoCode, setPromoCode] = useState(() => {
     const params = new URLSearchParams(search);
     return params.get("promo") || "";
@@ -116,6 +118,7 @@ export default function FamilySignupPage() {
         type: "family_subscription",
         priceInterval,
         promoCode: promoValid?.code || undefined,
+        autoRenew,
       });
       return response.json() as Promise<{ url: string }>;
     },
@@ -431,6 +434,31 @@ export default function FamilySignupPage() {
                 </div>
                 {promoValid && <p className="text-sm text-green-600 dark:text-green-400">{promoValid.discountPercent}% discount applied!</p>}
                 {promoError && <p className="text-sm text-destructive">{promoError}</p>}
+              </div>
+
+              {/* Auto-renewal opt-in */}
+              <div
+                className="flex items-start gap-3 p-3 rounded-md border cursor-pointer"
+                onClick={() => setAutoRenew(v => !v)}
+                data-testid="checkbox-auto-renew-container"
+              >
+                <Checkbox
+                  id="auto-renew"
+                  checked={autoRenew}
+                  onCheckedChange={(checked) => setAutoRenew(checked === true)}
+                  data-testid="checkbox-auto-renew"
+                  className="mt-0.5"
+                />
+                <div>
+                  <label htmlFor="auto-renew" className="text-sm font-medium cursor-pointer flex items-center gap-1.5">
+                    <RefreshCw className="w-3.5 h-3.5" /> Auto-renew my subscription
+                  </label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {autoRenew
+                      ? `Your card will be charged automatically each ${priceInterval === "month" ? "month" : "year"}. You can turn this off anytime from your account.`
+                      : "Your subscription will end on the expiry date and will not be renewed automatically."}
+                  </p>
+                </div>
               </div>
 
               <div className="flex gap-3">
