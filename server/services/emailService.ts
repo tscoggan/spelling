@@ -13,22 +13,34 @@ function getResendClient() {
   };
 }
 
+function getAppDomain() {
+  const domain = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
+  const protocol = process.env.REPLIT_DOMAINS ? 'https' : 'http';
+  return `${protocol}://${domain}`;
+}
+
+function emailHeader(bgColor = 'linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff)') {
+  const logoUrl = `${getAppDomain()}/images/spelling-playground-title.png`;
+  return `
+    <div style="background: ${bgColor}; padding: 20px 30px; text-align: center; border-radius: 8px 8px 0 0;">
+      <img src="${logoUrl}" alt="Spelling Playground" width="260" style="display: block; margin: 0 auto; max-width: 100%; height: auto;" />
+    </div>
+  `;
+}
+
 export async function sendPasswordResetEmail(
   toEmail: string, 
   username: string, 
   resetToken: string
 ): Promise<void> {
   const { client, fromEmail } = getResendClient();
-  
-  // Get the correct Replit domain or fallback to localhost for development
-  const domain = process.env.REPLIT_DOMAINS || 'localhost:5000';
-  const protocol = process.env.REPLIT_DOMAINS ? 'https' : 'http';
-  const resetUrl = `${protocol}://${domain}/reset-password?token=${resetToken}`;
+  const baseUrl = getAppDomain();
+  const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
 
   await client.emails.send({
     from: fromEmail,
     to: toEmail,
-    subject: 'Spelling Champions - Password Reset',
+    subject: 'Spelling Playground - Password Reset',
     html: `
       <!DOCTYPE html>
       <html>
@@ -36,19 +48,14 @@ export async function sendPasswordResetEmail(
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff); padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-            .header h1 { color: white; margin: 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
             .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
             .button { display: inline-block; padding: 12px 30px; background: #4f46e5; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
-            .button:hover { background: #4338ca; }
             .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
           </style>
         </head>
         <body>
           <div class="container">
-            <div class="header">
-              <h1>🎯 Spelling Champions</h1>
-            </div>
+            ${emailHeader()}
             <div class="content">
               <h2>Password Reset Request</h2>
               <p>Hi ${username},</p>
@@ -60,10 +67,10 @@ export async function sendPasswordResetEmail(
               <p style="word-break: break-all; background: white; padding: 10px; border-radius: 4px; font-size: 12px;">${resetUrl}</p>
               <p><strong>This link will expire in 1 hour.</strong></p>
               <p>If you didn't request a password reset, you can safely ignore this email.</p>
-              <p>Happy spelling!<br>The Spelling Champions Team</p>
+              <p>Happy spelling!<br>The Spelling Playground Team</p>
             </div>
             <div class="footer">
-              <p>This is an automated message from Spelling Champions. Please do not reply to this email.</p>
+              <p>This is an automated message from Spelling Playground. Please do not reply to this email.</p>
             </div>
           </div>
         </body>
@@ -84,7 +91,7 @@ export async function sendContactEmail(
     from: fromEmail,
     to: toEmail,
     replyTo: email,
-    subject: `Spelling Champions - Feedback from ${name}`,
+    subject: `Spelling Playground - Feedback from ${name}`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -92,8 +99,6 @@ export async function sendContactEmail(
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff); padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-            .header h1 { color: white; margin: 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
             .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
             .message-box { background: white; padding: 15px; border-radius: 4px; border-left: 4px solid #4f46e5; margin: 15px 0; }
             .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
@@ -101,9 +106,7 @@ export async function sendContactEmail(
         </head>
         <body>
           <div class="container">
-            <div class="header">
-              <h1>Spelling Champions - Contact Form</h1>
-            </div>
+            ${emailHeader()}
             <div class="content">
               <h2>New Message Received</h2>
               <p><strong>From:</strong> ${name}</p>
@@ -114,7 +117,7 @@ export async function sendContactEmail(
               </div>
             </div>
             <div class="footer">
-              <p>This message was sent via the Spelling Champions Help form.</p>
+              <p>This message was sent via the Spelling Playground Help form.</p>
             </div>
           </div>
         </body>
@@ -132,7 +135,7 @@ export async function sendEmailUpdateNotification(
   await client.emails.send({
     from: fromEmail,
     to: toEmail,
-    subject: 'Spelling Champions - Email Address Updated',
+    subject: 'Spelling Playground - Email Address Updated',
     html: `
       <!DOCTYPE html>
       <html>
@@ -140,27 +143,23 @@ export async function sendEmailUpdateNotification(
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff); padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-            .header h1 { color: white; margin: 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
             .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
             .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
           </style>
         </head>
         <body>
           <div class="container">
-            <div class="header">
-              <h1>🎯 Spelling Champions</h1>
-            </div>
+            ${emailHeader()}
             <div class="content">
               <h2>Email Address Updated</h2>
               <p>Hi ${username},</p>
               <p>Your email address has been successfully updated to <strong>${toEmail}</strong>.</p>
               <p>You can now use this email address for password resets and account recovery.</p>
               <p>If you didn't make this change, please contact support immediately.</p>
-              <p>Happy spelling!<br>The Spelling Champions Team</p>
+              <p>Happy spelling!<br>The Spelling Playground Team</p>
             </div>
             <div class="footer">
-              <p>This is an automated message from Spelling Champions. Please do not reply to this email.</p>
+              <p>This is an automated message from Spelling Playground. Please do not reply to this email.</p>
             </div>
           </div>
         </body>
@@ -182,17 +181,15 @@ export async function sendFlaggedContentNotification(
   }
 
   const { client, fromEmail } = getResendClient();
-  
-  const domain = process.env.REPLIT_DOMAINS || 'localhost:5000';
-  const protocol = process.env.REPLIT_DOMAINS ? 'https' : 'http';
-  const adminUrl = `${protocol}://${domain}/admin`;
+  const baseUrl = getAppDomain();
+  const adminUrl = `${baseUrl}/admin`;
 
   const contentTypesList = flaggedContentTypes.map(type => `<li>${type}</li>`).join('');
 
   await client.emails.send({
     from: fromEmail,
     to: adminEmails,
-    subject: `Spelling Champions - Content Flagged: "${word}"`,
+    subject: `Spelling Playground - Content Flagged: "${word}"`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -200,8 +197,6 @@ export async function sendFlaggedContentNotification(
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: #ef4444; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-            .header h1 { color: white; margin: 0; }
             .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
             .alert-box { background: white; padding: 15px; border-radius: 4px; border-left: 4px solid #ef4444; margin: 15px 0; }
             .button { display: inline-block; padding: 12px 30px; background: #4f46e5; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
@@ -210,11 +205,9 @@ export async function sendFlaggedContentNotification(
         </head>
         <body>
           <div class="container">
-            <div class="header">
-              <h1>Content Flagged</h1>
-            </div>
+            ${emailHeader()}
             <div class="content">
-              <h2>A user has flagged content for review</h2>
+              <h2 style="color: #ef4444;">Content Flagged for Review</h2>
               <div class="alert-box">
                 <p><strong>Word:</strong> ${word}</p>
                 <p><strong>Game Mode:</strong> ${gameMode}</p>
@@ -228,7 +221,7 @@ export async function sendFlaggedContentNotification(
               </p>
             </div>
             <div class="footer">
-              <p>This is an automated message from Spelling Champions.</p>
+              <p>This is an automated message from Spelling Playground.</p>
             </div>
           </div>
         </body>
@@ -248,9 +241,8 @@ export async function sendPromoCodeEmail(
 ): Promise<void> {
   const { client, fromEmail } = getResendClient();
 
-  const domain = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
-  const protocol = process.env.REPLIT_DOMAINS ? 'https' : 'http';
-  const signupUrl = `${protocol}://${domain}/family/signup`;
+  const baseUrl = getAppDomain();
+  const signupUrl = `${baseUrl}/family/signup`;
 
   const expiryNote = promoCode.expiresAt
     ? `<p style="color:#888;font-size:13px;">This code expires on <strong>${new Date(promoCode.expiresAt).toLocaleDateString()}</strong>.</p>`
@@ -271,8 +263,6 @@ export async function sendPromoCodeEmail(
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff); padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-            .header h1 { color: white; margin: 0; font-size: 28px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
             .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
             .code-box { background: white; border: 2px dashed #4f46e5; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0; }
             .code { font-family: monospace; font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #4f46e5; }
@@ -286,9 +276,7 @@ export async function sendPromoCodeEmail(
         </head>
         <body>
           <div class="container">
-            <div class="header">
-              <h1>Spelling Playground</h1>
-            </div>
+            ${emailHeader()}
             <div class="content">
               <h2>You have a special discount!</h2>
               <p>Here is your exclusive promo code for a Spelling Playground Family account:</p>
@@ -346,8 +334,8 @@ export async function sendAccountDeletionEmail(
   
   const groupLabel = groupType === 'family' ? 'family' : groupType === 'school' ? 'school' : 'account';
   const subject = isEntireGroup 
-    ? `Spelling Champions - ${groupType === 'family' ? 'Family' : 'School'} Account Deleted`
-    : 'Spelling Champions - Account Deleted';
+    ? `Spelling Playground - ${groupType === 'family' ? 'Family' : 'School'} Account Deleted`
+    : 'Spelling Playground - Account Deleted';
   
   const headerText = isEntireGroup
     ? `Your ${groupLabel} account has been deleted`
@@ -364,8 +352,6 @@ export async function sendAccountDeletionEmail(
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff); padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-            .header h1 { color: white; margin: 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
             .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
             .deleted-list { background: white; padding: 15px; border-radius: 4px; border-left: 4px solid #ef4444; margin: 15px 0; }
             .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
@@ -373,13 +359,11 @@ export async function sendAccountDeletionEmail(
         </head>
         <body>
           <div class="container">
-            <div class="header">
-              <h1>Spelling Champions</h1>
-            </div>
+            ${emailHeader()}
             <div class="content">
               <h2>${headerText}</h2>
               <p>Hi ${username},</p>
-              <p>This is a confirmation that the following account${deletedUsers.length > 1 ? 's have' : ' has'} been permanently deleted from Spelling Champions:</p>
+              <p>This is a confirmation that the following account${deletedUsers.length > 1 ? 's have' : ' has'} been permanently deleted from Spelling Playground:</p>
               <div class="deleted-list">
                 <ul>
                   ${deletedUsersList}
@@ -387,10 +371,10 @@ export async function sendAccountDeletionEmail(
               </div>
               <p>All associated data including game sessions, scores, word lists, and achievements have been removed.</p>
               <p>If you did not authorize this action, please contact support immediately.</p>
-              <p>Thank you for using Spelling Champions.</p>
+              <p>Thank you for using Spelling Playground.</p>
             </div>
             <div class="footer">
-              <p>This is an automated message from Spelling Champions. Please do not reply to this email.</p>
+              <p>This is an automated message from Spelling Playground. Please do not reply to this email.</p>
             </div>
           </div>
         </body>
