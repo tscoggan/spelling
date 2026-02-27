@@ -5180,6 +5180,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get usage records for a promo code (admin only)
+  app.get("/api/admin/promo-codes/:id/usages", async (req, res) => {
+    try {
+      if (!req.user || (req.user as any).role !== "admin") return res.status(403).json({ error: "Admin access required" });
+      const id = parseInt(req.params.id);
+      const usages = await storage.getPromoCodeUsages(id);
+      res.json(usages);
+    } catch (error) {
+      console.error("Error fetching promo code usages:", error);
+      res.status(500).json({ error: "Failed to fetch usages" });
+    }
+  });
+
   // Validate a promo code (any authenticated user, used at checkout)
   app.post("/api/promo-codes/validate", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {

@@ -301,6 +301,7 @@ export interface IStorage {
   updatePromoCode(id: number, data: Partial<PromoCode>): Promise<PromoCode | undefined>;
   deletePromoCode(id: number): Promise<void>;
   recordPromoCodeUsage(codeId: number, userId?: number): Promise<void>;
+  getPromoCodeUsages(codeId: number): Promise<{ id: number; userId: number | null; username: string | null; usedAt: Date }[]>;
 
   sessionStore: session.Store;
 }
@@ -2933,6 +2934,21 @@ export class DatabaseStorage implements IStorage {
     await db.update(promoCodes)
       .set({ usesCount: sql`${promoCodes.usesCount} + 1` })
       .where(eq(promoCodes.id, codeId));
+  }
+
+  async getPromoCodeUsages(codeId: number): Promise<{ id: number; userId: number | null; username: string | null; usedAt: Date }[]> {
+    const rows = await db
+      .select({
+        id: promoCodeUsages.id,
+        userId: promoCodeUsages.userId,
+        username: users.username,
+        usedAt: promoCodeUsages.usedAt,
+      })
+      .from(promoCodeUsages)
+      .leftJoin(users, eq(promoCodeUsages.userId, users.id))
+      .where(eq(promoCodeUsages.codeId, codeId))
+      .orderBy(promoCodeUsages.usedAt);
+    return rows;
   }
 }
 

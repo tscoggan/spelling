@@ -266,11 +266,23 @@ export default function AdminPage() {
   // Promo codes state
   const [promoForm, setPromoForm] = useState({ discountPercent: 10, codeType: "one_time", expiresAt: "" });
   const [createPromoOpen, setCreatePromoOpen] = useState(false);
+  const [promoUsagesFor, setPromoUsagesFor] = useState<PromoCode | null>(null);
 
   interface PromoCode { id: number; code: string; discountPercent: number; codeType: string; usesCount: number; isActive: boolean; expiresAt: string | null; createdAt: string; }
+  interface PromoUsage { id: number; userId: number | null; username: string | null; usedAt: string; }
 
   const { data: promoCodes = [], isLoading: isLoadingPromos } = useQuery<PromoCode[]>({
     queryKey: ['/api/admin/promo-codes'],
+  });
+
+  const { data: promoUsages = [], isLoading: isLoadingUsages } = useQuery<PromoUsage[]>({
+    queryKey: ['/api/admin/promo-codes', promoUsagesFor?.id, 'usages'],
+    queryFn: async () => {
+      if (!promoUsagesFor) return [];
+      const res = await fetch(`/api/admin/promo-codes/${promoUsagesFor.id}/usages`);
+      return res.json();
+    },
+    enabled: !!promoUsagesFor,
   });
 
   const createPromoMutation = useMutation({
@@ -579,7 +591,7 @@ export default function AdminPage() {
       ></div>
       <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
 
-      <div className="max-w-6xl mx-auto space-y-6 relative z-10">
+      <div className="max-w-7xl mx-auto space-y-6 relative z-10">
         <UserHeader />
         <header className="flex items-center justify-start mb-4">
           <Button
@@ -1192,7 +1204,8 @@ export default function AdminPage() {
                       <TableBody>
                         {promoCodes.map((promo) => {
                           const isExpired = promo.expiresAt ? new Date(promo.expiresAt) < new Date() : false;
-                          const effectivelyActive = promo.isActive && !isExpired;
+                          const isUsedUp = promo.codeType === "one_time" && promo.usesCount >= 1;
+                          const effectivelyActive = promo.isActive && !isExpired && !isUsedUp;
                           return (
                             <TableRow key={promo.id} data-testid={`row-promo-${promo.id}`}>
                               <TableCell>
@@ -1220,11 +1233,21 @@ export default function AdminPage() {
                               </TableCell>
                               <TableCell>
                                 <Badge variant={effectivelyActive ? "default" : "secondary"} className="text-xs">
-                                  {effectivelyActive ? "Active" : isExpired ? "Expired" : "Disabled"}
+                                  {effectivelyActive ? "Active" : isExpired ? "Expired" : isUsedUp ? "Used" : "Disabled"}
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex items-center justify-end gap-1">
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7"
+                                    title="View usage"
+                                    onClick={() => setPromoUsagesFor(promo)}
+                                    data-testid={`button-usages-promo-${promo.id}`}
+                                  >
+                                    <Users className="w-3 h-3" />
+                                  </Button>
                                   <Button
                                     size="icon"
                                     variant="ghost"
@@ -1382,7 +1405,7 @@ export default function AdminPage() {
                               </TableCell>
                               <TableCell>
                                 <Badge variant="outline" className="capitalize">
-                                  {user.accountType.replace(/_/g, ' ')}
+                                  {user.accountType === 'family_parent' ? 'Family' : user.accountType === 'family_child' ? 'Family (child)' : user.accountType.replace(/_/g, ' ')}
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-right">{user.stars}</TableCell>
@@ -1499,7 +1522,7 @@ export default function AdminPage() {
                                   </TableCell>
                                   <TableCell>
                                     <Badge variant="outline" className="capitalize">
-                                      {group.parentUser.accountType.replace(/_/g, ' ')}
+                                      {group.parentUser.accountType === 'family_parent' ? 'Family' : group.parentUser.accountType === 'family_child' ? 'Family (child)' : group.parentUser.accountType.replace(/_/g, ' ')}
                                     </Badge>
                                   </TableCell>
                                   <TableCell className="text-right">{group.parentUser.stars}</TableCell>
@@ -1811,6 +1834,48 @@ export default function AdminPage() {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!promoUsagesFor} onOpenChange={(open) => { if (!open) setPromoUsagesFor(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              Usage — <code className="font-mono font-bold tracking-widest">{promoUsagesFor?.code}</code>
+            </DialogTitle>
+            <DialogDescription>
+              {promoUsagesFor?.codeType === "one_time" ? "One-time code" : "Ongoing code"} &bull; {promoUsagesFor?.usesCount ?? 0} use{(promoUsagesFor?.usesCount ?? 0) !== 1 ? "s" : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            {isLoadingUsages ? (
+              <div className="flex justify-center py-6"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+            ) : promoUsages.length === 0 ? (
+              <p className="text-center text-muted-foreground py-6 text-sm">No uses recorded yet.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Used At</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {promoUsages.map((u) => (
+                    <TableRow key={u.id}>
+                      <TableCell className="font-medium">
+                        {u.username ?? <span className="text-muted-foreground italic">Guest</span>}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date(u.usedAt).toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
