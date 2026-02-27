@@ -5032,6 +5032,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
+        // Send payment receipt email
+        if (user.email) {
+          try {
+            const { sendPaymentReceiptEmail } = await import('./services/emailService.js');
+            await sendPaymentReceiptEmail(user.email, {
+              username: user.username,
+              firstName: user.firstName || null,
+              amountCents: amount,
+              description: isMonthly ? "Family account monthly subscription" : "Family account annual subscription",
+              planType: isMonthly ? "monthly" : "annual",
+              expiresAt,
+              paymentDate: new Date(),
+            });
+          } catch (emailErr) {
+            console.error("Failed to send payment receipt email:", emailErr);
+          }
+        }
+
         return res.json({ success: true, accountType: "family" });
       }
 
@@ -5066,6 +5084,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const isUsedUp = promo?.codeType === "one_time" && (promo?.usesCount ?? 0) >= 1;
           if (promo && promo.isActive && !isExpired && !isUsedUp) {
             await storage.recordPromoCodeUsage(promo.id, user.id);
+          }
+        }
+
+        // Send payment receipt email
+        if (user.email) {
+          try {
+            const { sendPaymentReceiptEmail } = await import('./services/emailService.js');
+            await sendPaymentReceiptEmail(user.email, {
+              username: user.username,
+              firstName: user.firstName || null,
+              amountCents: amount,
+              description: "School adult verification",
+              planType: "school_verification",
+              expiresAt: subscriptionExpiresAt,
+              paymentDate: new Date(),
+            });
+          } catch (emailErr) {
+            console.error("Failed to send payment receipt email:", emailErr);
           }
         }
 

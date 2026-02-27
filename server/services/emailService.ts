@@ -381,3 +381,106 @@ export async function sendAccountDeletionEmail(
     `,
   });
 }
+
+export async function sendPaymentReceiptEmail(
+  toEmail: string,
+  details: {
+    username: string;
+    firstName: string | null;
+    amountCents: number;
+    description: string;
+    planType: "monthly" | "annual" | "school_verification";
+    expiresAt: Date;
+    paymentDate: Date;
+  }
+): Promise<void> {
+  const { client, fromEmail } = getResendClient();
+  const baseUrl = getAppDomain();
+
+  const displayName = details.firstName || details.username;
+  const amountDollars = (details.amountCents / 100).toFixed(2);
+  const paymentDateStr = details.paymentDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const expiresDateStr = details.expiresAt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  const planLabel =
+    details.planType === 'monthly' ? 'Family — Monthly Plan' :
+    details.planType === 'annual'  ? 'Family — Annual Plan' :
+                                     'School — Adult Verification';
+
+  const renewalNote =
+    details.planType === 'monthly'
+      ? 'Your subscription renews monthly. You can manage it anytime from your account.'
+      : details.planType === 'annual'
+      ? 'Your subscription renews annually. You can manage it anytime from your account.'
+      : 'Your school account is now active for one year.';
+
+  await client.emails.send({
+    from: fromEmail,
+    to: toEmail,
+    subject: `Your Spelling Playground receipt — $${amountDollars}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+            .receipt-box { background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0; }
+            .receipt-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-size: 15px; }
+            .receipt-row:last-child { border-bottom: none; }
+            .label { color: #6b7280; }
+            .value { color: #111; text-align: right; }
+            .amount { color: #16a34a; font-size: 32px; font-weight: bold; text-align: center; margin: 12px 0 4px; }
+            .plan-badge { display: inline-block; background: #4f46e5; color: white; border-radius: 20px; padding: 4px 14px; font-size: 13px; font-weight: bold; margin-bottom: 16px; }
+            .button { display: inline-block; padding: 12px 32px; background: #4f46e5; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #888; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            ${emailHeader()}
+            <div class="content">
+              <h2 style="margin-top:0;">Thanks, ${displayName}!</h2>
+              <p>Your payment was successful. Here is your receipt.</p>
+
+              <div class="receipt-box">
+                <div style="text-align:center;">
+                  <div class="amount">$${amountDollars}</div>
+                  <div><span class="plan-badge">${planLabel}</span></div>
+                </div>
+
+                <div class="receipt-row">
+                  <span class="label">Date</span>
+                  <span class="value">${paymentDateStr}</span>
+                </div>
+                <div class="receipt-row">
+                  <span class="label">Description</span>
+                  <span class="value">${details.description}</span>
+                </div>
+                <div class="receipt-row">
+                  <span class="label">Payment method</span>
+                  <span class="value">Card (Stripe)</span>
+                </div>
+                <div class="receipt-row">
+                  <span class="label">Access expires</span>
+                  <span class="value">${expiresDateStr}</span>
+                </div>
+              </div>
+
+              <p style="color:#555;font-size:14px;">${renewalNote}</p>
+
+              <p style="text-align:center;">
+                <a href="${baseUrl}/" class="button">Go to Spelling Playground</a>
+              </p>
+            </div>
+            <div class="footer">
+              <p>This receipt was generated automatically. Please keep it for your records.<br>
+              Questions? Contact us at <a href="mailto:support@spellingplayground.com" style="color:#4f46e5;">support@spellingplayground.com</a>.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  });
+}
