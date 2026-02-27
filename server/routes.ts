@@ -5018,10 +5018,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: "completed",
         });
 
-        // Record promo code usage
+        // Record promo code usage (re-validate at time of redemption)
         if (promoCode) {
           const promo = await storage.getPromoCodeByCode(promoCode);
-          if (promo) await storage.recordPromoCodeUsage(promo.id, user.id);
+          const isExpired = promo?.expiresAt ? new Date(promo.expiresAt) < new Date() : false;
+          const isUsedUp = promo?.codeType === "one_time" && (promo?.usesCount ?? 0) >= 1;
+          if (promo && promo.isActive && !isExpired && !isUsedUp) {
+            await storage.recordPromoCodeUsage(promo.id, user.id);
+          }
         }
 
         return res.json({ success: true, accountType: "family" });
@@ -5054,7 +5058,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (promoCode) {
           const promo = await storage.getPromoCodeByCode(promoCode);
-          if (promo) await storage.recordPromoCodeUsage(promo.id, user.id);
+          const isExpired = promo?.expiresAt ? new Date(promo.expiresAt) < new Date() : false;
+          const isUsedUp = promo?.codeType === "one_time" && (promo?.usesCount ?? 0) >= 1;
+          if (promo && promo.isActive && !isExpired && !isUsedUp) {
+            await storage.recordPromoCodeUsage(promo.id, user.id);
+          }
         }
 
         return res.json({ success: true, accountType: "school" });
