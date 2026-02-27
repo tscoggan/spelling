@@ -4993,11 +4993,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!family) return res.status(404).json({ error: "Family account not found" });
 
         const subscriptionId = (session.subscription as any)?.id;
-        const expiresAt = new Date();
-        expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-
         const amount = session.amount_total ?? 0;
         const isMonthly = amount === 199;
+
+        const expiresAt = new Date();
+        if (isMonthly) {
+          expiresAt.setMonth(expiresAt.getMonth() + 1);
+        } else {
+          expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+        }
 
         await storage.updateFamilyAccount(family.id, {
           vpcStatus: "verified",
