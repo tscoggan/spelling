@@ -59,7 +59,10 @@ export default function FamilySignupPage() {
   
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [familyData, setFamilyData] = useState<FamilySignupResponse | null>(null);
-  const [priceInterval, setPriceInterval] = useState<"month" | "year">("year");
+  const [priceInterval, setPriceInterval] = useState<"month" | "year">(() => {
+    const params = new URLSearchParams(search);
+    return params.get("plan") === "month" ? "month" : "year";
+  });
   const [autoRenew, setAutoRenew] = useState(true);
   const [promoCode, setPromoCode] = useState(() => {
     const params = new URLSearchParams(search);
@@ -390,7 +393,8 @@ export default function FamilySignupPage() {
               <div className="bg-muted p-4 rounded-lg space-y-1">
                 <p className="text-sm font-medium">Account created for:</p>
                 <p className="text-sm text-muted-foreground">
-                  {familyData?.user.firstName} {familyData?.user.lastName} ({familyData?.user.email})
+                  {familyData?.user.firstName ?? user?.firstName} {familyData?.user.lastName ?? user?.lastName}
+                  {(familyData?.user.email ?? (user as any)?.email) && ` (${familyData?.user.email ?? (user as any)?.email})`}
                 </p>
               </div>
 

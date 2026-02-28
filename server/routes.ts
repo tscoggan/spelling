@@ -4977,10 +4977,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (promoCode) {
         const promo = await storage.getPromoCodeByCode(promoCode.trim());
         if (promo && promo.isActive && !(promo.expiresAt && new Date(promo.expiresAt) < new Date()) && !(promo.codeType === "one_time" && promo.usesCount >= 1)) {
-          // Use "once" duration so the coupon applies to the initial checkout invoice and Stripe shows the reduced amount
+          // Use "forever" for subscriptions so the discount is permanent; "once" for one-time payments
           const coupon = await stripe.coupons.create({
             percent_off: promo.discountPercent,
-            duration: "once",
+            duration: type === "family_subscription" ? "forever" : "once",
             name: `Promo: ${promo.code}`,
             metadata: { promoCodeId: String(promo.id), promoCode: promo.code },
           });
@@ -4995,7 +4995,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         line_items: [{ price: priceId, quantity: 1 }],
         mode: isSubscription ? "subscription" : "payment",
         success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}&type=${type}`,
-        cancel_url: `${baseUrl}/${type === "family_subscription" ? "family/signup" : "school/signup"}`,
+        cancel_url: (() => {
+          if (type === "family_subscription") {
+            const params = new URLSearchParams();
+            if (promoCode) params.set("promo", promoCode);
+            if (priceInterval) params.set("plan", priceInterval === "month" ? "month" : "year");
+            const qs = params.toString();
+            return `${baseUrl}/family/signup${qs ? `?${qs}` : ""}`;
+          }
+          return `${baseUrl}/school/signup`;
+        })(),
         metadata: { userId: String(user.id), type, promoCode: promoCode || "", autoRenew: autoRenew === false ? "false" : "true" },
       };
       if (discounts) sessionParams.discounts = discounts;
