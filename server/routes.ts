@@ -4107,6 +4107,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         vpcStatus: family.vpcStatus,
         autoRenew: family.autoRenew,
         stripeSubscriptionId: family.stripeSubscriptionId,
+        emailVerifiedAt: family.emailVerifiedAt,
+        legalAcceptedAt: family.legalAcceptedAt,
         isParent: familyMember.role === 'parent',
         paymentHistory: paymentHistory.map(p => ({
           id: p.id,
@@ -4122,7 +4124,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch account info" });
     }
   });
-  
+
+  // Send email verification code
+  app.post("/api/family/send-email-verification", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const dbUser = await storage.getUser(user.id);
+      if (!dbUser?.email) return res.status(400).json({ error: "No email on file" });
+
+      const { generateVerificationCode, storeVerificationCode } = await import("./services/emailVerification.js");
+      const { sendEmailVerificationCode } = await import("./services/emailService.js");
+      const code = generateVerificationCode();
+      storeVerificationCode(user.id, dbUser.email, code);
+      await sendEmailVerificationCode(dbUser.email, dbUser.firstName || null, code);
+      res.json({ sent: true });
+    } catch (err: any) {
+      console.error("[send-email-verification]", err.message);
+      res.status(500).json({ error: "Failed to send verification email" });
+    }
+  });
+
+  // Verify email code and mark email as verified
+  app.post("/api/family/verify-email", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const { code } = req.body;
+      if (!code) return res.status(400).json({ error: "Code is required" });
+
+      const { verifyCode } = await import("./services/emailVerification.js");
+      const result = verifyCode(user.id, code);
+      if (result !== "valid") {
+        const messages: Record<string, string> = {
+          invalid: "Incorrect code. Please try again.",
+          expired: "This code has expired. Please request a new one.",
+          too_many_attempts: "Too many attempts. Please request a new code.",
+        };
+        return res.status(400).json({ error: messages[result] || "Invalid code" });
+      }
+
+      const family = await storage.getFamilyAccountByParentId(user.id);
+      if (!family) return res.status(404).json({ error: "Family account not found" });
+      await storage.updateFamilyAccount(family.id, { emailVerifiedAt: new Date() });
+      res.json({ verified: true });
+    } catch (err: any) {
+      console.error("[verify-email]", err.message);
+      res.status(500).json({ error: "Failed to verify email" });
+    }
+  });
+
+  // Record legal acceptance (ToS + Privacy + Parental Consent)
+  app.post("/api/family/accept-legal", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const family = await storage.getFamilyAccountByParentId(user.id);
+      if (!family) return res.status(404).json({ error: "Family account not found" });
+      if (!family.emailVerifiedAt) return res.status(403).json({ error: "Email must be verified first" });
+
+      const ip = req.headers["x-forwarded-for"] as string || req.socket.remoteAddress || undefined;
+      const userAgent = req.headers["user-agent"] || undefined;
+      await storage.createFamilyLegalAcceptance({ familyId: family.id, userId: user.id, ipAddress: ip, userAgent });
+      await storage.updateFamilyAccount(family.id, { legalAcceptedAt: new Date() });
+      res.json({ accepted: true });
+    } catch (err: any) {
+      console.error("[accept-legal]", err.message);
+      res.status(500).json({ error: "Failed to record legal acceptance" });
+    }
+  });
+
   // Toggle auto-renewal on/off (parent only)
   app.post("/api/family/auto-renew", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {

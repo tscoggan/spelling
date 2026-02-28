@@ -152,10 +152,60 @@ const DOCS: Record<string, DocConfig> = {
       },
     ],
   },
+  "family-tos": {
+    title: "Family Terms of Service",
+    version: "1.0",
+    effectiveDate: "January 1, 2025",
+    icon: FileText,
+    summary:
+      "These terms govern the relationship between Spelling Playground and families (parents and their children) who create accounts on the platform. By creating a family account, you accept these terms.",
+    sections: [
+      {
+        heading: "1. Acceptance of Terms",
+        body: "[Placeholder] By creating a family account and using Spelling Playground, you agree to be bound by these Terms of Service. Use of the platform by you or your children constitutes acceptance of these terms.",
+      },
+      {
+        heading: "2. Parent and Guardian Responsibilities",
+        body: "[Placeholder] The parent or legal guardian is responsible for supervising their children's use of the platform, ensuring that their children's use complies with applicable law and these terms, and for all account activity under the family account.",
+      },
+      {
+        heading: "3. Children's Accounts",
+        body: "[Placeholder] Child accounts may only be created by the parent or legal guardian account holder. Parents are responsible for managing their children's accounts and may delete them at any time.",
+      },
+      {
+        heading: "4. Subscription and Payment",
+        body: "[Placeholder] Family accounts require a paid subscription. Subscriptions automatically renew unless cancelled before the renewal date. Prices are subject to change with 30 days notice. Refunds are handled in accordance with our refund policy.",
+      },
+      {
+        heading: "5. Data Use",
+        body: "[Placeholder] Spelling Playground uses account data solely to provide the educational services described herein. We do not sell or share your children's personal data with third parties for advertising purposes. See our Privacy Policy for full details.",
+      },
+      {
+        heading: "6. COPPA Compliance",
+        body: "[Placeholder] Spelling Playground complies with the Children's Online Privacy Protection Act (COPPA). By creating child accounts, you certify that you are the parent or legal guardian and you consent to the collection of your child's information as described in our Privacy Policy.",
+      },
+      {
+        heading: "7. Acceptable Use",
+        body: "[Placeholder] The platform is for educational use only. You agree not to misuse the platform, create inappropriate content, or use the service in any manner inconsistent with these terms.",
+      },
+      {
+        heading: "8. Termination",
+        body: "[Placeholder] Either party may terminate the account at any time. Upon cancellation, access continues until the end of the paid subscription period. All account data may be requested for export before termination.",
+      },
+      {
+        heading: "9. Limitation of Liability",
+        body: "[Placeholder] Full limitation of liability terms, warranties, and disclaimers will be included in the final version of this document.",
+      },
+      {
+        heading: "10. Contact",
+        body: "[Placeholder] For questions about these terms, contact us at support@spellingplayground.com.",
+      },
+    ],
+  },
 };
 
 interface LegalDocPageProps {
-  docType: "school-tos" | "student-dpa" | "privacy-policy";
+  docType: "school-tos" | "student-dpa" | "privacy-policy" | "family-tos";
 }
 
 export function LegalDocPage({ docType }: LegalDocPageProps) {
@@ -220,3 +270,4 @@ export function LegalDocPage({ docType }: LegalDocPageProps) {
 export function SchoolTosPage() { return <LegalDocPage docType="school-tos" />; }
 export function StudentDpaPage() { return <LegalDocPage docType="student-dpa" />; }
 export function PrivacyPolicyPage() { return <LegalDocPage docType="privacy-policy" />; }
+export function FamilyTosPage() { return <LegalDocPage docType="family-tos" />; }

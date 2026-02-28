@@ -1,5 +1,37 @@
 import { Resend } from 'resend';
 
+export async function sendEmailVerificationCode(
+  toEmail: string,
+  firstName: string | null,
+  code: string
+): Promise<void> {
+  const { client, fromEmail } = getResendClient();
+  const name = firstName || "there";
+  await client.emails.send({
+    from: fromEmail,
+    to: toEmail,
+    subject: "Verify Your Email - Spelling Playground",
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <body style="font-family:sans-serif;background:#f9f9f9;padding:32px;">
+          <div style="max-width:480px;margin:0 auto;background:#fff;border-radius:8px;padding:32px;box-shadow:0 2px 8px rgba(0,0,0,.08);">
+            <h2 style="color:#4f46e5;margin-top:0;">Verify Your Email</h2>
+            <p style="color:#444;">Hi ${name},</p>
+            <p style="color:#444;">To complete your Spelling Playground family account setup, please enter the following verification code:</p>
+            <div style="text-align:center;margin:24px 0;">
+              <span style="display:inline-block;font-size:36px;font-weight:bold;letter-spacing:8px;color:#4f46e5;background:#f0f0ff;padding:12px 24px;border-radius:8px;">${code}</span>
+            </div>
+            <p style="color:#666;font-size:14px;">This code expires in 10 minutes. If you did not create a Spelling Playground account, you can safely ignore this email.</p>
+            <hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
+            <p style="color:#999;font-size:12px;">Spelling Playground &mdash; support@spellingplayground.com</p>
+          </div>
+        </body>
+      </html>
+    `,
+  });
+}
+
 function getResendClient() {
   const apiKey = process.env.RESEND_API_KEY;
   

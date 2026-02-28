@@ -245,6 +245,22 @@ export const familyAccounts = pgTable("family_accounts", {
   lastPaymentMethod: text("last_payment_method"),
   autoRenew: boolean("auto_renew").notNull().default(true),
   renewalReminderSentAt: timestamp("renewal_reminder_sent_at"),
+  emailVerifiedAt: timestamp("email_verified_at"),
+  legalAcceptedAt: timestamp("legal_accepted_at"),
+});
+
+export const familyLegalAcceptances = pgTable("family_legal_acceptances", {
+  id: serial("id").primaryKey(),
+  familyId: integer("family_id").notNull(),
+  userId: integer("user_id").notNull(),
+  tosVersion: text("tos_version").notNull().default("1.0"),
+  privacyVersion: text("privacy_version").notNull().default("1.0"),
+  acceptedTos: boolean("accepted_tos").notNull(),
+  acceptedPrivacy: boolean("accepted_privacy").notNull(),
+  acceptedParentalConsent: boolean("accepted_parental_consent").notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  acceptedAt: timestamp("accepted_at").notNull().defaultNow(),
 });
 
 export const familyMembers = pgTable("family_members", {

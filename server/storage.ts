@@ -64,6 +64,7 @@ import {
   userHiddenWordLists,
   wordListUserShares,
   familyAccounts,
+  familyLegalAcceptances,
   familyMembers,
   paymentHistory,
   schoolAccounts,
@@ -263,6 +264,7 @@ export interface IStorage {
   getFamilyAccountByStripeCustomerId(customerId: string): Promise<FamilyAccount | undefined>;
   updateFamilyAccount(id: number, updates: Partial<FamilyAccount>): Promise<FamilyAccount | undefined>;
   getFamilyAccountsNeedingRenewalReminder(): Promise<FamilyAccount[]>;
+  createFamilyLegalAcceptance(data: { familyId: number; userId: number; ipAddress?: string; userAgent?: string }): Promise<void>;
   deleteFamilyAccount(id: number): Promise<boolean>;
   verifyFamilyVpc(familyId: number): Promise<FamilyAccount | undefined>;
   
@@ -2603,6 +2605,20 @@ export class DatabaseStorage implements IStorage {
         )
       )
     );
+  }
+
+  async createFamilyLegalAcceptance(data: { familyId: number; userId: number; ipAddress?: string; userAgent?: string }): Promise<void> {
+    await db.insert(familyLegalAcceptances).values({
+      familyId: data.familyId,
+      userId: data.userId,
+      tosVersion: "1.0",
+      privacyVersion: "1.0",
+      acceptedTos: true,
+      acceptedPrivacy: true,
+      acceptedParentalConsent: true,
+      ipAddress: data.ipAddress || null,
+      userAgent: data.userAgent || null,
+    });
   }
 
   async deleteFamilyAccount(id: number): Promise<boolean> {

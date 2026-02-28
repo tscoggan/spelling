@@ -24,7 +24,7 @@ import FamilySignupPage from "@/pages/family-signup";
 import FamilyDashboardPage from "@/pages/family-dashboard";
 import SchoolSignupPage from "@/pages/school-signup";
 import SchoolDashboardPage from "@/pages/school-dashboard";
-import { SchoolTosPage, StudentDpaPage, PrivacyPolicyPage } from "@/pages/legal-docs";
+import { SchoolTosPage, StudentDpaPage, PrivacyPolicyPage, FamilyTosPage } from "@/pages/legal-docs";
 import CheckoutSuccessPage from "@/pages/checkout-success";
 import NotFound from "@/pages/not-found";
 import { useEffect, useRef, createContext, useContext } from "react";
@@ -90,6 +90,7 @@ function Router() {
       <Route path="/legal/school-tos" component={SchoolTosPage} />
       <Route path="/legal/student-dpa" component={StudentDpaPage} />
       <Route path="/legal/privacy-policy" component={PrivacyPolicyPage} />
+      <Route path="/legal/family-tos" component={FamilyTosPage} />
       <Route path="/checkout/success" component={CheckoutSuccessPage} />
       <Route component={NotFound} />
     </Switch>
