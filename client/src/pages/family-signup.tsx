@@ -121,6 +121,13 @@ export default function FamilySignupPage() {
     }
   }, [existingAccount, step, setLocation]);
 
+  // Auto-validate promo code when reaching step 4
+  useEffect(() => {
+    if (step === 4 && promoCode && !promoValid && !promoValidating) {
+      validatePromo(promoCode);
+    }
+  }, [step]);
+
   // Resend cooldown timer
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -402,41 +409,41 @@ export default function FamilySignupPage() {
               <div className="space-y-4">
                 <div
                   className="flex items-start gap-3 p-3 rounded-md border cursor-pointer"
-                  onClick={() => setAcceptedTos(v => !v)}
+                  onClick={e => { if ((e.target as HTMLElement).closest('[role="checkbox"]')) return; setAcceptedTos(v => !v); }}
                   data-testid="container-tos"
                 >
-                  <Checkbox id="tos" checked={acceptedTos} onCheckedChange={v => setAcceptedTos(v === true)} className="mt-0.5" data-testid="checkbox-tos" />
-                  <label htmlFor="tos" className="text-sm cursor-pointer leading-snug">
+                  <Checkbox checked={acceptedTos} onCheckedChange={v => setAcceptedTos(v === true)} className="mt-0.5" data-testid="checkbox-tos" />
+                  <span className="text-sm cursor-pointer leading-snug">
                     I agree to the{" "}
                     <a href="/legal/family-tos" target="_blank" rel="noopener noreferrer" className="underline text-primary" onClick={e => e.stopPropagation()}>
                       Terms of Service
                     </a>
-                  </label>
+                  </span>
                 </div>
 
                 <div
                   className="flex items-start gap-3 p-3 rounded-md border cursor-pointer"
-                  onClick={() => setAcceptedPrivacy(v => !v)}
+                  onClick={e => { if ((e.target as HTMLElement).closest('[role="checkbox"]')) return; setAcceptedPrivacy(v => !v); }}
                   data-testid="container-privacy"
                 >
-                  <Checkbox id="privacy" checked={acceptedPrivacy} onCheckedChange={v => setAcceptedPrivacy(v === true)} className="mt-0.5" data-testid="checkbox-privacy" />
-                  <label htmlFor="privacy" className="text-sm cursor-pointer leading-snug">
+                  <Checkbox checked={acceptedPrivacy} onCheckedChange={v => setAcceptedPrivacy(v === true)} className="mt-0.5" data-testid="checkbox-privacy" />
+                  <span className="text-sm cursor-pointer leading-snug">
                     I have read and agree to the{" "}
                     <a href="/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="underline text-primary" onClick={e => e.stopPropagation()}>
                       Privacy Policy
                     </a>
-                  </label>
+                  </span>
                 </div>
 
                 <div
                   className="flex items-start gap-3 p-3 rounded-md border cursor-pointer"
-                  onClick={() => setAcceptedParentalConsent(v => !v)}
+                  onClick={e => { if ((e.target as HTMLElement).closest('[role="checkbox"]')) return; setAcceptedParentalConsent(v => !v); }}
                   data-testid="container-parental-consent"
                 >
-                  <Checkbox id="parental" checked={acceptedParentalConsent} onCheckedChange={v => setAcceptedParentalConsent(v === true)} className="mt-0.5" data-testid="checkbox-parental-consent" />
-                  <label htmlFor="parental" className="text-sm cursor-pointer leading-snug">
+                  <Checkbox checked={acceptedParentalConsent} onCheckedChange={v => setAcceptedParentalConsent(v === true)} className="mt-0.5" data-testid="checkbox-parental-consent" />
+                  <span className="text-sm cursor-pointer leading-snug">
                     I certify that I am the parent or legal guardian of any children who will use this service, and I consent to the collection of my child's information as described in the Privacy Policy.
-                  </label>
+                  </span>
                 </div>
               </div>
 

@@ -3,14 +3,6 @@
 ## Overview
 Spelling Playground is an interactive educational application designed to enhance children's spelling abilities through engaging games. It incorporates text-to-speech, immediate feedback, and a scoring system. The application utilizes custom, user-generated word lists, fostering collaborative learning through leaderboards and list sharing. The project's vision is to deliver a comprehensive and enjoyable platform for spelling development, with recent expansions including user groups, an audio-only crossword puzzle mode, realistic misspelling challenges, and robust content moderation for child safety.
 
-## Version Management
-- Version stored in `app_settings` database table with `APP_VERSION` from `shared/version.ts` as fallback
-- Version displayed in the Help dialog footer
-- Version automatically increments on each production deployment (when app starts in production mode)
-  - Increments the patch version (3rd digit, e.g., 1.0.0 → 1.0.1)
-  - Major/minor version changes are done manually upon request
-  - Database-backed for persistence across deployments
-
 ## User Preferences
 - I prefer simple language.
 - I want iterative development.
@@ -26,40 +18,32 @@ The application features a bright, responsive rainbow-themed design optimized fo
 The frontend is built with React, utilizing Wouter for routing, TanStack Query for data fetching, Framer Motion for animations, Shadcn UI for components, and Tailwind CSS for styling. Text-to-speech is powered by the Web Speech API. The backend uses Express.js with TypeScript and PostgreSQL as the database, managed by Drizzle ORM. Passport.js handles authentication with Scrypt for password hashing. Content moderation uses the `bad-words` library.
 
 ### Feature Specifications
-- **User Management**: Secure authentication, enhanced user profiles, support for user groups with membership and to-do notifications, and a `stars` column to track spendable stars for the Star Shop. Teachers can delegate co-owners (other teachers) for word lists and user groups, granting them full admin privileges.
-- **Three-Tier Account System**: 
-  - **Free (Guest)**: No-login guest mode with localStorage persistence for user ID. Social features (User Groups, Head-to-Head Challenges, Word List Sharing) are visibly disabled with lock icons and "Upgrade to Family or School account" tooltips. Server-side `requirePaidAccount` middleware returns 403 for all social feature API routes.
-  - **Family**: Real Stripe payment with two plan options: $1.99/month or $19.99/year. Users choose their plan during signup step 2, with an optional promo code. Checkout redirects to Stripe-hosted page and returns to `/checkout/success` to verify and activate the account. Stripe products seeded via `server/seed-stripe-products.ts`.
-  - **School**: Full-featured accounts with complete access to all features including social features, user groups, and head-to-head challenges. School account creation follows a 4-step wizard: (1) Admin account details + school name, (2) Dedicated Legal Acceptance screen (3 required checkboxes: School TOS, Student DPA, COPPA cert), (3) Simulated $0.99 adult verification payment, (4) Done. School admin (`role: "school_admin"`) manages teachers (`role: "teacher"`) and students (`role: "student"`) from the School Dashboard at `/school`. School account data is stored in `school_accounts` and `school_members` tables. Payment records are stored in `school_payment_history` (amount in cents, paymentType, status, paymentDate). A "Billing" tab (admin-only) in the school dashboard shows all payment records. Routes: `POST /api/school/signup`, `POST /api/school/payment/confirm`, `GET /api/school/account`, `GET /api/school/payments`, `POST /api/school/teachers`, `POST /api/school/students`, `DELETE /api/school/members/:memberId`. COPPA compliance: admin must use school-issued email (not Gmail/Yahoo/etc.) and certify compliance via checkbox; `coppaCertifiedAt` timestamp recorded on school account. Students are stored with last initial only (1 letter) stored as `lastName` for privacy.
-- **Legal Compliance System**: Clickwrap acceptance for all required school documents on a dedicated legal step during signup. Stub placeholder pages exist at `/legal/school-tos`, `/legal/student-dpa`, and `/legal/privacy-policy` (full legal text to be provided). Legal document links are permanently accessible from the school dashboard footer. `shared/agreements.ts` (server-only) stores versioned text and SHA256 hashes for: `coppa_certification` v1.1, `school_tos` v1.0, `student_dpa` v1.0. Two-layer storage on signup: (1) `agreement_acceptances` table stores text-snapshot records for TOS and DPA with encrypted IP, user agent, text hash, and version; (2) `school_certifications` table stores all structured boolean fields per the COPPA spec: `certified_authority`, `certified_coppa_school_exception`, `certified_parental_consent_obtained`, `certified_educational_use_only`, `certified_ferpa_acknowledgment`, `certified_accuracy_of_info`, `agreed_to_tos`, `agreed_to_dpa`, plus `school_id`, `admin_user_id`, `agreement_version` (v1.0), `accepted_at_utc`, encrypted `ip_address`, and `user_agent`. The legal acceptance screen uses Option A (Full Certification) language from the COPPA school exception spec with 7 separate required checkboxes — none pre-checked.
-- **Star Shop**: Users can purchase power-ups with earned stars. Available items include "Do Over" (1 star, retry one incorrect word) and "2nd Chance" (5 stars, retry all incorrect words at the end). Items are stored in the `user_items` table with quantity tracking.
-- **Theme System**: Purchasable themes change the game background and mascot character. When adding a new theme:
-  1. Add theme images to `attached_assets/` (4 images: trophy mascot, good try mascot, landscape background, portrait background)
-  2. Update `shared/schema.ts`: Add to `SHOP_ITEMS`, update `ThemeId` type, and add to `AVAILABLE_THEMES`
-  3. Update `client/src/hooks/use-theme.tsx`: Import all 4 images, add to `THEME_ASSETS`, and update `hasDarkBackground` if needed
-  4. Update `client/src/pages/star-shop.tsx`: Import the trophy image and add to `ITEM_IMAGES` mapping for thumbnails
-- **Custom Word Lists**: Users create, share, and manage custom word lists with assignable grade levels, image assignment, and visibility controls (public, private, groups). Supports importing words from .txt, .csv, and .pdf files with profanity filtering.
-- **Game Modes**: Includes Practice, Timed Challenge, Quiz Mode, Word Scramble (with dynamic tile sizing and single-row layout), Find the Mistake (with realistic error generation), and Crossword Puzzle (interactive, audio-only with client-side grid generation and mobile UX enhancements). All game modes use Durstenfeld shuffle for word randomization.
-- **Responsive Font Scaling**: Dynamic font sizing ensures long words fit within input fields across all game modes and viewport sizes.
+- **User Management**: Secure authentication, enhanced user profiles, support for user groups with membership and to-do notifications, and a `stars` column for in-app purchases. Teachers can delegate co-owners for word lists and user groups.
+- **Three-Tier Account System**: Offers Free (Guest) mode with localStorage persistence, Family accounts via Stripe subscription ($1.99/month or $19.99/year), and School accounts with a 4-step signup wizard including legal compliance checks (School TOS, Student DPA, COPPA certification) and a simulated $0.99 adult verification payment. School accounts have a dedicated dashboard for managing teachers and students.
+- **Legal Compliance System**: Clickwrap acceptance for school-related legal documents during signup, with versioned text and SHA256 hashes stored for `coppa_certification`, `school_tos`, and `student_dpa`. Includes structured boolean fields for COPPA compliance.
+- **Star Shop**: Users can purchase power-ups like "Do Over" and "2nd Chance" with earned stars, tracked in the `user_items` table.
+- **Theme System**: Purchasable themes change game backgrounds and mascot characters, requiring updates to shared schema, asset imports, and UI mappings.
+- **Custom Word Lists**: Users create, share, and manage custom word lists with assignable grade levels, image assignment, and visibility controls. Supports importing words from .txt, .csv, and .pdf files with profanity filtering.
+- **Game Modes**: Includes Practice, Timed Challenge, Quiz Mode, Word Scramble, Find the Mistake, and Crossword Puzzle (interactive, audio-only). All modes use Durstenfeld shuffle for randomization.
+- **Responsive Font Scaling**: Dynamic font sizing to ensure long words fit within input fields.
 - **Text-to-Speech**: Pronounces words, definitions, and parts of speech.
-- **Dictionary Integration**: Uses Merriam-Webster APIs (Learner's and Collegiate Dictionaries) for child-friendly definitions, examples, and word origins.
+- **Dictionary Integration**: Uses Merriam-Webster APIs for child-friendly definitions, examples, and word origins.
 - **Cartoon Illustrations**: Automated image enrichment for word lists via Pixabay API, stored in Replit Object Storage.
-- **Scoring System & Leaderboard**: Points, streak bonuses, and leaderboards.
-- **Progress Tracking**: Session-based tracking of words, accuracy, and streaks.
-- **My Stats Page**: Provides aggregate performance metrics with date filtering, lifetime metrics (streaks, favorite game mode), and a "Most Misspelled Words Play Feature" for re-practicing specific words. Implements security measures and UTC date boundaries for accurate tracking.
-- **Report Inappropriate Content**: Users can flag word content (definition, sentence, or word origin) during gameplay in Practice, Timed Challenge, Quiz, and Word Scramble modes. Reports are stored in the `flagged_words` table with the word ID, content types flagged, optional comments, user ID (if logged in), and game mode.
+- **Scoring System & Leaderboard**: Implements points, streak bonuses, and leaderboards.
+- **Progress Tracking**: Session-based tracking of words, accuracy, and streaks, with a "My Stats Page" for aggregate performance metrics, date filtering, lifetime metrics, and re-practicing misspelled words.
+- **Report Inappropriate Content**: Users can flag word content during gameplay; reports are stored in the `flagged_words` table.
 
 ### System Design Choices
 - **Client-Server Architecture**: React frontend communicates with an Express.js backend.
-- **Database Schema**: PostgreSQL stores user data, game sessions, leaderboards, word lists (using `word_lists` table with `word_list_words` junction table linking to `words` table for normalized word storage), word illustrations, and background job tracking. Word metadata is populated on-demand from Merriam-Webster APIs.
+- **Database Schema**: PostgreSQL stores user data, game sessions, leaderboards, word lists, word illustrations, and background job tracking, managed by Drizzle ORM.
 - **Word Management**: All words are dynamically added by users through custom word lists.
 - **Authentication Flow**: Passport.js manages user authentication and session persistence.
 - **Object Storage Architecture**: Replit Object Storage hosts all word illustration images publicly.
-- **API Endpoints**: RESTful APIs for core functionalities, supporting unlimited word fetching.
-- **Background Job System**: Asynchronously processes Pixabay image enrichment for custom word lists with real-time UI updates. Jobs are tracked in-memory only (not persisted to database) with 30-minute retention after completion. Backfill jobs have concurrency protection to prevent overlapping executions. Note: Job history is intentionally ephemeral - it is lost after 30 minutes or server restart per design requirements.
-- **React Query Caching**: Uses prefix-based and tuple-based query keys for efficient and accurate cache management.
-- **Dictionary Validation System**: Utilizes a precedence hierarchy for Merriam-Webster dictionaries, robust error handling, in-memory caching, and concurrency control for API requests. Includes verb tense detection that adds tense prefixes to part of speech (e.g., "past tense verb", "present participle verb", "past participle verb"). Detection uses: (1) MW API inflection labels (`il`) for verbs like "was" and "been", (2) special case handling for "were", (3) suffix-based heuristics (-ed for past, -ing for present participle, -en for past participle), and (4) position-based detection in the inflection array for irregular verbs (e.g., ate, slept, ran, went, took, gone). Homograph ordering: entries are sorted by MW API homograph number (from id field) and definitions are limited to 1 per homograph entry (meta.id like "bat:1", "bat:2", "bat:3"). Filters exclude abbreviations (ending with ".") and secondary spellings ("or" alternatives and apostrophe forms like "i's"). Cognate cross-references (cxs) are handled for verb conjugations like "is", "am", "are" that only have cross-references to "be" without their own definitions - these are stored with definitions like `present tense third-person singular of "be"`. **Stem matching**: Words that appear in the `stems` array (e.g., "coastal" appears in stems of "coast", "cannellini" in stems of "cannellini bean") are correctly validated and their metadata is extracted from the parent entry.
-- **Game Session Tracking**: The `game_sessions` table accurately tracks `total_words`, `correct_words`, `is_complete` status, and `score` for various game modes, with detailed accuracy calculation logic. Partial sessions (from clicking Restart or Home mid-game) are saved with `isComplete=false` and included in accuracy metrics calculations.
+- **API Endpoints**: RESTful APIs for core functionalities.
+- **Background Job System**: Asynchronously processes Pixabay image enrichment for custom word lists with real-time UI updates. Jobs are in-memory with 30-minute retention.
+- **React Query Caching**: Uses prefix-based and tuple-based query keys for cache management.
+- **Dictionary Validation System**: Utilizes a precedence hierarchy for Merriam-Webster dictionaries, robust error handling, caching, and concurrency control. Includes verb tense detection, homograph ordering, and filtering of abbreviations and secondary spellings. Stem matching is also implemented.
+- **Game Session Tracking**: The `game_sessions` table accurately tracks `total_words`, `correct_words`, `is_complete` status, and `score` for various game modes, including partial sessions.
 
 ## External Dependencies
 
@@ -76,9 +60,9 @@ The frontend is built with React, utilizing Wouter for routing, TanStack Query f
 - **Passport.js**: Authentication middleware.
 - **Scrypt**: Password hashing library.
 - **Drizzle ORM**: Type-safe ORM.
-- **Pixabay API**: Provides kid-friendly cartoon illustrations.
+- **Pixabay API**: Kid-friendly cartoon illustrations.
 - **Replit Object Storage**: Cloud storage for permanent image hosting.
 - **bad-words**: Profanity filter library.
-- **Merriam-Webster APIs**: Learner's Dictionary (primary) and Collegiate Dictionary (fallback) for word definitions and metadata. API keys are securely stored in Replit Secrets.
-- **Stripe**: Payment processing for Family account subscriptions ($1.99/month or $19.99/year). Credentials stored as Replit Secrets: `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`. The `stripeClient.ts` reads env secrets first, then falls back to the Replit OAuth connector if env secrets are absent. **NOTE**: The Replit Stripe OAuth connector could not be reconnected to the support@spellingplayground.com account — credentials are stored as secrets instead. Products are seeded via `npx tsx server/seed-stripe-products.ts` (must be re-run when switching Stripe accounts). School account payment is currently stubbed (simulated) — Stripe integration for school accounts is deferred.
+- **Merriam-Webster APIs**: Learner's Dictionary (primary) and Collegiate Dictionary (fallback) for word definitions and metadata.
+- **Stripe**: Payment processing for Family account subscriptions.
 - **pdfjs-dist**: Client-side PDF text extraction for word list imports.

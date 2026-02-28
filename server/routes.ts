@@ -4109,6 +4109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         stripeSubscriptionId: family.stripeSubscriptionId,
         emailVerifiedAt: family.emailVerifiedAt,
         legalAcceptedAt: family.legalAcceptedAt,
+        appliedPromoCode: family.appliedPromoCode || null,
         isParent: familyMember.role === 'parent',
         paymentHistory: paymentHistory.map(p => ({
           id: p.id,
@@ -5151,6 +5152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastPaymentMethod: "stripe",
           subscriptionAmount: amount,
           autoRenew,
+          ...(promoCode ? { appliedPromoCode: promoCode } : {}),
         });
 
         // Record payment

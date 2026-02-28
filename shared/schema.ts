@@ -247,6 +247,7 @@ export const familyAccounts = pgTable("family_accounts", {
   renewalReminderSentAt: timestamp("renewal_reminder_sent_at"),
   emailVerifiedAt: timestamp("email_verified_at"),
   legalAcceptedAt: timestamp("legal_accepted_at"),
+  appliedPromoCode: text("applied_promo_code"),
 });
 
 export const familyLegalAcceptances = pgTable("family_legal_acceptances", {
