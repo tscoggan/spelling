@@ -58,6 +58,10 @@ export function UserHeader() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [myAccountOpen, setMyAccountOpen] = useState(false);
   const [renewPlanType, setRenewPlanType] = useState<"monthly" | "yearly">("yearly");
+  const [renewPromoCode, setRenewPromoCode] = useState("");
+  const [renewPromoValidating, setRenewPromoValidating] = useState(false);
+  const [renewPromoValid, setRenewPromoValid] = useState<{ discountPercent: number; code: string; applicablePlans: string; duration: string } | null>(null);
+  const [renewPromoError, setRenewPromoError] = useState<string | null>(null);
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactMessage, setContactMessage] = useState("");
@@ -160,13 +164,41 @@ export function UserHeader() {
     enabled: !isGuestMode && !!user && myAccountOpen,
   });
 
+  const validateRenewPromo = async () => {
+    const code = renewPromoCode.trim();
+    if (!code) return;
+    setRenewPromoValidating(true);
+    setRenewPromoError(null);
+    setRenewPromoValid(null);
+    try {
+      const res = await apiRequest("POST", "/api/promo-codes/validate", { code });
+      const data = await res.json();
+      if (!res.ok) {
+        setRenewPromoError(data.error || "Invalid promo code");
+      } else {
+        setRenewPromoValid({ discountPercent: data.discountPercent, code: data.code, applicablePlans: data.applicablePlans, duration: data.duration });
+      }
+    } catch {
+      setRenewPromoError("Failed to validate code. Please try again.");
+    } finally {
+      setRenewPromoValidating(false);
+    }
+  };
+
   const startSubscriptionMutation = useMutation({
     mutationFn: async (priceInterval: "monthly" | "yearly") => {
       // Normalize to "month"/"year" which is what the checkout endpoint expects
       const normalizedInterval = priceInterval === "monthly" ? "month" : "year";
+      // Check if the promo code applies to the selected plan
+      const promoApplies = renewPromoValid && (
+        renewPromoValid.applicablePlans === "both" ||
+        (normalizedInterval === "month" && renewPromoValid.applicablePlans === "monthly") ||
+        (normalizedInterval === "year" && renewPromoValid.applicablePlans === "annual")
+      );
       const res = await apiRequest("POST", "/api/stripe/create-checkout", {
         type: "family_subscription",
         priceInterval: normalizedInterval,
+        ...(promoApplies ? { promoCode: renewPromoValid!.code } : {}),
       });
       return res.json() as Promise<{ url: string }>;
     },
@@ -1783,25 +1815,91 @@ export function UserHeader() {
                     <p className="text-sm font-medium">
                       {isPending ? "Activate Your Subscription" : isActive ? "Renew Subscription Early" : "Subscription Expired — Renew"}
                     </p>
-                    <div className="flex gap-2">
-                      <Button
-                        variant={renewPlanType === "monthly" ? "default" : "outline"}
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => setRenewPlanType("monthly")}
-                        data-testid="button-plan-monthly"
-                      >
-                        $1.99 / month
-                      </Button>
-                      <Button
-                        variant={renewPlanType === "yearly" ? "default" : "outline"}
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => setRenewPlanType("yearly")}
-                        data-testid="button-plan-yearly"
-                      >
-                        $19.99 / year
-                      </Button>
+                    {/* Plan selection buttons */}
+                    {(() => {
+                      const monthlyApplies = renewPromoValid && (renewPromoValid.applicablePlans === "both" || renewPromoValid.applicablePlans === "monthly");
+                      const yearlyApplies = renewPromoValid && (renewPromoValid.applicablePlans === "both" || renewPromoValid.applicablePlans === "annual");
+                      return (
+                        <div className="flex gap-2">
+                          <Button
+                            variant={renewPlanType === "monthly" ? "default" : "outline"}
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => setRenewPlanType("monthly")}
+                            data-testid="button-plan-monthly"
+                          >
+                            {monthlyApplies ? (
+                              <span className="flex flex-col items-center leading-tight">
+                                <span className="line-through text-xs opacity-70">$1.99</span>
+                                <span>${(1.99 * (1 - renewPromoValid!.discountPercent / 100)).toFixed(2)} / mo</span>
+                              </span>
+                            ) : "$1.99 / month"}
+                          </Button>
+                          <Button
+                            variant={renewPlanType === "yearly" ? "default" : "outline"}
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => setRenewPlanType("yearly")}
+                            data-testid="button-plan-yearly"
+                          >
+                            {yearlyApplies ? (
+                              <span className="flex flex-col items-center leading-tight">
+                                <span className="line-through text-xs opacity-70">$19.99</span>
+                                <span>${(19.99 * (1 - renewPromoValid!.discountPercent / 100)).toFixed(2)} / yr</span>
+                              </span>
+                            ) : "$19.99 / year"}
+                          </Button>
+                        </div>
+                      );
+                    })()}
+                    {/* Promo code input */}
+                    <div className="space-y-1">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Promo code (optional)"
+                          value={renewPromoCode}
+                          onChange={e => {
+                            setRenewPromoCode(e.target.value.toUpperCase());
+                            setRenewPromoValid(null);
+                            setRenewPromoError(null);
+                          }}
+                          onKeyDown={e => { if (e.key === "Enter") validateRenewPromo(); }}
+                          disabled={!!renewPromoValid}
+                          className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm font-mono tracking-wider focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
+                          data-testid="input-renew-promo-code"
+                        />
+                        {renewPromoValid ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => { setRenewPromoValid(null); setRenewPromoCode(""); setRenewPromoError(null); }}
+                            data-testid="button-renew-promo-clear"
+                          >
+                            Remove
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={validateRenewPromo}
+                            disabled={!renewPromoCode.trim() || renewPromoValidating}
+                            data-testid="button-renew-promo-apply"
+                          >
+                            {renewPromoValidating ? <div className="animate-spin w-3 h-3 border-2 border-current border-t-transparent rounded-full" /> : "Apply"}
+                          </Button>
+                        )}
+                      </div>
+                      {renewPromoValid && (
+                        <p className="text-xs text-green-600 dark:text-green-400 font-medium">
+                          {renewPromoValid.discountPercent}% off applied
+                          {renewPromoValid.applicablePlans !== "both" && ` (${renewPromoValid.applicablePlans} plan only)`}
+                          {renewPromoValid.duration === "forever" ? " — permanent discount" : " — first period only"}
+                        </p>
+                      )}
+                      {renewPromoError && (
+                        <p className="text-xs text-destructive">{renewPromoError}</p>
+                      )}
                     </div>
                     <Button
                       onClick={() => startSubscriptionMutation.mutate(renewPlanType)}

@@ -5409,7 +5409,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!promo.isActive) return res.status(400).json({ error: "This code has been disabled" });
       if (promo.expiresAt && new Date(promo.expiresAt) < new Date()) return res.status(400).json({ error: "This code has expired" });
       if (promo.codeType === "one_time" && promo.usesCount >= 1) return res.status(400).json({ error: "This code has already been used" });
-      res.json({ valid: true, discountPercent: promo.discountPercent, codeType: promo.codeType, code: promo.code });
+      res.json({ valid: true, discountPercent: promo.discountPercent, codeType: promo.codeType, code: promo.code, applicablePlans: promo.applicablePlans ?? "both", duration: promo.duration ?? "once" });
     } catch (error) {
       res.status(500).json({ error: "Failed to validate promo code" });
     }
