@@ -116,6 +116,12 @@ async function runStartupMigrations(): Promise<void> {
       WHERE vpc_status = 'verified' AND promo_discount_percent = 0
     `);
 
+    await db.execute(sql`
+      ALTER TABLE promo_codes
+        ADD COLUMN IF NOT EXISTS duration TEXT NOT NULL DEFAULT 'once',
+        ADD COLUMN IF NOT EXISTS applicable_plans TEXT NOT NULL DEFAULT 'both'
+    `);
+
     log('Startup migrations complete');
   } catch (err: any) {
     log(`Startup migration error: ${err.message}`);

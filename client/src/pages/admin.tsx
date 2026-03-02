@@ -264,11 +264,12 @@ export default function AdminPage() {
   });
 
   // Promo codes state
-  const [promoForm, setPromoForm] = useState({ discountPercent: 10, codeType: "one_time", expiresAt: "" });
+  const defaultPromoForm = { discountPercent: 10, codeType: "one_time", duration: "once", applicablePlans: "both", expiresAt: "" };
+  const [promoForm, setPromoForm] = useState(defaultPromoForm);
   const [createPromoOpen, setCreatePromoOpen] = useState(false);
   const [promoUsagesFor, setPromoUsagesFor] = useState<PromoCode | null>(null);
 
-  interface PromoCode { id: number; code: string; discountPercent: number; codeType: string; usesCount: number; isActive: boolean; expiresAt: string | null; createdAt: string; }
+  interface PromoCode { id: number; code: string; discountPercent: number; codeType: string; duration: string; applicablePlans: string; usesCount: number; isActive: boolean; expiresAt: string | null; createdAt: string; }
   interface PromoUsage { id: number; userId: number | null; username: string | null; usedAt: string; }
 
   const { data: promoCodes = [], isLoading: isLoadingPromos } = useQuery<PromoCode[]>({
@@ -286,13 +287,13 @@ export default function AdminPage() {
   });
 
   const createPromoMutation = useMutation({
-    mutationFn: async (data: { discountPercent: number; codeType: string; expiresAt?: string }) =>
+    mutationFn: async (data: { discountPercent: number; codeType: string; duration: string; applicablePlans: string; expiresAt?: string }) =>
       (await apiRequest('POST', '/api/admin/promo-codes', data)).json(),
     onSuccess: () => {
       toast({ title: "Promo code created" });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/promo-codes'] });
       setCreatePromoOpen(false);
-      setPromoForm({ discountPercent: 10, codeType: "one_time", expiresAt: "" });
+      setPromoForm(defaultPromoForm);
     },
     onError: (e: Error) => toast({ title: "Failed to create code", description: e.message, variant: "destructive" }),
   });
@@ -1195,6 +1196,8 @@ export default function AdminPage() {
                           <TableHead>Code</TableHead>
                           <TableHead>Discount</TableHead>
                           <TableHead>Type</TableHead>
+                          <TableHead>Duration</TableHead>
+                          <TableHead>Plans</TableHead>
                           <TableHead>Uses</TableHead>
                           <TableHead>Expires</TableHead>
                           <TableHead>Status</TableHead>
@@ -1221,6 +1224,12 @@ export default function AdminPage() {
                                 <Badge variant="outline" className="text-xs">
                                   {promo.codeType === "one_time" ? "One-time" : "Ongoing"}
                                 </Badge>
+                              </TableCell>
+                              <TableCell className="text-muted-foreground text-sm">
+                                {promo.duration === "forever" ? "Permanent" : "First period"}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground text-sm capitalize">
+                                {promo.applicablePlans === "both" ? "Monthly + Annual" : promo.applicablePlans}
                               </TableCell>
                               <TableCell className="text-muted-foreground">{promo.usesCount}</TableCell>
                               <TableCell className="text-muted-foreground text-sm">
@@ -1665,6 +1674,61 @@ export default function AdminPage() {
                 </button>
               </div>
             </div>
+            <div className="space-y-2">
+              <Label>Discount Duration</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPromoForm(p => ({ ...p, duration: "once" }))}
+                  className={`rounded-md border-2 p-3 text-left transition-colors ${promoForm.duration === "once" ? "border-primary bg-primary/10" : "border-border"}`}
+                  data-testid="button-promo-duration-once"
+                >
+                  <p className="font-semibold text-sm">First period only</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Discount applies to the first billing period</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPromoForm(p => ({ ...p, duration: "forever" }))}
+                  className={`rounded-md border-2 p-3 text-left transition-colors ${promoForm.duration === "forever" ? "border-primary bg-primary/10" : "border-border"}`}
+                  data-testid="button-promo-duration-forever"
+                >
+                  <p className="font-semibold text-sm">Permanent</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Discount applies to all renewals too</p>
+                </button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Applies To</Label>
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPromoForm(p => ({ ...p, applicablePlans: "both" }))}
+                  className={`rounded-md border-2 p-3 text-left transition-colors ${promoForm.applicablePlans === "both" ? "border-primary bg-primary/10" : "border-border"}`}
+                  data-testid="button-promo-plans-both"
+                >
+                  <p className="font-semibold text-sm">Both</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Monthly & annual</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPromoForm(p => ({ ...p, applicablePlans: "monthly" }))}
+                  className={`rounded-md border-2 p-3 text-left transition-colors ${promoForm.applicablePlans === "monthly" ? "border-primary bg-primary/10" : "border-border"}`}
+                  data-testid="button-promo-plans-monthly"
+                >
+                  <p className="font-semibold text-sm">Monthly</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Only $1.99/mo plan</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPromoForm(p => ({ ...p, applicablePlans: "annual" }))}
+                  className={`rounded-md border-2 p-3 text-left transition-colors ${promoForm.applicablePlans === "annual" ? "border-primary bg-primary/10" : "border-border"}`}
+                  data-testid="button-promo-plans-annual"
+                >
+                  <p className="font-semibold text-sm">Annual</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Only $19.99/yr plan</p>
+                </button>
+              </div>
+            </div>
             {promoForm.codeType === "ongoing" && (
               <div className="space-y-2">
                 <Label htmlFor="promo-expires">Expiration Date <span className="text-muted-foreground">(optional)</span></Label>
@@ -1685,7 +1749,7 @@ export default function AdminPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreatePromoOpen(false)}>Cancel</Button>
             <Button
-              onClick={() => createPromoMutation.mutate({ discountPercent: promoForm.discountPercent, codeType: promoForm.codeType, expiresAt: promoForm.expiresAt || undefined })}
+              onClick={() => createPromoMutation.mutate({ discountPercent: promoForm.discountPercent, codeType: promoForm.codeType, duration: promoForm.duration, applicablePlans: promoForm.applicablePlans, expiresAt: promoForm.expiresAt || undefined })}
               disabled={createPromoMutation.isPending}
               data-testid="button-confirm-create-promo"
             >

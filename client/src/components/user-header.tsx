@@ -160,10 +160,6 @@ export function UserHeader() {
     enabled: !isGuestMode && !!user && myAccountOpen,
   });
 
-  const renewPromoDiscount = (accountInfo?.promoDiscountPercent ?? 0) > 0
-    ? accountInfo!.promoDiscountPercent
-    : null;
-
   const startSubscriptionMutation = useMutation({
     mutationFn: async (priceInterval: "monthly" | "yearly") => {
       // Normalize to "month"/"year" which is what the checkout endpoint expects
@@ -171,7 +167,6 @@ export function UserHeader() {
       const res = await apiRequest("POST", "/api/stripe/create-checkout", {
         type: "family_subscription",
         priceInterval: normalizedInterval,
-        ...(accountInfo?.appliedPromoCode ? { promoCode: accountInfo.appliedPromoCode } : {}),
       });
       return res.json() as Promise<{ url: string }>;
     },
@@ -1788,11 +1783,6 @@ export function UserHeader() {
                     <p className="text-sm font-medium">
                       {isPending ? "Activate Your Subscription" : isActive ? "Renew Subscription Early" : "Subscription Expired — Renew"}
                     </p>
-                    {renewPromoDiscount && (
-                      <p className="text-xs font-medium text-green-600 dark:text-green-400">
-                        {renewPromoDiscount}% promo discount applied to your renewal
-                      </p>
-                    )}
                     <div className="flex gap-2">
                       <Button
                         variant={renewPlanType === "monthly" ? "default" : "outline"}
@@ -1801,12 +1791,7 @@ export function UserHeader() {
                         onClick={() => setRenewPlanType("monthly")}
                         data-testid="button-plan-monthly"
                       >
-                        {renewPromoDiscount ? (
-                          <span className="flex flex-col items-center leading-tight">
-                            <span className="line-through text-xs opacity-70">$1.99</span>
-                            <span>${(1.99 * (1 - renewPromoDiscount / 100)).toFixed(2)} / mo</span>
-                          </span>
-                        ) : "$1.99 / month"}
+                        $1.99 / month
                       </Button>
                       <Button
                         variant={renewPlanType === "yearly" ? "default" : "outline"}
@@ -1815,12 +1800,7 @@ export function UserHeader() {
                         onClick={() => setRenewPlanType("yearly")}
                         data-testid="button-plan-yearly"
                       >
-                        {renewPromoDiscount ? (
-                          <span className="flex flex-col items-center leading-tight">
-                            <span className="line-through text-xs opacity-70">$19.99</span>
-                            <span>${(19.99 * (1 - renewPromoDiscount / 100)).toFixed(2)} / yr</span>
-                          </span>
-                        ) : "$19.99 / year"}
+                        $19.99 / year
                       </Button>
                     </div>
                     <Button

@@ -5047,30 +5047,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (promoCode) {
         const promo = await storage.getPromoCodeByCode(promoCode.trim());
         if (promo && promo.isActive && !(promo.expiresAt && new Date(promo.expiresAt) < new Date()) && !(promo.codeType === "one_time" && promo.usesCount >= 1)) {
-          // Use "forever" for subscriptions so the discount is permanent; "once" for one-time payments
-          const coupon = await stripe.coupons.create({
-            percent_off: promo.discountPercent,
-            duration: type === "family_subscription" ? "forever" : "once",
-            name: `Promo: ${promo.code}`,
-            metadata: { promoCodeId: String(promo.id), promoCode: promo.code },
-          });
-          discounts = [{ coupon: coupon.id }];
-        }
-      }
-
-      // Fallback: if no valid promo code but user has a stored discount (e.g. original code expired),
-      // create a coupon directly from the stored discount percent so the renewal price matches.
-      if (!discounts && type === "family_subscription") {
-        const familyForDiscount = await storage.getFamilyAccountByParentId(user.id);
-        const storedDiscount = familyForDiscount?.promoDiscountPercent ?? 0;
-        if (storedDiscount > 0) {
-          const coupon = await stripe.coupons.create({
-            percent_off: storedDiscount,
-            duration: "forever",
-            name: `Renewal Discount: ${storedDiscount}% off`,
-            metadata: { source: "stored_discount", userId: String(user.id) },
-          });
-          discounts = [{ coupon: coupon.id }];
+          // Check that the promo applies to the selected plan interval
+          const requestedInterval = priceInterval === "month" ? "monthly" : "annual";
+          const plans = promo.applicablePlans ?? "both";
+          const planAllowed = plans === "both" || plans === requestedInterval;
+          if (planAllowed) {
+            // Use the promo's configured duration: "once" = first period only, "forever" = all renewals
+            const couponDuration = (promo.duration === "forever" && type === "family_subscription") ? "forever" : "once";
+            const coupon = await stripe.coupons.create({
+              percent_off: promo.discountPercent,
+              duration: couponDuration,
+              name: `Promo: ${promo.code}`,
+              metadata: { promoCodeId: String(promo.id), promoCode: promo.code },
+            });
+            discounts = [{ coupon: coupon.id }];
+          }
         }
       }
 

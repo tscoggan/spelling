@@ -957,6 +957,8 @@ export const promoCodes = pgTable("promo_codes", {
   code: text("code").notNull().unique(),
   discountPercent: integer("discount_percent").notNull(),
   codeType: text("code_type").notNull().default("one_time"), // 'one_time' | 'ongoing'
+  duration: text("duration").notNull().default("once"), // 'once' (first period only) | 'forever' (all renewals)
+  applicablePlans: text("applicable_plans").notNull().default("both"), // 'monthly' | 'annual' | 'both'
   usesCount: integer("uses_count").notNull().default(0),
   isActive: boolean("is_active").notNull().default(true),
   expiresAt: timestamp("expires_at"),
