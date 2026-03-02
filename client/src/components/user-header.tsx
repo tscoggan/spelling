@@ -138,6 +138,7 @@ export function UserHeader() {
     autoRenew: boolean;
     stripeSubscriptionId: string | null;
     appliedPromoCode: string | null;
+    promoDiscountPercent: number;
     isParent: boolean;
     paymentHistory: {
       id: number;
@@ -159,15 +160,9 @@ export function UserHeader() {
     enabled: !isGuestMode && !!user && myAccountOpen,
   });
 
-  const [renewPromoDiscount, setRenewPromoDiscount] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!accountInfo?.appliedPromoCode) { setRenewPromoDiscount(null); return; }
-    apiRequest("POST", "/api/promo-codes/validate", { code: accountInfo.appliedPromoCode })
-      .then(r => r.json())
-      .then(d => { if (d.discountPercent) setRenewPromoDiscount(d.discountPercent); })
-      .catch(() => setRenewPromoDiscount(null));
-  }, [accountInfo?.appliedPromoCode]);
+  const renewPromoDiscount = (accountInfo?.promoDiscountPercent ?? 0) > 0
+    ? accountInfo!.promoDiscountPercent
+    : null;
 
   const startSubscriptionMutation = useMutation({
     mutationFn: async (priceInterval: "monthly" | "yearly") => {

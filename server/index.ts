@@ -94,6 +94,34 @@ async function initStripe() {
   }
 }
 
+async function runStartupMigrations(): Promise<void> {
+  try {
+    const { db } = await import('./db');
+    const { sql } = await import('drizzle-orm');
+
+    await db.execute(sql`
+      ALTER TABLE family_accounts
+        ADD COLUMN IF NOT EXISTS promo_discount_percent INTEGER NOT NULL DEFAULT 0
+    `);
+
+    await db.execute(sql`
+      UPDATE family_accounts
+      SET promo_discount_percent = CASE
+        WHEN subscription_amount IS NULL OR subscription_amount = 0 THEN 0
+        WHEN subscription_amount <= 199 THEN
+          GREATEST(0, ROUND((1.0 - subscription_amount::numeric / 199) * 100)::integer)
+        ELSE
+          GREATEST(0, ROUND((1.0 - subscription_amount::numeric / 1999) * 100)::integer)
+      END
+      WHERE vpc_status = 'verified' AND promo_discount_percent = 0
+    `);
+
+    log('Startup migrations complete');
+  } catch (err: any) {
+    log(`Startup migration error: ${err.message}`);
+  }
+}
+
 async function runRenewalReminderJob(): Promise<void> {
   try {
     const accounts = await storage.getFamilyAccountsNeedingRenewalReminder();
@@ -125,6 +153,7 @@ async function runRenewalReminderJob(): Promise<void> {
 }
 
 (async () => {
+  await runStartupMigrations();
   await initStripe();
 
   const server = await registerRoutes(app);

@@ -4110,6 +4110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         emailVerifiedAt: family.emailVerifiedAt,
         legalAcceptedAt: family.legalAcceptedAt,
         appliedPromoCode: family.appliedPromoCode || null,
+        promoDiscountPercent: family.promoDiscountPercent || 0,
         isParent: familyMember.role === 'parent',
         paymentHistory: paymentHistory.map(p => ({
           id: p.id,
@@ -5145,6 +5146,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await stripeForOps.subscriptions.update(subscriptionId, { cancel_at_period_end: true });
         }
 
+        const baseAmount = isMonthly ? 199 : 1999;
+        const promoDiscountPercent = amount > 0 && amount < baseAmount
+          ? Math.max(0, Math.round((1 - amount / baseAmount) * 100))
+          : 0;
+
         await storage.updateFamilyAccount(family.id, {
           vpcStatus: "verified",
           stripeSubscriptionId: subscriptionId || null,
@@ -5152,6 +5158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastPaymentMethod: "stripe",
           subscriptionAmount: amount,
           autoRenew,
+          promoDiscountPercent,
           ...(promoCode ? { appliedPromoCode: promoCode } : {}),
         });
 
