@@ -5058,6 +5058,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Fallback: if no valid promo code but user has a stored discount (e.g. original code expired),
+      // create a coupon directly from the stored discount percent so the renewal price matches.
+      if (!discounts && type === "family_subscription") {
+        const familyForDiscount = await storage.getFamilyAccountByParentId(user.id);
+        const storedDiscount = familyForDiscount?.promoDiscountPercent ?? 0;
+        if (storedDiscount > 0) {
+          const coupon = await stripe.coupons.create({
+            percent_off: storedDiscount,
+            duration: "forever",
+            name: `Renewal Discount: ${storedDiscount}% off`,
+            metadata: { source: "stored_discount", userId: String(user.id) },
+          });
+          discounts = [{ coupon: coupon.id }];
+        }
+      }
+
       const isSubscription = type === "family_subscription";
       const sessionParams: any = {
         customer: customerId,
