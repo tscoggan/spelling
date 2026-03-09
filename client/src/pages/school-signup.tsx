@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
@@ -361,7 +362,7 @@ export default function SchoolSignupPage() {
                       <FormItem>
                         <FormLabel>Password</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="At least 6 characters" {...field} data-testid="input-password" />
+                          <PasswordInput placeholder="At least 6 characters" {...field} data-testid="input-password" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -375,7 +376,7 @@ export default function SchoolSignupPage() {
                       <FormItem>
                         <FormLabel>Confirm Password</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="Re-enter your password" {...field} data-testid="input-confirm-password" />
+                          <PasswordInput placeholder="Re-enter your password" {...field} data-testid="input-confirm-password" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

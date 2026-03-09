@@ -4,6 +4,7 @@ import { useLocation, useSearch } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/hooks/use-auth";
@@ -321,14 +322,14 @@ export default function FamilySignupPage() {
                   <FormField control={form.control} name="password" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Password</FormLabel>
-                      <FormControl><Input type="password" placeholder="At least 6 characters" {...field} data-testid="input-password" /></FormControl>
+                      <FormControl><PasswordInput placeholder="At least 6 characters" {...field} data-testid="input-password" /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="confirmPassword" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Confirm Password</FormLabel>
-                      <FormControl><Input type="password" placeholder="Re-enter your password" {...field} data-testid="input-confirm-password" /></FormControl>
+                      <FormControl><PasswordInput placeholder="Re-enter your password" {...field} data-testid="input-confirm-password" /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />

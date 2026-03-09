@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -388,9 +389,8 @@ export default function AuthPage() {
               </DialogContent>
             </Dialog>
           </div>
-          <Input
+          <PasswordInput
             id="login-password"
-            type="password"
             value={loginData.password}
             onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
             placeholder="Enter your password"
@@ -513,9 +513,8 @@ export default function AuthPage() {
                     </DialogContent>
                   </Dialog>
                 </div>
-                <Input
+                <PasswordInput
                   id="login-password"
-                  type="password"
                   value={loginData.password}
                   onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
                   placeholder="Enter your password"
@@ -588,9 +587,8 @@ export default function AuthPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="register-password">Password</Label>
-                <Input
+                <PasswordInput
                   id="register-password"
-                  type="password"
                   value={registerData.password}
                   onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
                   placeholder="Create a password"

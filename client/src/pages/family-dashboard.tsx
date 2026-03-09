@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
@@ -469,7 +470,7 @@ export default function FamilyDashboardPage() {
                             <FormItem>
                               <FormLabel>Password</FormLabel>
                               <FormControl>
-                                <Input type="password" placeholder="At least 4 characters" {...field} data-testid="input-child-password" />
+                                <PasswordInput placeholder="At least 4 characters" {...field} data-testid="input-child-password" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -707,7 +708,7 @@ function EditChildForm({
             <FormItem>
               <FormLabel>New Password (leave blank to keep current)</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="New password" {...field} data-testid="input-edit-password" />
+                <PasswordInput placeholder="New password" {...field} data-testid="input-edit-password" />
               </FormControl>
               <FormMessage />
             </FormItem>

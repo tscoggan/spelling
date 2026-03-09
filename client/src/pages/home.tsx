@@ -42,6 +42,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { UserHeader } from "@/components/user-header";
 import { AccuracyCard } from "@/components/accuracy-card";
@@ -994,7 +995,7 @@ function SchoolAdminHome() {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="At least 6 characters" {...field} data-testid="input-teacher-password" />
+                    <PasswordInput placeholder="At least 6 characters" {...field} data-testid="input-teacher-password" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -1056,7 +1057,7 @@ function SchoolAdminHome() {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="At least 4 characters" {...field} data-testid="input-student-password" />
+                    <PasswordInput placeholder="At least 4 characters" {...field} data-testid="input-student-password" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

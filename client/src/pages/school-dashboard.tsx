@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
@@ -628,7 +629,7 @@ export default function SchoolDashboardPage() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="At least 6 characters" {...field} data-testid="input-teacher-password" />
+                      <PasswordInput placeholder="At least 6 characters" {...field} data-testid="input-teacher-password" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -706,7 +707,7 @@ export default function SchoolDashboardPage() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="At least 4 characters" {...field} data-testid="input-student-password" />
+                      <PasswordInput placeholder="At least 4 characters" {...field} data-testid="input-student-password" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

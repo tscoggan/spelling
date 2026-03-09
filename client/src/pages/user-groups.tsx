@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -657,9 +658,8 @@ export default function UserGroupsPage() {
                   {formData.isPublic && (
                     <div>
                       <Label htmlFor="plaintextPassword">Password (Optional)</Label>
-                      <Input
+                      <PasswordInput
                         id="plaintextPassword"
-                        type="password"
                         value={formData.plaintextPassword}
                         onChange={(e) => setFormData({ ...formData, plaintextPassword: e.target.value })}
                         placeholder="Leave blank for no password"
@@ -1244,9 +1244,8 @@ export default function UserGroupsPage() {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="join-password">Password</Label>
-                <Input
+                <PasswordInput
                   id="join-password"
-                  type="password"
                   value={passwordInput}
                   onChange={(e) => setPasswordInput(e.target.value)}
                   placeholder="Enter group password"
