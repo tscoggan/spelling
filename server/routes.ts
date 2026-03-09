@@ -2302,16 +2302,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Only group owner can approve requests" });
       }
 
-      // Check if user is already a member
+      // Check if user is already a member — treat as success so notification clears
       const isAlreadyMember = await storage.isUserGroupMember(userIdNum, groupId);
-      if (isAlreadyMember) {
-        return res.status(400).json({ error: "User is already a member of this group" });
+      if (!isAlreadyMember) {
+        await storage.addGroupMember(groupId, userIdNum);
       }
 
-      // Add user to group
-      await storage.addGroupMember(groupId, userIdNum);
-
-      res.status(200).json({ message: "User added to group successfully", groupId });
+      res.status(200).json({ message: isAlreadyMember ? "User is already a member of this group" : "User added to group successfully", groupId });
     } catch (error) {
       console.error("Error approving request:", error);
       res.status(500).json({ error: "Failed to approve request" });
