@@ -4304,10 +4304,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         username: z.string().min(3).max(50),
         password: z.string().min(4),
         firstName: z.string().min(1, "First name is required").max(100),
-        lastName: z.string().min(1, "Last name is required").max(100),
       });
       
-      const { username, password, firstName, lastName } = schema.parse(req.body);
+      const { username, password, firstName } = schema.parse(req.body);
       
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
@@ -4320,7 +4319,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         username,
         password: hashedPassword,
         firstName: firstName || null,
-        lastName: lastName || null,
+        lastName: null,
         role: "student",
         accountType: "family_child",
       });
@@ -4373,7 +4372,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const schema = z.object({
         firstName: z.string().min(1).max(100).optional(),
-        lastName: z.string().min(1).max(100).optional(),
         password: z.string().min(4).optional(),
       });
       
@@ -4381,7 +4379,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const profileUpdates: any = {};
       if (updates.firstName !== undefined) profileUpdates.firstName = updates.firstName;
-      if (updates.lastName !== undefined) profileUpdates.lastName = updates.lastName;
       
       if (Object.keys(profileUpdates).length > 0) {
         await storage.updateUserProfile(childId, profileUpdates);

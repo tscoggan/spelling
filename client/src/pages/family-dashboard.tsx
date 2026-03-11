@@ -39,11 +39,18 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+const noPersonalInfoUsername = z
+  .string()
+  .min(3, "Username must be at least 3 characters")
+  .max(50)
+  .refine((val) => !/@/.test(val), { message: "Username must not look like an email address" })
+  .refine((val) => !/\d{7,}/.test(val), { message: "Username must not contain a phone number or long number sequence" })
+  .refine((val) => !/^[a-z]+ [a-z]+$/i.test(val), { message: "Username must not be a full name" });
+
 const childSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters").max(50),
+  username: noPersonalInfoUsername,
   password: z.string().min(4, "Password must be at least 4 characters"),
   firstName: z.string().min(1, "First name is required").max(100),
-  lastName: z.string().min(1, "Last name is required").max(100),
 });
 
 type ChildFormData = z.infer<typeof childSchema>;
@@ -206,13 +213,11 @@ export default function FamilyDashboardPage() {
   const parents = familyData?.members.filter(m => m.role === "parent") || [];
   
   const handleOpenAddChild = (open: boolean) => {
-    if (open && parents.length > 0) {
-      const parentLastName = parents[0].user.lastName || "";
+    if (open) {
       form.reset({
         username: "",
         password: "",
         firstName: "",
-        lastName: parentLastName,
       });
     }
     setIsAddChildOpen(open);
@@ -422,34 +427,19 @@ export default function FamilyDashboardPage() {
                     </DialogHeader>
                     <Form {...form}>
                       <form onSubmit={form.handleSubmit(onSubmitChild)} className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                            control={form.control}
-                            name="firstName"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>First Name</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Emma" {...field} data-testid="input-child-first-name" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="lastName"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Last Name</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Smith" {...field} data-testid="input-child-last-name" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
+                        <FormField
+                          control={form.control}
+                          name="firstName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>First Name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Emma" {...field} data-testid="input-child-first-name" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                         <FormField
                           control={form.control}
                           name="username"
@@ -459,6 +449,9 @@ export default function FamilyDashboardPage() {
                               <FormControl>
                                 <Input placeholder="emma_speller" {...field} data-testid="input-child-username" />
                               </FormControl>
+                              <p className="text-xs text-muted-foreground">
+                                Choose a fun nickname. Do not use your child's real name, email address, or phone number.
+                              </p>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -540,9 +533,7 @@ export default function FamilyDashboardPage() {
                   {children.map((child) => (
                     <TableRow key={child.id} data-testid={`row-child-${child.userId}`}>
                       <TableCell>
-                        {child.user.firstName || child.user.lastName
-                          ? `${child.user.firstName || ""} ${child.user.lastName || ""}`.trim()
-                          : "-"}
+                        {child.user.firstName || "-"}
                       </TableCell>
                       <TableCell className="font-medium">{child.user.username}</TableCell>
                       <TableCell className="text-right">
@@ -649,7 +640,6 @@ function EditChildForm({
 }) {
   const editSchema = z.object({
     firstName: z.string().max(100).optional(),
-    lastName: z.string().max(100).optional(),
     password: z.string().min(4).optional().or(z.literal("")),
   });
 
@@ -657,7 +647,6 @@ function EditChildForm({
     resolver: zodResolver(editSchema),
     defaultValues: {
       firstName: child.user.firstName || "",
-      lastName: child.user.lastName || "",
       password: "",
     },
   });
@@ -665,7 +654,6 @@ function EditChildForm({
   const handleSubmit = (data: z.infer<typeof editSchema>) => {
     const updates: Partial<ChildFormData> = {};
     if (data.firstName) updates.firstName = data.firstName;
-    if (data.lastName) updates.lastName = data.lastName;
     if (data.password) updates.password = data.password;
     onSubmit(updates);
   };
@@ -673,34 +661,19 @@ function EditChildForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="firstName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>First Name</FormLabel>
-                <FormControl>
-                  <Input {...field} data-testid="input-edit-first-name" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="lastName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Last Name</FormLabel>
-                <FormControl>
-                  <Input {...field} data-testid="input-edit-last-name" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        <FormField
+          control={form.control}
+          name="firstName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>First Name</FormLabel>
+              <FormControl>
+                <Input {...field} data-testid="input-edit-first-name" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="password"
