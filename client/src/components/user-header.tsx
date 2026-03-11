@@ -1536,7 +1536,7 @@ export function UserHeader() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-4">
-            <div className="grid grid-cols-2 gap-4">
+            {user?.accountType === 'family_child' ? (
               <div className="space-y-2">
                 <Label htmlFor="profile-first-name">First Name</Label>
                 <Input
@@ -1548,30 +1548,46 @@ export function UserHeader() {
                   data-testid="input-profile-firstname"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="profile-last-name">Last Name</Label>
-                <Input
-                  id="profile-last-name"
-                  type="text"
-                  value={profileLastName}
-                  onChange={(e) => setProfileLastName(e.target.value)}
-                  placeholder="Last name"
-                  data-testid="input-profile-lastname"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="profile-email">Email</Label>
-              <Input
-                id="profile-email"
-                type="email"
-                value={profileEmail}
-                onChange={(e) => setProfileEmail(e.target.value)}
-                placeholder="your.email@example.com"
-                data-testid="input-profile-email"
-              />
-              <p className="text-sm text-gray-500">Used for password reset requests</p>
-            </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="profile-first-name">First Name</Label>
+                    <Input
+                      id="profile-first-name"
+                      type="text"
+                      value={profileFirstName}
+                      onChange={(e) => setProfileFirstName(e.target.value)}
+                      placeholder="First name"
+                      data-testid="input-profile-firstname"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="profile-last-name">Last Name</Label>
+                    <Input
+                      id="profile-last-name"
+                      type="text"
+                      value={profileLastName}
+                      onChange={(e) => setProfileLastName(e.target.value)}
+                      placeholder="Last name"
+                      data-testid="input-profile-lastname"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="profile-email">Email</Label>
+                  <Input
+                    id="profile-email"
+                    type="email"
+                    value={profileEmail}
+                    onChange={(e) => setProfileEmail(e.target.value)}
+                    placeholder="your.email@example.com"
+                    data-testid="input-profile-email"
+                  />
+                  <p className="text-sm text-gray-500">Used for password reset requests</p>
+                </div>
+              </>
+            )}
             <div className="space-y-2">
               <Label>Choose Your Avatar</Label>
               <div className="grid grid-cols-6 gap-2">
