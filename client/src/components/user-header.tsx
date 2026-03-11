@@ -441,12 +441,16 @@ export function UserHeader() {
       }
     }
     
-    updateProfileMutation.mutate({
-      firstName: profileFirstName,
-      lastName: profileLastName,
-      email: profileEmail,
-      selectedAvatar: avatarUrl,
-    });
+    if (user?.accountType === 'family_child') {
+      updateProfileMutation.mutate({ selectedAvatar: avatarUrl });
+    } else {
+      updateProfileMutation.mutate({
+        firstName: profileFirstName,
+        lastName: profileLastName,
+        email: profileEmail,
+        selectedAvatar: avatarUrl,
+      });
+    }
   };
 
   const handleLogout = () => {
@@ -1543,10 +1547,12 @@ export function UserHeader() {
                   id="profile-first-name"
                   type="text"
                   value={profileFirstName}
-                  onChange={(e) => setProfileFirstName(e.target.value)}
+                  readOnly
+                  disabled
                   placeholder="First name"
                   data-testid="input-profile-firstname"
                 />
+                <p className="text-xs text-muted-foreground">To change your child's name, update it from the Family Dashboard.</p>
               </div>
             ) : (
               <>
