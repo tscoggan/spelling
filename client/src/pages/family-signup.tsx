@@ -87,6 +87,7 @@ export default function FamilySignupPage() {
   const [acceptedTos, setAcceptedTos] = useState(false);
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [acceptedParentalConsent, setAcceptedParentalConsent] = useState(false);
+  const [acceptedActivityConsent, setAcceptedActivityConsent] = useState(false);
 
   const { data: existingAccount } = useQuery({
     queryKey: ["/api/family/account", user?.id],
@@ -241,7 +242,7 @@ export default function FamilySignupPage() {
   const displayLastName = familyData?.user.lastName ?? user?.lastName ?? "";
   const displayEmail = familyData?.user.email ?? (user as any)?.email ?? "";
 
-  const allConsentsChecked = acceptedTos && acceptedPrivacy && acceptedParentalConsent;
+  const allConsentsChecked = acceptedTos && acceptedPrivacy && acceptedParentalConsent && acceptedActivityConsent;
 
   return (
     <div className="min-h-screen p-4 relative">
@@ -449,6 +450,17 @@ export default function FamilySignupPage() {
                     I certify that I am the parent or legal guardian of any child who will use this service. I consent to the collection, use, and disclosure of my child's information as described in the Privacy Policy.
                   </span>
                 </div>
+
+                <div
+                  className="flex items-start gap-3 p-3 rounded-md border cursor-pointer"
+                  onClick={e => { if ((e.target as HTMLElement).closest('[role="checkbox"]')) return; setAcceptedActivityConsent(v => !v); }}
+                  data-testid="container-activity-consent"
+                >
+                  <Checkbox checked={acceptedActivityConsent} onCheckedChange={v => setAcceptedActivityConsent(v === true)} className="mt-0.5" data-testid="checkbox-activity-consent" />
+                  <span className="text-sm cursor-pointer leading-snug">
+                    I consent to my child participating in spelling games and practice activities within the service.
+                  </span>
+                </div>
               </div>
 
               <Button
@@ -460,7 +472,7 @@ export default function FamilySignupPage() {
                 {acceptLegalMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : <>Continue to Payment <ArrowRight className="w-4 h-4 ml-2" /></>}
               </Button>
               <p className="text-xs text-center text-muted-foreground">
-                All three boxes must be checked to continue. Your acceptance is logged with a timestamp for your records.
+                All four boxes must be checked to continue. Your acceptance is logged with a timestamp for your records.
               </p>
             </CardContent>
           </Card>
