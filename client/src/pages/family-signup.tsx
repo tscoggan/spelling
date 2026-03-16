@@ -333,6 +333,9 @@ export default function FamilySignupPage() {
                       <FormMessage />
                     </FormItem>
                   )} />
+                  <p className="text-xs text-muted-foreground text-center">
+                    You must be a parent or legal guardian to create a Family Account.
+                  </p>
                   <Button type="submit" className="w-full" disabled={signupMutation.isPending} data-testid="button-create-account">
                     {signupMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating Account...</> : <>Create Account <ArrowRight className="w-4 h-4 ml-2" /></>}
                   </Button>
