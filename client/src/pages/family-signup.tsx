@@ -446,7 +446,7 @@ export default function FamilySignupPage() {
                 >
                   <Checkbox checked={acceptedParentalConsent} onCheckedChange={v => setAcceptedParentalConsent(v === true)} className="mt-0.5" data-testid="checkbox-parental-consent" />
                   <span className="text-sm cursor-pointer leading-snug">
-                    I certify that I am the parent or legal guardian of any children who will use this service, and I consent to the collection of my child's information as described in the Privacy Policy.
+                    I certify that I am the parent or legal guardian of any child who will use this service. I consent to the collection, use, and disclosure of my child's information as described in the Privacy Policy.
                   </span>
                 </div>
               </div>

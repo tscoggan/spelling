@@ -436,6 +436,7 @@ export default function FamilyDashboardPage() {
                               <FormControl>
                                 <Input placeholder="Emma" {...field} data-testid="input-child-first-name" />
                               </FormControl>
+                              <p className="text-xs text-muted-foreground">For privacy, please avoid entering your child's full legal name.</p>
                               <FormMessage />
                             </FormItem>
                           )}
