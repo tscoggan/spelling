@@ -711,6 +711,16 @@ export default function AuthPage() {
             </form>
           </TabsContent>
         </Tabs>
+        <p className="text-xs text-center text-muted-foreground mt-4">
+          By creating an account you agree to our{" "}
+          <a href="/legal/family-tos" className="underline hover:text-foreground transition-colors" data-testid="link-terms-of-service">
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a href="/legal/privacy-policy" className="underline hover:text-foreground transition-colors" data-testid="link-privacy-policy">
+            Privacy Policy
+          </a>.
+        </p>
     </Card>
   );
 
