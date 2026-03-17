@@ -410,7 +410,11 @@ export function LegalDocPage({ docType }: LegalDocPageProps) {
 
         <div className="text-center text-xs text-muted-foreground pt-4 pb-8">
           <p>Spelling Playground &mdash; {doc.title} v{doc.version}</p>
-          <p className="mt-1">Questions? Contact <span className="underline">support@spellingplayground.com</span></p>
+          <p className="mt-1">Questions? Contact{" "}
+            <a href="mailto:support@spellingplayground.com" className="underline underline-offset-2 hover:text-foreground transition-colors">
+              support@spellingplayground.com
+            </a>
+          </p>
         </div>
       </div>
     </div>

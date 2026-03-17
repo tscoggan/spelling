@@ -470,6 +470,13 @@ export default function FamilyDashboardPage() {
                             </FormItem>
                           )}
                         />
+                        <div className="rounded-md bg-muted/60 border p-3 text-xs text-muted-foreground leading-relaxed">
+                          By creating a child profile, you consent to the collection and use of your child's information (first name, grade level, username, and spelling activity data) as described in our{" "}
+                          <a href="/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground transition-colors" data-testid="link-add-child-privacy-policy">
+                            Privacy Policy
+                          </a>
+                          . We do not show ads or sell personal data.
+                        </div>
                         <DialogFooter>
                           <Button type="submit" disabled={createChildMutation.isPending} data-testid="button-create-child">
                             {createChildMutation.isPending ? (

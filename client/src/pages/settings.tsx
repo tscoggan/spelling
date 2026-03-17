@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Home, Settings as SettingsIcon, Palette, Lock } from "lucide-react";
+import { Home, Settings as SettingsIcon, Palette, Lock, FileText } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 import { UserHeader } from "@/components/user-header";
@@ -164,6 +164,46 @@ export default function Settings() {
                       </div>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <Card className="bg-white/90 dark:bg-black/70 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Legal
+                  </CardTitle>
+                  <CardDescription>
+                    Review our policies and terms
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <a
+                    href="/legal/privacy-policy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm underline underline-offset-2 hover:text-primary transition-colors"
+                    data-testid="link-settings-privacy-policy"
+                  >
+                    <FileText className="h-4 w-4 shrink-0" />
+                    Privacy Policy
+                  </a>
+                  <a
+                    href="/legal/family-tos"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm underline underline-offset-2 hover:text-primary transition-colors"
+                    data-testid="link-settings-family-tos"
+                  >
+                    <FileText className="h-4 w-4 shrink-0" />
+                    Family Terms of Service
+                  </a>
                 </CardContent>
               </Card>
             </motion.div>
