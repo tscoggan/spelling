@@ -349,8 +349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { name, email, message } = schema.parse(req.body);
       
-      // Dev team email address
-      const devTeamEmail = "tsmith28@mail.com";
+      const devTeamEmail = "support@spellingplayground.com";
       
       await sendContactEmail(name, email, message, devTeamEmail);
       

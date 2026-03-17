@@ -1,4 +1,4 @@
 export const appConfig = {
-  devTeamEmail: "tsmith28@mail.com",
+  devTeamEmail: "support@spellingplayground.com",
   appName: "Spelling Playground",
 };
