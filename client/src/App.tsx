@@ -26,6 +26,7 @@ import SchoolSignupPage from "@/pages/school-signup";
 import SchoolDashboardPage from "@/pages/school-dashboard";
 import { SchoolTosPage, StudentDpaPage, PrivacyPolicyPage, FamilyTosPage } from "@/pages/legal-docs";
 import CheckoutSuccessPage from "@/pages/checkout-success";
+import ContactPage from "@/pages/contact";
 import NotFound from "@/pages/not-found";
 import { useEffect, useRef, createContext, useContext } from "react";
 
@@ -92,6 +93,7 @@ function Router() {
       <Route path="/legal/privacy-policy" component={PrivacyPolicyPage} />
       <Route path="/legal/family-tos" component={FamilyTosPage} />
       <Route path="/checkout/success" component={CheckoutSuccessPage} />
+      <Route path="/contact" component={ContactPage} />
       <Route component={NotFound} />
     </Switch>
   );
