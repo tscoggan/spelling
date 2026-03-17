@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { LogOut, Bell, Settings, Volume2, HelpCircle, Mail, BookOpen, Trophy, Gamepad2, List, Send, UserCircle, Palette, Lock, ShoppingCart, Info, CreditCard, Calendar, DollarSign, RefreshCw } from "lucide-react";
+import { LogOut, Bell, Settings, Volume2, HelpCircle, Mail, BookOpen, Trophy, Gamepad2, List, Send, UserCircle, Palette, Lock, ShoppingCart, Info, CreditCard, Calendar, DollarSign, RefreshCw, FileText } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useGuestSession } from "@/hooks/use-guest-session";
 import { useTheme } from "@/hooks/use-theme";
@@ -1083,6 +1083,38 @@ export function UserHeader() {
                   ? "Get More Themes in Star Shop" 
                   : "Visit Star Shop"}
               </Button>
+            </div>
+
+            <div className="space-y-2 pt-4 border-t">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                <span className="text-sm font-medium">Legal</span>
+              </div>
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <a href="/legal/privacy-policy" target="_blank" rel="noopener noreferrer"
+                  className="underline underline-offset-2 hover:text-foreground transition-colors"
+                  data-testid="link-settings-menu-privacy-policy">
+                  Privacy Policy
+                </a>
+                <span aria-hidden="true">&middot;</span>
+                <a href="/legal/family-tos" target="_blank" rel="noopener noreferrer"
+                  className="underline underline-offset-2 hover:text-foreground transition-colors"
+                  data-testid="link-settings-menu-family-tos">
+                  Family Terms
+                </a>
+                <span aria-hidden="true">&middot;</span>
+                <a href="/legal/school-tos" target="_blank" rel="noopener noreferrer"
+                  className="underline underline-offset-2 hover:text-foreground transition-colors"
+                  data-testid="link-settings-menu-school-tos">
+                  School Terms
+                </a>
+                <span aria-hidden="true">&middot;</span>
+                <a href="/legal/student-dpa" target="_blank" rel="noopener noreferrer"
+                  className="underline underline-offset-2 hover:text-foreground transition-colors"
+                  data-testid="link-settings-menu-student-dpa">
+                  Student DPA
+                </a>
+              </div>
             </div>
           </div>
         </DialogContent>

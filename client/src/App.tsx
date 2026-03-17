@@ -118,7 +118,38 @@ function App() {
                   tabIndex={-1}
                   aria-hidden="true"
                 />
-                <Router />
+                <div className="flex flex-col min-h-screen">
+                  <div className="flex-1">
+                    <Router />
+                  </div>
+                  <footer className="relative z-[9999] bg-background/80 backdrop-blur-sm border-t">
+                    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4 py-2 text-xs text-muted-foreground">
+                      <a href="/legal/privacy-policy" target="_blank" rel="noopener noreferrer"
+                        className="underline underline-offset-2 hover:text-foreground transition-colors"
+                        data-testid="link-footer-privacy-policy">
+                        Privacy Policy
+                      </a>
+                      <span aria-hidden="true">&middot;</span>
+                      <a href="/legal/family-tos" target="_blank" rel="noopener noreferrer"
+                        className="underline underline-offset-2 hover:text-foreground transition-colors"
+                        data-testid="link-footer-family-tos">
+                        Family Terms
+                      </a>
+                      <span aria-hidden="true">&middot;</span>
+                      <a href="/legal/school-tos" target="_blank" rel="noopener noreferrer"
+                        className="underline underline-offset-2 hover:text-foreground transition-colors"
+                        data-testid="link-footer-school-tos">
+                        School Terms
+                      </a>
+                      <span aria-hidden="true">&middot;</span>
+                      <a href="/legal/student-dpa" target="_blank" rel="noopener noreferrer"
+                        className="underline underline-offset-2 hover:text-foreground transition-colors"
+                        data-testid="link-footer-student-dpa">
+                        Student DPA
+                      </a>
+                    </div>
+                  </footer>
+                </div>
               </IOSKeyboardContext.Provider>
             </TooltipProvider>
           </ThemeProvider>
