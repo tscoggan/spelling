@@ -244,6 +244,111 @@ const DOCS: Record<string, DocConfig> = {
   },
 };
 
+function renderInline(text: string): React.ReactNode[] {
+  const combined = /https?:\/\/[^\s,)]+|[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = combined.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    const token = match[0];
+    if (/^https?:\/\//.test(token)) {
+      parts.push(
+        <a key={match.index} href={token} target="_blank" rel="noopener noreferrer"
+           className="text-primary underline underline-offset-2 break-all">
+          {token}
+        </a>
+      );
+    } else {
+      parts.push(
+        <a key={match.index} href={`mailto:${token}`}
+           className="text-primary underline underline-offset-2">
+          {token}
+        </a>
+      );
+    }
+    lastIndex = match.index + token.length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts;
+}
+
+function SectionBody({ body }: { body: string }) {
+  const blocks = body.split("\n\n");
+
+  return (
+    <div className="space-y-3">
+      {blocks.map((block, i) => {
+        const lines = block.split("\n");
+        const isBulletBlock = lines.every(l => /^[•\-–]\s/.test(l.trim()));
+
+        if (isBulletBlock) {
+          return (
+            <ul key={i} className="list-disc pl-5 space-y-1">
+              {lines.map((line, j) => (
+                <li key={j} className="text-sm text-muted-foreground leading-relaxed">
+                  {renderInline(line.replace(/^[•\-–]\s+/, ""))}
+                </li>
+              ))}
+            </ul>
+          );
+        }
+
+        const hasBullets = lines.some(l => /^[•\-–]\s/.test(l.trim()));
+        if (hasBullets) {
+          const nodes: React.ReactNode[] = [];
+          let bulletBuffer: string[] = [];
+
+          const flushBullets = () => {
+            if (bulletBuffer.length > 0) {
+              nodes.push(
+                <ul key={`ul-${nodes.length}`} className="list-disc pl-5 space-y-1">
+                  {bulletBuffer.map((b, k) => (
+                    <li key={k} className="text-sm text-muted-foreground leading-relaxed">
+                      {renderInline(b.replace(/^[•\-–]\s+/, ""))}
+                    </li>
+                  ))}
+                </ul>
+              );
+              bulletBuffer = [];
+            }
+          };
+
+          lines.forEach((line, j) => {
+            if (/^[•\-–]\s/.test(line.trim())) {
+              bulletBuffer.push(line.trim());
+            } else if (line.trim()) {
+              flushBullets();
+              nodes.push(
+                <p key={j} className="text-sm text-muted-foreground leading-relaxed">
+                  {renderInline(line.trim())}
+                </p>
+              );
+            }
+          });
+          flushBullets();
+
+          return <div key={i} className="space-y-2">{nodes}</div>;
+        }
+
+        return (
+          <p key={i} className="text-sm text-muted-foreground leading-relaxed">
+            {renderInline(block)}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 interface LegalDocPageProps {
   docType: "school-tos" | "student-dpa" | "privacy-policy" | "family-tos";
 }
@@ -294,13 +399,7 @@ export function LegalDocPage({ docType }: LegalDocPageProps) {
                 <CardTitle className="text-base">{section.heading}</CardTitle>
               </CardHeader>
               <CardContent className="pb-4">
-                <div className="space-y-3">
-                  {section.body.split("\n\n").map((paragraph, i) => (
-                    <p key={i} className="text-sm text-muted-foreground leading-relaxed">
-                      {paragraph}
-                    </p>
-                  ))}
-                </div>
+                <SectionBody body={section.body} />
               </CardContent>
             </Card>
           ))}
