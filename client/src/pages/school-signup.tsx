@@ -55,7 +55,7 @@ const accountSchema = z.object({
 
 const legalSchema = z.object({
   agreedToTos: z.boolean().refine((val) => val === true, {
-    message: "You must agree to the School Terms of Service to continue",
+    message: "You must agree to the Terms of Service to continue",
   }),
   agreedToDpa: z.boolean().refine((val) => val === true, {
     message: "You must agree to the Student Data Privacy Addendum to continue",
@@ -414,10 +414,10 @@ export default function SchoolSignupPage() {
                 <p className="font-medium">Review all documents before proceeding:</p>
                 <ul className="space-y-1 mt-2">
                   <li>
-                    <a href="/legal/school-tos" target="_blank" rel="noopener noreferrer"
+                    <a href="/legal/terms" target="_blank" rel="noopener noreferrer"
                       className="text-primary underline underline-offset-2 hover:opacity-80"
-                      data-testid="link-school-tos">
-                      School Terms of Service
+                      data-testid="link-terms">
+                      Terms of Service
                     </a>
                   </li>
                   <li>
@@ -456,9 +456,9 @@ export default function SchoolSignupPage() {
                         <div className="space-y-1 leading-none">
                           <FormLabel className="text-sm font-medium leading-snug cursor-pointer">
                             I have read and agree to the{" "}
-                            <a href="/legal/school-tos" target="_blank" rel="noopener noreferrer"
+                            <a href="/legal/terms" target="_blank" rel="noopener noreferrer"
                               className="text-primary underline underline-offset-2">
-                              School Terms of Service
+                              Terms of Service
                             </a>
                             {" "}and related agreements.
                           </FormLabel>
@@ -512,7 +512,7 @@ export default function SchoolSignupPage() {
                           <p className="text-xs text-muted-foreground leading-relaxed">
                             I represent and warrant that I am duly authorized to enter into binding
                             agreements on behalf of the School identified in this registration and to
-                            accept the School Terms of Service and related agreements.
+                            accept the Terms of Service and related agreements.
                           </p>
                           <FormMessage />
                         </div>

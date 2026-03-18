@@ -528,13 +528,13 @@ export default function SchoolDashboardPage() {
         <div className="mt-6 pt-4 border-t flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground" data-testid="section-legal-footer">
           <span className="font-medium">Legal Documents:</span>
           <a
-            href="/legal/school-tos"
+            href="/legal/terms"
             target="_blank"
             rel="noopener noreferrer"
             className="underline underline-offset-2 hover:text-foreground"
-            data-testid="link-legal-school-tos"
+            data-testid="link-legal-terms"
           >
-            School Terms of Service
+            Terms of Service
           </a>
           <a
             href="/legal/student-dpa"

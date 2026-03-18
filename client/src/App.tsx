@@ -24,7 +24,7 @@ import FamilySignupPage from "@/pages/family-signup";
 import FamilyDashboardPage from "@/pages/family-dashboard";
 import SchoolSignupPage from "@/pages/school-signup";
 import SchoolDashboardPage from "@/pages/school-dashboard";
-import { SchoolTosPage, StudentDpaPage, PrivacyPolicyPage, FamilyTosPage } from "@/pages/legal-docs";
+import { TermsPage, StudentDpaPage, PrivacyPolicyPage } from "@/pages/legal-docs";
 import CheckoutSuccessPage from "@/pages/checkout-success";
 import ContactPage from "@/pages/contact";
 import NotFound from "@/pages/not-found";
@@ -88,10 +88,9 @@ function Router() {
       <Route path="/family/signup" component={FamilySignupPage} />
       <Route path="/school/signup" component={SchoolSignupPage} />
       <ProtectedRoute path="/school" component={SchoolDashboardPage} />
-      <Route path="/legal/school-tos" component={SchoolTosPage} />
+      <Route path="/legal/terms" component={TermsPage} />
       <Route path="/legal/student-dpa" component={StudentDpaPage} />
       <Route path="/legal/privacy-policy" component={PrivacyPolicyPage} />
-      <Route path="/legal/family-tos" component={FamilyTosPage} />
       <Route path="/checkout/success" component={CheckoutSuccessPage} />
       <Route path="/contact" component={ContactPage} />
       <Route component={NotFound} />
@@ -132,16 +131,10 @@ function App() {
                         Privacy Policy
                       </a>
                       <span aria-hidden="true">&middot;</span>
-                      <a href="/legal/family-tos" target="_blank" rel="noopener noreferrer"
+                      <a href="/legal/terms" target="_blank" rel="noopener noreferrer"
                         className="underline underline-offset-2 hover:text-foreground transition-colors"
-                        data-testid="link-footer-family-tos">
-                        Family Terms
-                      </a>
-                      <span aria-hidden="true">&middot;</span>
-                      <a href="/legal/school-tos" target="_blank" rel="noopener noreferrer"
-                        className="underline underline-offset-2 hover:text-foreground transition-colors"
-                        data-testid="link-footer-school-tos">
-                        School Terms
+                        data-testid="link-footer-terms">
+                        Terms of Service
                       </a>
                       <span aria-hidden="true">&middot;</span>
                       <a href="/legal/student-dpa" target="_blank" rel="noopener noreferrer"

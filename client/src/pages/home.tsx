@@ -931,13 +931,9 @@ function SchoolAdminHome() {
             className="underline underline-offset-2 hover:text-foreground" data-testid="link-legal-privacy-policy">
             Privacy Policy
           </a>
-          <a href="/legal/family-tos" target="_blank" rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-foreground" data-testid="link-legal-family-tos">
-            Family Terms of Service
-          </a>
-          <a href="/legal/school-tos" target="_blank" rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-foreground" data-testid="link-legal-school-tos">
-            School Terms of Service
+          <a href="/legal/terms" target="_blank" rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-foreground" data-testid="link-legal-terms">
+            Terms of Service
           </a>
           <a href="/legal/student-dpa" target="_blank" rel="noopener noreferrer"
             className="underline underline-offset-2 hover:text-foreground" data-testid="link-legal-student-dpa">

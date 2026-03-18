@@ -195,14 +195,14 @@ export default function Settings() {
                     Privacy Policy
                   </a>
                   <a
-                    href="/legal/family-tos"
+                    href="/legal/terms"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-2 text-sm underline underline-offset-2 hover:text-primary transition-colors"
-                    data-testid="link-settings-family-tos"
+                    data-testid="link-settings-terms"
                   >
                     <FileText className="h-4 w-4 shrink-0" />
-                    Family Terms of Service
+                    Terms of Service
                   </a>
                 </CardContent>
               </Card>

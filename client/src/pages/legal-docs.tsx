@@ -15,46 +15,113 @@ interface DocConfig {
 }
 
 const DOCS: Record<string, DocConfig> = {
-  "school-tos": {
-    title: "School Terms of Service",
-    version: "1.0",
-    effectiveDate: "January 1, 2025",
+  "terms": {
+    title: "Terms of Service",
+    version: "1.1",
+    effectiveDate: "March 17, 2026",
     icon: FileText,
-    hasPlaceholder: true,
     summary:
-      "These terms govern the relationship between Spelling Playground and schools that create accounts on the platform. By creating a school account, the authorized school administrator accepts these terms on behalf of the school.",
+      "These Terms of Service govern your use of Spelling Playground. They apply to all users — parents, guardians, school administrators, teachers, and children using the Service — and set out your rights and obligations.",
     sections: [
       {
-        heading: "1. Acceptance of Terms",
-        body: "[Placeholder] The school, through its authorized administrator, agrees to be bound by these Terms of Service. Use of the platform by teachers and students constitutes acceptance of these terms.",
+        heading: "1. Interpretation and Definitions",
+        body: "The words whose initial letters are capitalized have meanings defined under the following conditions. The following definitions shall have the same meaning regardless of whether they appear in singular or in plural.\n\nFor the purposes of these Terms and Conditions:\n\n**Application** means the software program provided by the Company downloaded by You on any electronic device, named Spelling Playground.\n\n**Application Store** means the digital distribution service operated and developed by Apple Inc. (Apple App Store) or Google Inc. (Google Play Store) in which the Application has been downloaded.\n\n**Affiliate** means an entity that controls, is controlled by, or is under common control with a party, where \"control\" means ownership of 50% or more of the shares, equity interest or other securities entitled to vote for election of directors or other managing authority.\n\n**Account** means a unique account created for You to access our Service or parts of our Service.\n\n**Country** refers to: New Jersey, United States.\n\n**Company** (referred to as either \"the Company\", \"We\", \"Us\" or \"Our\" in these Terms and Conditions) refers to Spelling Playground LLC, 650 Jersey Ave., Jersey City, NJ 07302.\n\n**Content** refers to content such as text, images, or other information that can be posted, uploaded, linked to or otherwise made available by You, regardless of the form of that content.\n\n**Device** means any device that can access the Service such as a computer, a cell phone or a digital tablet.\n\n**Feedback** means feedback, innovations or suggestions sent by You regarding the attributes, performance or features of our Service.\n\n**Free Trial** refers to a limited period of time that may be free when purchasing a Subscription.\n\n**Service** refers to the Application or the Website or both.\n\n**Subscriptions** refer to the services or access to the Service offered on a subscription basis by the Company to You.\n\n**Terms and Conditions** (also referred to as \"Terms\") means these Terms and Conditions, including any documents expressly incorporated by reference, which govern Your access to and use of the Service and form the entire agreement between You and the Company regarding the Service.\n\n**Third-Party Social Media Service** means any services or content (including data, information, products or services) provided by a third party that is displayed, included, made available, or linked to through the Service.\n\n**Website** refers to Spelling Playground, accessible from https://spellingplayground.com.\n\n**You** means the individual accessing or using the Service, or the company or other legal entity on behalf of which such individual is accessing or using the Service, as applicable.",
       },
       {
-        heading: "2. School Responsibilities",
-        body: "[Placeholder] The school is responsible for ensuring that all use of the platform by its teachers and students complies with applicable law, school policies, and these terms. The school must designate an authorized administrator.",
+        heading: "2. Acknowledgment",
+        body: "These are the Terms and Conditions governing the use of this Service and the agreement between You and the Company. These Terms and Conditions set out the rights and obligations of all users regarding the use of the Service.\n\nYour access to and use of the Service is conditioned on Your acceptance of and compliance with these Terms and Conditions. These Terms and Conditions apply to all visitors, users and others who access or use the Service.\n\nBy accessing or using the Service You agree to be bound by these Terms and Conditions. If You disagree with any part of these Terms and Conditions then You may not access the Service.\n\nThe Service is intended for use by parents or legal guardians, and by children under the supervision of a parent, guardian, or educational institution. Children under the age of 13 may only use the Service through a parent or guardian account or through a school account authorized by an educational institution.\n\nBy creating an account, You represent that You are a parent or legal guardian, or that You are an authorized representative of a school or educational institution.\n\nYour access to and use of the Service is also subject to Our Privacy Policy, which describes how We collect, use, and disclose personal information. Please read Our Privacy Policy carefully before using Our Service.\n\nIf You are using the Service on behalf of a school or educational institution, additional terms may apply, including a School Terms Addendum, which is incorporated into these Terms by reference.\n\nYou agree not to use the Service to collect, store, or share personal information about children except as permitted by these Terms and applicable law.",
       },
       {
-        heading: "3. Student Accounts",
-        body: "[Placeholder] Schools are responsible for creating and managing student accounts. Student accounts may only be created by authorized school administrators or teachers. Students shall not self-register.",
+        heading: "3. Educational Purpose",
+        body: "The Service is provided for educational and personal learning purposes only. The Company does not guarantee specific educational outcomes or results.\n\nThe Service is not intended to provide professional educational, medical, or psychological advice.",
       },
       {
-        heading: "4. Data Use",
-        body: "[Placeholder] Spelling Playground will use student data solely to provide the educational services described herein. We will not sell or share student data with third parties for advertising purposes.",
+        heading: "4. Children's Use of the Service",
+        body: "The Service is designed for use by children under the supervision of a parent, legal guardian, or educational institution.\n\nParents and guardians are responsible for:\n- Creating and managing child accounts\n- Supervising their child's use of the Service\n- Ensuring that any information provided about a child is accurate and appropriate\n\nThe Company does not knowingly permit children to create accounts independently.\n\nParents and legal guardians have the right to review, modify, or delete their child's personal information as described in the Privacy Policy.\n\nFor information about how We collect and use children's data, please refer to our Privacy Policy.",
       },
       {
-        heading: "5. FERPA Compliance",
-        body: "[Placeholder] Spelling Playground operates as a school official under FERPA. The school retains ownership and control over student educational records. This section describes our obligations under the Family Educational Rights and Privacy Act.",
+        heading: "5. School and Educational Use",
+        body: "If You create or use an account on behalf of a school, district, or other educational institution, You represent and warrant that You are authorized to do so.\n\nThe school or educational institution is responsible for obtaining any required parental consents for students to use the Service.\n\nWhen the Service is used by a school, the Company acts as a service provider and processes student data solely for educational purposes on behalf of the school.\n\n**Student Data Ownership**\n\nAs between the Company and the school or educational institution, the school retains ownership and control of student data. The Company uses such data solely to provide the Service in accordance with these Terms and applicable law.\n\nThe Company does not use student data for any purpose other than providing the Service and as directed by the educational institution, in accordance with applicable student data privacy laws.",
       },
       {
-        heading: "6. Termination",
-        body: "[Placeholder] Either party may terminate the school account with 30 days written notice. Upon termination, the school may export its data. Student data will be deleted within 60 days of account closure.",
+        heading: "6. Subscriptions",
+        body: "The Service or some parts of the Service are available only with a paid Subscription. You will be billed in advance on a recurring and periodic basis (such as daily, weekly, monthly or annually), depending on the type of Subscription plan you select when purchasing the Subscription.\n\nAt the end of each period, Your Subscription will automatically renew under the exact same conditions unless You cancel it or the Company cancels it.\n\n**Subscription Cancellations**\n\nYou may cancel Your Subscription renewal either through Your Account settings page or by contacting the Company. You will not receive a refund for the fees You already paid for Your current Subscription period and You will be able to access the Service until the end of Your current Subscription period.",
       },
       {
-        heading: "7. Limitation of Liability",
-        body: "[Placeholder] Full limitation of liability terms, warranties, and disclaimers will be included in the final version of this document.",
+        heading: "7. Billing and Payment",
+        body: "You shall provide the Company with accurate and complete billing information including full name, address, state, zip code, telephone number, and a valid payment method.\n\nShould automatic billing fail to occur for any reason, the Company will issue an electronic invoice indicating that you must proceed manually, within a certain deadline date, with the full payment corresponding to the billing period as indicated on the invoice.\n\n**Payment Processing**\n\nPayments are processed through third-party payment processors (such as Stripe, Inc.). The Company does not store full payment card information. Your use of such payment services is subject to their terms and policies.\n\n**Fee Changes**\n\nThe Company, in its sole discretion and at any time, may modify the Subscription fees. Any Subscription fee change will become effective at the end of the then-current Subscription period.\n\nThe Company will provide You with reasonable prior notice of any change in Subscription fees to give You an opportunity to terminate Your Subscription before such change becomes effective.\n\nYour continued use of the Service after the Subscription fee change comes into effect constitutes Your agreement to pay the modified Subscription fee amount.\n\n**Refunds**\n\nExcept when required by law, paid Subscription fees are non-refundable. Certain refund requests for Subscriptions may be considered by the Company on a case-by-case basis and granted at the sole discretion of the Company.",
       },
       {
-        heading: "8. Contact",
-        body: "[Placeholder] For questions about these terms, contact us at support@spellingplayground.com.",
+        heading: "8. Free Trial",
+        body: "The Company may, at its sole discretion, offer a Subscription with a Free Trial for a limited period of time.\n\nYou may be required to enter Your billing information in order to sign up for the Free Trial.\n\nIf You do enter Your billing information when signing up for a Free Trial, You will not be charged by the Company until the Free Trial has expired. On the last day of the Free Trial period, unless You canceled Your Subscription, You will be automatically charged the applicable Subscription fees for the type of Subscription You have selected.\n\nAt any time and without notice, the Company reserves the right to (i) modify the terms and conditions of the Free Trial offer, or (ii) cancel such Free Trial offer.",
+      },
+      {
+        heading: "9. Account Types",
+        body: "The Service may offer different types of accounts, including family accounts and school accounts.\n\nCertain features, permissions, and responsibilities may differ depending on the type of account. You agree to use the Service only in accordance with the account type You create.",
+      },
+      {
+        heading: "10. User Accounts",
+        body: "When You create an Account with Us, You must provide Us information that is accurate, complete, and current at all times. Failure to do so constitutes a breach of the Terms, which may result in immediate termination of Your Account on Our Service.\n\nYou are responsible for safeguarding the password that You use to access the Service and for any activities or actions under Your password, whether Your password is with Our Service or a Third-Party Social Media Service.\n\nYou agree not to disclose Your password to any third party. You must notify Us immediately upon becoming aware of any breach of security or unauthorized use of Your Account.\n\nYou may not use as a username the name of another person or entity or that is not lawfully available for use, a name or trademark that is subject to any rights of another person or entity other than You without appropriate authorization, or a name that is otherwise offensive, vulgar or obscene.",
+      },
+      {
+        heading: "11. Social Login and Account Deletion",
+        body: "**Social Login and Linked Accounts**\n\nIf the Service allows You to sign in, connect, or otherwise interact with a Third-Party Social Media Service, You authorize the Company to access and use information made available by that Third-Party Social Media Service in accordance with Our Privacy Policy and Your settings with that Third-Party Social Media Service.\n\nThe Company does not control and is not responsible for the availability, accuracy, or content of any Third-Party Social Media Service, and Your relationship with that Third-Party Social Media Service is governed by its own terms and policies.\n\n**Account Deletion**\n\nYou may request deletion of Your account and associated data at any time by contacting the Company or using available account settings. Additional information is provided in the Privacy Policy.",
+      },
+      {
+        heading: "12. Your Content",
+        body: "**Your Content and License Grant**\n\nThe Service allows You to create, upload, and share Content, including custom word lists and images.\n\nYou retain ownership of any Content You submit to the Service. By submitting Content, You grant the Company a limited, non-exclusive, royalty-free, worldwide license to use, host, store, reproduce, and display such Content solely for the purpose of operating, providing, and improving the Service.\n\nThis includes the right for the Company to make such Content available for use, adaptation, and reuse by other users within the Service as part of its educational features.\n\nThe Company does not use Content created by children or students for advertising, marketing, or any purpose unrelated to providing the educational functionality of the Service.\n\n**Content Visibility**\n\nYou acknowledge that Content You choose to share may be accessible to other users of the Service. You are responsible for ensuring that any Content You share does not include sensitive personal information, including full names, contact information, or other identifying details of children.\n\nContent that is shared within the Service should not be considered private, and the Company cannot guarantee confidentiality of Content that is made available to other users.\n\nFor school accounts, teachers and school administrators are responsible for determining whether student-created Content is shared within the Service.",
+      },
+      {
+        heading: "13. Content Restrictions",
+        body: "The Company is not responsible for the content of the Service's users. You expressly understand and agree that You are solely responsible for the Content and for all activity that occurs under Your Account, whether done so by You or any third person using Your Account.\n\nYou may not transmit any Content that is unlawful, offensive, upsetting, intended to disgust, threatening, libelous, defamatory, obscene or otherwise objectionable. Examples of such objectionable Content include, but are not limited to:\n- Unlawful or promoting unlawful activity\n- Defamatory, discriminatory, or mean-spirited content, including references or commentary about religion, race, sexual orientation, gender, national/ethnic origin, or other targeted groups\n- Spam, machine- or randomly-generated, constituting unauthorized or unsolicited advertising, chain letters, any other form of unauthorized solicitation, or any form of lottery or gambling\n- Containing or installing any viruses, worms, malware, trojan horses, or other content that is designed or intended to disrupt, damage, or limit the functioning of any software, hardware or telecommunications equipment or to damage or obtain unauthorized access to any data or other information of a third person\n- Infringing on any proprietary rights of any party, including patent, trademark, trade secret, copyright, right of publicity or other rights\n- Impersonating any person or entity including the Company and its employees or representatives\n- Violating the privacy of any third person\n- False information and features\n\nThe Company reserves the right, but not the obligation, to in its sole discretion determine whether or not any Content is appropriate and complies with these Terms, and to refuse or remove such Content. The Company further reserves the right to make formatting and edits and change the manner of any Content. The Company can also limit or revoke the use of the Service if You post such objectionable Content.\n\nThe Company may monitor, review, remove, or restrict access to Content at any time, including to ensure compliance with these Terms, protect users, or maintain the educational integrity of the Service.",
+      },
+      {
+        heading: "14. Content Backups",
+        body: "Although regular backups of Content are performed, the Company does not guarantee there will be no loss or corruption of data.\n\nCorrupt or invalid backup points may be caused by, without limitation, Content that is corrupted prior to being backed up or that changes during the time a backup is performed.\n\nThe Company will provide support and attempt to troubleshoot any known or discovered issues that may affect the backups of Content. But You acknowledge that the Company has no liability related to the integrity of Content or the failure to successfully restore Content to a usable state.\n\nYou agree to maintain a complete and accurate copy of any Content in a location independent of the Service.",
+      },
+      {
+        heading: "15. Service Modifications and Advertising",
+        body: "**Service Modifications**\n\nThe Company reserves the right to modify, suspend, or discontinue any part of the Service at any time, with or without notice. The Company will not be liable for any modification, suspension, or discontinuation of the Service.\n\n**Advertising**\n\nThe Service does not display third-party advertising to children and does not use personal information for advertising purposes.\n\nThe Service does not use behavioral advertising or third-party ad networks.",
+      },
+      {
+        heading: "16. Copyright Policy",
+        body: "**Intellectual Property Infringement**\n\nWe respect the intellectual property rights of others. It is Our policy to respond to any claim that Content posted on the Service infringes a copyright or other intellectual property infringement of any person.\n\nIf You are a copyright owner, or authorized on behalf of one, and You believe that the copyrighted work has been copied in a way that constitutes copyright infringement that is taking place through the Service, You must submit Your notice in writing to the attention of our copyright agent via email at support@spellingplayground.com and include in Your notice a detailed description of the alleged infringement.\n\nYou may be held accountable for damages (including costs and attorneys' fees) for misrepresenting that any Content is infringing Your copyright.\n\n**DMCA Notice and Procedure for Copyright Infringement Claims**\n\nYou may submit a notification pursuant to the Digital Millennium Copyright Act (DMCA) by providing our Copyright Agent with the following information in writing (see 17 U.S.C 512(c)(3) for further detail):\n- An electronic or physical signature of the person authorized to act on behalf of the owner of the copyright's interest\n- A description of the copyrighted work that You claim has been infringed, including the URL of the location where the copyrighted work exists or a copy of the copyrighted work\n- Identification of the URL or other specific location on the Service where the material that You claim is infringing is located\n- Your address, telephone number, and email address\n- A statement by You that You have a good faith belief that the disputed use is not authorized by the copyright owner, its agent, or the law\n- A statement by You, made under penalty of perjury, that the above information in Your notice is accurate and that You are the copyright owner or authorized to act on the copyright owner's behalf\n\nYou can contact our copyright agent via email at support@spellingplayground.com. Upon receipt of a notification, the Company will take whatever action, in its sole discretion, it deems appropriate, including removal of the challenged content from the Service.",
+      },
+      {
+        heading: "17. Intellectual Property",
+        body: "The Service and its original content (excluding Content provided by You or other users), features and functionality are and will remain the exclusive property of the Company and its licensors.\n\nThe Service is protected by copyright, trademark, and other laws of both the Country and foreign countries.\n\nOur trademarks and trade dress may not be used in connection with any product or service without the prior written consent of the Company.\n\n**Your Feedback to Us**\n\nYou assign all rights, title and interest in any Feedback You provide the Company. If for any reason such assignment is ineffective, You agree to grant the Company a non-exclusive, perpetual, irrevocable, royalty free, worldwide right and license to use, reproduce, disclose, sub-license, distribute, modify and exploit such Feedback without restriction.",
+      },
+      {
+        heading: "18. Links to Other Websites",
+        body: "Our Service may contain links to third-party websites or services that are not owned or controlled by the Company.\n\nThe Company has no control over, and assumes no responsibility for, the content, privacy policies, or practices of any third-party websites or services. You further acknowledge and agree that the Company shall not be responsible or liable, directly or indirectly, for any damage or loss caused or alleged to be caused by or in connection with the use of or reliance on any such content, goods or services available on or through any such websites or services.\n\nWe strongly advise You to read the terms and conditions and privacy policies of any third-party websites or services that You visit.\n\nThe Service may display, include, make available, or link to content or services provided by a Third-Party Social Media Service. A Third-Party Social Media Service is not owned or controlled by the Company, and the Company does not endorse or assume responsibility for any Third-Party Social Media Service.",
+      },
+      {
+        heading: "19. Termination",
+        body: "We may terminate or suspend Your Account immediately, without prior notice or liability, for any reason whatsoever, including without limitation if You breach these Terms and Conditions.\n\nUpon termination, Your right to use the Service will cease immediately. If You wish to terminate Your Account, You may simply discontinue using the Service.\n\nIf We terminate Your Subscription for convenience (and not due to Your breach), We will refund any prepaid fees covering the remainder of the term of the Subscription after the effective date of termination. In no event will any termination relieve You of the obligation to pay any fees payable to Us for the period prior to the effective date of termination.\n\nWe may also suspend or terminate access to the Service if required to comply with applicable law or to protect the safety of users, including children.",
+      },
+      {
+        heading: "20. Limitation of Liability",
+        body: "Notwithstanding any damages that You might incur, the entire liability of the Company and any of its suppliers under any provision of these Terms and Your exclusive remedy for all of the foregoing shall be limited to the amount actually paid by You through the Service or 100 USD if You haven't purchased anything through the Service.\n\nTo the maximum extent permitted by applicable law, in no event shall the Company or its suppliers be liable for any special, incidental, indirect, or consequential damages whatsoever (including, but not limited to, damages for loss of profits, loss of data or other information, for business interruption, for personal injury, loss of privacy arising out of or in any way related to the use of or inability to use the Service, third-party software and/or third-party hardware used with the Service, or otherwise in connection with any provision of these Terms), even if the Company or any supplier has been advised of the possibility of such damages and even if the remedy fails of its essential purpose.\n\nSome states do not allow the exclusion of implied warranties or limitation of liability for incidental or consequential damages, which means that some of the above limitations may not apply. In these states, each party's liability will be limited to the greatest extent permitted by law.",
+      },
+      {
+        heading: "21. \"AS IS\" and \"AS AVAILABLE\" Disclaimer",
+        body: "The Service is provided to You \"AS IS\" and \"AS AVAILABLE\" and with all faults and defects without warranty of any kind. To the maximum extent permitted under applicable law, the Company, on its own behalf and on behalf of its Affiliates and its and their respective licensors and service providers, expressly disclaims all warranties, whether express, implied, statutory or otherwise, with respect to the Service, including all implied warranties of merchantability, fitness for a particular purpose, title and non-infringement, and warranties that may arise out of course of dealing, course of performance, usage or trade practice.\n\nWithout limiting the foregoing, neither the Company nor any of the Company's providers makes any representation or warranty of any kind, express or implied: (i) as to the operation or availability of the Service, or the information, content, and materials or products included thereon; (ii) that the Service will be uninterrupted or error-free; (iii) as to the accuracy, reliability, or currency of any information or content provided through the Service; or (iv) that the Service, its servers, the content, or e-mails sent from or on behalf of the Company are free of viruses, scripts, trojan horses, worms, malware, timebombs or other harmful components.\n\nSome jurisdictions do not allow the exclusion of certain types of warranties or limitations on applicable statutory rights of a consumer, so some or all of the above exclusions and limitations may not apply to You.",
+      },
+      {
+        heading: "22. Governing Law and Disputes",
+        body: "**Governing Law**\n\nThe laws of the Country, excluding its conflicts of law rules, shall govern these Terms and Your use of the Service. Your use of the Application may also be subject to other local, state, national, or international laws.\n\nAny legal action or proceeding arising under these Terms will be brought exclusively in the state or federal courts located in New Jersey, and the parties hereby consent to personal jurisdiction and venue therein.\n\n**Disputes Resolution**\n\nIf You have any concern or dispute about the Service, You agree to first try to resolve the dispute informally by contacting the Company.\n\n**For European Union (EU) Users**\n\nIf You are a European Union consumer, you will benefit from any mandatory provisions of the law of the country in which You are resident.\n\n**United States Legal Compliance**\n\nYou represent and warrant that (i) You are not located in a country that is subject to the United States government embargo, or that has been designated by the United States government as a \"terrorist supporting\" country, and (ii) You are not listed on any United States government list of prohibited or restricted parties.",
+      },
+      {
+        heading: "23. Severability, Waiver, and Translation",
+        body: "**Severability**\n\nIf any provision of these Terms is held to be unenforceable or invalid, such provision will be changed and interpreted to accomplish the objectives of such provision to the greatest extent possible under applicable law and the remaining provisions will continue in full force and effect.\n\n**Waiver**\n\nExcept as provided herein, the failure to exercise a right or to require performance of an obligation under these Terms shall not affect a party's ability to exercise such right or require such performance at any time thereafter nor shall the waiver of a breach constitute a waiver of any subsequent breach.\n\n**Translation Interpretation**\n\nThese Terms and Conditions may have been translated if We have made them available to You on our Service. You agree that the original English text shall prevail in the case of a dispute.",
+      },
+      {
+        heading: "24. Changes to These Terms",
+        body: "We reserve the right, at Our sole discretion, to modify or replace these Terms at any time. If a revision is material We will make reasonable efforts to provide at least 30 days\' notice prior to any new terms taking effect. What constitutes a material change will be determined at Our sole discretion.\n\nBy continuing to access or use Our Service after those revisions become effective, You agree to be bound by the revised terms. If You do not agree to the new terms, in whole or in part, please stop using the Service.\n\nThese Terms, together with the Privacy Policy and any incorporated documents, constitute the entire agreement between You and the Company regarding the Service and supersede any prior agreements. You may not assign or transfer these Terms without the prior written consent of the Company. The Company may assign these Terms without restriction.",
+      },
+      {
+        heading: "25. Contact Us",
+        body: "If you have any questions about these Terms and Conditions, You can contact us:\n- By email: support@spellingplayground.com\n- By visiting this page on our website: https://spellingplayground.com/contact",
       },
     ],
   },
@@ -199,57 +266,6 @@ const DOCS: Record<string, DocConfig> = {
       },
     ],
   },
-  "family-tos": {
-    title: "Family Terms of Service",
-    version: "1.0",
-    effectiveDate: "January 1, 2025",
-    icon: FileText,
-    hasPlaceholder: true,
-    summary:
-      "These terms govern the relationship between Spelling Playground and families (parents and their children) who create accounts on the platform. By creating a family account, you accept these terms.",
-    sections: [
-      {
-        heading: "1. Acceptance of Terms",
-        body: "[Placeholder] By creating a family account and using Spelling Playground, you agree to be bound by these Terms of Service. Use of the platform by you or your children constitutes acceptance of these terms.",
-      },
-      {
-        heading: "2. Parent and Guardian Responsibilities",
-        body: "[Placeholder] The parent or legal guardian is responsible for supervising their children's use of the platform, ensuring that their children's use complies with applicable law and these terms, and for all account activity under the family account.",
-      },
-      {
-        heading: "3. Children's Accounts",
-        body: "[Placeholder] Child accounts may only be created by the parent or legal guardian account holder. Parents are responsible for managing their children's accounts and may delete them at any time.",
-      },
-      {
-        heading: "4. Subscription and Payment",
-        body: "[Placeholder] Family accounts require a paid subscription. Subscriptions automatically renew unless cancelled before the renewal date. Prices are subject to change with 30 days notice. Refunds are handled in accordance with our refund policy.",
-      },
-      {
-        heading: "5. Data Use",
-        body: "[Placeholder] Spelling Playground uses account data solely to provide the educational services described herein. We do not sell or share your children's personal data with third parties for advertising purposes. See our Privacy Policy for full details.",
-      },
-      {
-        heading: "6. COPPA Compliance",
-        body: "[Placeholder] Spelling Playground complies with the Children's Online Privacy Protection Act (COPPA). By creating child accounts, you certify that you are the parent or legal guardian and you consent to the collection of your child's information as described in our Privacy Policy.",
-      },
-      {
-        heading: "7. Acceptable Use",
-        body: "[Placeholder] The platform is for educational use only. You agree not to misuse the platform, create inappropriate content, or use the service in any manner inconsistent with these terms.",
-      },
-      {
-        heading: "8. Termination",
-        body: "[Placeholder] Either party may terminate the account at any time. Upon cancellation, access continues until the end of the paid subscription period. All account data may be requested for export before termination.",
-      },
-      {
-        heading: "9. Limitation of Liability",
-        body: "[Placeholder] Full limitation of liability terms, warranties, and disclaimers will be included in the final version of this document.",
-      },
-      {
-        heading: "10. Contact",
-        body: "[Placeholder] For questions about these terms, contact us at support@spellingplayground.com.",
-      },
-    ],
-  },
 };
 
 function renderInlineSingleLine(text: string): React.ReactNode[] {
@@ -363,7 +379,7 @@ function SectionBody({ body }: { body: string }) {
 }
 
 interface LegalDocPageProps {
-  docType: "school-tos" | "student-dpa" | "privacy-policy" | "family-tos";
+  docType: "terms" | "student-dpa" | "privacy-policy";
 }
 
 export function LegalDocPage({ docType }: LegalDocPageProps) {
@@ -431,7 +447,6 @@ export function LegalDocPage({ docType }: LegalDocPageProps) {
   );
 }
 
-export function SchoolTosPage() { return <LegalDocPage docType="school-tos" />; }
+export function TermsPage() { return <LegalDocPage docType="terms" />; }
 export function StudentDpaPage() { return <LegalDocPage docType="student-dpa" />; }
 export function PrivacyPolicyPage() { return <LegalDocPage docType="privacy-policy" />; }
-export function FamilyTosPage() { return <LegalDocPage docType="family-tos" />; }

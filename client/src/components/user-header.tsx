@@ -1097,16 +1097,10 @@ export function UserHeader() {
                   Privacy Policy
                 </a>
                 <span aria-hidden="true">&middot;</span>
-                <a href="/legal/family-tos" target="_blank" rel="noopener noreferrer"
+                <a href="/legal/terms" target="_blank" rel="noopener noreferrer"
                   className="underline underline-offset-2 hover:text-foreground transition-colors"
-                  data-testid="link-settings-menu-family-tos">
-                  Family Terms
-                </a>
-                <span aria-hidden="true">&middot;</span>
-                <a href="/legal/school-tos" target="_blank" rel="noopener noreferrer"
-                  className="underline underline-offset-2 hover:text-foreground transition-colors"
-                  data-testid="link-settings-menu-school-tos">
-                  School Terms
+                  data-testid="link-settings-menu-terms">
+                  Terms of Service
                 </a>
                 <span aria-hidden="true">&middot;</span>
                 <a href="/legal/student-dpa" target="_blank" rel="noopener noreferrer"

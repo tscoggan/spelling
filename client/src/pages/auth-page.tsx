@@ -245,7 +245,7 @@ export default function AuthPage() {
       </button>
       <p className="text-xs text-center text-muted-foreground mt-3">
         By creating an account you agree to our{" "}
-        <a href="/legal/family-tos" className="underline hover:text-foreground transition-colors" data-testid="link-terms-of-service">
+        <a href="/legal/terms" className="underline hover:text-foreground transition-colors" data-testid="link-terms-of-service">
           Terms of Service
         </a>{" "}
         and{" "}
@@ -723,7 +723,7 @@ export default function AuthPage() {
         </Tabs>
         <p className="text-xs text-center text-muted-foreground mt-4">
           By creating an account you agree to our{" "}
-          <a href="/legal/family-tos" className="underline hover:text-foreground transition-colors" data-testid="link-terms-of-service">
+          <a href="/legal/terms" className="underline hover:text-foreground transition-colors" data-testid="link-terms-of-service">
             Terms of Service
           </a>{" "}
           and{" "}

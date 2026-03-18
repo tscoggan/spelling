@@ -420,7 +420,7 @@ export default function FamilySignupPage() {
                   <Checkbox checked={acceptedTos} onCheckedChange={v => setAcceptedTos(v === true)} className="mt-0.5" data-testid="checkbox-tos" />
                   <span className="text-sm cursor-pointer leading-snug">
                     I agree to the{" "}
-                    <a href="/legal/family-tos" target="_blank" rel="noopener noreferrer" className="underline text-primary" onClick={e => e.stopPropagation()}>
+                    <a href="/legal/terms" target="_blank" rel="noopener noreferrer" className="underline text-primary" onClick={e => e.stopPropagation()}>
                       Terms of Service
                     </a>
                   </span>
