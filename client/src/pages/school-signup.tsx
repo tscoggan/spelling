@@ -421,10 +421,10 @@ export default function SchoolSignupPage() {
                     </a>
                   </li>
                   <li>
-                    <a href="/legal/student-dpa" target="_blank" rel="noopener noreferrer"
+                    <a href="/legal/school-terms-addendum" target="_blank" rel="noopener noreferrer"
                       className="text-primary underline underline-offset-2 hover:opacity-80"
-                      data-testid="link-student-dpa">
-                      Student Data Privacy Addendum
+                      data-testid="link-school-terms-addendum">
+                      School Terms Addendum
                     </a>
                   </li>
                   <li>
@@ -480,9 +480,9 @@ export default function SchoolSignupPage() {
                         <div className="space-y-1 leading-none">
                           <FormLabel className="text-sm font-medium leading-snug cursor-pointer">
                             I agree to the{" "}
-                            <a href="/legal/student-dpa" target="_blank" rel="noopener noreferrer"
+                            <a href="/legal/school-terms-addendum" target="_blank" rel="noopener noreferrer"
                               className="text-primary underline underline-offset-2">
-                              Student Data Privacy Addendum
+                              School Terms Addendum
                             </a>
                             {" "}governing the collection, use, and protection of Student Data.
                           </FormLabel>

@@ -1103,10 +1103,10 @@ export function UserHeader() {
                   Terms of Service
                 </a>
                 <span aria-hidden="true">&middot;</span>
-                <a href="/legal/student-dpa" target="_blank" rel="noopener noreferrer"
+                <a href="/legal/coppa-parent-notice" target="_blank" rel="noopener noreferrer"
                   className="underline underline-offset-2 hover:text-foreground transition-colors"
-                  data-testid="link-settings-menu-student-dpa">
-                  Student DPA
+                  data-testid="link-settings-menu-coppa-parent-notice">
+                  Parent Notice
                 </a>
               </div>
             </div>

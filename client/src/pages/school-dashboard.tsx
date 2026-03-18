@@ -537,13 +537,13 @@ export default function SchoolDashboardPage() {
             Terms of Service
           </a>
           <a
-            href="/legal/student-dpa"
+            href="/legal/school-terms-addendum"
             target="_blank"
             rel="noopener noreferrer"
             className="underline underline-offset-2 hover:text-foreground"
-            data-testid="link-legal-student-dpa"
+            data-testid="link-legal-school-terms-addendum"
           >
-            Student Data Privacy Addendum
+            School Terms Addendum
           </a>
           <a
             href="/legal/privacy-policy"

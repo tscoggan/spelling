@@ -291,38 +291,63 @@ const DOCS: Record<string, DocConfig> = {
       },
     ],
   },
-  "student-dpa": {
-    title: "Student Data Privacy Agreement",
-    version: "1.0",
-    effectiveDate: "January 1, 2025",
+  "coppa-parent-notice": {
+    title: "COPPA Direct Parent Notice",
+    version: "1.1",
+    effectiveDate: "March 17, 2026",
     icon: Shield,
-    hasPlaceholder: true,
     summary:
-      "This Student Data Privacy Agreement (DPA) describes how Spelling Playground collects, uses, and protects student personal information when the platform is used by schools.",
+      "This notice explains how Spelling Playground collects, uses, and protects information about children, as required by the Children's Online Privacy Protection Act (COPPA). It applies to all parents and legal guardians whose children use the Service.",
     sections: [
       {
-        heading: "1. Purpose",
-        body: "[Placeholder] This DPA establishes the terms under which Spelling Playground processes student personal information on behalf of the school. The school acts as the data controller; Spelling Playground acts as the data processor.",
+        heading: "Notice to Parents",
+        body: "Spelling Playground is an educational app designed for children to practice spelling and language skills under the supervision of a parent, legal guardian, or school.\n\nThis notice explains how we collect, use, and protect information about children.",
       },
       {
-        heading: "2. Data Collected",
-        body: "[Placeholder] Spelling Playground collects only the student information necessary to provide the educational service: username, grade level, and game performance data. No sensitive personal information is collected from students.",
+        heading: "1. Information We Collect About Children",
+        body: "We collect only the information necessary to provide the Service.",
+        subsections: [
+          {
+            heading: "Account Information",
+            body: "- Child's first name or nickname\n- Username and password",
+          },
+          {
+            heading: "Educational Content",
+            body: "- Custom word lists created by parents, teachers, or students\n- Progress and performance data (e.g., quiz results)",
+          },
+          {
+            heading: "Technical Information",
+            body: "- Device type, browser type, and general usage data\n- IP address (used for security and service functionality)\n\nWe do not require children to provide more information than is reasonably necessary to use the Service.",
+          },
+        ],
       },
       {
-        heading: "3. Permitted Uses",
-        body: "[Placeholder] Student data shall be used solely for the purpose of providing the educational service. Spelling Playground shall not use student data for advertising, profiling, or any commercial purpose unrelated to the educational service.",
+        heading: "2. How We Use Children's Information",
+        body: "We use this information only to:\n- Provide and operate the app\n- Track learning progress\n- Improve educational features\n- Maintain security and prevent misuse\n\nWe do not:\n- Sell children's personal information\n- Use children's data for advertising\n- Show targeted or behavioral ads to children",
       },
       {
-        heading: "4. Data Security",
-        body: "[Placeholder] Spelling Playground implements administrative, technical, and physical safeguards designed to protect student personal information. We use industry-standard encryption and access controls.",
+        heading: "3. When Information Is Shared",
+        body: "We do not share children's personal information except:\n- With service providers that help us operate the app (e.g., hosting, payments), under strict confidentiality obligations\n- When required by law or to protect safety\n- With a school or teacher, if the account is part of a school program",
       },
       {
-        heading: "5. Data Deletion",
-        body: "[Placeholder] Upon termination of the school agreement, all student personal information shall be deleted within 60 days unless retention is required by law. Schools may request deletion at any time.",
+        heading: "4. Parental Rights",
+        body: "As a parent or legal guardian, you have the right to:\n- Review your child's personal information\n- Request correction of inaccurate information\n- Request deletion of your child's information\n- Refuse further collection or use of your child's information\n\nYou can exercise these rights by contacting us at support@spellingplayground.com.",
       },
       {
-        heading: "6. Subprocessors",
-        body: "[Placeholder] A list of authorized subprocessors will be maintained and made available upon request. We will notify schools of material changes to our subprocessor list.",
+        heading: "5. Parental Consent",
+        body: "We require that a parent or legal guardian create and manage any account used by a child.\n\nBy creating an account and allowing your child to use Spelling Playground, you consent to the collection and use of your child's information as described in this notice and our Privacy Policy.\n\nFor school-based use, the school may provide consent on behalf of parents, as permitted by law.",
+      },
+      {
+        heading: "6. Data Retention",
+        body: "We retain children's information only as long as necessary to:\n- Provide the Service\n- Maintain educational records\n- Comply with legal obligations\n\nYou may request deletion of your child's data at any time.",
+      },
+      {
+        heading: "7. Data Security",
+        body: "We take reasonable measures to protect children's information, including:\n- Secure data transmission (encryption)\n- Restricted access to personal data\n- Monitoring for unauthorized access",
+      },
+      {
+        heading: "8. Contact Us",
+        body: "If you have questions about this notice or your child's information, you can contact us:\n- By email: support@spellingplayground.com\n- By visiting this page on our website: https://spellingplayground.com/contact",
       },
     ],
   },
@@ -545,7 +570,7 @@ function SectionBody({ body }: { body: string }) {
 }
 
 interface LegalDocPageProps {
-  docType: "terms" | "school-terms-addendum" | "student-dpa" | "privacy-policy";
+  docType: "terms" | "school-terms-addendum" | "coppa-parent-notice" | "privacy-policy";
 }
 
 export function LegalDocPage({ docType }: LegalDocPageProps) {
@@ -625,5 +650,5 @@ export function LegalDocPage({ docType }: LegalDocPageProps) {
 
 export function TermsPage() { return <LegalDocPage docType="terms" />; }
 export function SchoolTermsAddendumPage() { return <LegalDocPage docType="school-terms-addendum" />; }
-export function StudentDpaPage() { return <LegalDocPage docType="student-dpa" />; }
+export function CoppaParentNoticePage() { return <LegalDocPage docType="coppa-parent-notice" />; }
 export function PrivacyPolicyPage() { return <LegalDocPage docType="privacy-policy" />; }

@@ -24,7 +24,7 @@ import FamilySignupPage from "@/pages/family-signup";
 import FamilyDashboardPage from "@/pages/family-dashboard";
 import SchoolSignupPage from "@/pages/school-signup";
 import SchoolDashboardPage from "@/pages/school-dashboard";
-import { TermsPage, SchoolTermsAddendumPage, StudentDpaPage, PrivacyPolicyPage } from "@/pages/legal-docs";
+import { TermsPage, SchoolTermsAddendumPage, CoppaParentNoticePage, PrivacyPolicyPage } from "@/pages/legal-docs";
 import CheckoutSuccessPage from "@/pages/checkout-success";
 import ContactPage from "@/pages/contact";
 import NotFound from "@/pages/not-found";
@@ -90,7 +90,7 @@ function Router() {
       <ProtectedRoute path="/school" component={SchoolDashboardPage} />
       <Route path="/legal/terms" component={TermsPage} />
       <Route path="/legal/school-terms-addendum" component={SchoolTermsAddendumPage} />
-      <Route path="/legal/student-dpa" component={StudentDpaPage} />
+      <Route path="/legal/coppa-parent-notice" component={CoppaParentNoticePage} />
       <Route path="/legal/privacy-policy" component={PrivacyPolicyPage} />
       <Route path="/checkout/success" component={CheckoutSuccessPage} />
       <Route path="/contact" component={ContactPage} />
@@ -138,10 +138,10 @@ function App() {
                         Terms of Service
                       </a>
                       <span aria-hidden="true">&middot;</span>
-                      <a href="/legal/student-dpa" target="_blank" rel="noopener noreferrer"
+                      <a href="/legal/coppa-parent-notice" target="_blank" rel="noopener noreferrer"
                         className="underline underline-offset-2 hover:text-foreground transition-colors"
-                        data-testid="link-footer-student-dpa">
-                        Student DPA
+                        data-testid="link-footer-coppa-parent-notice">
+                        Parent Notice
                       </a>
                     </div>
                   </footer>

@@ -935,9 +935,9 @@ function SchoolAdminHome() {
             className="underline underline-offset-2 hover:text-foreground" data-testid="link-legal-terms">
             Terms of Service
           </a>
-          <a href="/legal/student-dpa" target="_blank" rel="noopener noreferrer"
-            className="underline underline-offset-2 hover:text-foreground" data-testid="link-legal-student-dpa">
-            Student Data Privacy Addendum
+          <a href="/legal/coppa-parent-notice" target="_blank" rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-foreground" data-testid="link-legal-coppa-parent-notice">
+            Parent Notice
           </a>
         </div>
       </motion.div>
