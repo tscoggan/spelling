@@ -24,7 +24,7 @@ import FamilySignupPage from "@/pages/family-signup";
 import FamilyDashboardPage from "@/pages/family-dashboard";
 import SchoolSignupPage from "@/pages/school-signup";
 import SchoolDashboardPage from "@/pages/school-dashboard";
-import { TermsPage, StudentDpaPage, PrivacyPolicyPage } from "@/pages/legal-docs";
+import { TermsPage, SchoolTermsAddendumPage, StudentDpaPage, PrivacyPolicyPage } from "@/pages/legal-docs";
 import CheckoutSuccessPage from "@/pages/checkout-success";
 import ContactPage from "@/pages/contact";
 import NotFound from "@/pages/not-found";
@@ -89,6 +89,7 @@ function Router() {
       <Route path="/school/signup" component={SchoolSignupPage} />
       <ProtectedRoute path="/school" component={SchoolDashboardPage} />
       <Route path="/legal/terms" component={TermsPage} />
+      <Route path="/legal/school-terms-addendum" component={SchoolTermsAddendumPage} />
       <Route path="/legal/student-dpa" component={StudentDpaPage} />
       <Route path="/legal/privacy-policy" component={PrivacyPolicyPage} />
       <Route path="/checkout/success" component={CheckoutSuccessPage} />

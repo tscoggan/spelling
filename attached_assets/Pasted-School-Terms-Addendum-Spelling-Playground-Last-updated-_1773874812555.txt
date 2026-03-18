@@ -1,0 +1,167 @@
+School Terms Addendum
+
+Spelling Playground
+
+Last updated: March 17, 2026
+
+This School Terms Addendum (“Addendum”) supplements and is incorporated into the Terms and Conditions for Spelling Playground (the “Terms”). In the event of a conflict between this Addendum and the Terms, this Addendum will control with respect to School Accounts.
+
+This Addendum applies when the Service is used by a school, school district, or other educational institution (“School”).
+
+1. Role of the Company
+
+Spelling Playground LLC (“Company”) acts as a service provider (or “school official”) to the School.
+
+The Company:
+
+Processes student data solely on behalf of and under the direction of the School
+
+Uses student data only to provide and improve the Service
+
+Does not use student data for advertising or commercial profiling
+
+2. Student Data Ownership and Control
+
+As between the Company and the School:
+
+The School retains ownership and control of all student data
+
+The Company has no ownership rights in student data
+
+The Company accesses and processes student data only as necessary to provide the Service
+
+The School is responsible for:
+
+Determining what student data is submitted to the Service
+
+Managing access to student accounts
+
+Authorizing teachers, staff, and administrators
+
+3. Compliance with Student Privacy Laws
+
+The Company supports the School’s compliance with applicable laws, including:
+
+The Family Educational Rights and Privacy Act
+
+The Children’s Online Privacy Protection Act (where applicable)
+
+The Company agrees that:
+
+Student data is used only for educational purposes
+
+Student data is not sold or rented
+
+Student data is not used for targeted advertising
+
+4. Parental Consent
+
+When the Service is used in a school context:
+
+The School may act as the parent’s agent in providing consent for student use of the Service, as permitted under applicable law
+
+The School is responsible for obtaining any required parental notices and consents
+
+The Company will:
+
+Provide information reasonably requested by the School to support parental notice requirements
+
+5. Use of Student Data
+
+The Company uses student data only to:
+
+Provide spelling and educational functionality
+
+Maintain and improve the Service
+
+Ensure security and integrity of the platform
+
+Comply with legal obligations
+
+The Company does not:
+
+Build profiles for non-educational purposes
+
+Use student data for marketing
+
+Share student data except as described in the Terms and Privacy Policy
+
+6. Data Security
+
+The Company implements reasonable administrative, technical, and physical safeguards designed to:
+
+Protect student data from unauthorized access, disclosure, or misuse
+
+Maintain the confidentiality and integrity of student data
+
+7. Data Retention and Deletion
+
+Student data is retained only as long as necessary to provide the Service
+
+The School may request deletion of student data at any time
+
+Upon termination of the School’s use of the Service, the Company will delete student data within a reasonable timeframe, unless retention is required by law
+
+8. Subprocessors
+
+The Company may use trusted third-party service providers (“subprocessors”) to operate the Service (e.g., hosting, payment processing).
+
+The Company ensures that:
+
+Subprocessors are bound by data protection obligations
+
+They access student data only as necessary to provide their services
+
+9. Access and Correction
+
+The School has the right to:
+
+Request access to student data
+
+Request correction or deletion of inaccurate data
+
+Parents may exercise these rights through the School or as described in the Privacy Policy.
+
+10. Content Created by Students
+
+Students and teachers may create content within the Service (such as word lists or images).
+
+Such content may be shared within the Service as part of its educational functionality
+
+The School is responsible for determining appropriate sharing settings
+
+The Company does not use student-created content for advertising or non-educational purposes.
+
+11. Account Management
+
+The School is responsible for:
+
+Managing teacher and student access
+
+Ensuring accounts are used appropriately
+
+Supervising student use of the Service
+
+The Company may suspend accounts if necessary to:
+
+Protect student safety
+
+Prevent misuse
+
+Comply with legal obligations
+
+12. Changes to This Addendum
+
+The Company may update this Addendum from time to time.
+
+If changes are material, the Company will provide reasonable notice to the School.
+
+Continued use of the Service constitutes acceptance of the updated Addendum.
+
+13. Contact Information
+
+If you have any questions about this Addendum or student data practices, you may contact:
+
+Email: support@spellingplayground.com
+
+Website: https://spellingplayground.com/contact

@@ -38,7 +38,7 @@ const DOCS: Record<string, DocConfig> = {
       },
       {
         heading: "Acknowledgment",
-        body: "These are the Terms and Conditions governing the use of this Service and the agreement between You and the Company. These Terms and Conditions set out the rights and obligations of all users regarding the use of the Service.\n\nYour access to and use of the Service is conditioned on Your acceptance of and compliance with these Terms and Conditions. These Terms and Conditions apply to all visitors, users and others who access or use the Service.\n\nBy accessing or using the Service You agree to be bound by these Terms and Conditions. If You disagree with any part of these Terms and Conditions then You may not access the Service.\n\nThe Service is intended for use by parents or legal guardians, and by children under the supervision of a parent, guardian, or educational institution. Children under the age of 13 may only use the Service through a parent or guardian account or through a school account authorized by an educational institution.\n\nBy creating an account, You represent that You are a parent or legal guardian, or that You are an authorized representative of a school or educational institution.\n\nYour access to and use of the Service is also subject to Our Privacy Policy, which describes how We collect, use, and disclose personal information. Please read Our Privacy Policy carefully before using Our Service.\n\nIf You are using the Service on behalf of a school or educational institution, additional terms may apply, including a School Terms Addendum, which is incorporated into these Terms by reference.\n\nYou agree not to use the Service to collect, store, or share personal information about children except as permitted by these Terms and applicable law.",
+        body: "These are the Terms and Conditions governing the use of this Service and the agreement between You and the Company. These Terms and Conditions set out the rights and obligations of all users regarding the use of the Service.\n\nYour access to and use of the Service is conditioned on Your acceptance of and compliance with these Terms and Conditions. These Terms and Conditions apply to all visitors, users and others who access or use the Service.\n\nBy accessing or using the Service You agree to be bound by these Terms and Conditions. If You disagree with any part of these Terms and Conditions then You may not access the Service.\n\nThe Service is intended for use by parents or legal guardians, and by children under the supervision of a parent, guardian, or educational institution. Children under the age of 13 may only use the Service through a parent or guardian account or through a school account authorized by an educational institution.\n\nBy creating an account, You represent that You are a parent or legal guardian, or that You are an authorized representative of a school or educational institution.\n\nYour access to and use of the Service is also subject to Our Privacy Policy, which describes how We collect, use, and disclose personal information. Please read Our Privacy Policy carefully before using Our Service.\n\nIf You are using the Service on behalf of a school or educational institution, additional terms may apply, including a School Terms Addendum (https://spellingplayground.com/legal/school-terms-addendum), which is incorporated into these Terms by reference.\n\nYou agree not to use the Service to collect, store, or share personal information about children except as permitted by these Terms and applicable law.",
       },
       {
         heading: "Educational Purpose",
@@ -226,6 +226,68 @@ const DOCS: Record<string, DocConfig> = {
       {
         heading: "Contact Us",
         body: "If you have any questions about these Terms and Conditions, You can contact us:\n- By email: support@spellingplayground.com\n- By visiting this page on our website: https://spellingplayground.com/contact",
+      },
+    ],
+  },
+  "school-terms-addendum": {
+    title: "School Terms Addendum",
+    version: "1.1",
+    effectiveDate: "March 17, 2026",
+    icon: Shield,
+    summary:
+      "This School Terms Addendum supplements the Terms of Service for Spelling Playground and applies when the Service is used by a school, school district, or other educational institution. In the event of a conflict between this Addendum and the Terms, this Addendum controls with respect to School Accounts.",
+    sections: [
+      {
+        heading: "1. Role of the Company",
+        body: "Spelling Playground LLC (\"Company\") acts as a service provider (or \"school official\") to the School.\n\nThe Company:\n- Processes student data solely on behalf of and under the direction of the School\n- Uses student data only to provide and improve the Service\n- Does not use student data for advertising or commercial profiling",
+      },
+      {
+        heading: "2. Student Data Ownership and Control",
+        body: "As between the Company and the School:\n- The School retains ownership and control of all student data\n- The Company has no ownership rights in student data\n- The Company accesses and processes student data only as necessary to provide the Service\n\nThe School is responsible for:\n- Determining what student data is submitted to the Service\n- Managing access to student accounts\n- Authorizing teachers, staff, and administrators",
+      },
+      {
+        heading: "3. Compliance with Student Privacy Laws",
+        body: "The Company supports the School's compliance with applicable laws, including:\n- The Family Educational Rights and Privacy Act (FERPA)\n- The Children's Online Privacy Protection Act (COPPA), where applicable\n\nThe Company agrees that:\n- Student data is used only for educational purposes\n- Student data is not sold or rented\n- Student data is not used for targeted advertising",
+      },
+      {
+        heading: "4. Parental Consent",
+        body: "When the Service is used in a school context:\n- The School may act as the parent's agent in providing consent for student use of the Service, as permitted under applicable law\n- The School is responsible for obtaining any required parental notices and consents\n\nThe Company will:\n- Provide information reasonably requested by the School to support parental notice requirements",
+      },
+      {
+        heading: "5. Use of Student Data",
+        body: "The Company uses student data only to:\n- Provide spelling and educational functionality\n- Maintain and improve the Service\n- Ensure security and integrity of the platform\n- Comply with legal obligations\n\nThe Company does not:\n- Build profiles for non-educational purposes\n- Use student data for marketing\n- Share student data except as described in the Terms and Privacy Policy",
+      },
+      {
+        heading: "6. Data Security",
+        body: "The Company implements reasonable administrative, technical, and physical safeguards designed to:\n- Protect student data from unauthorized access, disclosure, or misuse\n- Maintain the confidentiality and integrity of student data",
+      },
+      {
+        heading: "7. Data Retention and Deletion",
+        body: "- Student data is retained only as long as necessary to provide the Service\n- The School may request deletion of student data at any time\n- Upon termination of the School's use of the Service, the Company will delete student data within a reasonable timeframe, unless retention is required by law",
+      },
+      {
+        heading: "8. Subprocessors",
+        body: "The Company may use trusted third-party service providers (\"subprocessors\") to operate the Service (e.g., hosting, payment processing).\n\nThe Company ensures that:\n- Subprocessors are bound by data protection obligations\n- They access student data only as necessary to provide their services",
+      },
+      {
+        heading: "9. Access and Correction",
+        body: "The School has the right to:\n- Request access to student data\n- Request correction or deletion of inaccurate data\n\nParents may exercise these rights through the School or as described in the Privacy Policy.",
+      },
+      {
+        heading: "10. Content Created by Students",
+        body: "Students and teachers may create content within the Service (such as word lists or images).\n- Such content may be shared within the Service as part of its educational functionality\n- The School is responsible for determining appropriate sharing settings\n- The Company does not use student-created content for advertising or non-educational purposes",
+      },
+      {
+        heading: "11. Account Management",
+        body: "The School is responsible for:\n- Managing teacher and student access\n- Ensuring accounts are used appropriately\n- Supervising student use of the Service\n\nThe Company may suspend accounts if necessary to:\n- Protect student safety\n- Prevent misuse\n- Comply with legal obligations",
+      },
+      {
+        heading: "12. Changes to This Addendum",
+        body: "The Company may update this Addendum from time to time.\n\nIf changes are material, the Company will provide reasonable notice to the School.\n\nContinued use of the Service constitutes acceptance of the updated Addendum.",
+      },
+      {
+        heading: "13. Contact Information",
+        body: "If you have any questions about this Addendum or student data practices, you may contact:\n- By email: support@spellingplayground.com\n- By visiting this page on our website: https://spellingplayground.com/contact",
       },
     ],
   },
@@ -483,7 +545,7 @@ function SectionBody({ body }: { body: string }) {
 }
 
 interface LegalDocPageProps {
-  docType: "terms" | "student-dpa" | "privacy-policy";
+  docType: "terms" | "school-terms-addendum" | "student-dpa" | "privacy-policy";
 }
 
 export function LegalDocPage({ docType }: LegalDocPageProps) {
@@ -562,5 +624,6 @@ export function LegalDocPage({ docType }: LegalDocPageProps) {
 }
 
 export function TermsPage() { return <LegalDocPage docType="terms" />; }
+export function SchoolTermsAddendumPage() { return <LegalDocPage docType="school-terms-addendum" />; }
 export function StudentDpaPage() { return <LegalDocPage docType="student-dpa" />; }
 export function PrivacyPolicyPage() { return <LegalDocPage docType="privacy-policy" />; }
