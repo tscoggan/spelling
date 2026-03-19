@@ -341,6 +341,11 @@ export default function FamilySignupPage() {
                   <Button type="submit" className="w-full" disabled={signupMutation.isPending} data-testid="button-create-account">
                     {signupMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating Account...</> : <>Create Account <ArrowRight className="w-4 h-4 ml-2" /></>}
                   </Button>
+                  <p className="text-xs text-muted-foreground text-center">
+                    Already have an account?{" "}
+                    <a href="/" className="underline text-primary">Log in from the home page</a>
+                    {" "}to continue where you left off.
+                  </p>
                 </form>
               </Form>
             </CardContent>

@@ -10,7 +10,7 @@ import { apiRequest } from "@/lib/queryClient";
 type VerifyState =
   | { status: "loading" }
   | { status: "success"; accountType: "family_subscription" | "school_verification" }
-  | { status: "error"; message: string };
+  | { status: "error"; message: string; sessionLost?: boolean; accountType?: "family_subscription" | "school_verification" };
 
 export default function CheckoutSuccess() {
   const [, setLocation] = useLocation();
@@ -34,6 +34,15 @@ export default function CheckoutSuccess() {
           "GET",
           `/api/stripe/verify-session?session_id=${encodeURIComponent(sessionId)}&type=${encodeURIComponent(type)}`
         );
+        if (res.status === 401) {
+          setState({
+            status: "error",
+            message: "Your session expired while completing payment. Please log in to verify your payment.",
+            sessionLost: true,
+            accountType: type,
+          });
+          return;
+        }
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           throw new Error((data as any).error || "Payment could not be verified.");
@@ -90,16 +99,33 @@ export default function CheckoutSuccess() {
               <CardDescription>{state.message}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground text-center">
-                Your account was not activated. You can retry your payment below. If you believe you were charged in error, please contact support.
-              </p>
-              <Button
-                className="w-full"
-                onClick={() => setLocation("/family/signup")}
-                data-testid="button-retry-payment"
-              >
-                Retry Payment
-              </Button>
+              {state.sessionLost ? (
+                <>
+                  <p className="text-sm text-muted-foreground text-center">
+                    Log back in and you'll be taken directly to the payment step to complete your subscription.
+                  </p>
+                  <Button
+                    className="w-full"
+                    onClick={() => setLocation(state.accountType === "school_verification" ? "/school/signup" : "/family/signup")}
+                    data-testid="button-log-in-to-continue"
+                  >
+                    Log In to Continue
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground text-center">
+                    Your account was not activated. You can retry your payment below. If you believe you were charged in error, please contact support.
+                  </p>
+                  <Button
+                    className="w-full"
+                    onClick={() => setLocation("/family/signup")}
+                    data-testid="button-retry-payment"
+                  >
+                    Retry Payment
+                  </Button>
+                </>
+              )}
               <Button
                 variant="outline"
                 className="w-full"
