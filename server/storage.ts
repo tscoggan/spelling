@@ -1606,6 +1606,7 @@ export class DatabaseStorage implements IStorage {
       return false;
     }
     
+    // Check membership in any of the groups
     const membership = await db
       .select()
       .from(userGroupMembership)
@@ -1617,7 +1618,21 @@ export class DatabaseStorage implements IStorage {
       )
       .limit(1);
     
-    return membership.length > 0;
+    if (membership.length > 0) return true;
+
+    // Also check if the user owns any of the groups (group owners aren't in userGroupMembership)
+    const ownedGroup = await db
+      .select()
+      .from(userGroups)
+      .where(
+        and(
+          eq(userGroups.ownerUserId, userId),
+          inArray(userGroups.id, groupIds)
+        )
+      )
+      .limit(1);
+
+    return ownedGroup.length > 0;
   }
 
   async isWordListDirectlySharedWithUser(wordListId: number, userId: number): Promise<boolean> {
