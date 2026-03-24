@@ -2492,12 +2492,16 @@ export class DatabaseStorage implements IStorage {
     const allFamilyMembers = await db.select().from(familyMembers);
     const familyMemberMap = new Map(allFamilyMembers.map(fm => [fm.userId, { familyId: fm.familyId, role: fm.role }]));
 
-    // Get all family accounts so we can surface subscriptionExpiresAt for family parents
+    // Get all family accounts so we can surface subscriptionExpiresAt for family parents and children
     const allFamilyAccounts = await db.select({
+      id: familyAccounts.id,
       primaryParentUserId: familyAccounts.primaryParentUserId,
       subscriptionExpiresAt: familyAccounts.subscriptionExpiresAt,
     }).from(familyAccounts);
-    const familyAccountMap = new Map(allFamilyAccounts.map(fa => [fa.primaryParentUserId, fa.subscriptionExpiresAt]));
+    // Map by primaryParentUserId for parent lookups
+    const familyAccountByParentMap = new Map(allFamilyAccounts.map(fa => [fa.primaryParentUserId, fa.subscriptionExpiresAt]));
+    // Map by family account id for child lookups (familyMembers.familyId → subscriptionExpiresAt)
+    const familyAccountByIdMap = new Map(allFamilyAccounts.map(fa => [fa.id, fa.subscriptionExpiresAt]));
     
     const usersWithMetrics = allUsers.map(user => {
       const decrypted = hasEncryptionKey() ? decryptUserPII(user) : user;
@@ -2512,10 +2516,15 @@ export class DatabaseStorage implements IStorage {
         displayRole = 'child';
       }
 
-      // subscriptionExpiresAt lives in family_accounts for family parents, not in users
-      const subscriptionExpiresAt = decrypted.accountType === 'family_parent'
-        ? (familyAccountMap.get(decrypted.id) ?? null)
-        : null;
+      // subscriptionExpiresAt lives in family_accounts, not in users
+      // For parents: look up by their user id (primaryParentUserId)
+      // For children: look up by their familyId membership
+      const subscriptionExpiresAt =
+        decrypted.accountType === 'family_parent'
+          ? (familyAccountByParentMap.get(decrypted.id) ?? null)
+          : decrypted.accountType === 'family_child' && familyMembership?.familyId
+          ? (familyAccountByIdMap.get(familyMembership.familyId) ?? null)
+          : null;
       
       return {
         id: decrypted.id,
