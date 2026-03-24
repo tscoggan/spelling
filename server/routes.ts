@@ -5074,8 +5074,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { getUncachableStripeClient } = await import("./stripeClient");
       const stripe = await getUncachableStripeClient();
 
-      const domain = process.env.REPLIT_DOMAINS?.split(',')[0] || req.get('host');
-      const baseUrl = `https://${domain}`;
+      const baseUrl = process.env.REPLIT_DEPLOYMENT === '1'
+        ? 'https://spellingplayground.com'
+        : `https://${process.env.REPLIT_DOMAINS?.split(',')[0] || req.get('host')}`;
 
       // Look up the product and price directly via Stripe API (most reliable)
       let priceId: string | undefined;

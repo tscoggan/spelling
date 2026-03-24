@@ -59,6 +59,9 @@ function getResendClient() {
 }
 
 function getAppDomain() {
+  if (process.env.REPLIT_DEPLOYMENT === '1') {
+    return 'https://spellingplayground.com';
+  }
   const domain = process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
   const protocol = process.env.REPLIT_DOMAINS ? 'https' : 'http';
   return `${protocol}://${domain}`;
