@@ -2491,6 +2491,13 @@ export class DatabaseStorage implements IStorage {
     // Get all family memberships
     const allFamilyMembers = await db.select().from(familyMembers);
     const familyMemberMap = new Map(allFamilyMembers.map(fm => [fm.userId, { familyId: fm.familyId, role: fm.role }]));
+
+    // Get all family accounts so we can surface subscriptionExpiresAt for family parents
+    const allFamilyAccounts = await db.select({
+      primaryParentUserId: familyAccounts.primaryParentUserId,
+      subscriptionExpiresAt: familyAccounts.subscriptionExpiresAt,
+    }).from(familyAccounts);
+    const familyAccountMap = new Map(allFamilyAccounts.map(fa => [fa.primaryParentUserId, fa.subscriptionExpiresAt]));
     
     const usersWithMetrics = allUsers.map(user => {
       const decrypted = hasEncryptionKey() ? decryptUserPII(user) : user;
@@ -2504,6 +2511,11 @@ export class DatabaseStorage implements IStorage {
       } else if (decrypted.accountType === 'family_child') {
         displayRole = 'child';
       }
+
+      // subscriptionExpiresAt lives in family_accounts for family parents, not in users
+      const subscriptionExpiresAt = decrypted.accountType === 'family_parent'
+        ? (familyAccountMap.get(decrypted.id) ?? null)
+        : null;
       
       return {
         id: decrypted.id,
@@ -2513,7 +2525,7 @@ export class DatabaseStorage implements IStorage {
         email: decrypted.email,
         role: displayRole,
         accountType: decrypted.accountType,
-        subscriptionExpiresAt: decrypted.subscriptionExpiresAt ?? null,
+        subscriptionExpiresAt,
         createdAt: decrypted.createdAt,
         gamesPlayed: metrics.gamesPlayed,
         lastActive: metrics.lastActive,
