@@ -86,15 +86,14 @@ export default function AuthPage() {
   });
 
   useEffect(() => {
-    // Don't redirect family accounts that haven't completed payment — they need
-    // to stay here so they can log out and switch to a different account.
+    if (!user) return;
+    // Unverified family accounts go to the signup flow to complete payment.
+    // All other logged-in users go to the home page.
     const isUnverifiedFamily =
-      (user?.accountType === "family_parent" || user?.accountType === "family_child") &&
-      (user as any)?.familyVpcStatus !== undefined &&
-      (user as any)?.familyVpcStatus !== "verified";
-    if (user && !isUnverifiedFamily) {
-      setLocation("/");
-    }
+      (user.accountType === "family_parent" || user.accountType === "family_child") &&
+      (user as any).familyVpcStatus !== undefined &&
+      (user as any).familyVpcStatus !== "verified";
+    setLocation(isUnverifiedFamily ? "/family/signup" : "/");
   }, [user, setLocation]);
 
   const handleLogin = (e: React.FormEvent) => {
