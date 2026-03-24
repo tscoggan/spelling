@@ -75,7 +75,7 @@ interface AdminUser {
   email: string | null;
   role: string;
   accountType: string;
-  stars: number;
+  subscriptionExpiresAt: string | null;
   createdAt: string;
   gamesPlayed: number;
   lastActive: string | null;
@@ -1380,9 +1380,9 @@ export default function AdminPage() {
                           <TableHead>Email</TableHead>
                           <TableHead>Role</TableHead>
                           <TableHead>Account Type</TableHead>
-                          <TableHead className="text-right">Stars</TableHead>
                           <TableHead className="text-right">Games Played</TableHead>
                           <TableHead>Created</TableHead>
+                          <TableHead>Paid Through</TableHead>
                           <TableHead>Last Active</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -1418,10 +1418,14 @@ export default function AdminPage() {
                                   {user.accountType === 'family_parent' ? 'Family' : user.accountType === 'family_child' ? 'Family (child)' : user.accountType.replace(/_/g, ' ')}
                                 </Badge>
                               </TableCell>
-                              <TableCell className="text-right">{user.stars}</TableCell>
                               <TableCell className="text-right">{user.gamesPlayed}</TableCell>
                               <TableCell className="text-xs">
                                 {new Date(user.createdAt).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                {user.subscriptionExpiresAt
+                                  ? new Date(user.subscriptionExpiresAt).toLocaleDateString()
+                                  : <span className="text-muted-foreground">N/A</span>}
                               </TableCell>
                               <TableCell className="text-xs">
                                 {user.lastActive 
@@ -1535,10 +1539,14 @@ export default function AdminPage() {
                                       {group.parentUser.accountType === 'family_parent' ? 'Family' : group.parentUser.accountType === 'family_child' ? 'Family (child)' : group.parentUser.accountType.replace(/_/g, ' ')}
                                     </Badge>
                                   </TableCell>
-                                  <TableCell className="text-right">{group.parentUser.stars}</TableCell>
                                   <TableCell className="text-right">{group.parentUser.gamesPlayed}</TableCell>
                                   <TableCell className="text-xs">
                                     {new Date(group.parentUser.createdAt).toLocaleDateString()}
+                                  </TableCell>
+                                  <TableCell className="text-xs">
+                                    {group.parentUser.subscriptionExpiresAt
+                                      ? new Date(group.parentUser.subscriptionExpiresAt).toLocaleDateString()
+                                      : <span className="text-muted-foreground">N/A</span>}
                                   </TableCell>
                                   <TableCell className="text-xs">
                                     {group.parentUser.lastActive 

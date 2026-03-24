@@ -253,7 +253,7 @@ export interface IStorage {
   getAllWords(): Promise<Word[]>;
   updateWord(id: number, updates: Partial<{ definition: string | null; sentenceExample: string | null; wordOrigin: string | null; partOfSpeech: string | null }>, updatedByUserId?: number): Promise<Word | undefined>;
   getUsageMetrics(dateRange: 'today' | 'week' | 'month' | 'all'): Promise<{ userId: number | null; username: string; gamesPlayed: number }[]>;
-  getAllUsersWithMetrics(): Promise<{ id: number; username: string; firstName: string | null; lastName: string | null; email: string | null; role: string; accountType: string; stars: number; createdAt: Date; gamesPlayed: number; lastActive: Date | null }[]>;
+  getAllUsersWithMetrics(): Promise<{ id: number; username: string; firstName: string | null; lastName: string | null; email: string | null; role: string; accountType: string; subscriptionExpiresAt: Date | null; createdAt: Date; gamesPlayed: number; lastActive: Date | null }[]>;
   deleteUserAndAllData(userId: number): Promise<boolean>;
   
   // Family account methods
@@ -2474,7 +2474,7 @@ export class DatabaseStorage implements IStorage {
     return enrichedResults;
   }
 
-  async getAllUsersWithMetrics(): Promise<{ id: number; username: string; firstName: string | null; lastName: string | null; email: string | null; role: string; accountType: string; stars: number; createdAt: Date; gamesPlayed: number; lastActive: Date | null; familyId: number | null; familyRole: string | null }[]> {
+  async getAllUsersWithMetrics(): Promise<{ id: number; username: string; firstName: string | null; lastName: string | null; email: string | null; role: string; accountType: string; subscriptionExpiresAt: Date | null; createdAt: Date; gamesPlayed: number; lastActive: Date | null; familyId: number | null; familyRole: string | null }[]> {
     const allUsers = await db.select().from(users);
     
     const sessionsPerUser = await db
@@ -2513,7 +2513,7 @@ export class DatabaseStorage implements IStorage {
         email: decrypted.email,
         role: displayRole,
         accountType: decrypted.accountType,
-        stars: decrypted.stars,
+        subscriptionExpiresAt: decrypted.subscriptionExpiresAt ?? null,
         createdAt: decrypted.createdAt,
         gamesPlayed: metrics.gamesPlayed,
         lastActive: metrics.lastActive,

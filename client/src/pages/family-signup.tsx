@@ -56,7 +56,7 @@ const STEPS = [
 
 export default function FamilySignupPage() {
   const { toast } = useToast();
-  const { user, logoutMutation } = useAuth();
+  const { user } = useAuth();
   const [, setLocation] = useLocation();
   const search = useSearch();
   const { themeAssets, hasDarkBackground } = useTheme();
@@ -255,12 +255,12 @@ export default function FamilySignupPage() {
         <header className="flex items-center justify-start mb-4">
           <Button
             variant="default"
-            onClick={() => {
+            onClick={async () => {
               if (user) {
-                logoutMutation.mutate(undefined, { onSettled: () => setLocation("/auth") });
-              } else {
-                setLocation("/auth");
+                try { await apiRequest("POST", "/api/logout"); } catch (_) {}
+                queryClient.setQueryData(["/api/user"], null);
               }
+              setLocation("/auth");
             }}
             className="bg-white/90 dark:bg-black/70 text-foreground shadow-lg"
             data-testid="button-home"
