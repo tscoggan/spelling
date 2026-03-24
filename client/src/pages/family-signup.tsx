@@ -74,7 +74,7 @@ export default function FamilySignupPage() {
     return params.get("promo") || "";
   });
   const [promoValidating, setPromoValidating] = useState(false);
-  const [promoValid, setPromoValid] = useState<{ discountPercent: number; code: string } | null>(null);
+  const [promoValid, setPromoValid] = useState<{ discountPercent: number; code: string; applicablePlans: string } | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
 
   // Email verification state
@@ -139,8 +139,13 @@ export default function FamilySignupPage() {
   }, [resendCooldown]);
 
   const basePrice = priceInterval === "month" ? 1.99 : 19.99;
-  const discountedPrice = promoValid
-    ? basePrice * (1 - promoValid.discountPercent / 100)
+  const promoAppliesToSelected = promoValid
+    ? promoValid.applicablePlans === "both" ||
+      (priceInterval === "month" && promoValid.applicablePlans === "monthly") ||
+      (priceInterval === "year" && promoValid.applicablePlans === "annual")
+    : false;
+  const discountedPrice = promoAppliesToSelected
+    ? basePrice * (1 - promoValid!.discountPercent / 100)
     : basePrice;
 
   const form = useForm<SignupFormData>({
@@ -158,7 +163,7 @@ export default function FamilySignupPage() {
       const res = await apiRequest("POST", "/api/promo-codes/validate", { code });
       const data = await res.json();
       if (!res.ok) { setPromoError(data.error || "Invalid code"); return; }
-      setPromoValid({ discountPercent: data.discountPercent, code: data.code });
+      setPromoValid({ discountPercent: data.discountPercent, code: data.code, applicablePlans: data.applicablePlans ?? "both" });
     } catch {
       setPromoError("Could not validate code");
     } finally {
@@ -530,25 +535,35 @@ export default function FamilySignupPage() {
               <div className="space-y-2">
                 <p className="text-sm font-medium">Choose your plan:</p>
                 <div className="grid grid-cols-2 gap-3">
+                  {/* Monthly card */}
                   <button type="button" onClick={() => setPriceInterval("month")} data-testid="button-plan-monthly"
                     className={`rounded-lg border p-4 text-left transition-colors ${priceInterval === "month" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/50"}`}>
                     <p className="font-semibold text-base">Monthly</p>
-                    {promoValid ? (
+                    {promoValid && (promoValid.applicablePlans === "both" || promoValid.applicablePlans === "monthly") ? (
                       <div className="mt-1"><span className="text-sm line-through text-muted-foreground mr-1">$1.99</span><span className="text-xl font-bold text-green-600 dark:text-green-400">${(1.99 * (1 - promoValid.discountPercent / 100)).toFixed(2)}</span></div>
                     ) : (<p className="text-xl font-bold text-primary mt-1">$1.99</p>)}
                     <p className="text-xs text-muted-foreground">per month</p>
                   </button>
+                  {/* Annual card */}
                   <button type="button" onClick={() => setPriceInterval("year")} data-testid="button-plan-annual"
                     className={`rounded-lg border p-4 text-left transition-colors relative ${priceInterval === "year" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/50"}`}>
                     <span className="absolute top-2 right-2 text-xs bg-green-500 text-white rounded px-1.5 py-0.5 font-medium">Save 16%</span>
                     <p className="font-semibold text-base">Annual</p>
-                    {promoValid ? (
+                    {promoValid && (promoValid.applicablePlans === "both" || promoValid.applicablePlans === "annual") ? (
                       <div className="mt-1"><span className="text-sm line-through text-muted-foreground mr-1">$19.99</span><span className="text-xl font-bold text-green-600 dark:text-green-400">${(19.99 * (1 - promoValid.discountPercent / 100)).toFixed(2)}</span></div>
                     ) : (<p className="text-xl font-bold text-primary mt-1">$19.99</p>)}
                     <p className="text-xs text-muted-foreground">per year</p>
                   </button>
                 </div>
-                {promoValid && <p className="text-sm font-medium text-green-600 dark:text-green-400 text-center">{promoValid.discountPercent}% off applied!</p>}
+                {/* Show appropriate status message below the plan cards */}
+                {promoValid && promoAppliesToSelected && (
+                  <p className="text-sm font-medium text-green-600 dark:text-green-400 text-center">{promoValid.discountPercent}% off applied!</p>
+                )}
+                {promoValid && !promoAppliesToSelected && (
+                  <p className="text-sm font-medium text-amber-600 dark:text-amber-400 text-center">
+                    This code is for {promoValid.applicablePlans === "monthly" ? "monthly" : "annual"} plans only — select the {promoValid.applicablePlans === "monthly" ? "Monthly" : "Annual"} plan to apply it.
+                  </p>
+                )}
               </div>
 
               {/* Promo Code */}
@@ -573,7 +588,8 @@ export default function FamilySignupPage() {
                     </Button>
                   )}
                 </div>
-                {promoValid && <p className="text-sm text-green-600 dark:text-green-400">{promoValid.discountPercent}% discount applied!</p>}
+                {promoValid && promoAppliesToSelected && <p className="text-sm text-green-600 dark:text-green-400">{promoValid.discountPercent}% discount applied!</p>}
+                {promoValid && !promoAppliesToSelected && <p className="text-sm text-amber-600 dark:text-amber-400">Code valid for {promoValid.applicablePlans === "monthly" ? "monthly" : "annual"} plan only.</p>}
                 {promoError && <p className="text-sm text-destructive">{promoError}</p>}
               </div>
 
