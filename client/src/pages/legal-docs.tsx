@@ -1,8 +1,8 @@
-import { useLocation } from "wouter";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, FileText, Shield, Lock } from "lucide-react";
+import { X, FileText, Shield, Lock } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
 
@@ -576,7 +576,6 @@ interface LegalDocPageProps {
 }
 
 export function LegalDocPage({ docType }: LegalDocPageProps) {
-  const [, setLocation] = useLocation();
   const doc = DOCS[docType];
   const Icon = doc.icon;
   const { themeAssets, hasDarkBackground } = useTheme();
@@ -597,9 +596,9 @@ export function LegalDocPage({ docType }: LegalDocPageProps) {
 
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6 relative z-10">
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => window.history.back()} data-testid="button-back-legal">
-            <ArrowLeft className="w-4 h-4 mr-1" />
-            Back
+          <Button variant="outline" size="sm" onClick={() => window.close()} data-testid="button-close-legal">
+            <X className="w-4 h-4 mr-1" />
+            Close
           </Button>
         </div>
 
