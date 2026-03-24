@@ -109,13 +109,13 @@ export function FeatureComparisonDialog({ open, onOpenChange }: FeatureCompariso
                     <th className="text-center py-3 px-2 font-semibold w-[20%]">
                       <div className="flex flex-col items-center gap-1">
                         <span className="text-blue-600">Family Account</span>
-                        <span className="text-xs text-muted-foreground font-normal">Coming Soon</span>
+                        <span className="text-xs text-muted-foreground font-normal">Full Access</span>
                       </div>
                     </th>
                     <th className="text-center py-3 px-2 font-semibold w-[20%]">
                       <div className="flex flex-col items-center gap-1">
                         <span className="text-purple-600">School Account</span>
-                        <span className="text-xs text-muted-foreground font-normal">Full Access</span>
+                        <span className="text-xs text-muted-foreground font-normal">Coming Soon</span>
                       </div>
                     </th>
                   </tr>
@@ -168,8 +168,8 @@ export function FeatureComparisonDialog({ open, onOpenChange }: FeatureCompariso
                 <div>
                   <h4 className="font-semibold text-blue-900 dark:text-blue-100">Want to unlock all features?</h4>
                   <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
-                    Create a School account to access all features including User Groups, Head to Head Challenges, 
-                    and the Teacher Dashboard. Family accounts are coming soon!
+                    Create a Family account to access all features including User Groups, Head to Head Challenges,
+                    and the Teacher Dashboard. School accounts are coming soon!
                   </p>
                 </div>
               </div>
