@@ -5347,6 +5347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               planType: isMonthly ? "monthly" : "annual",
               expiresAt,
               paymentDate: new Date(),
+              autoRenew,
             });
           } catch (emailErr) {
             console.error("Failed to send payment receipt email:", emailErr);

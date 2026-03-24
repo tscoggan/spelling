@@ -108,6 +108,7 @@ export class WebhookHandlers {
               planType: isMonthly ? 'monthly' : 'annual',
               expiresAt: newExpiry,
               paymentDate: new Date(),
+              autoRenew: family.autoRenew,
             });
           } catch (emailErr: any) {
             console.error('[webhook] Failed to send renewal receipt email:', emailErr.message);

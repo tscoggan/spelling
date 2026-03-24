@@ -448,6 +448,7 @@ export async function sendPaymentReceiptEmail(
     planType: "monthly" | "annual" | "school_verification";
     expiresAt: Date;
     paymentDate: Date;
+    autoRenew?: boolean;
   }
 ): Promise<void> {
   const { client, fromEmail } = getResendClient();
@@ -464,11 +465,13 @@ export async function sendPaymentReceiptEmail(
                                      'School — Adult Verification';
 
   const renewalNote =
-    details.planType === 'monthly'
+    details.planType === 'school_verification'
+      ? 'Your school account is now active for one year.'
+      : details.autoRenew === false
+      ? 'Auto-renewal is off. Your access will end on the expiry date above and will not be charged again.'
+      : details.planType === 'monthly'
       ? 'Your subscription renews monthly. You can manage it anytime from your account.'
-      : details.planType === 'annual'
-      ? 'Your subscription renews annually. You can manage it anytime from your account.'
-      : 'Your school account is now active for one year.';
+      : 'Your subscription renews annually. You can manage it anytime from your account.';
 
   await client.emails.send({
     from: fromEmail,
