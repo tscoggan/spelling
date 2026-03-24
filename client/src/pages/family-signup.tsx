@@ -255,12 +255,14 @@ export default function FamilySignupPage() {
         <header className="flex items-center justify-start mb-4">
           <Button
             variant="default"
-            onClick={async () => {
-              if (user) {
-                try { await apiRequest("POST", "/api/logout"); } catch (_) {}
-                queryClient.setQueryData(["/api/user"], null);
-              }
+            onClick={() => {
+              // Clear user cache first so the auth page sees no user on first render,
+              // preventing the "redirect to /" race condition. Then fire the API logout.
+              queryClient.setQueryData(["/api/user"], null);
               setLocation("/auth");
+              if (user) {
+                apiRequest("POST", "/api/logout").catch(() => {});
+              }
             }}
             className="bg-white/90 dark:bg-black/70 text-foreground shadow-lg"
             data-testid="button-home"

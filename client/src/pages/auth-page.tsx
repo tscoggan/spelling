@@ -86,7 +86,13 @@ export default function AuthPage() {
   });
 
   useEffect(() => {
-    if (user) {
+    // Don't redirect family accounts that haven't completed payment — they need
+    // to stay here so they can log out and switch to a different account.
+    const isUnverifiedFamily =
+      (user?.accountType === "family_parent" || user?.accountType === "family_child") &&
+      (user as any)?.familyVpcStatus !== undefined &&
+      (user as any)?.familyVpcStatus !== "verified";
+    if (user && !isUnverifiedFamily) {
       setLocation("/");
     }
   }, [user, setLocation]);

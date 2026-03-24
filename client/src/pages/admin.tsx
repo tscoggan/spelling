@@ -1423,9 +1423,11 @@ export default function AdminPage() {
                                 {new Date(user.createdAt).toLocaleDateString()}
                               </TableCell>
                               <TableCell className="text-xs">
-                                {user.subscriptionExpiresAt
-                                  ? new Date(user.subscriptionExpiresAt).toLocaleDateString()
-                                  : <span className="text-muted-foreground">N/A</span>}
+                                {user.role === 'admin'
+                                  ? <span className="text-muted-foreground">N/A</span>
+                                  : user.subscriptionExpiresAt
+                                    ? new Date(user.subscriptionExpiresAt).toLocaleDateString()
+                                    : <span className="inline-flex items-center rounded-md bg-red-600 text-white px-2 py-0.5 text-xs font-medium">Unpaid</span>}
                               </TableCell>
                               <TableCell className="text-xs">
                                 {user.lastActive 
@@ -1544,9 +1546,11 @@ export default function AdminPage() {
                                     {new Date(group.parentUser.createdAt).toLocaleDateString()}
                                   </TableCell>
                                   <TableCell className="text-xs">
-                                    {group.parentUser.subscriptionExpiresAt
-                                      ? new Date(group.parentUser.subscriptionExpiresAt).toLocaleDateString()
-                                      : <span className="text-muted-foreground">N/A</span>}
+                                    {group.parentUser.role === 'admin'
+                                      ? <span className="text-muted-foreground">N/A</span>
+                                      : group.parentUser.subscriptionExpiresAt
+                                        ? new Date(group.parentUser.subscriptionExpiresAt).toLocaleDateString()
+                                        : <span className="inline-flex items-center rounded-md bg-red-600 text-white px-2 py-0.5 text-xs font-medium">Unpaid</span>}
                                   </TableCell>
                                   <TableCell className="text-xs">
                                     {group.parentUser.lastActive 
