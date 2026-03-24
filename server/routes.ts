@@ -5391,7 +5391,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/promo-codes", async (req, res) => {
     try {
       if (!req.user || (req.user as any).role !== "admin") return res.status(403).json({ error: "Admin access required" });
-      const { discountPercent, codeType, expiresAt } = req.body;
+      const { discountPercent, codeType, expiresAt, applicablePlans, duration } = req.body;
       if (!discountPercent || discountPercent < 1 || discountPercent > 100) {
         return res.status(400).json({ error: "discountPercent must be 1–100" });
       }
@@ -5411,6 +5411,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         codeType,
         isActive: true,
         expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+        applicablePlans: ["monthly", "annual", "both"].includes(applicablePlans) ? applicablePlans : "both",
+        duration: ["once", "forever"].includes(duration) ? duration : "once",
         createdByUserId: (req.user as any)?.id ?? null,
       });
       res.status(201).json(promoCode);
