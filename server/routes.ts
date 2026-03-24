@@ -4123,6 +4123,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sync subscription status directly from Stripe (fallback for missed webhooks)
+  app.post("/api/family/sync-subscription", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const family = await storage.getFamilyAccountByParentId(user.id);
+      if (!family) return res.status(404).json({ error: "Family account not found" });
+      if (!family.stripeSubscriptionId) return res.json({ synced: false, reason: "No subscription on file" });
+
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+
+      let subscription: any;
+      try {
+        subscription = await stripe.subscriptions.retrieve(family.stripeSubscriptionId, {
+          expand: ["latest_invoice"],
+        });
+      } catch (stripeErr: any) {
+        console.warn(`[sync-subscription] Could not retrieve subscription ${family.stripeSubscriptionId}:`, stripeErr.message);
+        return res.json({ synced: false, reason: "Subscription not found in Stripe" });
+      }
+
+      if (subscription.status !== "active" && subscription.status !== "trialing") {
+        return res.json({ synced: false, reason: `Subscription status is ${subscription.status}` });
+      }
+
+      // Determine the correct expiry from the subscription's current period end
+      const periodEnd = new Date(subscription.current_period_end * 1000);
+      const currentExpiry = family.subscriptionExpiresAt ? new Date(family.subscriptionExpiresAt) : null;
+
+      // Only update if Stripe says the period end is meaningfully later than what we have stored
+      if (!currentExpiry || periodEnd > currentExpiry) {
+        const interval = subscription.items?.data?.[0]?.price?.recurring?.interval;
+        const isMonthly = interval === "month";
+        const latestInvoice = subscription.latest_invoice as any;
+        const amountCents = latestInvoice?.amount_paid ?? family.subscriptionAmount ?? 0;
+
+        await storage.updateFamilyAccount(family.id, {
+          subscriptionExpiresAt: periodEnd,
+          vpcStatus: "verified",
+          autoRenew: !subscription.cancel_at_period_end,
+          subscriptionAmount: amountCents,
+        });
+
+        // Record a payment if the latest invoice isn't already tracked
+        if (latestInvoice?.id && latestInvoice?.status === "paid" && latestInvoice?.billing_reason === "subscription_cycle") {
+          const existing = await storage.getPaymentHistory(family.id);
+          const alreadyRecorded = existing.some((p: any) => p.stripePaymentIntentId === latestInvoice.payment_intent);
+          if (!alreadyRecorded) {
+            await storage.createPaymentRecord({
+              familyId: family.id,
+              userId: family.primaryParentUserId,
+              amount: amountCents,
+              paymentMethod: "stripe",
+              description: isMonthly ? "Family account monthly renewal" : "Family account annual renewal",
+              stripePaymentIntentId: typeof latestInvoice.payment_intent === "string" ? latestInvoice.payment_intent : null,
+              status: "completed",
+            });
+          }
+        }
+
+        console.log(`[sync-subscription] Updated family ${family.id} — new expiry ${periodEnd.toISOString()}`);
+        return res.json({ synced: true, subscriptionExpiresAt: periodEnd });
+      }
+
+      return res.json({ synced: false, reason: "Stored expiry is already current" });
+    } catch (error: any) {
+      console.error("Error syncing subscription:", error);
+      res.status(500).json({ error: "Failed to sync subscription" });
+    }
+  });
+
   // Send email verification code
   app.post("/api/family/send-email-verification", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {

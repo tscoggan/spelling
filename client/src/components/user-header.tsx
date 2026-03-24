@@ -228,6 +228,31 @@ export function UserHeader() {
     },
   });
 
+  // Silently sync subscription status from Stripe whenever the account dialog opens
+  // and the stored expiry is in the past — catches renewals that webhook may have missed.
+  const syncSubscriptionMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/family/sync-subscription", {});
+      return res.json() as Promise<{ synced: boolean; subscriptionExpiresAt?: string }>;
+    },
+    onSuccess: (data) => {
+      if (data.synced) {
+        queryClient.invalidateQueries({ queryKey: ["/api/family/account", user?.id] });
+      }
+    },
+  });
+
+  useEffect(() => {
+    if (!accountInfo) return;
+    if (accountInfo.accountType !== "family_parent") return;
+    if (!accountInfo.stripeSubscriptionId) return;
+    const isExpiredOrExpiring = !accountInfo.subscriptionExpiresAt ||
+      new Date(accountInfo.subscriptionExpiresAt) < new Date();
+    if (isExpiredOrExpiring) {
+      syncSubscriptionMutation.mutate();
+    }
+  }, [accountInfo?.subscriptionExpiresAt, accountInfo?.stripeSubscriptionId]);
+
   const completeTodoMutation = useMutation({
     mutationFn: async (todoId: number) => {
       await apiRequest("POST", `/api/user-to-dos/${todoId}/complete`, {});

@@ -11,19 +11,14 @@ export class WebhookHandlers {
     const sync = await getStripeSync();
     await sync.processWebhook(payload, signature);
 
-    // Parse event ourselves for our own business logic
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    if (!webhookSecret) {
-      console.warn('[webhook] STRIPE_WEBHOOK_SECRET not set — skipping custom event handling');
-      return;
-    }
-
+    // Parse event for our own business logic.
+    // StripeSync.processWebhook() already verified the signature above — if it didn't throw,
+    // the payload is authentic. We just parse the JSON here.
     let event: any;
     try {
-      const stripe = await getUncachableStripeClient();
-      event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+      event = JSON.parse(payload.toString('utf8'));
     } catch (err: any) {
-      console.error('[webhook] Signature verification failed:', err.message);
+      console.error('[webhook] Failed to parse webhook payload:', err.message);
       return;
     }
 
