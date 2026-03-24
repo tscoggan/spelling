@@ -95,7 +95,7 @@ export function setupAuth(app: Express) {
     });
   });
 
-  app.get("/api/user", (req, res, next) => {
+  app.get("/api/user", async (req, res, next) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     
     const user = req.user as any;
@@ -112,6 +112,20 @@ export function setupAuth(app: Express) {
         return res.sendStatus(401);
       });
       return;
+    }
+
+    // For family accounts, embed the family vpcStatus so the client can enforce
+    // a paywall before the subscription is paid and verified.
+    if (user.accountType === 'family_parent' || user.accountType === 'family_child') {
+      try {
+        const member = await storage.getFamilyMemberByUserId(user.id);
+        if (member) {
+          const family = await storage.getFamilyAccount(member.familyId);
+          return res.json({ ...user, familyVpcStatus: family?.vpcStatus ?? null });
+        }
+      } catch (err) {
+        console.error('[/api/user] Error fetching familyVpcStatus:', err);
+      }
     }
     
     res.json(req.user);

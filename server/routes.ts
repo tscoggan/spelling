@@ -71,6 +71,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     next();
   };
+
+  // Middleware that blocks only family accounts whose subscription is unpaid/unverified.
+  // Free and other account types are allowed through so they can still play games.
+  const requireFamilySubscription = async (req: any, res: any, next: any) => {
+    const user = req.user;
+    if (!user) return res.status(401).json({ error: "Authentication required" });
+    if (user.accountType === 'family_parent' || user.accountType === 'family_child') {
+      try {
+        const member = await storage.getFamilyMemberByUserId(user.id);
+        if (member) {
+          const family = await storage.getFamilyAccount(member.familyId);
+          if (!family || family.vpcStatus !== 'verified') {
+            return res.status(403).json({
+              error: "Your family subscription is not active. Please complete payment to access this feature.",
+              code: "PAYMENT_REQUIRED",
+            });
+          }
+        }
+      } catch (err) {
+        console.error("requireFamilySubscription: error checking vpcStatus", err);
+        return res.status(500).json({ error: "Unable to verify subscription status" });
+      }
+    }
+    next();
+  };
   
   // Middleware to reject legacy guest users (username starting with "guest_")
   // These users should be logged out and redirected to use the new in-memory guest mode
@@ -506,7 +531,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/sessions", requireAuthAndRejectLegacyGuest, async (req, res) => {
+  app.post("/api/sessions", requireAuthAndRejectLegacyGuest, requireFamilySubscription, async (req, res) => {
     try {
       // Normalize legacy "standard" mode to "practice"
       const normalizedData = {
@@ -541,7 +566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/sessions/:id", requireAuthAndRejectLegacyGuest, async (req, res) => {
+  app.patch("/api/sessions/:id", requireAuthAndRejectLegacyGuest, requireFamilySubscription, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
