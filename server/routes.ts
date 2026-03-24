@@ -5099,8 +5099,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // checkout never breaks even if metadata search / DB sync fails.
       if (!priceId && type === "family_subscription" && process.env.NODE_ENV === "production") {
         priceId = priceInterval === "month"
-          ? "price_1T5ELAFqXkYT3eonwaaU06dx"   // live monthly $1.99
-          : "price_1T5ELAFqXkYT3eonjNM4Fkyc";  // live annual $19.99
+          ? "price_1TEZgPFdgAuqlk2D0ShTSkIH"   // live monthly $1.99
+          : "price_1TEZgPFdgAuqlk2Dc6s31YD0";  // live annual $19.99
       }
 
       if (!priceId) {
