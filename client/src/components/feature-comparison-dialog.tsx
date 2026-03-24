@@ -72,6 +72,13 @@ const features: Feature[] = [
     school: true,
   },
   {
+    name: "Family Dashboard",
+    description: "Parents can manage family members, track each child's progress, and control account settings in one place.",
+    freePlay: false,
+    family: true,
+    school: false,
+  },
+  {
     name: "Teacher Dashboard",
     description: "Teachers can create student groups, share word lists with classes, and monitor student progress and performance.",
     freePlay: false,
@@ -169,7 +176,7 @@ export function FeatureComparisonDialog({ open, onOpenChange }: FeatureCompariso
                   <h4 className="font-semibold text-blue-900 dark:text-blue-100">Want to unlock all features?</h4>
                   <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
                     Create a Family account to access all features including User Groups, Head to Head Challenges,
-                    and the Teacher Dashboard. School accounts are coming soon!
+                    and the Family Dashboard. School accounts are coming soon!
                   </p>
                 </div>
               </div>
