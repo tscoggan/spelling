@@ -82,6 +82,7 @@ export class WebhookHandlers {
           subscriptionExpiresAt: newExpiry,
           subscriptionAmount: amountCents,
           vpcStatus: 'verified',
+          vpcVerifiedAt: new Date(),
         });
 
         // Record the payment

@@ -596,7 +596,7 @@ export function LegalDocPage({ docType }: LegalDocPageProps) {
 
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6 relative z-10">
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => window.close()} data-testid="button-close-legal">
+          <Button variant="outline" size="sm" onClick={() => { if (window.history.length > 1) { window.history.back(); } else { window.close(); } }} data-testid="button-close-legal">
             <X className="w-4 h-4 mr-1" />
             Close
           </Button>

@@ -2626,8 +2626,8 @@ export class DatabaseStorage implements IStorage {
     await db.insert(familyLegalAcceptances).values({
       familyId: data.familyId,
       userId: data.userId,
-      tosVersion: "1.0",
-      privacyVersion: "1.0",
+      tosVersion: "1.1",
+      privacyVersion: "1.1",
       acceptedTos: true,
       acceptedPrivacy: true,
       acceptedParentalConsent: true,

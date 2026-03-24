@@ -4301,7 +4301,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!family) return res.status(404).json({ error: "Family account not found" });
       if (!family.emailVerifiedAt) return res.status(403).json({ error: "Email must be verified first" });
 
-      const ip = req.headers["x-forwarded-for"] as string || req.socket.remoteAddress || undefined;
+      const forwarded = req.headers["x-forwarded-for"];
+      const ip = (typeof forwarded === "string" ? forwarded.split(",")[0].trim() : req.socket?.remoteAddress) || undefined;
       const userAgent = req.headers["user-agent"] || undefined;
       await storage.createFamilyLegalAcceptance({ familyId: family.id, userId: user.id, ipAddress: ip, userAgent });
       await storage.updateFamilyAccount(family.id, { legalAcceptedAt: new Date() });
