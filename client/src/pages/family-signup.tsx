@@ -56,7 +56,7 @@ const STEPS = [
 
 export default function FamilySignupPage() {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const search = useSearch();
   const { themeAssets, hasDarkBackground } = useTheme();
@@ -253,7 +253,18 @@ export default function FamilySignupPage() {
 
       <div className="max-w-lg mx-auto space-y-6 relative z-10">
         <header className="flex items-center justify-start mb-4">
-          <Button variant="default" onClick={() => setLocation("/")} className="bg-white/90 dark:bg-black/70 text-foreground hover:bg-white dark:hover:bg-black/80 shadow-lg" data-testid="button-home">
+          <Button
+            variant="default"
+            onClick={() => {
+              if (user) {
+                logoutMutation.mutate(undefined, { onSettled: () => setLocation("/auth") });
+              } else {
+                setLocation("/auth");
+              }
+            }}
+            className="bg-white/90 dark:bg-black/70 text-foreground shadow-lg"
+            data-testid="button-home"
+          >
             <Home className="h-4 w-4 mr-2" /> Home
           </Button>
         </header>
