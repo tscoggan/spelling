@@ -5205,19 +5205,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(402).json({ error: "Payment not completed" });
       }
 
-      // Identify the user: prefer the live browser session; fall back to metadata.userId
-      // embedded in the Stripe session at checkout creation time (set by our server, trustworthy).
-      let user: any = req.isAuthenticated() ? req.user : null;
-      if (!user) {
-        const metadataUserId = session.metadata?.userId ? parseInt(session.metadata.userId) : null;
-        if (!metadataUserId) {
-          return res.status(401).json({ error: "Could not identify user — please log in and visit your account page." });
-        }
+      // Identify the user: always trust metadata.userId (set by our server at checkout time)
+      // over the browser session. The browser session may belong to a different user (e.g.
+      // an admin browsing in the same browser while another user completes checkout).
+      const metadataUserId = session.metadata?.userId ? parseInt(session.metadata.userId) : null;
+      let user: any = null;
+
+      if (metadataUserId) {
         user = await storage.getUser(metadataUserId);
-        if (!user) {
-          return res.status(401).json({ error: "User not found" });
+        if (!user) return res.status(401).json({ error: "User not found" });
+        const sessionUser = req.isAuthenticated() ? (req.user as any) : null;
+        if (sessionUser && sessionUser.id !== metadataUserId) {
+          console.log(`[verify-session] Browser session user ${sessionUser.id} differs from payer ${metadataUserId} — using payer from Stripe metadata`);
         }
-        console.log(`[verify-session] Session cookie absent — authenticated via Stripe metadata userId=${metadataUserId}`);
+      } else if (req.isAuthenticated()) {
+        // Legacy fallback: no metadata userId, trust browser session
+        user = req.user as any;
+        console.log(`[verify-session] No metadata userId — falling back to browser session user ${user.id}`);
+      } else {
+        return res.status(401).json({ error: "Could not identify user — please log in and visit your account page." });
       }
       const promoCode = session.metadata?.promoCode;
       const autoRenew = session.metadata?.autoRenew !== "false";
