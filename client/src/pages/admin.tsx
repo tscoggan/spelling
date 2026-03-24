@@ -220,6 +220,24 @@ export default function AdminPage() {
     },
   });
 
+  const activateSubscriptionMutation = useMutation({
+    mutationFn: async ({ userId, planType }: { userId: number; planType: "monthly" | "annual" }) => {
+      const response = await apiRequest('POST', `/api/admin/users/${userId}/activate-subscription`, { planType });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Failed to activate');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Activated", description: "Family subscription has been manually activated." });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to activate", description: error.message, variant: "destructive" });
+    },
+  });
+
   const createAdminMutation = useMutation({
     mutationFn: async (data: { username: string; password: string; firstName?: string; lastName?: string; email?: string }) => {
       const response = await apiRequest('POST', '/api/admin/create-admin', data);
@@ -1435,6 +1453,35 @@ export default function AdminPage() {
                                   : <span className="text-muted-foreground">Never</span>}
                               </TableCell>
                               <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                {user.accountType === 'family_parent' && !user.subscriptionExpiresAt && (
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button variant="ghost" size="icon" title="Manually activate subscription" data-testid={`button-activate-${user.id}`}>
+                                        <Check className="w-4 h-4 text-green-600" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Manually Activate Subscription</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Activate a family subscription for <strong>{user.username}</strong> after confirming their payment in Stripe. Choose the plan they paid for:
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <div className="flex gap-3 py-2">
+                                        <Button className="flex-1" variant="outline" onClick={() => activateSubscriptionMutation.mutate({ userId: user.id, planType: "monthly" })} disabled={activateSubscriptionMutation.isPending}>
+                                          {activateSubscriptionMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Monthly (1 month)"}
+                                        </Button>
+                                        <Button className="flex-1" onClick={() => activateSubscriptionMutation.mutate({ userId: user.id, planType: "annual" })} disabled={activateSubscriptionMutation.isPending}>
+                                          {activateSubscriptionMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Annual (1 year)"}
+                                        </Button>
+                                      </div>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                )}
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
                                     <Button 
@@ -1494,6 +1541,7 @@ export default function AdminPage() {
                                     </AlertDialogFooter>
                                   </AlertDialogContent>
                                 </AlertDialog>
+                                </div>
                               </TableCell>
                             </TableRow>
                           );

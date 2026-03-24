@@ -3725,6 +3725,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Admin: Manually activate a family subscription (e.g. payment verified outside the app)
+  app.post("/api/admin/users/:id/activate-subscription", async (req, res) => {
+    if (!req.user || req.user.role !== "admin") {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    try {
+      const userId = parseInt(req.params.id);
+      const { planType } = req.body; // "monthly" | "annual"
+      const family = await storage.getFamilyAccountByParentId(userId);
+      if (!family) return res.status(404).json({ error: "Family account not found for this user" });
+      const expiresAt = new Date();
+      if (planType === "annual") {
+        expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+      } else {
+        expiresAt.setMonth(expiresAt.getMonth() + 1);
+      }
+      await storage.updateFamilyAccount(family.id, {
+        vpcStatus: "verified",
+        subscriptionExpiresAt: expiresAt,
+      });
+      res.json({ success: true, expiresAt });
+    } catch (err: any) {
+      console.error("Error manually activating subscription:", err);
+      res.status(500).json({ error: "Failed to activate subscription" });
+    }
+  });
+
   // Admin: Delete user and all associated data
   // Query param: deleteFamily=true to delete entire family group
   app.delete("/api/admin/users/:id", async (req, res) => {
