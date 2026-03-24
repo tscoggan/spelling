@@ -84,8 +84,31 @@ export function setupAuth(app: Express) {
     });
   });
 
-  app.post("/api/login", passport.authenticate("local"), (req, res) => {
-    res.status(200).json(req.user);
+  app.post("/api/login", (req, res, next) => {
+    passport.authenticate("local", async (err: any, user: any) => {
+      if (err) return next(err);
+      if (!user) return res.status(401).json({ error: "Invalid credentials" });
+
+      req.login(user, async (loginErr) => {
+        if (loginErr) return next(loginErr);
+
+        // Enrich with familyVpcStatus so the client can enforce the paywall
+        // immediately on login (without waiting for a separate /api/user call).
+        if (user.accountType === "family_parent" || user.accountType === "family_child") {
+          try {
+            const member = await storage.getFamilyMemberByUserId(user.id);
+            if (member) {
+              const family = await storage.getFamilyAccount(member.familyId);
+              return res.status(200).json({ ...user, familyVpcStatus: family?.vpcStatus ?? null });
+            }
+          } catch (enrichErr) {
+            console.error("[/api/login] Error fetching familyVpcStatus:", enrichErr);
+          }
+        }
+
+        return res.status(200).json(user);
+      });
+    })(req, res, next);
   });
 
   app.post("/api/logout", (req, res, next) => {
@@ -96,6 +119,8 @@ export function setupAuth(app: Express) {
   });
 
   app.get("/api/user", async (req, res, next) => {
+    // Never serve a cached copy — vpcStatus and other enriched fields must always be fresh.
+    res.setHeader("Cache-Control", "no-store");
     if (!req.isAuthenticated()) return res.sendStatus(401);
     
     const user = req.user as any;
