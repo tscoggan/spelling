@@ -230,12 +230,12 @@ export default function AuthPage() {
           variant="outline"
           size="lg"
           className="h-auto py-4 px-3 flex flex-col gap-1 text-center"
-          onClick={() => setLocation("/school/signup")}
+          disabled
           data-testid="button-school-account"
         >
           <School className="w-6 h-6" />
           <span className="text-base font-bold leading-tight text-wrap">Create School Account</span>
-          <span className="text-xs opacity-80 font-normal leading-tight text-wrap">Admin + teachers + students</span>
+          <span className="text-xs font-semibold leading-tight text-wrap">Coming Soon</span>
         </Button>
       </div>
 
