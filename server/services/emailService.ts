@@ -14,17 +14,30 @@ export async function sendEmailVerificationCode(
     html: `
       <!DOCTYPE html>
       <html>
-        <body style="font-family:sans-serif;background:#f9f9f9;padding:32px;">
-          <div style="max-width:480px;margin:0 auto;background:#fff;border-radius:8px;padding:32px;box-shadow:0 2px 8px rgba(0,0,0,.08);">
-            <h2 style="color:#4f46e5;margin-top:0;">Verify Your Email</h2>
-            <p style="color:#444;">Hi ${name},</p>
-            <p style="color:#444;">To complete your Spelling Playground family account setup, please enter the following verification code:</p>
-            <div style="text-align:center;margin:24px 0;">
-              <span style="display:inline-block;font-size:36px;font-weight:bold;letter-spacing:8px;color:#4f46e5;background:#f0f0ff;padding:12px 24px;border-radius:8px;">${code}</span>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+            .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #888; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            ${emailHeader()}
+            <div class="content">
+              <h2 style="margin-top:0;">Verify Your Email</h2>
+              <p>Hi ${name},</p>
+              <p>To complete your Spelling Playground family account setup, please enter the following verification code:</p>
+              <div style="text-align:center;margin:24px 0;">
+                <span style="display:inline-block;font-size:36px;font-weight:bold;letter-spacing:8px;color:#4f46e5;background:#f0f0ff;padding:12px 24px;border-radius:8px;">${code}</span>
+              </div>
+              <p style="color:#666;font-size:14px;">This code expires in 10 minutes. If you did not create a Spelling Playground account, you can safely ignore this email.</p>
+              <p>Happy spelling!<br>The Spelling Playground Team</p>
             </div>
-            <p style="color:#666;font-size:14px;">This code expires in 10 minutes. If you did not create a Spelling Playground account, you can safely ignore this email.</p>
-            <hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
-            <p style="color:#999;font-size:12px;">Spelling Playground &mdash; support@spellingplayground.com</p>
+            <div class="footer">
+              <p>This is an automated message from Spelling Playground. Please do not reply to this email.</p>
+            </div>
           </div>
         </body>
       </html>
@@ -269,6 +282,7 @@ export async function sendPromoCodeEmail(
     discountPercent: number;
     codeType: string;
     expiresAt: string | null;
+    applicablePlans: string;
   }
 ): Promise<void> {
   const { client, fromEmail } = getResendClient();
@@ -283,6 +297,12 @@ export async function sendPromoCodeEmail(
   const typeNote = promoCode.codeType === 'one_time'
     ? 'This is a one-time use code — it can only be applied once.'
     : 'This code can be used multiple times.';
+
+  const plansLabel =
+    promoCode.applicablePlans === 'monthly' ? 'Monthly plan only' :
+    promoCode.applicablePlans === 'annual'  ? 'Annual plan only' :
+                                              'Monthly and Annual plans';
+  const plansNote = `<p style="color:#555;font-size:13px;">Applies to: <strong>${plansLabel}</strong></p>`;
 
   await client.emails.send({
     from: fromEmail,
@@ -320,6 +340,7 @@ export async function sendPromoCodeEmail(
 
               ${expiryNote}
               <p style="color:#555;font-size:13px;">${typeNote}</p>
+              ${plansNote}
 
               <p style="text-align:center;">
                 <a href="${signupUrl}" class="button">Create Your Account</a>

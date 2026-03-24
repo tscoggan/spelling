@@ -5480,6 +5480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         discountPercent: promo.discountPercent,
         codeType: promo.codeType,
         expiresAt: promo.expiresAt ? promo.expiresAt.toISOString() : null,
+        applicablePlans: promo.applicablePlans ?? "both",
       });
       res.json({ success: true, sentTo: validEmails.length });
     } catch (error) {
