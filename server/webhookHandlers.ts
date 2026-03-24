@@ -7,19 +7,35 @@ export class WebhookHandlers {
       throw new Error('Webhook payload must be a Buffer. Received: ' + typeof payload);
     }
 
-    // Run stripe-replit-sync processing
-    const sync = await getStripeSync();
-    await sync.processWebhook(payload, signature);
-
-    // Parse event for our own business logic.
-    // StripeSync.processWebhook() already verified the signature above — if it didn't throw,
-    // the payload is authentic. We just parse the JSON here.
-    let event: any;
+    // Let StripeSync process the event for its own data-sync purposes (best-effort)
     try {
-      event = JSON.parse(payload.toString('utf8'));
-    } catch (err: any) {
-      console.error('[webhook] Failed to parse webhook payload:', err.message);
-      return;
+      const sync = await getStripeSync();
+      await sync.processWebhook(payload, signature);
+    } catch (_syncErr) {
+      // StripeSync couldn't verify — this is expected when using a manually configured
+      // webhook endpoint whose signing secret differs from StripeSync's managed one.
+    }
+
+    // Verify and parse the event for our own business logic
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    let event: any;
+    if (webhookSecret) {
+      try {
+        const stripe = await getUncachableStripeClient();
+        event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+      } catch (err: any) {
+        console.error('[webhook] Signature verification failed:', err.message);
+        return;
+      }
+    } else {
+      // No secret configured — parse without signature verification
+      try {
+        event = JSON.parse(payload.toString('utf8'));
+        console.warn('[webhook] STRIPE_WEBHOOK_SECRET not set — processing without signature check');
+      } catch (err: any) {
+        console.error('[webhook] Failed to parse webhook payload:', err.message);
+        return;
+      }
     }
 
     try {

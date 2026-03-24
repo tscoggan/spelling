@@ -78,16 +78,11 @@ async function initStripe() {
     const { getStripeSync } = await import('./stripeClient');
     const stripeSync = await getStripeSync();
 
-    const isProduction = process.env.REPLIT_DEPLOYMENT === '1';
     const domain = process.env.REPLIT_DOMAINS?.split(',')[0];
 
-    if (isProduction && domain) {
-      // Only manage webhooks in production — if dev runs findOrCreateManagedWebhook,
-      // it treats the production webhook as "orphaned" and deletes it.
-      const webhookUrl = `https://${domain}/api/stripe/webhook`;
-      log(`Setting up Stripe webhook: ${webhookUrl}`);
-      await stripeSync.findOrCreateManagedWebhook(webhookUrl);
-    } else if (domain) {
+    if (domain) {
+      // Never auto-register webhooks — the production webhook endpoint is configured
+      // manually in the Stripe dashboard so Stripe doesn't create duplicate deliveries.
       log(`Dev environment — skipping webhook registration to avoid deleting production endpoint`);
     }
 
