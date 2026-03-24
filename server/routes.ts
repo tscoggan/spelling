@@ -5095,6 +5095,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (_e2) {}
       }
 
+      // Final fallback: use the known hardcoded live price IDs so production
+      // checkout never breaks even if metadata search / DB sync fails.
+      if (!priceId && type === "family_subscription" && process.env.NODE_ENV === "production") {
+        priceId = priceInterval === "month"
+          ? "price_1T5ELAFqXkYT3eonwaaU06dx"   // live monthly $1.99
+          : "price_1T5ELAFqXkYT3eonjNM4Fkyc";  // live annual $19.99
+      }
+
       if (!priceId) {
         return res.status(503).json({ error: "Payment product not configured. Please contact support." });
       }
