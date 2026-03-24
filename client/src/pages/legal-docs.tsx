@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, FileText, Shield, Lock } from "lucide-react";
+import { useTheme } from "@/hooks/use-theme";
+import { getThemedTextClasses } from "@/lib/themeText";
 
 interface DocConfig {
   title: string;
@@ -577,10 +579,23 @@ export function LegalDocPage({ docType }: LegalDocPageProps) {
   const [, setLocation] = useLocation();
   const doc = DOCS[docType];
   const Icon = doc.icon;
+  const { themeAssets, hasDarkBackground } = useTheme();
+  const textClasses = getThemedTextClasses(hasDarkBackground);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+    <div className="min-h-screen relative">
+      {/* Themed background */}
+      <div
+        className="fixed inset-0 portrait:block landscape:hidden"
+        style={{ backgroundImage: `url(${themeAssets.backgroundPortrait})`, backgroundSize: "cover", backgroundRepeat: "no-repeat", backgroundPosition: "center top" }}
+      />
+      <div
+        className="fixed inset-0 portrait:hidden landscape:block"
+        style={{ backgroundImage: `url(${themeAssets.backgroundLandscape})`, backgroundSize: "cover", backgroundRepeat: "no-repeat", backgroundPosition: "center top" }}
+      />
+      <div className="fixed inset-0 bg-white/5 dark:bg-black/50" />
+
+      <div className="max-w-3xl mx-auto px-4 py-8 space-y-6 relative z-10">
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={() => window.history.back()} data-testid="button-back-legal">
             <ArrowLeft className="w-4 h-4 mr-1" />
@@ -590,10 +605,10 @@ export function LegalDocPage({ docType }: LegalDocPageProps) {
 
         <div className="space-y-2">
           <div className="flex items-center gap-3">
-            <Icon className="w-7 h-7 text-primary" />
-            <h1 className="text-2xl font-bold" data-testid="text-legal-doc-title">{doc.title}</h1>
+            <Icon className={`w-7 h-7 ${hasDarkBackground ? "text-white" : "text-primary"}`} />
+            <h1 className={`text-2xl font-bold ${textClasses.headline}`} data-testid="text-legal-doc-title">{doc.title}</h1>
           </div>
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <div className={`flex items-center gap-3 text-sm ${textClasses.subtitle}`}>
             <Badge variant="outline">Version {doc.version}</Badge>
             <span>Effective {doc.effectiveDate}</span>
           </div>
@@ -635,10 +650,10 @@ export function LegalDocPage({ docType }: LegalDocPageProps) {
           ))}
         </div>
 
-        <div className="text-center text-xs text-muted-foreground pt-4 pb-8">
+        <div className={`text-center text-xs pt-4 pb-8 ${textClasses.subtitle}`}>
           <p>Spelling Playground &mdash; {doc.title} v{doc.version}</p>
           <p className="mt-1">Questions? Contact{" "}
-            <a href="mailto:support@spellingplayground.com" className="underline underline-offset-2 hover:text-foreground transition-colors">
+            <a href="mailto:support@spellingplayground.com" className="underline underline-offset-2 hover:opacity-80 transition-opacity">
               support@spellingplayground.com
             </a>
           </p>
