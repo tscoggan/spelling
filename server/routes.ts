@@ -5088,7 +5088,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Verify a completed Stripe Checkout session and activate the account
-  app.get("/api/stripe/verify-session", requireAuthAndRejectLegacyGuest, async (req, res) => {
+  app.get("/api/stripe/verify-session", async (req, res) => {
     try {
       const { session_id, type } = req.query as { session_id: string; type: string };
       if (!session_id || !type) return res.status(400).json({ error: "session_id and type are required" });
@@ -5101,7 +5101,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(402).json({ error: "Payment not completed" });
       }
 
-      const user = req.user as any;
+      // Identify the user: prefer the live browser session; fall back to metadata.userId
+      // embedded in the Stripe session at checkout creation time (set by our server, trustworthy).
+      let user: any = req.isAuthenticated() ? req.user : null;
+      if (!user) {
+        const metadataUserId = session.metadata?.userId ? parseInt(session.metadata.userId) : null;
+        if (!metadataUserId) {
+          return res.status(401).json({ error: "Could not identify user — please log in and visit your account page." });
+        }
+        user = await storage.getUser(metadataUserId);
+        if (!user) {
+          return res.status(401).json({ error: "User not found" });
+        }
+        console.log(`[verify-session] Session cookie absent — authenticated via Stripe metadata userId=${metadataUserId}`);
+      }
       const promoCode = session.metadata?.promoCode;
       const autoRenew = session.metadata?.autoRenew !== "false";
 

@@ -9,7 +9,7 @@ import { apiRequest } from "@/lib/queryClient";
 
 type VerifyState =
   | { status: "loading" }
-  | { status: "success"; accountType: "family_subscription" | "school_verification" }
+  | { status: "success"; accountType: "family_subscription" | "school_verification"; isLoggedIn: boolean }
   | { status: "error"; message: string; sessionLost?: boolean; accountType?: "family_subscription" | "school_verification" };
 
 export default function CheckoutSuccess() {
@@ -47,7 +47,10 @@ export default function CheckoutSuccess() {
           const data = await res.json().catch(() => ({}));
           throw new Error((data as any).error || "Payment could not be verified.");
         }
-        setState({ status: "success", accountType: type });
+        // Check if the browser session is still alive
+        const userRes = await fetch("/api/user", { credentials: "include" });
+        const isLoggedIn = userRes.ok;
+        setState({ status: "success", accountType: type, isLoggedIn });
       } catch (err: any) {
         setState({ status: "error", message: err.message || "Verification failed." });
       }
@@ -156,7 +159,20 @@ export default function CheckoutSuccess() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {state.accountType === "family_subscription" ? (
+              {!state.isLoggedIn ? (
+                <>
+                  <p className="text-sm text-center text-muted-foreground">
+                    Your session expired during checkout, but your account has been activated. Please log in to access it.
+                  </p>
+                  <Button
+                    className="w-full"
+                    onClick={() => setLocation("/auth")}
+                    data-testid="button-log-in-after-payment"
+                  >
+                    Log In to Access Your Account
+                  </Button>
+                </>
+              ) : state.accountType === "family_subscription" ? (
                 <Button
                   className="w-full"
                   onClick={() => setLocation("/family")}
