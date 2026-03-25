@@ -2553,20 +2553,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteUserAndAllData(userId: number): Promise<boolean> {
+    // ── Gameplay / activity data ──────────────────────────────────────────
     await db.delete(gameSessions).where(eq(gameSessions.userId, userId));
     await db.delete(leaderboardScores).where(eq(leaderboardScores.userId, userId));
     await db.delete(achievements).where(eq(achievements.userId, userId));
     await db.delete(userStreaks).where(eq(userStreaks.userId, userId));
     await db.delete(userItems).where(eq(userItems.userId, userId));
     await db.delete(userToDoItems).where(or(eq(userToDoItems.userId, userId), eq(userToDoItems.requesterId, userId)));
+    await db.delete(headToHeadChallenges).where(or(eq(headToHeadChallenges.initiatorId, userId), eq(headToHeadChallenges.opponentId, userId)));
+    await db.delete(flaggedWords).where(eq(flaggedWords.userId, userId));
+    await db.delete(promoCodeUsages).where(eq(promoCodeUsages.userId, userId));
+
+    // ── Membership / social ───────────────────────────────────────────────
     await db.delete(userGroupMembership).where(eq(userGroupMembership.userId, userId));
     await db.delete(wordListCoOwners).where(eq(wordListCoOwners.coOwnerUserId, userId));
     await db.delete(userGroupCoOwners).where(eq(userGroupCoOwners.coOwnerUserId, userId));
     await db.delete(userHiddenWordLists).where(eq(userHiddenWordLists.userId, userId));
     await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId));
-    await db.delete(headToHeadChallenges).where(or(eq(headToHeadChallenges.initiatorId, userId), eq(headToHeadChallenges.opponentId, userId)));
-    
-    // Use new wordLists table
+
+    // ── Word lists (owned) ────────────────────────────────────────────────
     const ownedWordLists = await db.select({ id: wordLists.id }).from(wordLists).where(eq(wordLists.userId, userId));
     for (const list of ownedWordLists) {
       await db.delete(wordListWords).where(eq(wordListWords.wordListId, list.id));
@@ -2575,7 +2580,8 @@ export class DatabaseStorage implements IStorage {
       await db.delete(wordListCoOwners).where(eq(wordListCoOwners.wordListId, list.id));
     }
     await db.delete(wordLists).where(eq(wordLists.userId, userId));
-    
+
+    // ── User groups (owned) ───────────────────────────────────────────────
     const ownedGroups = await db.select({ id: userGroups.id }).from(userGroups).where(eq(userGroups.ownerUserId, userId));
     for (const group of ownedGroups) {
       await db.delete(userGroupMembership).where(eq(userGroupMembership.groupId, group.id));
@@ -2583,7 +2589,41 @@ export class DatabaseStorage implements IStorage {
       await db.delete(wordListUserGroups).where(eq(wordListUserGroups.groupId, group.id));
     }
     await db.delete(userGroups).where(eq(userGroups.ownerUserId, userId));
-    
+
+    // ── Family account data ───────────────────────────────────────────────
+    // NOTE: family_legal_acceptances and agreement_acceptances are intentionally
+    // preserved as permanent legal records even after the user is deleted.
+    const ownedFamily = await db
+      .select({ id: familyAccounts.id })
+      .from(familyAccounts)
+      .where(eq(familyAccounts.primaryParentUserId, userId));
+    for (const family of ownedFamily) {
+      await db.delete(familyMembers).where(eq(familyMembers.familyId, family.id));
+      await db.delete(paymentHistory).where(eq(paymentHistory.familyId, family.id));
+      // family_legal_acceptances kept intentionally
+    }
+    await db.delete(familyAccounts).where(eq(familyAccounts.primaryParentUserId, userId));
+    // Remove membership rows for this user in any family they belong to but don't own
+    await db.delete(familyMembers).where(eq(familyMembers.userId, userId));
+    await db.delete(paymentHistory).where(eq(paymentHistory.userId, userId));
+
+    // ── School account data ───────────────────────────────────────────────
+    // NOTE: school_certifications (COPPA / DPA) are intentionally preserved.
+    const ownedSchools = await db
+      .select({ id: schoolAccounts.id })
+      .from(schoolAccounts)
+      .where(eq(schoolAccounts.schoolAdminUserId, userId));
+    for (const school of ownedSchools) {
+      await db.delete(schoolMembers).where(eq(schoolMembers.schoolId, school.id));
+      await db.delete(schoolPaymentHistory).where(eq(schoolPaymentHistory.schoolId, school.id));
+      // school_certifications kept intentionally
+    }
+    await db.delete(schoolAccounts).where(eq(schoolAccounts.schoolAdminUserId, userId));
+    // Remove membership rows for this user in any school they belong to but don't own
+    await db.delete(schoolMembers).where(eq(schoolMembers.userId, userId));
+    await db.delete(schoolPaymentHistory).where(eq(schoolPaymentHistory.userId, userId));
+
+    // ── Delete the user record itself ─────────────────────────────────────
     const result = await db.delete(users).where(eq(users.id, userId));
     return result.rowCount ? result.rowCount > 0 : false;
   }
