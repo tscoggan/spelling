@@ -142,6 +142,7 @@ export default function AdminPage() {
   
   const [expandedFamilies, setExpandedFamilies] = useState<Set<number>>(new Set());
   const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [hideDeactivated, setHideDeactivated] = useState(true);
   const [createAdminOpen, setCreateAdminOpen] = useState(false);
   const [newAdminForm, setNewAdminForm] = useState({
     username: "",
@@ -419,8 +420,22 @@ export default function AdminPage() {
   }, [adminUsers]);
 
   const filteredGroupedUsers = useMemo(() => {
+    const isUserDeactivated = (user: AdminUser) => user.userStatus === 'deleted';
+
+    let result = groupedUsers;
+
+    if (hideDeactivated) {
+      result = result
+        .map((group) => ({
+          ...group,
+          parentUser: group.parentUser && isUserDeactivated(group.parentUser) ? null : group.parentUser,
+          members: group.members.filter((m) => !isUserDeactivated(m)),
+        }))
+        .filter((group) => group.parentUser !== null || group.members.length > 0) as typeof groupedUsers;
+    }
+
     if (!userSearchQuery.trim()) {
-      return groupedUsers;
+      return result;
     }
 
     const query = userSearchQuery.toLowerCase().trim();
@@ -433,7 +448,7 @@ export default function AdminPage() {
       return idMatch || usernameMatch || firstNameMatch || lastNameMatch || fullNameMatch;
     };
 
-    return groupedUsers.filter((group) => {
+    return result.filter((group) => {
       if (group.parentUser && userMatchesQuery(group.parentUser)) {
         return true;
       }
@@ -442,7 +457,7 @@ export default function AdminPage() {
       }
       return false;
     });
-  }, [groupedUsers, userSearchQuery]);
+  }, [groupedUsers, userSearchQuery, hideDeactivated]);
 
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1364,6 +1379,20 @@ export default function AdminPage() {
                           <X className="w-4 h-4" />
                         </Button>
                       )}
+                      <div className="flex items-center gap-2 ml-2">
+                        <Checkbox
+                          id="hide-deactivated"
+                          checked={hideDeactivated}
+                          onCheckedChange={(checked) => setHideDeactivated(checked === true)}
+                          data-testid="checkbox-hide-deactivated"
+                        />
+                        <label
+                          htmlFor="hide-deactivated"
+                          className="text-sm text-muted-foreground cursor-pointer select-none whitespace-nowrap"
+                        >
+                          Hide deactivated
+                        </label>
+                      </div>
                     </div>
                     {userSearchQuery && filteredGroupedUsers.length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
@@ -1653,8 +1682,10 @@ export default function AdminPage() {
                     </Table>
                     <div className="mt-4 text-sm text-muted-foreground">
                       {userSearchQuery 
-                        ? `Showing ${filteredGroupedUsers.length} group(s) matching "${userSearchQuery}" (${filteredGroupedUsers.reduce((sum, g) => sum + 1 + g.members.length, 0)} users)`
-                        : `Total users: ${adminUsers.length}`}
+                        ? `Showing ${filteredGroupedUsers.length} group(s) matching "${userSearchQuery}" (${filteredGroupedUsers.reduce((sum, g) => sum + (g.parentUser ? 1 : 0) + g.members.length, 0)} users)`
+                        : hideDeactivated
+                          ? `Showing ${filteredGroupedUsers.reduce((sum, g) => sum + (g.parentUser ? 1 : 0) + g.members.length, 0)} active users (${adminUsers.length} total)`
+                          : `Total users: ${adminUsers.length}`}
                     </div>
                     </div>
                     )}
