@@ -68,7 +68,7 @@ export default function WordListsPage() {
     name: "",
     words: "",
     visibility: "private" as "public" | "private" | "groups",
-    assignImages: true,
+    assignImages: false,
     gradeLevel: "",
     selectedGroupIds: [] as number[],
   });
