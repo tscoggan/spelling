@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -63,6 +64,7 @@ export default function WordListsPage() {
   const [selectedListForPlay, setSelectedListForPlay] = useState<CustomWordList | null>(null);
   const [coOwnersDialogOpen, setCoOwnersDialogOpen] = useState(false);
   const [selectedListForCoOwners, setSelectedListForCoOwners] = useState<CustomWordList | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [teacherSearchQuery, setTeacherSearchQuery] = useState("");
   const [formData, setFormData] = useState({
     name: "",
@@ -585,15 +587,21 @@ export default function WordListsPage() {
   };
   
   const handleDelete = (listId: number) => {
+    setDeleteConfirmId(listId);
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirmId === null) return;
     if (isGuestMode) {
-      guestDeleteWordList(listId);
+      guestDeleteWordList(deleteConfirmId);
       toast({
         title: "Success!",
         description: "Word list deleted successfully",
       });
     } else {
-      deleteMutation.mutate(listId);
+      deleteMutation.mutate(deleteConfirmId);
     }
+    setDeleteConfirmId(null);
   };
 
   const extractTextFromPDF = async (file: File): Promise<string> => {
@@ -2099,6 +2107,27 @@ export default function WordListsPage() {
             </div>
           </DialogContent>
         </Dialog>
+
+        <AlertDialog open={deleteConfirmId !== null} onOpenChange={(open) => { if (!open) setDeleteConfirmId(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Word List?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete the word list and all its words. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-delete-cancel">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                data-testid="button-delete-confirm"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </motion.div>
     </div>
   );
