@@ -49,7 +49,13 @@ export default function WordListsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingList, setEditingList] = useState<CustomWordList | null>(null);
   const [gradeFilter, setGradeFilter] = useState<string>("all");
-  const [createdByFilter, setCreatedByFilter] = useState<string>("all");
+  type AuthorFilter = "me" | "family" | "class" | "all" | "specific";
+  const [createdByFilter, setCreatedByFilter] = useState<AuthorFilter>(() => {
+    const saved = localStorage.getItem("wordListAuthorFilter") as AuthorFilter | null;
+    const valid: AuthorFilter[] = ["me", "family", "class", "all", "specific"];
+    return saved && valid.includes(saved) ? saved : "me";
+  });
+  const [specificAuthorSearch, setSpecificAuthorSearch] = useState("");
   const [hideMastered, setHideMastered] = useState<boolean>(false);
   const [showHidden, setShowHidden] = useState<boolean>(false);
   const [jobId, setJobId] = useState<number | null>(null);
@@ -302,6 +308,36 @@ export default function WordListsPage() {
     queryKey: ["/api/achievements/user", user?.id],
     enabled: !!user,
   });
+
+  // Account type helpers for author filter
+  const isFamilyUser = ['family_parent', 'family_child'].includes(user?.accountType || '');
+  const isSchoolUser = (user?.accountType || '').startsWith('school');
+
+  const { data: familyData } = useQuery<any>({
+    queryKey: ["/api/family"],
+    enabled: !!user && isFamilyUser,
+  });
+
+  const { data: schoolData } = useQuery<any>({
+    queryKey: ["/api/school/account"],
+    enabled: !!user && isSchoolUser,
+  });
+
+  const familyMemberUsernames = useMemo(() => {
+    if (!familyData?.members) return new Set<string>();
+    return new Set<string>(familyData.members.map((m: any) => m.user?.username).filter(Boolean));
+  }, [familyData]);
+
+  const classMemberUsernames = useMemo(() => {
+    if (!schoolData?.members) return new Set<string>();
+    return new Set<string>(schoolData.members.map((m: any) => m.user?.username).filter(Boolean));
+  }, [schoolData]);
+
+  const handleCreatedByFilterChange = (value: AuthorFilter) => {
+    setCreatedByFilter(value);
+    localStorage.setItem("wordListAuthorFilter", value);
+    if (value !== "specific") setSpecificAuthorSearch("");
+  };
 
   // Helper function to get achievement for a word list
   const getAchievementForList = (wordListId: number) => {
@@ -930,8 +966,15 @@ export default function WordListsPage() {
     }
     
     // Apply created by filter
-    if (createdByFilter !== "all") {
-      filtered = filtered.filter(list => list.authorUsername === createdByFilter);
+    if (createdByFilter === "me") {
+      filtered = filtered.filter(list => list.authorUsername === user?.username);
+    } else if (createdByFilter === "family") {
+      filtered = filtered.filter(list => list.authorUsername && familyMemberUsernames.has(list.authorUsername));
+    } else if (createdByFilter === "class") {
+      filtered = filtered.filter(list => list.authorUsername && classMemberUsernames.has(list.authorUsername));
+    } else if (createdByFilter === "specific") {
+      const searchLower = specificAuthorSearch.toLowerCase();
+      if (searchLower) filtered = filtered.filter(list => list.authorUsername?.toLowerCase().includes(searchLower));
     }
     
     // Apply hide mastered filter
@@ -948,7 +991,7 @@ export default function WordListsPage() {
       const dateB = new Date(b.createdAt || 0).getTime();
       return dateB - dateA;
     });
-  }, [userLists, gradeFilter, createdByFilter, hideMastered, achievements, showHidden, hiddenWordListIds, isFreeAccount]);
+  }, [userLists, gradeFilter, createdByFilter, specificAuthorSearch, hideMastered, achievements, showHidden, hiddenWordListIds, isFreeAccount, user?.username, familyMemberUsernames, classMemberUsernames]);
 
   const filteredSharedLists = useMemo(() => {
     let filtered = sharedLists;
@@ -968,8 +1011,15 @@ export default function WordListsPage() {
     }
     
     // Apply created by filter
-    if (createdByFilter !== "all") {
-      filtered = filtered.filter(list => list.authorUsername === createdByFilter);
+    if (createdByFilter === "me") {
+      filtered = filtered.filter(list => list.authorUsername === user?.username);
+    } else if (createdByFilter === "family") {
+      filtered = filtered.filter(list => list.authorUsername && familyMemberUsernames.has(list.authorUsername));
+    } else if (createdByFilter === "class") {
+      filtered = filtered.filter(list => list.authorUsername && classMemberUsernames.has(list.authorUsername));
+    } else if (createdByFilter === "specific") {
+      const searchLower = specificAuthorSearch.toLowerCase();
+      if (searchLower) filtered = filtered.filter(list => list.authorUsername?.toLowerCase().includes(searchLower));
     }
     
     // Apply hide mastered filter
@@ -986,7 +1036,7 @@ export default function WordListsPage() {
       const dateB = new Date(b.createdAt || 0).getTime();
       return dateB - dateA;
     });
-  }, [sharedLists, gradeFilter, createdByFilter, hideMastered, achievements, showHidden, hiddenWordListIds]);
+  }, [sharedLists, gradeFilter, createdByFilter, specificAuthorSearch, hideMastered, achievements, showHidden, hiddenWordListIds, user?.username, familyMemberUsernames, classMemberUsernames]);
 
   const filteredPublicLists = useMemo(() => {
     let filtered = publicLists;
@@ -1006,8 +1056,15 @@ export default function WordListsPage() {
     }
     
     // Apply created by filter
-    if (createdByFilter !== "all") {
-      filtered = filtered.filter(list => list.authorUsername === createdByFilter);
+    if (createdByFilter === "me") {
+      filtered = filtered.filter(list => list.authorUsername === user?.username);
+    } else if (createdByFilter === "family") {
+      filtered = filtered.filter(list => list.authorUsername && familyMemberUsernames.has(list.authorUsername));
+    } else if (createdByFilter === "class") {
+      filtered = filtered.filter(list => list.authorUsername && classMemberUsernames.has(list.authorUsername));
+    } else if (createdByFilter === "specific") {
+      const searchLower = specificAuthorSearch.toLowerCase();
+      if (searchLower) filtered = filtered.filter(list => list.authorUsername?.toLowerCase().includes(searchLower));
     }
     
     // Apply hide mastered filter
@@ -1024,7 +1081,7 @@ export default function WordListsPage() {
       const dateB = new Date(b.createdAt || 0).getTime();
       return dateB - dateA;
     });
-  }, [publicLists, gradeFilter, createdByFilter, hideMastered, achievements, showHidden, hiddenWordListIds]);
+  }, [publicLists, gradeFilter, createdByFilter, specificAuthorSearch, hideMastered, achievements, showHidden, hiddenWordListIds, user?.username, familyMemberUsernames, classMemberUsernames]);
 
   // Combined "All" lists - merge all accessible lists, removing duplicates
   const filteredAllLists = useMemo(() => {
@@ -1056,8 +1113,15 @@ export default function WordListsPage() {
     }
     
     // Apply created by filter
-    if (createdByFilter !== "all") {
-      filtered = filtered.filter(list => list.authorUsername === createdByFilter);
+    if (createdByFilter === "me") {
+      filtered = filtered.filter(list => list.authorUsername === user?.username);
+    } else if (createdByFilter === "family") {
+      filtered = filtered.filter(list => list.authorUsername && familyMemberUsernames.has(list.authorUsername));
+    } else if (createdByFilter === "class") {
+      filtered = filtered.filter(list => list.authorUsername && classMemberUsernames.has(list.authorUsername));
+    } else if (createdByFilter === "specific") {
+      const searchLower = specificAuthorSearch.toLowerCase();
+      if (searchLower) filtered = filtered.filter(list => list.authorUsername?.toLowerCase().includes(searchLower));
     }
     
     // Apply hide mastered filter
@@ -1074,7 +1138,7 @@ export default function WordListsPage() {
       const dateB = new Date(b.createdAt || 0).getTime();
       return dateB - dateA;
     });
-  }, [userLists, sharedLists, publicLists, gradeFilter, createdByFilter, hideMastered, achievements, showHidden, hiddenWordListIds, isFreeAccount]);
+  }, [userLists, sharedLists, publicLists, gradeFilter, createdByFilter, specificAuthorSearch, hideMastered, achievements, showHidden, hiddenWordListIds, isFreeAccount, user?.username, familyMemberUsernames, classMemberUsernames]);
 
   const availableGradeLevels = useMemo(() => {
     const grades = new Set<string>();
@@ -1089,14 +1153,6 @@ export default function WordListsPage() {
       if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
       return a.localeCompare(b);
     });
-  }, [userLists, sharedLists, publicLists]);
-
-  const availableAuthors = useMemo(() => {
-    const authors = new Set<string>();
-    [...userLists, ...sharedLists, ...publicLists].forEach(list => {
-      if (list.authorUsername) authors.add(list.authorUsername);
-    });
-    return Array.from(authors).sort((a, b) => a.localeCompare(b));
   }, [userLists, sharedLists, publicLists]);
 
   const renderWordList = (list: any, canEdit: boolean) => {
@@ -1321,19 +1377,33 @@ export default function WordListsPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={createdByFilter} onValueChange={setCreatedByFilter}>
-              <SelectTrigger className="w-[200px]" data-testid="select-author-filter">
-                <SelectValue placeholder="Filter by author" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" data-testid="filter-all-authors">All Authors</SelectItem>
-                {availableAuthors.map((author) => (
-                  <SelectItem key={author} value={author} data-testid={`filter-author-${author}`}>
-                    {author}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <Select value={createdByFilter} onValueChange={(v) => handleCreatedByFilterChange(v as AuthorFilter)}>
+                <SelectTrigger className="w-[180px]" data-testid="select-author-filter">
+                  <SelectValue placeholder="Filter by author" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="me" data-testid="filter-author-me">Me</SelectItem>
+                  {isFamilyUser && (
+                    <SelectItem value="family" data-testid="filter-author-family">My family</SelectItem>
+                  )}
+                  {isSchoolUser && (
+                    <SelectItem value="class" data-testid="filter-author-class">My class</SelectItem>
+                  )}
+                  <SelectItem value="all" data-testid="filter-all-authors">All authors</SelectItem>
+                  <SelectItem value="specific" data-testid="filter-author-specific">Specific author...</SelectItem>
+                </SelectContent>
+              </Select>
+              {createdByFilter === "specific" && (
+                <Input
+                  placeholder="Search username"
+                  value={specificAuthorSearch}
+                  onChange={(e) => setSpecificAuthorSearch(e.target.value)}
+                  className="w-[160px]"
+                  data-testid="input-specific-author-search"
+                />
+              )}
+            </div>
             {user?.role !== "teacher" && (
               <div className="flex items-center space-x-2 bg-white/30 dark:bg-black/30 px-3 py-2 rounded-md backdrop-blur-sm">
                 <Checkbox 
