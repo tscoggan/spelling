@@ -1649,19 +1649,32 @@ export default function WordListsPage() {
                   </div>
                   <div>
                     <Label htmlFor="words">
-                      Words (one per line, min 5, max 500)
+                      Words (one per line or paste comma-separated, min 5, max 500)
                     </Label>
                     <Textarea
                       id="words"
                       value={formData.words}
                       onChange={(e) => setFormData({ ...formData, words: e.target.value })}
+                      onPaste={(e) => {
+                        const pasted = e.clipboardData.getData('text');
+                        if (pasted.includes(',')) {
+                          e.preventDefault();
+                          const words = pasted.split(/[\n,]+/).map(w => w.trim()).filter(Boolean);
+                          const textarea = e.currentTarget;
+                          const start = textarea.selectionStart;
+                          const end = textarea.selectionEnd;
+                          const current = formData.words;
+                          const newValue = current.substring(0, start) + words.join('\n') + current.substring(end);
+                          setFormData({ ...formData, words: newValue });
+                        }
+                      }}
                       placeholder="photosynthesis&#10;mitochondria&#10;chloroplast&#10;ecosystem&#10;biodiversity"
                       className="min-h-[200px] font-mono"
                       required
                       data-testid="textarea-words"
                     />
                     <p className="text-sm text-gray-600 mt-1">
-                      {formData.words.split('\n').filter(w => w.trim()).length} words entered
+                      {formData.words.split(/[\n,]+/).filter(w => w.trim()).length} words entered
                     </p>
                   </div>
                   </div>

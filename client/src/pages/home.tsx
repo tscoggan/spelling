@@ -1271,8 +1271,14 @@ export default function Home() {
   const textClasses = getThemedTextClasses(hasDarkBackground);
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [wordListDialogOpen, setWordListDialogOpen] = useState(false);
+  type AuthorFilter = "me" | "family" | "class" | "all" | "specific";
   const [filterGradeLevel, setFilterGradeLevel] = useState<string>("all");
-  const [filterCreatedBy, setFilterCreatedBy] = useState<string>("all");
+  const [filterCreatedBy, setFilterCreatedBy] = useState<AuthorFilter>(() => {
+    const saved = localStorage.getItem("wordListAuthorFilter") as AuthorFilter | null;
+    const valid: AuthorFilter[] = ["me", "family", "class", "all", "specific"];
+    return saved && valid.includes(saved) ? saved : "me";
+  });
+  const [specificAuthorSearch, setSpecificAuthorSearch] = useState("");
   const [hideMastered, setHideMastered] = useState<boolean>(false);
   const [gameWordCount, setGameWordCount] = useState<"10" | "all">("all");
   const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
@@ -1514,7 +1520,6 @@ export default function Home() {
   const handleModeClick = (mode: GameMode) => {
     setSelectedMode(mode);
     setFilterGradeLevel("all");
-    setFilterCreatedBy("all");
     setHideMastered(false);
     setGameWordCount("all");
     setWordListDialogOpen(true);
@@ -1584,6 +1589,36 @@ export default function Home() {
   // Check if user is a free account
   const isFreeAccount = user?.accountType === 'free';
 
+  // Account type helpers for author filter
+  const isFamilyUser = ['family_parent', 'family_child'].includes(user?.accountType || '');
+  const isSchoolUser = (user?.accountType || '').startsWith('school');
+
+  const { data: familyDataHome } = useQuery<any>({
+    queryKey: ["/api/family"],
+    enabled: !!user && isFamilyUser,
+  });
+
+  const { data: schoolDataHome } = useQuery<any>({
+    queryKey: ["/api/school/account"],
+    enabled: !!user && isSchoolUser,
+  });
+
+  const familyMemberUsernames = useMemo(() => {
+    if (!familyDataHome?.members) return new Set<string>();
+    return new Set<string>(familyDataHome.members.map((m: any) => m.user?.username).filter(Boolean));
+  }, [familyDataHome]);
+
+  const classMemberUsernames = useMemo(() => {
+    if (!schoolDataHome?.members) return new Set<string>();
+    return new Set<string>(schoolDataHome.members.map((m: any) => m.user?.username).filter(Boolean));
+  }, [schoolDataHome]);
+
+  const handleFilterCreatedByChange = (value: AuthorFilter) => {
+    setFilterCreatedBy(value);
+    localStorage.setItem("wordListAuthorFilter", value);
+    if (value !== "specific") setSpecificAuthorSearch("");
+  };
+
   const allLists = useMemo(() => {
     const myLists = (customLists || []).map(list => ({ ...list, isMine: true }));
     
@@ -1626,8 +1661,15 @@ export default function Home() {
     if (filterGradeLevel !== "all") {
       filtered = filtered.filter(list => list.gradeLevel === filterGradeLevel);
     }
-    if (filterCreatedBy !== "all") {
-      filtered = filtered.filter(list => list.authorUsername === filterCreatedBy);
+    if (filterCreatedBy === "me") {
+      filtered = filtered.filter(list => list.authorUsername === user?.username);
+    } else if (filterCreatedBy === "family") {
+      filtered = filtered.filter(list => list.authorUsername && familyMemberUsernames.has(list.authorUsername));
+    } else if (filterCreatedBy === "class") {
+      filtered = filtered.filter(list => list.authorUsername && classMemberUsernames.has(list.authorUsername));
+    } else if (filterCreatedBy === "specific") {
+      const searchLower = specificAuthorSearch.toLowerCase();
+      if (searchLower) filtered = filtered.filter(list => list.authorUsername?.toLowerCase().includes(searchLower));
     }
     if (hideMastered && achievements) {
       // Filter out word lists where user has earned 3 stars
@@ -1643,7 +1685,7 @@ export default function Home() {
       const dateB = new Date(b.createdAt || 0).getTime();
       return dateB - dateA;
     });
-  }, [customLists, publicLists, sharedLists, filterGradeLevel, filterCreatedBy, hideMastered, achievements, isFreeAccount, hiddenWordListIds]);
+  }, [customLists, publicLists, sharedLists, filterGradeLevel, filterCreatedBy, specificAuthorSearch, hideMastered, achievements, isFreeAccount, hiddenWordListIds, user?.username, familyMemberUsernames, classMemberUsernames]);
 
   const availableGradeLevels = useMemo(() => {
     const myLists = customLists || [];
@@ -1656,15 +1698,6 @@ export default function Home() {
       const numB = parseInt(b || "0");
       return numA - numB;
     });
-  }, [customLists, publicLists, sharedLists]);
-
-  const availableAuthors = useMemo(() => {
-    const myLists = customLists || [];
-    const pubLists = publicLists || [];
-    const shared = sharedLists || [];
-    const combined = [...myLists, ...pubLists, ...shared];
-    const authors = new Set(combined.map(list => list.authorUsername).filter(Boolean));
-    return Array.from(authors).sort((a, b) => a!.localeCompare(b!));
   }, [customLists, publicLists, sharedLists]);
 
   // Show welcome dialog for first-time users
@@ -2140,20 +2173,32 @@ export default function Home() {
                 <label className="text-sm font-medium mb-1.5 block">Created By</label>
                 <Select 
                   value={filterCreatedBy} 
-                  onValueChange={setFilterCreatedBy}
+                  onValueChange={(v) => handleFilterCreatedByChange(v as AuthorFilter)}
                 >
                   <SelectTrigger data-testid="filter-author">
-                    <SelectValue placeholder="All Authors" />
+                    <SelectValue placeholder="Me" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Authors</SelectItem>
-                    {availableAuthors.map((author) => (
-                      <SelectItem key={author} value={author || ""}>
-                        {author}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="me">Me</SelectItem>
+                    {isFamilyUser && (
+                      <SelectItem value="family">My family</SelectItem>
+                    )}
+                    {isSchoolUser && (
+                      <SelectItem value="class">My class</SelectItem>
+                    )}
+                    <SelectItem value="all">All authors</SelectItem>
+                    <SelectItem value="specific">Specific author...</SelectItem>
                   </SelectContent>
                 </Select>
+                {filterCreatedBy === "specific" && (
+                  <Input
+                    placeholder="Search username"
+                    value={specificAuthorSearch}
+                    onChange={(e) => setSpecificAuthorSearch(e.target.value)}
+                    className="mt-2"
+                    data-testid="input-specific-author-search-dialog"
+                  />
+                )}
               </div>
             )}
             {selectedMode && ["practice", "quiz", "scramble", "mistake"].includes(selectedMode) && (
