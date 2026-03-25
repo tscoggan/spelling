@@ -1273,11 +1273,20 @@ export default function Home() {
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [wordListDialogOpen, setWordListDialogOpen] = useState(false);
   type AuthorFilter = "me" | "family" | "class" | "all" | "specific";
-  const { prefs, updatePref } = useUserPreferences();
+  const { prefs, updatePref, isLoaded } = useUserPreferences();
   const filterGradeLevel = prefs.gameGradeFilter;
   const filterCreatedBy = prefs.gameCreatedByFilter as AuthorFilter;
   const hideMastered = prefs.gameHideMastered;
   const [specificAuthorSearch, setSpecificAuthorSearch] = useState("");
+  const prefsSyncedRef = useRef(false);
+  useEffect(() => {
+    if (isLoaded && !prefsSyncedRef.current) {
+      prefsSyncedRef.current = true;
+      if (prefs.gameSpecificAuthorSearch) {
+        setSpecificAuthorSearch(prefs.gameSpecificAuthorSearch);
+      }
+    }
+  }, [isLoaded, prefs.gameSpecificAuthorSearch]);
   const [gameWordCount, setGameWordCount] = useState<"10" | "all">("all");
   const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
   const iOSKeyboardInput = useIOSKeyboardTrigger();
@@ -1611,7 +1620,10 @@ export default function Home() {
 
   const handleFilterCreatedByChange = (value: AuthorFilter) => {
     updatePref("gameCreatedByFilter", value);
-    if (value !== "specific") setSpecificAuthorSearch("");
+    if (value !== "specific") {
+      setSpecificAuthorSearch("");
+      updatePref("gameSpecificAuthorSearch", "");
+    }
   };
 
   const allLists = useMemo(() => {
@@ -2189,7 +2201,10 @@ export default function Home() {
                   <Input
                     placeholder="Search username"
                     value={specificAuthorSearch}
-                    onChange={(e) => setSpecificAuthorSearch(e.target.value)}
+                    onChange={(e) => {
+                      setSpecificAuthorSearch(e.target.value);
+                      updatePref("gameSpecificAuthorSearch", e.target.value);
+                    }}
                     className="mt-2"
                     data-testid="input-specific-author-search-dialog"
                   />

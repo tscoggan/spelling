@@ -993,6 +993,9 @@ export const userPreferences = pgTable("user_preferences", {
   wordListCreatedByFilter: text("word_list_created_by_filter").notNull().default("me"),
   wordListHideMastered: boolean("word_list_hide_mastered").notNull().default(false),
   wordListActiveTab: text("word_list_active_tab").notNull().default("all"),
+  // Specific author search text
+  gameSpecificAuthorSearch: text("game_specific_author_search").notNull().default(""),
+  wordListSpecificAuthorSearch: text("word_list_specific_author_search").notNull().default(""),
   // My Stats screen
   statsDateFilter: text("stats_date_filter").notNull().default("all"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

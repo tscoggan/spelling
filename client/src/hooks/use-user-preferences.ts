@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 
 export interface PreferencesData {
@@ -8,10 +8,12 @@ export interface PreferencesData {
   gameGradeFilter: string;
   gameCreatedByFilter: string;
   gameHideMastered: boolean;
+  gameSpecificAuthorSearch: string;
   wordListGradeFilter: string;
   wordListCreatedByFilter: string;
   wordListHideMastered: boolean;
   wordListActiveTab: string;
+  wordListSpecificAuthorSearch: string;
   statsDateFilter: string;
 }
 
@@ -19,20 +21,25 @@ const DEFAULTS: PreferencesData = {
   gameGradeFilter: "all",
   gameCreatedByFilter: "me",
   gameHideMastered: false,
+  gameSpecificAuthorSearch: "",
   wordListGradeFilter: "all",
   wordListCreatedByFilter: "me",
   wordListHideMastered: false,
   wordListActiveTab: "all",
+  wordListSpecificAuthorSearch: "",
   statsDateFilter: "all",
 };
 
 export function useUserPreferences() {
-  const { user } = useAuth();
+  const { user, isGuestMode } = useAuth();
+  const isRealUser = !!user && !isGuestMode;
 
   const { data: serverPrefs } = useQuery<PreferencesData | null>({
     queryKey: ["/api/preferences"],
-    enabled: !!user,
-    staleTime: 5 * 60 * 1000,
+    enabled: isRealUser,
+    staleTime: 0,
+    refetchOnMount: true,
+    queryFn: getQueryFn({ on401: "returnNull" }),
   });
 
   const mutation = useMutation({
@@ -59,14 +66,16 @@ export function useUserPreferences() {
     },
   });
 
+  // serverPrefs is undefined while loading, null if no row exists, or the actual data
+  const isLoaded = serverPrefs !== undefined;
   const prefs: PreferencesData = serverPrefs
     ? { ...DEFAULTS, ...serverPrefs }
     : DEFAULTS;
 
   const updatePref = (key: keyof PreferencesData, value: string | boolean) => {
-    if (!user) return;
+    if (!isRealUser) return;
     mutation.mutate({ [key]: value } as Partial<PreferencesData>);
   };
 
-  return { prefs, updatePref };
+  return { prefs, updatePref, isLoaded };
 }

@@ -123,6 +123,28 @@ async function runStartupMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS applicable_plans TEXT NOT NULL DEFAULT 'both'
     `);
 
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS user_preferences (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+        game_grade_filter TEXT NOT NULL DEFAULT 'all',
+        game_created_by_filter TEXT NOT NULL DEFAULT 'me',
+        game_hide_mastered BOOLEAN NOT NULL DEFAULT false,
+        word_list_grade_filter TEXT NOT NULL DEFAULT 'all',
+        word_list_created_by_filter TEXT NOT NULL DEFAULT 'me',
+        word_list_hide_mastered BOOLEAN NOT NULL DEFAULT false,
+        word_list_active_tab TEXT NOT NULL DEFAULT 'all',
+        stats_date_filter TEXT NOT NULL DEFAULT 'all',
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    await db.execute(sql`
+      ALTER TABLE user_preferences
+        ADD COLUMN IF NOT EXISTS game_specific_author_search TEXT NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS word_list_specific_author_search TEXT NOT NULL DEFAULT ''
+    `);
+
     log('Startup migrations complete');
   } catch (err: any) {
     log(`Startup migration error: ${err.message}`);

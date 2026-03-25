@@ -50,12 +50,21 @@ export default function WordListsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingList, setEditingList] = useState<CustomWordList | null>(null);
   type AuthorFilter = "me" | "family" | "class" | "all" | "specific";
-  const { prefs, updatePref } = useUserPreferences();
+  const { prefs, updatePref, isLoaded } = useUserPreferences();
   const gradeFilter = prefs.wordListGradeFilter;
   const createdByFilter = prefs.wordListCreatedByFilter as AuthorFilter;
   const hideMastered = prefs.wordListHideMastered;
   const activeTab = prefs.wordListActiveTab;
   const [specificAuthorSearch, setSpecificAuthorSearch] = useState("");
+  const prefsSyncedRef = useRef(false);
+  useEffect(() => {
+    if (isLoaded && !prefsSyncedRef.current) {
+      prefsSyncedRef.current = true;
+      if (prefs.wordListSpecificAuthorSearch) {
+        setSpecificAuthorSearch(prefs.wordListSpecificAuthorSearch);
+      }
+    }
+  }, [isLoaded, prefs.wordListSpecificAuthorSearch]);
   const [showHidden, setShowHidden] = useState<boolean>(false);
   const [jobId, setJobId] = useState<number | null>(null);
   const [editImagesDialogOpen, setEditImagesDialogOpen] = useState(false);
@@ -334,7 +343,10 @@ export default function WordListsPage() {
 
   const handleCreatedByFilterChange = (value: AuthorFilter) => {
     updatePref("wordListCreatedByFilter", value);
-    if (value !== "specific") setSpecificAuthorSearch("");
+    if (value !== "specific") {
+      setSpecificAuthorSearch("");
+      updatePref("wordListSpecificAuthorSearch", "");
+    }
   };
 
   // Helper function to get achievement for a word list
@@ -1396,7 +1408,10 @@ export default function WordListsPage() {
                 <Input
                   placeholder="Search username"
                   value={specificAuthorSearch}
-                  onChange={(e) => setSpecificAuthorSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSpecificAuthorSearch(e.target.value);
+                    updatePref("wordListSpecificAuthorSearch", e.target.value);
+                  }}
                   className="w-[160px]"
                   data-testid="input-specific-author-search"
                 />

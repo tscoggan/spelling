@@ -828,8 +828,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const allowed = [
         "gameGradeFilter", "gameCreatedByFilter", "gameHideMastered",
+        "gameSpecificAuthorSearch",
         "wordListGradeFilter", "wordListCreatedByFilter", "wordListHideMastered",
-        "wordListActiveTab", "statsDateFilter",
+        "wordListActiveTab", "wordListSpecificAuthorSearch",
+        "statsDateFilter",
       ];
       const updates: Record<string, any> = {};
       for (const key of allowed) {
