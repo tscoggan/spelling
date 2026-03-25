@@ -8,6 +8,7 @@ import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useGuestSession } from "@/hooks/use-guest-session";
+import { useUserPreferences } from "@/hooks/use-user-preferences";
 import { useIOSKeyboardTrigger } from "@/App";
 import {
   Dialog,
@@ -1272,14 +1273,11 @@ export default function Home() {
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [wordListDialogOpen, setWordListDialogOpen] = useState(false);
   type AuthorFilter = "me" | "family" | "class" | "all" | "specific";
-  const [filterGradeLevel, setFilterGradeLevel] = useState<string>("all");
-  const [filterCreatedBy, setFilterCreatedBy] = useState<AuthorFilter>(() => {
-    const saved = localStorage.getItem("wordListAuthorFilter") as AuthorFilter | null;
-    const valid: AuthorFilter[] = ["me", "family", "class", "all", "specific"];
-    return saved && valid.includes(saved) ? saved : "me";
-  });
+  const { prefs, updatePref } = useUserPreferences();
+  const filterGradeLevel = prefs.gameGradeFilter;
+  const filterCreatedBy = prefs.gameCreatedByFilter as AuthorFilter;
+  const hideMastered = prefs.gameHideMastered;
   const [specificAuthorSearch, setSpecificAuthorSearch] = useState("");
-  const [hideMastered, setHideMastered] = useState<boolean>(false);
   const [gameWordCount, setGameWordCount] = useState<"10" | "all">("all");
   const [welcomeDialogOpen, setWelcomeDialogOpen] = useState(false);
   const iOSKeyboardInput = useIOSKeyboardTrigger();
@@ -1519,8 +1517,6 @@ export default function Home() {
 
   const handleModeClick = (mode: GameMode) => {
     setSelectedMode(mode);
-    setFilterGradeLevel("all");
-    setHideMastered(false);
     setGameWordCount("all");
     setWordListDialogOpen(true);
   };
@@ -1614,8 +1610,7 @@ export default function Home() {
   }, [schoolDataHome]);
 
   const handleFilterCreatedByChange = (value: AuthorFilter) => {
-    setFilterCreatedBy(value);
-    localStorage.setItem("wordListAuthorFilter", value);
+    updatePref("gameCreatedByFilter", value);
     if (value !== "specific") setSpecificAuthorSearch("");
   };
 
@@ -2152,7 +2147,7 @@ export default function Home() {
               <label className="text-sm font-medium mb-1.5 block">Grade Level</label>
               <Select 
                 value={filterGradeLevel} 
-                onValueChange={setFilterGradeLevel}
+                onValueChange={(v) => updatePref("gameGradeFilter", v)}
               >
                 <SelectTrigger data-testid="filter-grade">
                   <SelectValue placeholder="All Grades" />
@@ -2233,7 +2228,7 @@ export default function Home() {
               <Checkbox 
                 id="hide-mastered" 
                 checked={hideMastered}
-                onCheckedChange={(checked) => setHideMastered(checked === true)}
+                onCheckedChange={(checked) => updatePref("gameHideMastered", checked === true)}
                 data-testid="checkbox-hide-mastered"
               />
               <label 

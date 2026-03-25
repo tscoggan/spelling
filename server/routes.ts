@@ -809,6 +809,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User preferences endpoints
+  app.get("/api/preferences", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const user = req.user as any;
+    try {
+      const prefs = await storage.getUserPreferences(user.id);
+      res.json(prefs);
+    } catch (error) {
+      console.error("Error fetching user preferences:", error);
+      res.status(500).json({ error: "Failed to fetch preferences" });
+    }
+  });
+
+  app.patch("/api/preferences", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const user = req.user as any;
+    try {
+      const allowed = [
+        "gameGradeFilter", "gameCreatedByFilter", "gameHideMastered",
+        "wordListGradeFilter", "wordListCreatedByFilter", "wordListHideMastered",
+        "wordListActiveTab", "statsDateFilter",
+      ];
+      const updates: Record<string, any> = {};
+      for (const key of allowed) {
+        if (key in req.body) updates[key] = req.body[key];
+      }
+      const prefs = await storage.upsertUserPreferences(user.id, updates);
+      res.json(prefs);
+    } catch (error) {
+      console.error("Error updating user preferences:", error);
+      res.status(500).json({ error: "Failed to update preferences" });
+    }
+  });
+
   // Public word validation endpoint (no authentication required)
   // Used by guest users to validate words before adding to word lists
   app.post("/api/validate-words", async (req, res) => {

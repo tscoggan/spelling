@@ -6,6 +6,7 @@ import { Home, Target, Trophy, Flame, TrendingUp, Award, Calendar, Play, Shuffle
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { useGuestSession } from "@/hooks/use-guest-session";
+import { useUserPreferences } from "@/hooks/use-user-preferences";
 import { UserHeader } from "@/components/user-header";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
@@ -38,7 +39,9 @@ export default function Stats() {
   const { guestGameSessions, guestStars, guestCurrentWordStreak, guestLongestWordStreak } = useGuestSession();
   const { themeAssets, hasDarkBackground } = useTheme();
   const textClasses = getThemedTextClasses(hasDarkBackground);
-  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const { prefs, updatePref } = useUserPreferences();
+  const dateFilter = (isGuestMode ? "all" : prefs.statsDateFilter) as DateFilter;
+  const setDateFilter = (v: DateFilter) => { if (!isGuestMode) updatePref("statsDateFilter", v); };
   const [showGameModeDialog, setShowGameModeDialog] = useState(false);
 
   // Get user's timezone

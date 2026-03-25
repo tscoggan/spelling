@@ -88,6 +88,9 @@ import {
   type InsertPromoCode,
   promoCodes,
   promoCodeUsages,
+  type UserPreferences,
+  type InsertUserPreferences,
+  userPreferences,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, inArray, not, or, isNull, like, gte, lte } from "drizzle-orm";
@@ -307,6 +310,9 @@ export interface IStorage {
   deletePromoCode(id: number): Promise<void>;
   recordPromoCodeUsage(codeId: number, userId?: number): Promise<void>;
   getPromoCodeUsages(codeId: number): Promise<{ id: number; userId: number | null; username: string | null; usedAt: Date }[]>;
+
+  getUserPreferences(userId: number): Promise<UserPreferences | null>;
+  upsertUserPreferences(userId: number, prefs: Partial<InsertUserPreferences>): Promise<UserPreferences>;
 
   sessionStore: session.Store;
 }
@@ -3033,6 +3039,27 @@ export class DatabaseStorage implements IStorage {
       .where(eq(promoCodeUsages.codeId, codeId))
       .orderBy(promoCodeUsages.usedAt);
     return rows;
+  }
+
+  async getUserPreferences(userId: number): Promise<UserPreferences | null> {
+    const [row] = await db
+      .select()
+      .from(userPreferences)
+      .where(eq(userPreferences.userId, userId))
+      .limit(1);
+    return row ?? null;
+  }
+
+  async upsertUserPreferences(userId: number, prefs: Partial<InsertUserPreferences>): Promise<UserPreferences> {
+    const [row] = await db
+      .insert(userPreferences)
+      .values({ userId, ...prefs })
+      .onConflictDoUpdate({
+        target: userPreferences.userId,
+        set: { ...prefs, updatedAt: new Date() },
+      })
+      .returning();
+    return row;
   }
 }
 

@@ -15,6 +15,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useGuestSession, GuestImageAssignment } from "@/hooks/use-guest-session";
+import { useUserPreferences } from "@/hooks/use-user-preferences";
 import { Plus, Trash2, Edit, Globe, Lock, Play, Home, Upload, Filter, Camera, X, Users, Target, Clock, Trophy, Shuffle, AlertCircle, Grid3x3, UserPlus, Eye, EyeOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -48,15 +49,13 @@ export default function WordListsPage() {
   const textClasses = getThemedTextClasses(hasDarkBackground);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingList, setEditingList] = useState<CustomWordList | null>(null);
-  const [gradeFilter, setGradeFilter] = useState<string>("all");
   type AuthorFilter = "me" | "family" | "class" | "all" | "specific";
-  const [createdByFilter, setCreatedByFilter] = useState<AuthorFilter>(() => {
-    const saved = localStorage.getItem("wordListAuthorFilter") as AuthorFilter | null;
-    const valid: AuthorFilter[] = ["me", "family", "class", "all", "specific"];
-    return saved && valid.includes(saved) ? saved : "me";
-  });
+  const { prefs, updatePref } = useUserPreferences();
+  const gradeFilter = prefs.wordListGradeFilter;
+  const createdByFilter = prefs.wordListCreatedByFilter as AuthorFilter;
+  const hideMastered = prefs.wordListHideMastered;
+  const activeTab = prefs.wordListActiveTab;
   const [specificAuthorSearch, setSpecificAuthorSearch] = useState("");
-  const [hideMastered, setHideMastered] = useState<boolean>(false);
   const [showHidden, setShowHidden] = useState<boolean>(false);
   const [jobId, setJobId] = useState<number | null>(null);
   const [editImagesDialogOpen, setEditImagesDialogOpen] = useState(false);
@@ -334,8 +333,7 @@ export default function WordListsPage() {
   }, [schoolData]);
 
   const handleCreatedByFilterChange = (value: AuthorFilter) => {
-    setCreatedByFilter(value);
-    localStorage.setItem("wordListAuthorFilter", value);
+    updatePref("wordListCreatedByFilter", value);
     if (value !== "specific") setSpecificAuthorSearch("");
   };
 
@@ -1363,7 +1361,7 @@ export default function WordListsPage() {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Filter className="w-4 h-4 text-gray-600" />
-            <Select value={gradeFilter} onValueChange={setGradeFilter}>
+            <Select value={gradeFilter} onValueChange={(v) => updatePref("wordListGradeFilter", v)}>
               <SelectTrigger className="w-[180px]" data-testid="select-grade-filter">
                 <SelectValue placeholder="Filter by grade" />
               </SelectTrigger>
@@ -1409,7 +1407,7 @@ export default function WordListsPage() {
                 <Checkbox 
                   id="hide-mastered-lists" 
                   checked={hideMastered}
-                  onCheckedChange={(checked) => setHideMastered(checked === true)}
+                  onCheckedChange={(checked) => updatePref("wordListHideMastered", checked === true)}
                   data-testid="checkbox-hide-mastered-lists"
                 />
                 <label 
@@ -1795,7 +1793,7 @@ export default function WordListsPage() {
             )}
           </div>
         ) : (
-        <Tabs defaultValue="all" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={(v) => updatePref("wordListActiveTab", v)} className="space-y-6">
           <TabsList className="grid w-full max-w-2xl grid-cols-4">
             <TabsTrigger value="all" data-testid="tab-all">All</TabsTrigger>
             <TabsTrigger value="my-lists" data-testid="tab-my-lists">My Lists</TabsTrigger>

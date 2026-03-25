@@ -980,6 +980,28 @@ export const promoCodeUsages = pgTable("promo_code_usages", {
 
 export type InsertPromoCode_ = z.infer<typeof insertPromoCodeSchema>;
 
+// User preferences table (persisted filter/UI state)
+export const userPreferences = pgTable("user_preferences", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+  // Choose Your Word List screen (game mode dialog)
+  gameGradeFilter: text("game_grade_filter").notNull().default("all"),
+  gameCreatedByFilter: text("game_created_by_filter").notNull().default("me"),
+  gameHideMastered: boolean("game_hide_mastered").notNull().default(false),
+  // Word Lists screen
+  wordListGradeFilter: text("word_list_grade_filter").notNull().default("all"),
+  wordListCreatedByFilter: text("word_list_created_by_filter").notNull().default("me"),
+  wordListHideMastered: boolean("word_list_hide_mastered").notNull().default(false),
+  wordListActiveTab: text("word_list_active_tab").notNull().default("all"),
+  // My Stats screen
+  statsDateFilter: text("stats_date_filter").notNull().default("all"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertUserPreferencesSchema = createInsertSchema(userPreferences).omit({ id: true, updatedAt: true });
+export type InsertUserPreferences = z.infer<typeof insertUserPreferencesSchema>;
+export type UserPreferences = typeof userPreferences.$inferSelect;
+
 export type GameMode = "practice" | "timed" | "quiz" | "scramble" | "mistake" | "crossword" | "headtohead";
 export type VpcStatus = "pending" | "verified" | "failed";
 export type SchoolVerificationStatus = "pending" | "verified";
