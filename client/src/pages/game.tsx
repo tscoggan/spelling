@@ -173,6 +173,15 @@ export default function Game() {
     setGameResetKey(prev => prev + 1);
   }, []);
 
+  // Handler to restart with a new set of virtual words (e.g. retry misspelled words).
+  // Must update the URL first so the new params are in place before GameContent remounts.
+  const handleRestartWithWords = useCallback((words: string[], mode: GameMode) => {
+    const encoded = encodeURIComponent(words.join(','));
+    setLocation(`/game?virtualWords=${encoded}&mode=${mode}`);
+    // Defer key increment so Wouter's useSearch() reflects the new URL first
+    setTimeout(() => setGameResetKey(prev => prev + 1), 0);
+  }, [setLocation]);
+
   // Defense-in-depth: Redirect if no listId and no virtualWords
   useEffect(() => {
     if (!listId && !virtualWords) {
@@ -196,12 +205,12 @@ export default function Game() {
   // Only render game content when listId or virtualWords is confirmed
   // Pass all parameters as props to avoid GameContent parsing them
   // Key prop forces complete remount when gameResetKey changes (clean restart)
-  return <GameContent key={gameResetKey} listId={listId || undefined} virtualWords={virtualWords || undefined} gameMode={gameMode} gameCount={gameCount} onRestart={handleRestart} challengeId={challengeId || undefined} isInitiator={isInitiator} />;
+  return <GameContent key={gameResetKey} listId={listId || undefined} virtualWords={virtualWords || undefined} gameMode={gameMode} gameCount={gameCount} onRestart={handleRestart} onRestartWithWords={handleRestartWithWords} challengeId={challengeId || undefined} isInitiator={isInitiator} />;
 }
 
 // Actual game component with all the hooks - only rendered when listId or virtualWords exists
 // Receives all parameters as props to ensure hooks always have valid data
-function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, challengeId, isInitiator }: { listId?: string; virtualWords?: string; gameMode: GameMode; gameCount: string; onRestart: () => void; challengeId?: string; isInitiator?: boolean }) {
+function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, onRestartWithWords, challengeId, isInitiator }: { listId?: string; virtualWords?: string; gameMode: GameMode; gameCount: string; onRestart: () => void; onRestartWithWords?: (words: string[], mode: GameMode) => void; challengeId?: string; isInitiator?: boolean }) {
   const [, setLocation] = useLocation();
   const { user, isGuestMode } = useAuth();
   const { addGameSession, updateGameSession, addStars, addAchievement, state: guestState, guestGetWordList, guestUpsertWordListMastery, guestIncrementWordStreak, guestResetWordStreak } = useGuestSession();
@@ -4377,15 +4386,12 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
             )}
 
             {/* Retry Misspelled Words - only for practice, quiz, scramble, timed modes when there are missed words */}
-            {["practice", "quiz", "scramble", "timed"].includes(gameMode) && incorrectWords.length > 0 && (
+            {["practice", "quiz", "scramble", "timed"].includes(gameMode) && incorrectWords.length > 0 && onRestartWithWords && (
               <Button
                 variant="outline"
                 size="lg"
                 className="w-full text-lg h-12"
-                onClick={() => {
-                  const encoded = encodeURIComponent(incorrectWords.join(','));
-                  setLocation(`/game?virtualWords=${encoded}&mode=${gameMode}`);
-                }}
+                onClick={() => onRestartWithWords(incorrectWords, gameMode)}
                 data-testid="button-retry-misspelled"
               >
                 <RotateCcw className="w-5 h-5 mr-2" />
