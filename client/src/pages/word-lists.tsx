@@ -441,7 +441,7 @@ export default function WordListsPage() {
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const words = data.words.split('\n').map(w => w.trim()).filter(w => w.length > 0);
+      const words = data.words.split(/[\n,]+/).map(w => w.trim()).filter(w => w.length > 0);
       const payload: any = {
         name: data.name,
         words,
@@ -508,7 +508,7 @@ export default function WordListsPage() {
         updates.groupIds = data.selectedGroupIds;
       }
       if (data.words) {
-        updates.words = data.words.split('\n').map(w => w.trim()).filter(w => w.length > 0);
+        updates.words = data.words.split(/[\n,]+/).map(w => w.trim()).filter(w => w.length > 0);
       }
       const response = await apiRequest("PUT", `/api/word-lists/${id}`, updates);
       return await response.json();
@@ -757,7 +757,7 @@ export default function WordListsPage() {
     
     // For guest mode, use in-memory storage instead of API
     if (isGuestMode) {
-      const words = submissionData.words.split('\n').map(w => w.trim().toLowerCase()).filter(w => w.length > 0);
+      const words = submissionData.words.split(/[\n,]+/).map(w => w.trim().toLowerCase()).filter(w => w.length > 0);
       
       // Validate minimum word count
       if (words.length < 5) {
