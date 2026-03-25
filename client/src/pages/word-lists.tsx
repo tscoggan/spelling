@@ -564,7 +564,7 @@ export default function WordListsPage() {
       name: "",
       words: "",
       visibility: isFree ? "private" : (isTeacher ? "groups" : "private"),
-      assignImages: isTeacher ? false : true,
+      assignImages: false,
       gradeLevel: "",
       selectedGroupIds: [],
     });

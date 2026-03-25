@@ -4376,6 +4376,23 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, cha
               </motion.div>
             )}
 
+            {/* Retry Misspelled Words - only for practice, quiz, scramble, timed modes when there are missed words */}
+            {["practice", "quiz", "scramble", "timed"].includes(gameMode) && incorrectWords.length > 0 && (
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full text-lg h-12"
+                onClick={() => {
+                  const encoded = encodeURIComponent(incorrectWords.join(','));
+                  setLocation(`/game?virtualWords=${encoded}&mode=${gameMode}`);
+                }}
+                data-testid="button-retry-misspelled"
+              >
+                <RotateCcw className="w-5 h-5 mr-2" />
+                Retry {incorrectWords.length} Misspelled Word{incorrectWords.length !== 1 ? 's' : ''}
+              </Button>
+            )}
+
             <div className="flex gap-3 flex-col sm:flex-row">
               <Button
                 variant="outline"
