@@ -240,6 +240,7 @@ export default function WordListsPage() {
         isPublic: false,
         gradeLevel: null,
         createdAt: list.createdAt,
+        authorUsername: "guest",
       } as CustomWordList))
     : apiUserLists;
 
