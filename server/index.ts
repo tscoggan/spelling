@@ -145,6 +145,187 @@ async function runStartupMigrations(): Promise<void> {
         ADD COLUMN IF NOT EXISTS word_list_specific_author_search TEXT NOT NULL DEFAULT ''
     `);
 
+    // Clean up orphaned word lists (user deleted directly from DB without cascade)
+    await db.execute(sql`
+      DELETE FROM word_list_words
+      WHERE word_list_id IN (
+        SELECT wl.id FROM word_lists wl
+        WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = wl.user_id)
+      )
+    `);
+    await db.execute(sql`
+      DELETE FROM word_illustrations
+      WHERE word_list_id IN (
+        SELECT wl.id FROM word_lists wl
+        WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = wl.user_id)
+      )
+    `);
+    await db.execute(sql`
+      DELETE FROM word_list_co_owners
+      WHERE word_list_id IN (
+        SELECT wl.id FROM word_lists wl
+        WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = wl.user_id)
+      )
+    `);
+    await db.execute(sql`
+      DELETE FROM word_list_user_groups
+      WHERE word_list_id IN (
+        SELECT wl.id FROM word_lists wl
+        WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = wl.user_id)
+      )
+    `);
+    await db.execute(sql`
+      DELETE FROM word_list_user_shares
+      WHERE word_list_id IN (
+        SELECT wl.id FROM word_lists wl
+        WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = wl.user_id)
+      )
+    `);
+    await db.execute(sql`
+      DELETE FROM user_hidden_word_lists
+      WHERE word_list_id IN (
+        SELECT wl.id FROM word_lists wl
+        WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = wl.user_id)
+      )
+    `);
+    await db.execute(sql`
+      DELETE FROM word_lists
+      WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = word_lists.user_id)
+    `);
+
+    // Clean up orphaned user groups
+    await db.execute(sql`
+      DELETE FROM user_group_membership
+      WHERE group_id IN (
+        SELECT ug.id FROM user_groups ug
+        WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = ug.owner_user_id)
+      )
+    `);
+    await db.execute(sql`
+      DELETE FROM user_group_co_owners
+      WHERE group_id IN (
+        SELECT ug.id FROM user_groups ug
+        WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = ug.owner_user_id)
+      )
+    `);
+    await db.execute(sql`
+      DELETE FROM word_list_user_groups
+      WHERE group_id IN (
+        SELECT ug.id FROM user_groups ug
+        WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = ug.owner_user_id)
+      )
+    `);
+    await db.execute(sql`
+      DELETE FROM user_groups
+      WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = user_groups.owner_user_id)
+    `);
+
+    // Add FK constraints with CASCADE so direct DB deletes also clean up child records
+    await db.execute(sql`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints
+          WHERE constraint_name = 'word_lists_user_id_fkey' AND table_name = 'word_lists'
+        ) THEN
+          ALTER TABLE word_lists
+            ADD CONSTRAINT word_lists_user_id_fkey
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+        END IF;
+      END $$
+    `);
+    await db.execute(sql`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints
+          WHERE constraint_name = 'user_groups_owner_user_id_fkey' AND table_name = 'user_groups'
+        ) THEN
+          ALTER TABLE user_groups
+            ADD CONSTRAINT user_groups_owner_user_id_fkey
+            FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE CASCADE;
+        END IF;
+      END $$
+    `);
+    await db.execute(sql`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints
+          WHERE constraint_name = 'word_list_words_word_list_id_fkey' AND table_name = 'word_list_words'
+        ) THEN
+          ALTER TABLE word_list_words
+            ADD CONSTRAINT word_list_words_word_list_id_fkey
+            FOREIGN KEY (word_list_id) REFERENCES word_lists(id) ON DELETE CASCADE;
+        END IF;
+      END $$
+    `);
+    await db.execute(sql`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints
+          WHERE constraint_name = 'word_illustrations_word_list_id_fkey' AND table_name = 'word_illustrations'
+        ) THEN
+          ALTER TABLE word_illustrations
+            ADD CONSTRAINT word_illustrations_word_list_id_fkey
+            FOREIGN KEY (word_list_id) REFERENCES word_lists(id) ON DELETE CASCADE;
+        END IF;
+      END $$
+    `);
+    await db.execute(sql`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints
+          WHERE constraint_name = 'word_list_co_owners_word_list_id_fkey' AND table_name = 'word_list_co_owners'
+        ) THEN
+          ALTER TABLE word_list_co_owners
+            ADD CONSTRAINT word_list_co_owners_word_list_id_fkey
+            FOREIGN KEY (word_list_id) REFERENCES word_lists(id) ON DELETE CASCADE;
+        END IF;
+      END $$
+    `);
+    await db.execute(sql`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints
+          WHERE constraint_name = 'word_list_user_groups_word_list_id_fkey' AND table_name = 'word_list_user_groups'
+        ) THEN
+          ALTER TABLE word_list_user_groups
+            ADD CONSTRAINT word_list_user_groups_word_list_id_fkey
+            FOREIGN KEY (word_list_id) REFERENCES word_lists(id) ON DELETE CASCADE;
+        END IF;
+      END $$
+    `);
+    await db.execute(sql`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints
+          WHERE constraint_name = 'user_group_membership_group_id_fkey' AND table_name = 'user_group_membership'
+        ) THEN
+          ALTER TABLE user_group_membership
+            ADD CONSTRAINT user_group_membership_group_id_fkey
+            FOREIGN KEY (group_id) REFERENCES user_groups(id) ON DELETE CASCADE;
+        END IF;
+      END $$
+    `);
+    await db.execute(sql`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints
+          WHERE constraint_name = 'user_group_co_owners_group_id_fkey' AND table_name = 'user_group_co_owners'
+        ) THEN
+          ALTER TABLE user_group_co_owners
+            ADD CONSTRAINT user_group_co_owners_group_id_fkey
+            FOREIGN KEY (group_id) REFERENCES user_groups(id) ON DELETE CASCADE;
+        END IF;
+      END $$
+    `);
+
     log('Startup migrations complete');
   } catch (err: any) {
     log(`Startup migration error: ${err.message}`);
