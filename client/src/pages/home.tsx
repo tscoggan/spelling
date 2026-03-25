@@ -2285,6 +2285,9 @@ export default function Home() {
                     )}
                     <div className="text-xs text-muted-foreground leading-tight">
                       {list.words.length} words
+                      {list.authorUsername && list.authorUsername !== user?.username && (
+                        <span className="ml-2 text-xs text-muted-foreground/70">by {list.authorUsername}</span>
+                      )}
                     </div>
                   </div>
                   
