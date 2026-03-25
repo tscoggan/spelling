@@ -2599,13 +2599,11 @@ export class DatabaseStorage implements IStorage {
       .where(eq(familyAccounts.primaryParentUserId, userId));
     for (const family of ownedFamily) {
       await db.delete(familyMembers).where(eq(familyMembers.familyId, family.id));
-      await db.delete(paymentHistory).where(eq(paymentHistory.familyId, family.id));
-      // family_legal_acceptances kept intentionally
+      // family_legal_acceptances and payment_history kept intentionally
     }
     await db.delete(familyAccounts).where(eq(familyAccounts.primaryParentUserId, userId));
     // Remove membership rows for this user in any family they belong to but don't own
     await db.delete(familyMembers).where(eq(familyMembers.userId, userId));
-    await db.delete(paymentHistory).where(eq(paymentHistory.userId, userId));
 
     // ── School account data ───────────────────────────────────────────────
     // NOTE: school_certifications (COPPA / DPA) are intentionally preserved.
@@ -2615,13 +2613,11 @@ export class DatabaseStorage implements IStorage {
       .where(eq(schoolAccounts.schoolAdminUserId, userId));
     for (const school of ownedSchools) {
       await db.delete(schoolMembers).where(eq(schoolMembers.schoolId, school.id));
-      await db.delete(schoolPaymentHistory).where(eq(schoolPaymentHistory.schoolId, school.id));
-      // school_certifications kept intentionally
+      // school_certifications and school_payment_history kept intentionally
     }
     await db.delete(schoolAccounts).where(eq(schoolAccounts.schoolAdminUserId, userId));
     // Remove membership rows for this user in any school they belong to but don't own
     await db.delete(schoolMembers).where(eq(schoolMembers.userId, userId));
-    await db.delete(schoolPaymentHistory).where(eq(schoolPaymentHistory.userId, userId));
 
     // ── Delete the user record itself ─────────────────────────────────────
     const result = await db.delete(users).where(eq(users.id, userId));
