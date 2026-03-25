@@ -1649,7 +1649,7 @@ export default function WordListsPage() {
                   </div>
                   <div>
                     <Label htmlFor="words">
-                      Words (one per line or paste comma-separated, min 5, max 500)
+                      Words (one per line or comma-separated, min 5, max 500)
                     </Label>
                     <Textarea
                       id="words"
