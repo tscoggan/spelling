@@ -18,6 +18,7 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("student"),
   accountType: text("account_type").notNull().default("school"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  userStatus: text("user_status").notNull().default("active"),
 });
 
 export const words = pgTable("words", {

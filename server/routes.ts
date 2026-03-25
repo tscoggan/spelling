@@ -3890,7 +3890,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      res.json({ success: true, message: "User and all associated data deleted" });
+      res.json({ success: true, message: "User account deactivated. Gameplay data removed. Payment and legal records preserved." });
     } catch (error) {
       console.error("Error deleting user:", error);
       res.status(500).json({ error: "Failed to delete user" });

@@ -93,7 +93,7 @@ import {
   userPreferences,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql, inArray, not, or, isNull, like, gte, lte } from "drizzle-orm";
+import { eq, desc, and, sql, inArray, not, ne, or, isNull, like, gte, lte } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -457,23 +457,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUser(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
+    const [user] = await db.select().from(users).where(and(eq(users.id, id), ne(users.userStatus, 'deleted')));
     if (!user) return undefined;
     return hasEncryptionKey() ? decryptUserPII(user) : user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+    const [user] = await db.select().from(users).where(and(eq(users.username, username), ne(users.userStatus, 'deleted')));
     if (!user) return undefined;
     return hasEncryptionKey() ? decryptUserPII(user) : user;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     if (!hasEncryptionKey()) {
-      const [user] = await db.select().from(users).where(eq(users.email, email));
+      const [user] = await db.select().from(users).where(and(eq(users.email, email), ne(users.userStatus, 'deleted')));
       return user || undefined;
     }
-    const allUsers = await db.select().from(users);
+    const allUsers = await db.select().from(users).where(ne(users.userStatus, 'deleted'));
     for (const user of allUsers) {
       const decrypted = decryptUserPII(user);
       if (decrypted.email?.toLowerCase() === email.toLowerCase()) {
@@ -1432,10 +1432,13 @@ export class DatabaseStorage implements IStorage {
         })
         .from(users)
         .where(
-          sql`LOWER(${users.username}) LIKE ${'%' + searchTerm + '%'} 
-           OR LOWER(${users.firstName}) LIKE ${'%' + searchTerm + '%'}
-           OR LOWER(${users.lastName}) LIKE ${'%' + searchTerm + '%'}
-           OR LOWER(${users.email}) LIKE ${'%' + searchTerm + '%'}`
+          and(
+            ne(users.userStatus, 'deleted'),
+            sql`LOWER(${users.username}) LIKE ${'%' + searchTerm + '%'} 
+             OR LOWER(${users.firstName}) LIKE ${'%' + searchTerm + '%'}
+             OR LOWER(${users.lastName}) LIKE ${'%' + searchTerm + '%'}
+             OR LOWER(${users.email}) LIKE ${'%' + searchTerm + '%'}`
+          )
         )
         .limit(10);
       return results;
@@ -1450,7 +1453,8 @@ export class DatabaseStorage implements IStorage {
         email: users.email,
         selectedAvatar: users.selectedAvatar,
       })
-      .from(users);
+      .from(users)
+      .where(ne(users.userStatus, 'deleted'));
     
     const decryptedUsers = allUsers.map(u => decryptUserPII(u));
     const filtered = decryptedUsers.filter(u => 
@@ -1757,7 +1761,7 @@ export class DatabaseStorage implements IStorage {
     const teachers = await db
       .select()
       .from(users)
-      .where(eq(users.role, "teacher"));
+      .where(and(eq(users.role, "teacher"), ne(users.userStatus, 'deleted')));
     return hasEncryptionKey() ? teachers.map(t => decryptUserPII(t)) : teachers;
   }
 
@@ -1771,6 +1775,7 @@ export class DatabaseStorage implements IStorage {
         .where(
           and(
             eq(users.role, "teacher"),
+            ne(users.userStatus, 'deleted'),
             or(
               sql`LOWER(${users.username}) LIKE ${'%' + searchTerm + '%'}`,
               sql`LOWER(${users.email}) LIKE ${'%' + searchTerm + '%'}`,
@@ -1786,7 +1791,7 @@ export class DatabaseStorage implements IStorage {
     const allTeachers = await db
       .select()
       .from(users)
-      .where(eq(users.role, "teacher"));
+      .where(and(eq(users.role, "teacher"), ne(users.userStatus, 'deleted')));
     
     const decrypted = allTeachers.map(t => decryptUserPII(t));
     return decrypted.filter(t =>
@@ -2340,7 +2345,7 @@ export class DatabaseStorage implements IStorage {
     const admins = await db
       .select({ email: users.email })
       .from(users)
-      .where(eq(users.role, 'admin'));
+      .where(and(eq(users.role, 'admin'), ne(users.userStatus, 'deleted')));
     return admins
       .map(a => a.email)
       .filter((email): email is string => email !== null && email.length > 0);
@@ -2350,7 +2355,7 @@ export class DatabaseStorage implements IStorage {
     const admins = await db
       .select({ id: users.id })
       .from(users)
-      .where(eq(users.role, 'admin'));
+      .where(and(eq(users.role, 'admin'), ne(users.userStatus, 'deleted')));
     return admins.map(a => a.id);
   }
 
@@ -2480,7 +2485,7 @@ export class DatabaseStorage implements IStorage {
     return enrichedResults;
   }
 
-  async getAllUsersWithMetrics(): Promise<{ id: number; username: string; firstName: string | null; lastName: string | null; email: string | null; role: string; accountType: string; subscriptionExpiresAt: Date | null; createdAt: Date; gamesPlayed: number; lastActive: Date | null; familyId: number | null; familyRole: string | null }[]> {
+  async getAllUsersWithMetrics(): Promise<{ id: number; username: string; firstName: string | null; lastName: string | null; email: string | null; role: string; accountType: string; userStatus: string; subscriptionExpiresAt: Date | null; createdAt: Date; gamesPlayed: number; lastActive: Date | null; familyId: number | null; familyRole: string | null }[]> {
     const allUsers = await db.select().from(users);
     
     const sessionsPerUser = await db
@@ -2540,6 +2545,7 @@ export class DatabaseStorage implements IStorage {
         email: decrypted.email,
         role: displayRole,
         accountType: decrypted.accountType,
+        userStatus: decrypted.userStatus,
         subscriptionExpiresAt,
         createdAt: decrypted.createdAt,
         gamesPlayed: metrics.gamesPlayed,
@@ -2619,8 +2625,9 @@ export class DatabaseStorage implements IStorage {
     // Remove membership rows for this user in any school they belong to but don't own
     await db.delete(schoolMembers).where(eq(schoolMembers.userId, userId));
 
-    // ── Delete the user record itself ─────────────────────────────────────
-    const result = await db.delete(users).where(eq(users.id, userId));
+    // ── Logically delete the user — row is retained so that payment history
+    //    and legal acceptances can still reference this user_id.
+    const result = await db.update(users).set({ userStatus: 'deleted' }).where(eq(users.id, userId));
     return result.rowCount ? result.rowCount > 0 : false;
   }
 

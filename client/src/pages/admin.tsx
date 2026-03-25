@@ -75,6 +75,7 @@ interface AdminUser {
   email: string | null;
   role: string;
   accountType: string;
+  userStatus: string;
   subscriptionExpiresAt: string | null;
   createdAt: string;
   gamesPlayed: number;
@@ -1391,15 +1392,23 @@ export default function AdminPage() {
                         {filteredGroupedUsers.map((group) => {
                           const isExpanded = group.id !== null && expandedFamilies.has(group.id);
                           const hasMembers = group.members.length > 0;
-                          const renderUserRow = (user: AdminUser, isChild = false) => (
-                            <TableRow key={user.id} data-testid={`row-user-${user.id}`} className={isChild ? "bg-muted/30" : ""}>
+                          const isParentDeleted = group.parentUser?.userStatus === 'deleted';
+                          const renderUserRow = (user: AdminUser, isChild = false) => {
+                            const isDeleted = user.userStatus === 'deleted';
+                            return (
+                            <TableRow key={user.id} data-testid={`row-user-${user.id}`} className={`${isChild ? "bg-muted/30" : ""} ${isDeleted ? "opacity-60" : ""}`}>
                               <TableCell className="font-mono text-xs">
                                 <div className="flex items-center gap-1">
                                   {isChild && <span className="pl-4">↳</span>}
                                   {user.id}
                                 </div>
                               </TableCell>
-                              <TableCell className="font-medium">{user.username}</TableCell>
+                              <TableCell className="font-medium">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {user.username}
+                                  {isDeleted && <Badge variant="destructive" className="text-xs">Deactivated</Badge>}
+                                </div>
+                              </TableCell>
                               <TableCell>
                                 {user.firstName || user.lastName 
                                   ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
@@ -1440,7 +1449,7 @@ export default function AdminPage() {
                                     <Button 
                                       variant="ghost" 
                                       size="icon"
-                                      disabled={user.username === 'admin' || user.id === currentUser?.id}
+                                      disabled={isDeleted || user.username === 'admin' || user.id === currentUser?.id}
                                       data-testid={`button-delete-user-${user.id}`}
                                     >
                                       <Trash2 className="w-4 h-4 text-destructive" />
@@ -1448,17 +1457,25 @@ export default function AdminPage() {
                                   </AlertDialogTrigger>
                                   <AlertDialogContent>
                                     <AlertDialogHeader>
-                                      <AlertDialogTitle>Delete User Account</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        This will permanently delete the user "{user.username}" and ALL associated data including:
-                                        <ul className="list-disc ml-6 mt-2 space-y-1">
-                                          <li>Game sessions and scores</li>
-                                          <li>Achievements and streaks</li>
-                                          <li>Word lists and groups they own</li>
-                                          <li>Group memberships</li>
-                                          <li>Star shop purchases</li>
-                                        </ul>
-                                        <p className="mt-3 font-medium text-destructive">This action cannot be undone.</p>
+                                      <AlertDialogTitle>Deactivate User Account</AlertDialogTitle>
+                                      <AlertDialogDescription asChild>
+                                        <div>
+                                          <p>This will deactivate the account for <strong>"{user.username}"</strong>. They will no longer be able to log in.</p>
+                                          <p className="mt-2">The following will be <strong>permanently removed</strong>:</p>
+                                          <ul className="list-disc ml-6 mt-1 space-y-1">
+                                            <li>Game sessions and scores</li>
+                                            <li>Achievements and streaks</li>
+                                            <li>Word lists and groups they own</li>
+                                            <li>Group memberships</li>
+                                            <li>Star shop purchases</li>
+                                          </ul>
+                                          <p className="mt-2">The following will be <strong>retained</strong> for compliance:</p>
+                                          <ul className="list-disc ml-6 mt-1 space-y-1">
+                                            <li>Payment history</li>
+                                            <li>Legal acceptance records</li>
+                                          </ul>
+                                          <p className="mt-3 font-medium text-destructive">This action cannot be undone.</p>
+                                        </div>
                                       </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
@@ -1475,7 +1492,7 @@ export default function AdminPage() {
                                             ) : (
                                               <Users className="w-4 h-4 mr-2" />
                                             )}
-                                            Delete Entire Family
+                                            Deactivate Entire Family
                                           </AlertDialogAction>
                                         )}
                                         <AlertDialogAction
@@ -1488,7 +1505,7 @@ export default function AdminPage() {
                                           ) : (
                                             <Trash2 className="w-4 h-4 mr-2" />
                                           )}
-                                          {group.type === 'family' ? 'Delete Only This User' : 'Delete User'}
+                                          {group.type === 'family' ? 'Deactivate Only This User' : 'Deactivate Account'}
                                         </AlertDialogAction>
                                       </div>
                                     </AlertDialogFooter>
@@ -1497,6 +1514,7 @@ export default function AdminPage() {
                               </TableCell>
                             </TableRow>
                           );
+                          };
 
                           return (
                             <>
@@ -1504,7 +1522,7 @@ export default function AdminPage() {
                                 <TableRow 
                                   key={`parent-${group.parentUser.id}`} 
                                   data-testid={`row-user-${group.parentUser.id}`}
-                                  className={hasMembers ? "cursor-pointer hover-elevate" : ""}
+                                  className={`${hasMembers ? "cursor-pointer hover-elevate" : ""} ${isParentDeleted ? "opacity-60" : ""}`}
                                   onClick={hasMembers && group.id !== null ? () => toggleFamilyExpansion(group.id!) : undefined}
                                 >
                                   <TableCell className="font-mono text-xs">
@@ -1516,9 +1534,10 @@ export default function AdminPage() {
                                     </div>
                                   </TableCell>
                                   <TableCell className="font-medium">
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                       {group.parentUser.username}
-                                      {group.type === 'family' && (
+                                      {isParentDeleted && <Badge variant="destructive" className="text-xs">Deactivated</Badge>}
+                                      {!isParentDeleted && group.type === 'family' && (
                                         <Badge variant="secondary" className="text-xs">Family ({group.members.length + 1})</Badge>
                                       )}
                                     </div>
@@ -1563,7 +1582,7 @@ export default function AdminPage() {
                                         <Button 
                                           variant="ghost" 
                                           size="icon"
-                                          disabled={group.parentUser.username === 'admin' || group.parentUser.id === currentUser?.id}
+                                          disabled={isParentDeleted || group.parentUser.username === 'admin' || group.parentUser.id === currentUser?.id}
                                           data-testid={`button-delete-user-${group.parentUser.id}`}
                                           onClick={(e) => e.stopPropagation()}
                                         >
@@ -1572,15 +1591,20 @@ export default function AdminPage() {
                                       </AlertDialogTrigger>
                                       <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                                         <AlertDialogHeader>
-                                          <AlertDialogTitle>Delete User Account</AlertDialogTitle>
+                                          <AlertDialogTitle>Deactivate Account</AlertDialogTitle>
                                           <AlertDialogDescription>
-                                            This will permanently delete the user "{group.parentUser.username}" and ALL associated data including:
+                                            This will deactivate "{group.parentUser.username}". The following data will be removed:
                                             <ul className="list-disc ml-6 mt-2 space-y-1">
                                               <li>Game sessions and scores</li>
                                               <li>Achievements and streaks</li>
                                               <li>Word lists and groups they own</li>
                                               <li>Group memberships</li>
                                               <li>Star shop purchases</li>
+                                            </ul>
+                                            <p className="mt-2">The following will be retained for legal compliance:</p>
+                                            <ul className="list-disc ml-6 mt-1 space-y-1 text-muted-foreground">
+                                              <li>Payment history</li>
+                                              <li>Legal agreement acceptances</li>
                                             </ul>
                                             <p className="mt-3 font-medium text-destructive">This action cannot be undone.</p>
                                           </AlertDialogDescription>
@@ -1599,7 +1623,7 @@ export default function AdminPage() {
                                                 ) : (
                                                   <Users className="w-4 h-4 mr-2" />
                                                 )}
-                                                Delete Entire Family ({group.members.length + 1})
+                                                Deactivate Entire Family ({group.members.length + 1})
                                               </AlertDialogAction>
                                             )}
                                             <AlertDialogAction
@@ -1612,7 +1636,7 @@ export default function AdminPage() {
                                               ) : (
                                                 <Trash2 className="w-4 h-4 mr-2" />
                                               )}
-                                              {group.type === 'family' && group.members.length > 0 ? 'Delete Only This User' : 'Delete User'}
+                                              {group.type === 'family' && group.members.length > 0 ? 'Deactivate Only This User' : 'Deactivate Account'}
                                             </AlertDialogAction>
                                           </div>
                                         </AlertDialogFooter>
