@@ -666,3 +666,114 @@ export function TermsPage() { return <LegalDocPage docType="terms" />; }
 export function SchoolTermsAddendumPage() { return <LegalDocPage docType="school-terms-addendum" />; }
 export function CoppaParentNoticePage() { return <LegalDocPage docType="coppa-parent-notice" />; }
 export function PrivacyPolicyPage() { return <LegalDocPage docType="privacy-policy" />; }
+
+export function AttributionPage() {
+  const { themeAssets, hasDarkBackground } = useTheme();
+  const textClasses = getThemedTextClasses(hasDarkBackground);
+
+  return (
+    <div className="min-h-screen relative">
+      <div
+        className="fixed inset-0 portrait:block landscape:hidden"
+        style={{ backgroundImage: `url(${themeAssets.backgroundPortrait})`, backgroundSize: "cover", backgroundRepeat: "no-repeat", backgroundPosition: "center top" }}
+      />
+      <div
+        className="fixed inset-0 portrait:hidden landscape:block"
+        style={{ backgroundImage: `url(${themeAssets.backgroundLandscape})`, backgroundSize: "cover", backgroundRepeat: "no-repeat", backgroundPosition: "center top" }}
+      />
+      <div className="fixed inset-0 bg-white/5 dark:bg-black/50" />
+
+      <div className="max-w-3xl mx-auto px-4 py-8 space-y-6 relative z-10">
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={() => { if (window.history.length > 1) { window.history.back(); } else { window.close(); } }} data-testid="button-close-attribution">
+            <X className="w-4 h-4 mr-1" />
+            Close
+          </Button>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <FileText className={`w-7 h-7 ${hasDarkBackground ? "text-white" : "text-primary"}`} />
+            <h1 className={`text-2xl font-bold ${textClasses.headline}`} data-testid="text-attribution-title">
+              Data Attribution
+            </h1>
+          </div>
+        </div>
+
+        <Card>
+          <CardContent className="pt-5 pb-5">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Spelling Playground uses third-party data sources to provide word definitions, examples, and parts of speech.
+              This page credits those sources as required by their licenses.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2 pt-4">
+            <CardTitle className="text-base">Dictionary Data</CardTitle>
+          </CardHeader>
+          <CardContent className="pb-5 space-y-3 text-sm text-muted-foreground leading-relaxed">
+            <p>
+              Word definitions, example sentences, and parts of speech used in this app are sourced from the{" "}
+              <a
+                href="https://dictionaryapi.dev"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:text-foreground transition-colors text-foreground font-medium"
+                data-testid="link-attribution-free-dictionary-api"
+              >
+                Free Dictionary API
+              </a>
+              {" "}(dictionaryapi.dev), which in turn draws on content from{" "}
+              <a
+                href="https://en.wiktionary.org"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:text-foreground transition-colors text-foreground font-medium"
+                data-testid="link-attribution-wiktionary"
+              >
+                Wiktionary
+              </a>
+              .
+            </p>
+            <p>
+              Wiktionary content is licensed under the{" "}
+              <a
+                href="https://creativecommons.org/licenses/by-sa/3.0/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:text-foreground transition-colors text-foreground font-medium"
+                data-testid="link-attribution-cc-license"
+              >
+                Creative Commons Attribution-ShareAlike 3.0 License (CC BY-SA 3.0)
+              </a>
+              . Definitions are used as-is and are not modified.
+            </p>
+            <div className="pt-2 border-t space-y-1">
+              <p className="text-xs"><span className="font-medium text-foreground">Source:</span>{" "}
+                <a href="https://en.wiktionary.org" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground transition-colors">
+                  https://en.wiktionary.org
+                </a>
+              </p>
+              <p className="text-xs"><span className="font-medium text-foreground">License:</span>{" "}
+                <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground transition-colors">
+                  https://creativecommons.org/licenses/by-sa/3.0/
+                </a>
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className={`text-center text-xs pt-4 pb-8 ${textClasses.subtitle}`}>
+          <p>Spelling Playground &mdash; Data Attribution</p>
+          <p className="mt-1">Questions? Contact{" "}
+            <a href="mailto:support@spellingplayground.com" className="underline underline-offset-2 hover:opacity-80 transition-opacity">
+              support@spellingplayground.com
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}

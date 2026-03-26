@@ -24,7 +24,7 @@ import FamilySignupPage from "@/pages/family-signup";
 import FamilyDashboardPage from "@/pages/family-dashboard";
 import SchoolSignupPage from "@/pages/school-signup";
 import SchoolDashboardPage from "@/pages/school-dashboard";
-import { TermsPage, SchoolTermsAddendumPage, CoppaParentNoticePage, PrivacyPolicyPage } from "@/pages/legal-docs";
+import { TermsPage, SchoolTermsAddendumPage, CoppaParentNoticePage, PrivacyPolicyPage, AttributionPage } from "@/pages/legal-docs";
 import CheckoutSuccessPage from "@/pages/checkout-success";
 import ContactPage from "@/pages/contact";
 import NotFound from "@/pages/not-found";
@@ -92,6 +92,7 @@ function Router() {
       <Route path="/legal/school-terms-addendum" component={SchoolTermsAddendumPage} />
       <Route path="/legal/coppa-parent-notice" component={CoppaParentNoticePage} />
       <Route path="/legal/privacy-policy" component={PrivacyPolicyPage} />
+      <Route path="/legal/attribution" component={AttributionPage} />
       <Route path="/checkout/success" component={CheckoutSuccessPage} />
       <Route path="/contact" component={ContactPage} />
       <Route component={NotFound} />
@@ -142,6 +143,12 @@ function App() {
                         className="underline underline-offset-2 hover:text-foreground transition-colors"
                         data-testid="link-footer-coppa-parent-notice">
                         Parent Notice
+                      </a>
+                      <span aria-hidden="true">&middot;</span>
+                      <a href="/legal/attribution" target="_blank" rel="noopener noreferrer"
+                        className="underline underline-offset-2 hover:text-foreground transition-colors"
+                        data-testid="link-footer-attribution">
+                        Data Attribution
                       </a>
                     </div>
                   </footer>

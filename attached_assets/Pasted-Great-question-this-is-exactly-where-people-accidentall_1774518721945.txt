@@ -1,0 +1,173 @@
+Great question—this is exactly where people accidentally become non-compliant.
+
+Since you’ll likely use **Wiktionary-based data**, you’re dealing with the **Wikimedia Foundation** license stack:
+
+* Content license: **Creative Commons Attribution-ShareAlike 3.0**
+* Sometimes mixed with **GNU Free Documentation License**
+
+---
+
+# ✅ What you are REQUIRED to do
+
+At minimum, your app must:
+
+### 1. Give credit
+
+You must clearly state:
+
+> Definitions sourced from Wiktionary
+
+---
+
+### 2. Link to the source
+
+You should include a link to:
+
+* [https://en.wiktionary.org/](https://en.wiktionary.org/)
+
+(Optional but better: link to the specific word page)
+
+---
+
+### 3. Include the license
+
+You must reference the license and link to it:
+
+* [https://creativecommons.org/licenses/by-sa/3.0/](https://creativecommons.org/licenses/by-sa/3.0/)
+
+---
+
+### 4. Share-alike (important nuance)
+
+If you **modify definitions**, those modified versions must also be:
+
+* Shared under the same license (CC BY-SA)
+
+👉 If you *don’t modify text*, this is basically a non-issue.
+
+---
+
+# 📱 How to implement this in your app (best practice)
+
+## Option A — Settings / About screen (recommended)
+
+Create a “Legal” or “Attribution” section:
+
+**Example:**
+
+```
+Dictionary Data Attribution
+
+Some definitions are sourced from Wiktionary (https://en.wiktionary.org),
+licensed under the Creative Commons Attribution-ShareAlike 3.0 License.
+
+https://creativecommons.org/licenses/by-sa/3.0/
+```
+
+---
+
+## Option B — Per-word attribution (strongest compliance)
+
+On each word detail screen:
+
+```
+Source: Wiktionary (CC BY-SA 3.0)
+```
+
+👉 This is the most legally robust approach, but not strictly required.
+
+---
+
+## Option C — Hybrid (best balance) ⭐
+
+* Per-word: small “Source: Wiktionary”
+* Full details: in Legal/Attribution page
+
+👉 This is what most production apps do.
+
+---
+
+# ⚠️ Common mistakes to avoid
+
+### ❌ Hiding attribution in Terms of Service only
+
+Not sufficient—must be **visible to users**
+
+---
+
+### ❌ No clickable links
+
+License requires **reasonable access** to the license text
+
+---
+
+### ❌ Claiming ownership
+
+Never say:
+
+* “Our dictionary”
+* “Proprietary definitions”
+
+---
+
+### ❌ Editing definitions without realizing license impact
+
+If you:
+
+* simplify
+* rewrite
+* combine definitions
+
+👉 That becomes a **derivative work**, which triggers share-alike
+
+---
+
+# 🧠 Practical advice for your app
+
+Since you're building a **spelling app**, I recommend:
+
+### Keep it simple:
+
+* Use definitions as-is (no editing)
+* Add attribution once in:
+
+  * Settings → “Data Sources” or “Legal”
+
+### Optional upgrade:
+
+* Add a small “Source: Wiktionary” label on word pages
+
+---
+
+# 👍 Copy-paste ready version
+
+You can literally use this:
+
+```
+Dictionary Data
+
+This app uses word definitions sourced from Wiktionary (https://en.wiktionary.org),
+which is licensed under the Creative Commons Attribution-ShareAlike 3.0 License.
+
+You can view the license here:
+https://creativecommons.org/licenses/by-sa/3.0/
+```
+
+---
+
+# 🚀 Final takeaway
+
+You don’t need anything complicated:
+
+> ✅ Credit
+> ✅ Link
+> ✅ License
+
+That’s it.
+
+---
+
+If you want, I can:
+
+* Review your actual app screens for compliance
+* Or tailor this to pass **Apple App Store / Google Play review** (there are a couple subtle gotchas there)

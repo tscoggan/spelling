@@ -940,6 +940,10 @@ function SchoolAdminHome() {
             className="underline underline-offset-2 hover:text-foreground" data-testid="link-legal-coppa-parent-notice">
             Parent Notice
           </a>
+          <a href="/legal/attribution" target="_blank" rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-foreground" data-testid="link-legal-attribution">
+            Data Attribution
+          </a>
         </div>
       </motion.div>
 

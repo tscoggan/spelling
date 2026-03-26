@@ -204,6 +204,16 @@ export default function Settings() {
                     <FileText className="h-4 w-4 shrink-0" />
                     Terms of Service
                   </a>
+                  <a
+                    href="/legal/attribution"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm underline underline-offset-2 hover:text-primary transition-colors"
+                    data-testid="link-settings-attribution"
+                  >
+                    <FileText className="h-4 w-4 shrink-0" />
+                    Data Attribution
+                  </a>
                 </CardContent>
               </Card>
             </motion.div>
