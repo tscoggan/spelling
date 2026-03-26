@@ -1078,37 +1078,55 @@ function parseFreeDictionaryResponse(data: any, requestedWord: string): WordMeta
 }
 
 async function checkFreeDictionary(word: string): Promise<{ valid: boolean; skipped: boolean; metadata?: WordMetadata }> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
+  const MAX_RETRIES = 3;
+  const RETRY_BASE_DELAY = 1000; // 1 s, 2 s, 4 s
 
-    const response = await fetch(
-      `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`,
-      { signal: controller.signal }
-    );
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
 
-    clearTimeout(timeout);
+      const response = await fetch(
+        `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`,
+        { signal: controller.signal }
+      );
 
-    if (!response.ok) {
-      // 404 = word not found; anything else = transient error
-      if (response.status === 404) return { valid: false, skipped: false };
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        if (response.status === 404) return { valid: false, skipped: false };
+
+        // Rate-limited or server error — retry with backoff
+        if ((response.status === 429 || response.status >= 500) && attempt < MAX_RETRIES) {
+          const delay = RETRY_BASE_DELAY * Math.pow(2, attempt);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+
+        return { valid: false, skipped: true };
+      }
+
+      const data: any = await response.json();
+
+      if (!Array.isArray(data) || data.length === 0) {
+        return { valid: false, skipped: false };
+      }
+
+      const metadata = parseFreeDictionaryResponse(data, word);
+      const valid = !!metadata.definition;
+      return { valid, skipped: false, metadata };
+    } catch {
+      // Timeout or network error — retry if attempts remain
+      if (attempt < MAX_RETRIES) {
+        const delay = RETRY_BASE_DELAY * Math.pow(2, attempt);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
       return { valid: false, skipped: true };
     }
-
-    const data: any = await response.json();
-
-    if (!Array.isArray(data) || data.length === 0) {
-      return { valid: false, skipped: false };
-    }
-
-    const metadata = parseFreeDictionaryResponse(data, word);
-
-    // Consider valid only if we extracted at least a definition
-    const valid = !!metadata.definition;
-    return { valid, skipped: false, metadata };
-  } catch {
-    return { valid: false, skipped: true };
   }
+
+  return { valid: false, skipped: true };
 }
 
 // ---------------------------------------------------------------------------

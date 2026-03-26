@@ -3760,10 +3760,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Respond immediately so the client can start polling
       res.json({ message: "Refresh started", total: wordTexts.length });
 
-      // Process in background — 50 words per batch so progress updates regularly
+      // Process in background — small batches with a pause between each to stay
+      // within the Free Dictionary API's request rate
       (async () => {
         try {
-          const BATCH_SIZE = 50;
+          const BATCH_SIZE = 10; // 2 concurrent sets of 5 per batch
+          const BATCH_DELAY_MS = 1500; // pause between batches to avoid rate limiting
           for (let i = 0; i < wordTexts.length; i += BATCH_SIZE) {
             const batch = wordTexts.slice(i, i + BATCH_SIZE);
             const result = await validateWords(batch, storage, true);
@@ -3771,6 +3773,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             metadataRefreshJob.valid += result.valid.length;
             metadataRefreshJob.invalid += result.invalid.length;
             metadataRefreshJob.skipped += result.skipped.length;
+            // Pause between batches (skip after last batch)
+            if (i + BATCH_SIZE < wordTexts.length) {
+              await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
+            }
           }
           metadataRefreshJob.status = 'completed';
           metadataRefreshJob.completedAt = new Date().toISOString();
@@ -3795,6 +3801,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(403).json({ error: "Admin access required" });
     }
     res.json(metadataRefreshJob);
+  });
+
+  // Admin: Return the currently configured dictionary source
+  app.get("/api/admin/dictionary-source", async (req, res) => {
+    if (!req.user || req.user.role !== "admin") {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    const { DICTIONARY_SOURCE } = await import('./services/dictionaryConfig');
+    res.json({ source: DICTIONARY_SOURCE });
   });
 
   // Admin: Update word metadata

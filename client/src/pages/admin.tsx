@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
-import { Upload, Search, Users, FileText, ArrowUpDown, Loader2, Check, X, AlertCircle, Ban, Copy, BookX, Home, UserX, Trash2, Shield, ChevronDown, ChevronRight, Plus, Flag, Eye, Edit, Tag, ToggleLeft, ToggleRight, Calendar, Mail, RefreshCw } from "lucide-react";
+import { Upload, Search, Users, FileText, ArrowUpDown, Loader2, Check, X, AlertCircle, Ban, Copy, BookX, BookOpen, Home, UserX, Trash2, Shield, ChevronDown, ChevronRight, Plus, Flag, Eye, Edit, Tag, ToggleLeft, ToggleRight, Calendar, Mail, RefreshCw } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { UserHeader } from "@/components/user-header";
 import {
@@ -192,6 +192,18 @@ export default function AdminPage() {
       toast({ title: "Error", description: "Could not start metadata refresh.", variant: "destructive" });
     }
   };
+
+  const { data: dictionarySourceData } = useQuery<{ source: string }>({
+    queryKey: ['/api/admin/dictionary-source'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/dictionary-source');
+      if (!res.ok) throw new Error('Failed to fetch dictionary source');
+      return res.json();
+    },
+  });
+  const dictionarySourceLabel = dictionarySourceData?.source === 'merriam-webster'
+    ? 'Merriam-Webster'
+    : 'Free Dictionary API';
 
   const [newAdminForm, setNewAdminForm] = useState({
     username: "",
@@ -704,10 +716,20 @@ export default function AdminPage() {
           <TabsContent value="word-loader">
             <Card>
               <CardHeader>
-                <CardTitle>Bulk Word Loader</CardTitle>
-                <CardDescription>
-                  Upload a TXT or CSV file with up to 2000 words. Words will be validated via the dictionary API and added to the database.
-                </CardDescription>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <CardTitle>Bulk Word Loader</CardTitle>
+                    <CardDescription>
+                      Upload a TXT or CSV file with up to 2000 words. Words will be validated via the dictionary API and added to the database.
+                    </CardDescription>
+                  </div>
+                  {dictionarySourceData && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-muted text-muted-foreground text-xs shrink-0">
+                      <BookOpen className="w-3.5 h-3.5" />
+                      <span>Source: <span className="font-semibold text-foreground">{dictionarySourceLabel}</span></span>
+                    </div>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-4">
@@ -901,19 +923,33 @@ export default function AdminPage() {
                   <div>
                     <h3 className="font-medium text-sm">Refresh All Word Metadata</h3>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Re-fetches definitions, examples, and parts of speech for every word in the database from the current dictionary source. Replaces existing metadata.
+                      Re-fetches definitions, examples, and parts of speech for every word in the database from the <span className="font-medium text-foreground">{dictionarySourceLabel}</span>. Replaces existing metadata. This operation runs in the background and may take several minutes for large word lists.
                     </p>
                   </div>
 
                   {refreshJob.status === 'idle' && (
-                    <Button
-                      variant="outline"
-                      onClick={startMetadataRefresh}
-                      data-testid="button-refresh-metadata"
-                    >
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      Refresh All Word Metadata
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" data-testid="button-refresh-metadata">
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Refresh All Word Metadata
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Refresh all word metadata?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will re-fetch definitions, examples, and parts of speech for every word in the database using the <strong>{dictionarySourceLabel}</strong>. Existing metadata will be overwritten. The job runs in the background and may take several minutes.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={startMetadataRefresh}>
+                            Start Refresh
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   )}
 
                   {refreshJob.status === 'running' && (
@@ -946,30 +982,56 @@ export default function AdminPage() {
                           <p className="text-xs text-yellow-600 dark:text-yellow-400">API Errors</p>
                         </div>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={startMetadataRefresh}
-                        data-testid="button-refresh-metadata-again"
-                      >
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        Refresh Again
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm" data-testid="button-refresh-metadata-again">
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Refresh Again
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Refresh all word metadata again?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will re-fetch metadata for every word in the database using the <strong>{dictionarySourceLabel}</strong> and overwrite all existing metadata. The job runs in the background and may take several minutes.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={startMetadataRefresh}>
+                              Start Refresh
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   )}
 
                   {refreshJob.status === 'failed' && (
                     <div className="space-y-2">
                       <p className="text-sm text-destructive">Refresh failed: {refreshJob.error || 'Unknown error'}</p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={startMetadataRefresh}
-                        data-testid="button-refresh-metadata-retry"
-                      >
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        Retry
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm" data-testid="button-refresh-metadata-retry">
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Retry
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Retry metadata refresh?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will re-fetch metadata for every word in the database using the <strong>{dictionarySourceLabel}</strong> and overwrite all existing metadata. The job runs in the background and may take several minutes.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={startMetadataRefresh}>
+                              Start Refresh
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   )}
                 </div>
