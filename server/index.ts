@@ -240,6 +240,10 @@ async function runStartupMigrations(): Promise<void> {
       ALTER TABLE metadata_refresh_jobs
         ADD COLUMN IF NOT EXISTS max_word_id INTEGER
     `);
+    await db.execute(sql`
+      ALTER TABLE metadata_refresh_jobs
+        ADD COLUMN IF NOT EXISTS skip_if_updated_after TIMESTAMP
+    `);
     // If the server restarted while a job was running, mark it as interrupted
     await db.execute(sql`
       UPDATE metadata_refresh_jobs

@@ -32,6 +32,7 @@ interface MetadataRefreshJobRow {
   invalid: number;
   skipped: number;
   maxWordId: number | null;
+  skipIfUpdatedAfter: string | null;
   error: string | null;
   startedAt: string | null;
   completedAt: string | null;
@@ -40,7 +41,10 @@ interface MetadataRefreshJobRow {
 
 async function getLatestRefreshJob(): Promise<MetadataRefreshJobRow | null> {
   const rows = await db.execute(sql`
-    SELECT id, status, total, processed, valid, invalid, skipped, max_word_id AS "maxWordId", error,
+    SELECT id, status, total, processed, valid, invalid, skipped,
+           max_word_id AS "maxWordId",
+           skip_if_updated_after AS "skipIfUpdatedAfter",
+           error,
            started_at AS "startedAt", completed_at AS "completedAt", updated_at AS "updatedAt"
     FROM metadata_refresh_jobs
     ORDER BY id DESC
@@ -3788,24 +3792,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
+      // Optional cutoff: skip words whose updatedAt >= this timestamp.
+      // Words with updatedAt IS NULL are always included (never been refreshed).
+      const { skipIfUpdatedAfter: rawCutoff } = req.body as { skipIfUpdatedAfter?: string };
+      const cutoffDate: Date | null = rawCutoff ? new Date(rawCutoff) : null;
+      if (cutoffDate && isNaN(cutoffDate.getTime())) {
+        return res.status(400).json({ error: "Invalid skipIfUpdatedAfter date" });
+      }
+
       const allWords = await storage.getAllWords();
 
       // Snapshot the highest word ID right now — words added after this point
       // don't need refreshing (they'll have fresh metadata from their own validation).
       const maxWordId = allWords.reduce((max, w) => Math.max(max, w.id), 0);
-      const eligibleWords = allWords.filter(w => w.id <= maxWordId);
+
+      const eligibleWords = allWords.filter(w => {
+        if (w.id > maxWordId) return false;              // added after snapshot (shouldn't happen here)
+        if (!cutoffDate) return true;                    // no cutoff → include all
+        if (!w.updatedAt) return true;                   // never refreshed → always include
+        return w.updatedAt < cutoffDate;                 // only include words last updated before cutoff
+      });
       const wordTexts = eligibleWords.map(w => w.word);
 
       // Insert a new job row — this becomes the source of truth
       const inserted = await db.execute(sql`
-        INSERT INTO metadata_refresh_jobs (status, total, processed, valid, invalid, skipped, max_word_id, started_at, updated_at)
-        VALUES ('running', ${wordTexts.length}, 0, 0, 0, 0, ${maxWordId}, NOW(), NOW())
+        INSERT INTO metadata_refresh_jobs
+          (status, total, processed, valid, invalid, skipped, max_word_id, skip_if_updated_after, started_at, updated_at)
+        VALUES ('running', ${wordTexts.length}, 0, 0, 0, 0, ${maxWordId}, ${cutoffDate ? cutoffDate.toISOString() : null}, NOW(), NOW())
         RETURNING id
       `);
       const jobId = (inserted.rows[0] as { id: number }).id;
 
       // Respond immediately so the client can start polling
-      res.json({ message: "Refresh started", total: wordTexts.length, jobId, maxWordId });
+      res.json({ message: "Refresh started", total: wordTexts.length, jobId, maxWordId, skipIfUpdatedAfter: cutoffDate?.toISOString() ?? null });
 
       // Process in background — paced to stay safely under the 1 000 req/hour limit:
       // 5 concurrent words → 20-second pause → ~900 words/hour

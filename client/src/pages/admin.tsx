@@ -154,6 +154,7 @@ export default function AdminPage() {
     valid: number;
     invalid: number;
     skipped: number;
+    skipIfUpdatedAfter?: string | null;
     error?: string | null;
     startedAt?: string | null;
     completedAt?: string | null;
@@ -162,6 +163,9 @@ export default function AdminPage() {
   const [refreshJob, setRefreshJob] = useState<RefreshJobState>({
     status: 'idle', total: 0, processed: 0, valid: 0, invalid: 0, skipped: 0,
   });
+  // Cutoff datetime input — words updated at or after this time will be skipped.
+  // Empty string = no cutoff (refresh all words).
+  const [skipIfUpdatedAfter, setSkipIfUpdatedAfter] = useState<string>('');
 
   // Fetch current job status from DB on mount
   useEffect(() => {
@@ -203,18 +207,46 @@ export default function AdminPage() {
 
   const startMetadataRefresh = async () => {
     try {
-      const res = await fetch('/api/admin/words/refresh-metadata', { method: 'POST' });
+      const body: Record<string, string> = {};
+      if (skipIfUpdatedAfter) body.skipIfUpdatedAfter = new Date(skipIfUpdatedAfter).toISOString();
+
+      const res = await fetch('/api/admin/words/refresh-metadata', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
       if (res.status === 409) {
         toast({ title: "Already running", description: "A metadata refresh is already in progress." });
         return;
       }
-      if (!res.ok) throw new Error('Failed to start');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).error || 'Failed to start');
+      }
       // Poll immediately to pick up the new job row
       const statusRes = await fetch('/api/admin/words/refresh-metadata/status');
       if (statusRes.ok) setRefreshJob(await statusRes.json());
-    } catch {
-      toast({ title: "Error", description: "Could not start metadata refresh.", variant: "destructive" });
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "Could not start metadata refresh.", variant: "destructive" });
     }
+  };
+
+  // Format a datetime string for display in the UI
+  const formatJobDate = (iso: string | null | undefined) => {
+    if (!iso) return null;
+    try {
+      return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    } catch { return iso; }
+  };
+
+  // Convert ISO to datetime-local value (for pre-filling the input)
+  const isoToDatetimeLocal = (iso: string | null | undefined): string => {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } catch { return ''; }
   };
 
   const { data: dictionarySourceData } = useQuery<{ source: string }>({
@@ -943,7 +975,7 @@ export default function AdminPage() {
                 )}
 
                 {/* Refresh All Word Metadata */}
-                <div className="pt-4 border-t space-y-3">
+                <div className="pt-4 border-t space-y-4">
                   <div>
                     <h3 className="font-medium text-sm">Refresh All Word Metadata</h3>
                     <p className="text-sm text-muted-foreground mt-1">
@@ -951,19 +983,77 @@ export default function AdminPage() {
                     </p>
                   </div>
 
+                  {/* Cutoff filter — only shown when the job is idle/completed/interrupted/failed */}
+                  {refreshJob.status !== 'running' && (
+                    <div className="space-y-2 p-3 bg-muted/50 rounded-md">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <Label htmlFor="skip-if-updated-after" className="text-sm font-medium">
+                            Skip words updated after
+                          </Label>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Words with a "Last Updated" timestamp on or after this date/time will be skipped. Leave blank to refresh all words. Use the last job's start time to retry only words that failed.
+                          </p>
+                        </div>
+                        {refreshJob.startedAt && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSkipIfUpdatedAfter(isoToDatetimeLocal(refreshJob.startedAt))}
+                            data-testid="button-use-last-job-start"
+                          >
+                            Use last job's start time
+                          </Button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="skip-if-updated-after"
+                          type="datetime-local"
+                          value={skipIfUpdatedAfter}
+                          onChange={e => setSkipIfUpdatedAfter(e.target.value)}
+                          className="max-w-xs"
+                          data-testid="input-skip-if-updated-after"
+                        />
+                        {skipIfUpdatedAfter && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSkipIfUpdatedAfter('')}
+                            data-testid="button-clear-cutoff"
+                          >
+                            <X className="w-4 h-4 mr-1" />
+                            Clear
+                          </Button>
+                        )}
+                      </div>
+                      {skipIfUpdatedAfter && (
+                        <p className="text-xs text-amber-700 dark:text-amber-400">
+                          Only words not updated since {formatJobDate(new Date(skipIfUpdatedAfter).toISOString())} will be refreshed.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {(refreshJob.status === 'idle') && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="outline" data-testid="button-refresh-metadata">
                           <RefreshCw className="w-4 h-4 mr-2" />
-                          Refresh All Word Metadata
+                          {skipIfUpdatedAfter ? 'Refresh Eligible Words' : 'Refresh All Word Metadata'}
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Refresh all word metadata?</AlertDialogTitle>
+                          <AlertDialogTitle>
+                            {skipIfUpdatedAfter ? 'Refresh eligible words?' : 'Refresh all word metadata?'}
+                          </AlertDialogTitle>
                           <AlertDialogDescription>
-                            This will re-fetch definitions, examples, and parts of speech for every word in the database using the <strong>{dictionarySourceLabel}</strong>. Existing metadata will be overwritten. The job runs in the background and may take several minutes.
+                            {skipIfUpdatedAfter
+                              ? <>Only words not updated since <strong>{formatJobDate(new Date(skipIfUpdatedAfter).toISOString())}</strong> will be re-fetched using the <strong>{dictionarySourceLabel}</strong>. This is useful for retrying words that failed in a previous run.</>
+                              : <>This will re-fetch definitions, examples, and parts of speech for <strong>all words</strong> in the database using the <strong>{dictionarySourceLabel}</strong>. Existing metadata will be overwritten.</>
+                            }
+                            {' '}The job runs in the background at ~900 words/hour.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -992,6 +1082,11 @@ export default function AdminPage() {
                         className="h-2"
                         data-testid="progress-refresh-metadata"
                       />
+                      {refreshJob.skipIfUpdatedAfter && (
+                        <p className="text-xs text-muted-foreground">
+                          Skipping words updated on or after {formatJobDate(refreshJob.skipIfUpdatedAfter)}.
+                        </p>
+                      )}
                       <p className="text-xs text-muted-foreground">
                         Paced at ~900 words/hour. This job will keep running even if you navigate away or close this page.
                       </p>
@@ -1018,14 +1113,20 @@ export default function AdminPage() {
                         <AlertDialogTrigger asChild>
                           <Button variant="outline" size="sm" data-testid="button-refresh-metadata-again">
                             <RefreshCw className="w-4 h-4 mr-2" />
-                            Refresh Again
+                            {skipIfUpdatedAfter ? 'Refresh Eligible Words' : 'Refresh Again'}
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Refresh all word metadata again?</AlertDialogTitle>
+                            <AlertDialogTitle>
+                              {skipIfUpdatedAfter ? 'Refresh eligible words?' : 'Refresh all word metadata again?'}
+                            </AlertDialogTitle>
                             <AlertDialogDescription>
-                              This will re-fetch metadata for every word in the database using the <strong>{dictionarySourceLabel}</strong> and overwrite all existing metadata. The job runs in the background and may take several minutes.
+                              {skipIfUpdatedAfter
+                                ? <>Only words not updated since <strong>{formatJobDate(new Date(skipIfUpdatedAfter).toISOString())}</strong> will be re-fetched using the <strong>{dictionarySourceLabel}</strong>. This is useful for retrying words that failed in a previous run.</>
+                                : <>This will re-fetch metadata for <strong>all words</strong> in the database using the <strong>{dictionarySourceLabel}</strong> and overwrite all existing metadata.</>
+                              }
+                              {' '}The job runs in the background at ~900 words/hour.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -1051,14 +1152,20 @@ export default function AdminPage() {
                         <AlertDialogTrigger asChild>
                           <Button variant="outline" size="sm" data-testid="button-refresh-metadata-restart">
                             <RefreshCw className="w-4 h-4 mr-2" />
-                            Start New Refresh
+                            {skipIfUpdatedAfter ? 'Refresh Eligible Words' : 'Start New Refresh'}
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Start a new metadata refresh?</AlertDialogTitle>
+                            <AlertDialogTitle>
+                              {skipIfUpdatedAfter ? 'Refresh eligible words?' : 'Start a new metadata refresh?'}
+                            </AlertDialogTitle>
                             <AlertDialogDescription>
-                              This will re-fetch metadata for all words from the beginning using the <strong>{dictionarySourceLabel}</strong>. The job runs in the background at ~900 words/hour and will survive server restarts.
+                              {skipIfUpdatedAfter
+                                ? <>Only words not updated since <strong>{formatJobDate(new Date(skipIfUpdatedAfter).toISOString())}</strong> will be re-fetched using the <strong>{dictionarySourceLabel}</strong>. This lets you pick up from where the interrupted job left off.</>
+                                : <>This will re-fetch metadata for <strong>all words</strong> from the beginning using the <strong>{dictionarySourceLabel}</strong>.</>
+                              }
+                              {' '}The job runs in the background at ~900 words/hour and will survive server restarts.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -1079,14 +1186,20 @@ export default function AdminPage() {
                         <AlertDialogTrigger asChild>
                           <Button variant="outline" size="sm" data-testid="button-refresh-metadata-retry">
                             <RefreshCw className="w-4 h-4 mr-2" />
-                            Retry
+                            {skipIfUpdatedAfter ? 'Retry Eligible Words' : 'Retry'}
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Retry metadata refresh?</AlertDialogTitle>
+                            <AlertDialogTitle>
+                              {skipIfUpdatedAfter ? 'Retry with cutoff filter?' : 'Retry metadata refresh?'}
+                            </AlertDialogTitle>
                             <AlertDialogDescription>
-                              This will re-fetch metadata for every word in the database using the <strong>{dictionarySourceLabel}</strong> and overwrite all existing metadata. The job runs in the background at ~900 words/hour.
+                              {skipIfUpdatedAfter
+                                ? <>Only words not updated since <strong>{formatJobDate(new Date(skipIfUpdatedAfter).toISOString())}</strong> will be re-fetched using the <strong>{dictionarySourceLabel}</strong>.</>
+                                : <>This will re-fetch metadata for <strong>all words</strong> in the database using the <strong>{dictionarySourceLabel}</strong> and overwrite all existing metadata.</>
+                              }
+                              {' '}The job runs in the background at ~900 words/hour.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
