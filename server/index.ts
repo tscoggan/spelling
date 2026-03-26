@@ -220,6 +220,29 @@ async function runStartupMigrations(): Promise<void> {
       WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = user_groups.owner_user_id)
     `);
 
+    // Persistent metadata refresh job tracking
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS metadata_refresh_jobs (
+        id SERIAL PRIMARY KEY,
+        status TEXT NOT NULL DEFAULT 'idle',
+        total INTEGER NOT NULL DEFAULT 0,
+        processed INTEGER NOT NULL DEFAULT 0,
+        valid INTEGER NOT NULL DEFAULT 0,
+        invalid INTEGER NOT NULL DEFAULT 0,
+        skipped INTEGER NOT NULL DEFAULT 0,
+        error TEXT,
+        started_at TIMESTAMP,
+        completed_at TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    // If the server restarted while a job was running, mark it as interrupted
+    await db.execute(sql`
+      UPDATE metadata_refresh_jobs
+      SET status = 'interrupted', updated_at = NOW()
+      WHERE status = 'running'
+    `);
+
     log('Startup migrations complete');
   } catch (err: any) {
     log(`Startup migration error: ${err.message}`);

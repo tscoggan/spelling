@@ -13,25 +13,65 @@ import { APP_VERSION } from "@shared/version";
 import { DEFAULT_ADMIN } from "./config/admin";
 import { AGREEMENT_VERSIONS, hashAgreementText, SCHOOL_CERTIFICATION_VERSION } from "@shared/agreements";
 import { encrypt } from "./services/encryption";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
-// Metadata refresh job — in-memory state (reset on server restart)
+// Metadata refresh job — DB-backed (persists across page navigations and
+// server restarts). One row per job; status endpoint reads the latest row.
+//
+// Rate: BATCH_SIZE=5 words per batch, BATCH_DELAY_MS=20 000 ms between batches
+// → 5 words / 20 s = 15 words/min = 900 words/hour  (safe under 1 000/hr limit)
 // ---------------------------------------------------------------------------
-interface MetadataRefreshJob {
-  status: 'idle' | 'running' | 'completed' | 'failed';
+interface MetadataRefreshJobRow {
+  id: number;
+  status: 'running' | 'completed' | 'failed' | 'interrupted';
   total: number;
   processed: number;
   valid: number;
   invalid: number;
   skipped: number;
-  startedAt?: string;
-  completedAt?: string;
-  error?: string;
+  error: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  updatedAt: string;
 }
 
-let metadataRefreshJob: MetadataRefreshJob = {
-  status: 'idle', total: 0, processed: 0, valid: 0, invalid: 0, skipped: 0,
-};
+async function getLatestRefreshJob(): Promise<MetadataRefreshJobRow | null> {
+  const rows = await db.execute(sql`
+    SELECT id, status, total, processed, valid, invalid, skipped, error,
+           started_at AS "startedAt", completed_at AS "completedAt", updated_at AS "updatedAt"
+    FROM metadata_refresh_jobs
+    ORDER BY id DESC
+    LIMIT 1
+  `);
+  if (rows.rows.length === 0) return null;
+  return rows.rows[0] as MetadataRefreshJobRow;
+}
+
+async function updateRefreshJob(id: number, fields: {
+  status?: string;
+  processed?: number;
+  valid?: number;
+  invalid?: number;
+  skipped?: number;
+  error?: string | null;
+  completedAt?: string | null;
+}) {
+  // Build update using individual queries per field group to stay safe with drizzle sql template
+  await db.execute(sql`
+    UPDATE metadata_refresh_jobs SET
+      status      = COALESCE(${fields.status ?? null}, status),
+      processed   = COALESCE(${fields.processed ?? null}, processed),
+      valid       = COALESCE(${fields.valid ?? null}, valid),
+      invalid     = COALESCE(${fields.invalid ?? null}, invalid),
+      skipped     = COALESCE(${fields.skipped ?? null}, skipped),
+      error       = ${fields.error !== undefined ? fields.error : sql`error`},
+      completed_at = ${fields.completedAt !== undefined ? fields.completedAt : sql`completed_at`},
+      updated_at  = NOW()
+    WHERE id = ${id}
+  `);
+}
 
 function getClientIp(req: any): string {
   const forwarded = req.headers["x-forwarded-for"];
@@ -3739,7 +3779,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.user || req.user.role !== "admin") {
       return res.status(403).json({ error: "Admin access required" });
     }
-    if (metadataRefreshJob.status === 'running') {
+
+    // Check DB for an already-running job
+    const existing = await getLatestRefreshJob();
+    if (existing?.status === 'running') {
       return res.status(409).json({ error: "Refresh already in progress" });
     }
 
@@ -3747,60 +3790,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allWords = await storage.getAllWords();
       const wordTexts = allWords.map(w => w.word);
 
-      metadataRefreshJob = {
-        status: 'running',
-        total: wordTexts.length,
-        processed: 0,
-        valid: 0,
-        invalid: 0,
-        skipped: 0,
-        startedAt: new Date().toISOString(),
-      };
+      // Insert a new job row — this becomes the source of truth
+      const inserted = await db.execute(sql`
+        INSERT INTO metadata_refresh_jobs (status, total, processed, valid, invalid, skipped, started_at, updated_at)
+        VALUES ('running', ${wordTexts.length}, 0, 0, 0, 0, NOW(), NOW())
+        RETURNING id
+      `);
+      const jobId = (inserted.rows[0] as { id: number }).id;
 
       // Respond immediately so the client can start polling
-      res.json({ message: "Refresh started", total: wordTexts.length });
+      res.json({ message: "Refresh started", total: wordTexts.length, jobId });
 
-      // Process in background — small batches with a pause between each to stay
-      // within the Free Dictionary API's request rate
+      // Process in background — paced to stay safely under the 1 000 req/hour limit:
+      // 5 concurrent words → 20-second pause → ~900 words/hour
       (async () => {
         try {
-          const BATCH_SIZE = 10; // 2 concurrent sets of 5 per batch
-          const BATCH_DELAY_MS = 1500; // pause between batches to avoid rate limiting
+          const BATCH_SIZE = 5;      // matches MAX_CONCURRENT in validateWordsInBatches
+          const BATCH_DELAY_MS = 20000; // 20 s between batches → 5/20s = 15/min = 900/hr
+          let processed = 0, valid = 0, invalid = 0, skipped = 0;
+
           for (let i = 0; i < wordTexts.length; i += BATCH_SIZE) {
             const batch = wordTexts.slice(i, i + BATCH_SIZE);
             const result = await validateWords(batch, storage, true);
-            metadataRefreshJob.processed += batch.length;
-            metadataRefreshJob.valid += result.valid.length;
-            metadataRefreshJob.invalid += result.invalid.length;
-            metadataRefreshJob.skipped += result.skipped.length;
-            // Pause between batches (skip after last batch)
+            processed += batch.length;
+            valid     += result.valid.length;
+            invalid   += result.invalid.length;
+            skipped   += result.skipped.length;
+
+            // Write progress to DB so the admin UI stays up-to-date
+            await updateRefreshJob(jobId, { processed, valid, invalid, skipped });
+
+            // Rate-limit pause (skip after final batch)
             if (i + BATCH_SIZE < wordTexts.length) {
               await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
             }
           }
-          metadataRefreshJob.status = 'completed';
-          metadataRefreshJob.completedAt = new Date().toISOString();
-          console.log(`[metadata-refresh] Done — valid: ${metadataRefreshJob.valid}, invalid: ${metadataRefreshJob.invalid}, skipped: ${metadataRefreshJob.skipped}`);
+
+          await updateRefreshJob(jobId, {
+            status: 'completed',
+            processed, valid, invalid, skipped,
+            completedAt: new Date().toISOString(),
+          });
+          console.log(`[metadata-refresh] Done — valid: ${valid}, invalid: ${invalid}, skipped: ${skipped}`);
         } catch (err) {
-          metadataRefreshJob.status = 'failed';
-          metadataRefreshJob.error = String(err);
+          await updateRefreshJob(jobId, { status: 'failed', error: String(err) });
           console.error('[metadata-refresh] Failed:', err);
         }
       })();
     } catch (err) {
       console.error('Error starting metadata refresh:', err);
-      metadataRefreshJob.status = 'failed';
-      metadataRefreshJob.error = String(err);
       res.status(500).json({ error: "Failed to start refresh" });
     }
   });
 
-  // Admin: Poll metadata refresh job status
+  // Admin: Poll metadata refresh job status (reads from DB — survives server restarts)
   app.get("/api/admin/words/refresh-metadata/status", async (req, res) => {
     if (!req.user || req.user.role !== "admin") {
       return res.status(403).json({ error: "Admin access required" });
     }
-    res.json(metadataRefreshJob);
+    const job = await getLatestRefreshJob();
+    if (!job) return res.json({ status: 'idle', total: 0, processed: 0, valid: 0, invalid: 0, skipped: 0 });
+    res.json(job);
   });
 
   // Admin: Return the currently configured dictionary source

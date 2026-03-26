@@ -146,21 +146,34 @@ export default function AdminPage() {
   const [hideDeactivated, setHideDeactivated] = useState(true);
   const [createAdminOpen, setCreateAdminOpen] = useState(false);
 
-  // Metadata refresh job state
+  // Metadata refresh job state — backed by DB, persists across page nav & server restarts
   interface RefreshJobState {
-    status: 'idle' | 'running' | 'completed' | 'failed';
+    status: 'idle' | 'running' | 'completed' | 'failed' | 'interrupted';
     total: number;
     processed: number;
     valid: number;
     invalid: number;
     skipped: number;
-    error?: string;
+    error?: string | null;
+    startedAt?: string | null;
+    completedAt?: string | null;
+    updatedAt?: string;
   }
   const [refreshJob, setRefreshJob] = useState<RefreshJobState>({
     status: 'idle', total: 0, processed: 0, valid: 0, invalid: 0, skipped: 0,
   });
 
-  // Poll refresh job status while running
+  // Fetch current job status from DB on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/words/refresh-metadata/status');
+        if (res.ok) setRefreshJob(await res.json());
+      } catch { /* ignore */ }
+    })();
+  }, []);
+
+  // Poll every 10 s while a job is running (20 s batches, so 10 s is plenty)
   useEffect(() => {
     if (refreshJob.status !== 'running') return;
     const interval = setInterval(async () => {
@@ -174,9 +187,19 @@ export default function AdminPage() {
       } catch {
         clearInterval(interval);
       }
-    }, 2000);
+    }, 10000);
     return () => clearInterval(interval);
   }, [refreshJob.status]);
+
+  // Estimated time remaining (based on 900 words/hour = 15 words/min)
+  const wordsPerMinute = 15;
+  const minutesRemaining = refreshJob.status === 'running' && refreshJob.total > 0
+    ? Math.ceil((refreshJob.total - refreshJob.processed) / wordsPerMinute)
+    : null;
+  const etaLabel = minutesRemaining === null ? null
+    : minutesRemaining >= 120 ? `~${Math.ceil(minutesRemaining / 60)} hours remaining`
+    : minutesRemaining >= 60  ? `~${Math.floor(minutesRemaining / 60)}h ${minutesRemaining % 60}m remaining`
+    : `~${minutesRemaining} min remaining`;
 
   const startMetadataRefresh = async () => {
     try {
@@ -186,8 +209,9 @@ export default function AdminPage() {
         return;
       }
       if (!res.ok) throw new Error('Failed to start');
-      const data = await res.json();
-      setRefreshJob({ status: 'running', total: data.total, processed: 0, valid: 0, invalid: 0, skipped: 0 });
+      // Poll immediately to pick up the new job row
+      const statusRes = await fetch('/api/admin/words/refresh-metadata/status');
+      if (statusRes.ok) setRefreshJob(await statusRes.json());
     } catch {
       toast({ title: "Error", description: "Could not start metadata refresh.", variant: "destructive" });
     }
@@ -923,11 +947,11 @@ export default function AdminPage() {
                   <div>
                     <h3 className="font-medium text-sm">Refresh All Word Metadata</h3>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Re-fetches definitions, examples, and parts of speech for every word in the database from the <span className="font-medium text-foreground">{dictionarySourceLabel}</span>. Replaces existing metadata. This operation runs in the background and may take several minutes for large word lists.
+                      Re-fetches definitions, examples, and parts of speech for every word in the database from the <span className="font-medium text-foreground">{dictionarySourceLabel}</span>. Replaces existing metadata. Runs in the background at ~900 words/hour to stay within the API rate limit — you can navigate away or close this page and the job will continue.
                     </p>
                   </div>
 
-                  {refreshJob.status === 'idle' && (
+                  {(refreshJob.status === 'idle') && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="outline" data-testid="button-refresh-metadata">
@@ -954,15 +978,23 @@ export default function AdminPage() {
 
                   {refreshJob.status === 'running' && (
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Processing {refreshJob.processed} / {refreshJob.total} words...
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                          Processing {refreshJob.processed.toLocaleString()} / {refreshJob.total.toLocaleString()} words
+                        </div>
+                        {etaLabel && (
+                          <span className="text-xs text-muted-foreground">{etaLabel}</span>
+                        )}
                       </div>
                       <Progress
                         value={refreshJob.total > 0 ? (refreshJob.processed / refreshJob.total) * 100 : 0}
                         className="h-2"
                         data-testid="progress-refresh-metadata"
                       />
+                      <p className="text-xs text-muted-foreground">
+                        Paced at ~900 words/hour. This job will keep running even if you navigate away or close this page.
+                      </p>
                     </div>
                   )}
 
@@ -1007,6 +1039,39 @@ export default function AdminPage() {
                     </div>
                   )}
 
+                  {refreshJob.status === 'interrupted' && (
+                    <div className="space-y-3">
+                      <div className="p-3 bg-amber-50 dark:bg-amber-950 rounded-md space-y-1">
+                        <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Job interrupted by server restart</p>
+                        <p className="text-xs text-amber-700 dark:text-amber-300">
+                          Progress: {refreshJob.processed.toLocaleString()} of {refreshJob.total.toLocaleString()} words were processed before the server restarted. Start a new refresh to process all words from the beginning.
+                        </p>
+                      </div>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm" data-testid="button-refresh-metadata-restart">
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Start New Refresh
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Start a new metadata refresh?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will re-fetch metadata for all words from the beginning using the <strong>{dictionarySourceLabel}</strong>. The job runs in the background at ~900 words/hour and will survive server restarts.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={startMetadataRefresh}>
+                              Start Refresh
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  )}
+
                   {refreshJob.status === 'failed' && (
                     <div className="space-y-2">
                       <p className="text-sm text-destructive">Refresh failed: {refreshJob.error || 'Unknown error'}</p>
@@ -1021,7 +1086,7 @@ export default function AdminPage() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>Retry metadata refresh?</AlertDialogTitle>
                             <AlertDialogDescription>
-                              This will re-fetch metadata for every word in the database using the <strong>{dictionarySourceLabel}</strong> and overwrite all existing metadata. The job runs in the background and may take several minutes.
+                              This will re-fetch metadata for every word in the database using the <strong>{dictionarySourceLabel}</strong> and overwrite all existing metadata. The job runs in the background at ~900 words/hour.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
