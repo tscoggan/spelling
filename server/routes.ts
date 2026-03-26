@@ -14,6 +14,25 @@ import { DEFAULT_ADMIN } from "./config/admin";
 import { AGREEMENT_VERSIONS, hashAgreementText, SCHOOL_CERTIFICATION_VERSION } from "@shared/agreements";
 import { encrypt } from "./services/encryption";
 
+// ---------------------------------------------------------------------------
+// Metadata refresh job — in-memory state (reset on server restart)
+// ---------------------------------------------------------------------------
+interface MetadataRefreshJob {
+  status: 'idle' | 'running' | 'completed' | 'failed';
+  total: number;
+  processed: number;
+  valid: number;
+  invalid: number;
+  skipped: number;
+  startedAt?: string;
+  completedAt?: string;
+  error?: string;
+}
+
+let metadataRefreshJob: MetadataRefreshJob = {
+  status: 'idle', total: 0, processed: 0, valid: 0, invalid: 0, skipped: 0,
+};
+
 function getClientIp(req: any): string {
   const forwarded = req.headers["x-forwarded-for"];
   const ip = typeof forwarded === "string" ? forwarded.split(",")[0].trim() : req.ip ?? req.socket?.remoteAddress ?? "unknown";
@@ -3715,6 +3734,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Admin: Start bulk metadata refresh from the configured dictionary provider
+  app.post("/api/admin/words/refresh-metadata", async (req, res) => {
+    if (!req.user || req.user.role !== "admin") {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    if (metadataRefreshJob.status === 'running') {
+      return res.status(409).json({ error: "Refresh already in progress" });
+    }
+
+    try {
+      const allWords = await storage.getAllWords();
+      const wordTexts = allWords.map(w => w.word);
+
+      metadataRefreshJob = {
+        status: 'running',
+        total: wordTexts.length,
+        processed: 0,
+        valid: 0,
+        invalid: 0,
+        skipped: 0,
+        startedAt: new Date().toISOString(),
+      };
+
+      // Respond immediately so the client can start polling
+      res.json({ message: "Refresh started", total: wordTexts.length });
+
+      // Process in background — 50 words per batch so progress updates regularly
+      (async () => {
+        try {
+          const BATCH_SIZE = 50;
+          for (let i = 0; i < wordTexts.length; i += BATCH_SIZE) {
+            const batch = wordTexts.slice(i, i + BATCH_SIZE);
+            const result = await validateWords(batch, storage, true);
+            metadataRefreshJob.processed += batch.length;
+            metadataRefreshJob.valid += result.valid.length;
+            metadataRefreshJob.invalid += result.invalid.length;
+            metadataRefreshJob.skipped += result.skipped.length;
+          }
+          metadataRefreshJob.status = 'completed';
+          metadataRefreshJob.completedAt = new Date().toISOString();
+          console.log(`[metadata-refresh] Done — valid: ${metadataRefreshJob.valid}, invalid: ${metadataRefreshJob.invalid}, skipped: ${metadataRefreshJob.skipped}`);
+        } catch (err) {
+          metadataRefreshJob.status = 'failed';
+          metadataRefreshJob.error = String(err);
+          console.error('[metadata-refresh] Failed:', err);
+        }
+      })();
+    } catch (err) {
+      console.error('Error starting metadata refresh:', err);
+      metadataRefreshJob.status = 'failed';
+      metadataRefreshJob.error = String(err);
+      res.status(500).json({ error: "Failed to start refresh" });
+    }
+  });
+
+  // Admin: Poll metadata refresh job status
+  app.get("/api/admin/words/refresh-metadata/status", async (req, res) => {
+    if (!req.user || req.user.role !== "admin") {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    res.json(metadataRefreshJob);
+  });
+
   // Admin: Update word metadata
   app.patch("/api/admin/words/:id", async (req, res) => {
     try {

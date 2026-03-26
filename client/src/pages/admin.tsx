@@ -14,7 +14,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
-import { Upload, Search, Users, FileText, ArrowUpDown, Loader2, Check, X, AlertCircle, Ban, Copy, BookX, Home, UserX, Trash2, Shield, ChevronDown, ChevronRight, Plus, Flag, Eye, Edit, Tag, ToggleLeft, ToggleRight, Calendar, Mail } from "lucide-react";
+import { Upload, Search, Users, FileText, ArrowUpDown, Loader2, Check, X, AlertCircle, Ban, Copy, BookX, Home, UserX, Trash2, Shield, ChevronDown, ChevronRight, Plus, Flag, Eye, Edit, Tag, ToggleLeft, ToggleRight, Calendar, Mail, RefreshCw } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { UserHeader } from "@/components/user-header";
 import {
   AlertDialog,
@@ -144,6 +145,54 @@ export default function AdminPage() {
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [hideDeactivated, setHideDeactivated] = useState(true);
   const [createAdminOpen, setCreateAdminOpen] = useState(false);
+
+  // Metadata refresh job state
+  interface RefreshJobState {
+    status: 'idle' | 'running' | 'completed' | 'failed';
+    total: number;
+    processed: number;
+    valid: number;
+    invalid: number;
+    skipped: number;
+    error?: string;
+  }
+  const [refreshJob, setRefreshJob] = useState<RefreshJobState>({
+    status: 'idle', total: 0, processed: 0, valid: 0, invalid: 0, skipped: 0,
+  });
+
+  // Poll refresh job status while running
+  useEffect(() => {
+    if (refreshJob.status !== 'running') return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/admin/words/refresh-metadata/status');
+        if (res.ok) {
+          const data = await res.json();
+          setRefreshJob(data);
+          if (data.status !== 'running') clearInterval(interval);
+        }
+      } catch {
+        clearInterval(interval);
+      }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [refreshJob.status]);
+
+  const startMetadataRefresh = async () => {
+    try {
+      const res = await fetch('/api/admin/words/refresh-metadata', { method: 'POST' });
+      if (res.status === 409) {
+        toast({ title: "Already running", description: "A metadata refresh is already in progress." });
+        return;
+      }
+      if (!res.ok) throw new Error('Failed to start');
+      const data = await res.json();
+      setRefreshJob({ status: 'running', total: data.total, processed: 0, valid: 0, invalid: 0, skipped: 0 });
+    } catch {
+      toast({ title: "Error", description: "Could not start metadata refresh.", variant: "destructive" });
+    }
+  };
+
   const [newAdminForm, setNewAdminForm] = useState({
     username: "",
     password: "",
@@ -657,7 +706,7 @@ export default function AdminPage() {
               <CardHeader>
                 <CardTitle>Bulk Word Loader</CardTitle>
                 <CardDescription>
-                  Upload a TXT or CSV file with up to 2000 words. Words will be validated via Merriam-Webster dictionaries and added to the database.
+                  Upload a TXT or CSV file with up to 2000 words. Words will be validated via the dictionary API and added to the database.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -846,6 +895,84 @@ export default function AdminPage() {
                     </CardContent>
                   </Card>
                 )}
+
+                {/* Refresh All Word Metadata */}
+                <div className="pt-4 border-t space-y-3">
+                  <div>
+                    <h3 className="font-medium text-sm">Refresh All Word Metadata</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Re-fetches definitions, examples, and parts of speech for every word in the database from the current dictionary source. Replaces existing metadata.
+                    </p>
+                  </div>
+
+                  {refreshJob.status === 'idle' && (
+                    <Button
+                      variant="outline"
+                      onClick={startMetadataRefresh}
+                      data-testid="button-refresh-metadata"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Refresh All Word Metadata
+                    </Button>
+                  )}
+
+                  {refreshJob.status === 'running' && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Processing {refreshJob.processed} / {refreshJob.total} words...
+                      </div>
+                      <Progress
+                        value={refreshJob.total > 0 ? (refreshJob.processed / refreshJob.total) * 100 : 0}
+                        className="h-2"
+                        data-testid="progress-refresh-metadata"
+                      />
+                    </div>
+                  )}
+
+                  {refreshJob.status === 'completed' && (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="p-3 bg-green-100 dark:bg-green-900 rounded-md text-center">
+                          <p className="text-2xl font-bold text-green-700 dark:text-green-300">{refreshJob.valid}</p>
+                          <p className="text-xs text-green-600 dark:text-green-400">Updated</p>
+                        </div>
+                        <div className="p-3 bg-orange-50 dark:bg-orange-950 rounded-md text-center">
+                          <p className="text-2xl font-bold text-orange-700 dark:text-orange-300">{refreshJob.invalid}</p>
+                          <p className="text-xs text-orange-600 dark:text-orange-400">Not Found</p>
+                        </div>
+                        <div className="p-3 bg-yellow-50 dark:bg-yellow-950 rounded-md text-center">
+                          <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-300">{refreshJob.skipped}</p>
+                          <p className="text-xs text-yellow-600 dark:text-yellow-400">API Errors</p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={startMetadataRefresh}
+                        data-testid="button-refresh-metadata-again"
+                      >
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Refresh Again
+                      </Button>
+                    </div>
+                  )}
+
+                  {refreshJob.status === 'failed' && (
+                    <div className="space-y-2">
+                      <p className="text-sm text-destructive">Refresh failed: {refreshJob.error || 'Unknown error'}</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={startMetadataRefresh}
+                        data-testid="button-refresh-metadata-retry"
+                      >
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Retry
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
