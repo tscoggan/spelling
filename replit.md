@@ -27,7 +27,7 @@ The frontend is built with React, utilizing Wouter for routing, TanStack Query f
 - **Game Modes**: Includes Practice, Timed Challenge, Quiz Mode, Word Scramble, Find the Mistake, and Crossword Puzzle (interactive, audio-only). All modes use Durstenfeld shuffle for randomization.
 - **Responsive Font Scaling**: Dynamic font sizing to ensure long words fit within input fields.
 - **Text-to-Speech**: Pronounces words, definitions, and parts of speech.
-- **Dictionary Integration**: Uses Merriam-Webster APIs for child-friendly definitions, examples, and word origins.
+- **Dictionary Integration**: Uses the Free Dictionary API (dictionaryapi.dev, no key required) by default, with Merriam-Webster APIs (Learner's + Collegiate) preserved as an alternative. Switch by changing `DICTIONARY_SOURCE` in `server/services/dictionaryConfig.ts`.
 - **Cartoon Illustrations**: Automated image enrichment for word lists via Pixabay API, stored in Replit Object Storage.
 - **Scoring System & Leaderboard**: Implements points, streak bonuses, and leaderboards.
 - **Progress Tracking**: Session-based tracking of words, accuracy, and streaks, with a "My Stats Page" for aggregate performance metrics, date filtering, lifetime metrics, and re-practicing misspelled words.
@@ -42,7 +42,7 @@ The frontend is built with React, utilizing Wouter for routing, TanStack Query f
 - **API Endpoints**: RESTful APIs for core functionalities.
 - **Background Job System**: Asynchronously processes Pixabay image enrichment for custom word lists with real-time UI updates. Jobs are in-memory with 30-minute retention.
 - **React Query Caching**: Uses prefix-based and tuple-based query keys for cache management.
-- **Dictionary Validation System**: Utilizes a precedence hierarchy for Merriam-Webster dictionaries, robust error handling, caching, and concurrency control. Includes verb tense detection, homograph ordering, and filtering of abbreviations and secondary spellings. Stem matching is also implemented.
+- **Dictionary Validation System**: Provider-switchable via `server/services/dictionaryConfig.ts`. Free Dictionary mode (default) is simple and key-free. Merriam-Webster mode uses a Learner's→Collegiate hierarchy with verb tense detection, homograph ordering, stem matching, and abbreviation filtering. Both modes share the same caching, concurrency control, and kid-content filtering.
 - **Game Session Tracking**: The `game_sessions` table accurately tracks `total_words`, `correct_words`, `is_complete` status, and `score` for various game modes, including partial sessions.
 
 ## External Dependencies
@@ -63,6 +63,7 @@ The frontend is built with React, utilizing Wouter for routing, TanStack Query f
 - **Pixabay API**: Kid-friendly cartoon illustrations.
 - **Replit Object Storage**: Cloud storage for permanent image hosting.
 - **bad-words**: Profanity filter library.
-- **Merriam-Webster APIs**: Learner's Dictionary (primary) and Collegiate Dictionary (fallback) for word definitions and metadata.
+- **Free Dictionary API**: Default dictionary provider (dictionaryapi.dev) — no API key required; provides definitions, examples, and parts of speech.
+- **Merriam-Webster APIs**: Preserved alternative dictionary provider (Learner's + Collegiate); activated by setting `DICTIONARY_SOURCE = 'merriam-webster'` in `server/services/dictionaryConfig.ts`.
 - **Stripe**: Payment processing for Family account subscriptions.
 - **pdfjs-dist**: Client-side PDF text extraction for word list imports.

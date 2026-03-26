@@ -1,6 +1,7 @@
 import fetch from 'node-fetch';
 import type { IStorage } from '../storage';
 import { containsKidInappropriateContent } from '../contentModeration';
+import { DICTIONARY_SOURCE } from './dictionaryConfig';
 
 interface ValidationResult {
   valid: string[];
@@ -1018,78 +1019,176 @@ async function checkMerriamWebsterCollegiate(word: string): Promise<{ valid: boo
   }
 }
 
-// Validate a single word using Merriam-Webster hierarchy (Learner's → Collegiate)
+// ---------------------------------------------------------------------------
+// Free Dictionary API provider (https://dictionaryapi.dev)
+// No API key required. No etymology field available.
+// ---------------------------------------------------------------------------
+
+function parseFreeDictionaryResponse(data: any, requestedWord: string): WordMetadata {
+  const metadata: WordMetadata = {};
+
+  if (!Array.isArray(data) || data.length === 0) return metadata;
+
+  const allDefinitions: string[] = [];
+  const partsOfSpeechSet = new Set<string>();
+
+  for (const entry of data) {
+    if (!entry.meanings || !Array.isArray(entry.meanings)) continue;
+
+    for (const meaning of entry.meanings) {
+      const pos = (meaning.partOfSpeech || '').toLowerCase();
+      if (pos) partsOfSpeechSet.add(pos);
+
+      if (!Array.isArray(meaning.definitions)) continue;
+
+      for (const defObj of meaning.definitions) {
+        const def = (defObj.definition || '').trim();
+        if (def && !containsKidInappropriateContent(def) && !allDefinitions.includes(def)) {
+          allDefinitions.push(def);
+          break; // One definition per part-of-speech meaning group
+        }
+      }
+
+      // Pick the first kid-appropriate example we find
+      if (!metadata.example) {
+        for (const defObj of meaning.definitions) {
+          const ex = (defObj.example || '').trim();
+          if (ex && !containsKidInappropriateContent(ex)) {
+            // Capitalise and punctuate for TTS consistency
+            const sentence = ex.charAt(0).toUpperCase() + ex.slice(1);
+            metadata.example = sentence.endsWith('.') ? sentence : sentence + '.';
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  if (allDefinitions.length > 0) {
+    metadata.definition = allDefinitions.join('. ... ');
+  }
+
+  if (partsOfSpeechSet.size > 0) {
+    metadata.partOfSpeech = Array.from(partsOfSpeechSet).join(' or ');
+  }
+
+  // Free Dictionary API does not provide etymology — origin stays undefined
+
+  return metadata;
+}
+
+async function checkFreeDictionary(word: string): Promise<{ valid: boolean; skipped: boolean; metadata?: WordMetadata }> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
+
+    const response = await fetch(
+      `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`,
+      { signal: controller.signal }
+    );
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      // 404 = word not found; anything else = transient error
+      if (response.status === 404) return { valid: false, skipped: false };
+      return { valid: false, skipped: true };
+    }
+
+    const data: any = await response.json();
+
+    if (!Array.isArray(data) || data.length === 0) {
+      return { valid: false, skipped: false };
+    }
+
+    const metadata = parseFreeDictionaryResponse(data, word);
+
+    // Consider valid only if we extracted at least a definition
+    const valid = !!metadata.definition;
+    return { valid, skipped: false, metadata };
+  } catch {
+    return { valid: false, skipped: true };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Validate a single word — routes to the configured dictionary provider
+// ---------------------------------------------------------------------------
+
+// Validate a single word using the configured dictionary provider
 async function validateSingleWord(word: string, storage?: IStorage, overwrite?: boolean): Promise<{ word: string; isValid: boolean; skipped: boolean }> {
   const normalized = normalizeWord(word);
-  
+
   // Check cache first
   const cached = validationCache.get(normalized);
   if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
     return { word, isValid: cached.isValid, skipped: false };
   }
-  
-  // Step 1: Try Learner's Dictionary (PRIMARY - best for children)
-  const learnersResult = await checkMerriamWebsterLearners(word);
-  
+
   let finalMetadata: WordMetadata = {};
   let isValid = false;
-  let bothSkipped = false;
-  
-  if (learnersResult.valid) {
-    // Learner's Dictionary validated the word - use its metadata
-    isValid = true;
-    finalMetadata = learnersResult.metadata || {};
-  } else if (!learnersResult.skipped) {
-    // Learner's Dictionary didn't find it - try Collegiate (FALLBACK)
-    const collegiateResult = await checkMerriamWebsterCollegiate(word);
-    
-    if (collegiateResult.valid) {
-      isValid = true;
-      finalMetadata = collegiateResult.metadata || {};
-    } else if (collegiateResult.skipped) {
-      bothSkipped = true;
+
+  if (DICTIONARY_SOURCE === 'free-dictionary') {
+    // -----------------------------------------------------------------------
+    // Free Dictionary API path (single provider, no fallback)
+    // -----------------------------------------------------------------------
+    const result = await checkFreeDictionary(word);
+
+    if (result.skipped) {
+      return { word, isValid: false, skipped: true };
     }
+
+    isValid = result.valid;
+    finalMetadata = result.metadata || {};
   } else {
-    // Learner's service failed - try Collegiate as backup
-    const collegiateResult = await checkMerriamWebsterCollegiate(word);
-    
-    if (collegiateResult.valid) {
+    // -----------------------------------------------------------------------
+    // Merriam-Webster path: Learner's (primary) → Collegiate (fallback)
+    // -----------------------------------------------------------------------
+    const learnersResult = await checkMerriamWebsterLearners(word);
+
+    let bothSkipped = false;
+
+    if (learnersResult.valid) {
       isValid = true;
-      finalMetadata = collegiateResult.metadata || {};
-    } else if (collegiateResult.skipped) {
-      bothSkipped = true;
-    }
-  }
-  
-  // If both services failed, mark as skipped
-  if (bothSkipped) {
-    return { word, isValid: false, skipped: true };
-  }
-  
-  // If Learner's was valid but missing fields, fill from Collegiate
-  if (learnersResult.valid && learnersResult.metadata) {
-    const learnersMeta = learnersResult.metadata;
-    
-    // Check if we need to fill any gaps
-    const needsOrigin = !learnersMeta.origin;
-    const needsExample = !learnersMeta.example;
-    const needsPartOfSpeech = !learnersMeta.partOfSpeech;
-    
-    if (needsOrigin || needsExample || needsPartOfSpeech) {
+      finalMetadata = learnersResult.metadata || {};
+    } else if (!learnersResult.skipped) {
+      // Learner's didn't find it — try Collegiate
       const collegiateResult = await checkMerriamWebsterCollegiate(word);
-      
-      if (collegiateResult.valid && collegiateResult.metadata) {
-        const collegiateMeta = collegiateResult.metadata;
-        
-        // Fill missing fields from Collegiate
-        if (needsOrigin && collegiateMeta.origin) {
-          finalMetadata.origin = collegiateMeta.origin;
-        }
-        if (needsExample && collegiateMeta.example) {
-          finalMetadata.example = collegiateMeta.example;
-        }
-        if (needsPartOfSpeech && collegiateMeta.partOfSpeech) {
-          finalMetadata.partOfSpeech = collegiateMeta.partOfSpeech;
+      if (collegiateResult.valid) {
+        isValid = true;
+        finalMetadata = collegiateResult.metadata || {};
+      } else if (collegiateResult.skipped) {
+        bothSkipped = true;
+      }
+    } else {
+      // Learner's service errored — try Collegiate anyway
+      const collegiateResult = await checkMerriamWebsterCollegiate(word);
+      if (collegiateResult.valid) {
+        isValid = true;
+        finalMetadata = collegiateResult.metadata || {};
+      } else if (collegiateResult.skipped) {
+        bothSkipped = true;
+      }
+    }
+
+    if (bothSkipped) {
+      return { word, isValid: false, skipped: true };
+    }
+
+    // Fill any gaps in Learner's metadata from Collegiate
+    if (learnersResult.valid && learnersResult.metadata) {
+      const learnersMeta = learnersResult.metadata;
+      const needsOrigin = !learnersMeta.origin;
+      const needsExample = !learnersMeta.example;
+      const needsPartOfSpeech = !learnersMeta.partOfSpeech;
+
+      if (needsOrigin || needsExample || needsPartOfSpeech) {
+        const collegiateResult = await checkMerriamWebsterCollegiate(word);
+        if (collegiateResult.valid && collegiateResult.metadata) {
+          const collegiateMeta = collegiateResult.metadata;
+          if (needsOrigin && collegiateMeta.origin) finalMetadata.origin = collegiateMeta.origin;
+          if (needsExample && collegiateMeta.example) finalMetadata.example = collegiateMeta.example;
+          if (needsPartOfSpeech && collegiateMeta.partOfSpeech) finalMetadata.partOfSpeech = collegiateMeta.partOfSpeech;
         }
       }
     }
