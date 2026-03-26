@@ -33,6 +33,7 @@ interface MetadataRefreshJobRow {
   skipped: number;
   maxWordId: number | null;
   skipIfUpdatedAfter: string | null;
+  lastProcessedWordId: number | null;
   error: string | null;
   startedAt: string | null;
   completedAt: string | null;
@@ -44,6 +45,7 @@ async function getLatestRefreshJob(): Promise<MetadataRefreshJobRow | null> {
     SELECT id, status, total, processed, valid, invalid, skipped,
            max_word_id AS "maxWordId",
            skip_if_updated_after AS "skipIfUpdatedAfter",
+           last_processed_word_id AS "lastProcessedWordId",
            error,
            started_at AS "startedAt", completed_at AS "completedAt", updated_at AS "updatedAt"
     FROM metadata_refresh_jobs
@@ -60,20 +62,22 @@ async function updateRefreshJob(id: number, fields: {
   valid?: number;
   invalid?: number;
   skipped?: number;
+  lastProcessedWordId?: number | null;
   error?: string | null;
   completedAt?: string | null;
 }) {
   // Build update using individual queries per field group to stay safe with drizzle sql template
   await db.execute(sql`
     UPDATE metadata_refresh_jobs SET
-      status      = COALESCE(${fields.status ?? null}, status),
-      processed   = COALESCE(${fields.processed ?? null}, processed),
-      valid       = COALESCE(${fields.valid ?? null}, valid),
-      invalid     = COALESCE(${fields.invalid ?? null}, invalid),
-      skipped     = COALESCE(${fields.skipped ?? null}, skipped),
-      error       = ${fields.error !== undefined ? fields.error : sql`error`},
-      completed_at = ${fields.completedAt !== undefined ? fields.completedAt : sql`completed_at`},
-      updated_at  = NOW()
+      status                 = COALESCE(${fields.status ?? null}, status),
+      processed              = COALESCE(${fields.processed ?? null}, processed),
+      valid                  = COALESCE(${fields.valid ?? null}, valid),
+      invalid                = COALESCE(${fields.invalid ?? null}, invalid),
+      skipped                = COALESCE(${fields.skipped ?? null}, skipped),
+      last_processed_word_id = COALESCE(${fields.lastProcessedWordId ?? null}, last_processed_word_id),
+      error                  = ${fields.error !== undefined ? fields.error : sql`error`},
+      completed_at           = ${fields.completedAt !== undefined ? fields.completedAt : sql`completed_at`},
+      updated_at             = NOW()
     WHERE id = ${id}
   `);
 }
@@ -3812,19 +3816,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!w.updatedAt) return true;                   // never refreshed → always include
         return w.updatedAt < cutoffDate;                 // only include words last updated before cutoff
       });
-      const wordTexts = eligibleWords.map(w => w.word);
 
       // Insert a new job row — this becomes the source of truth
       const inserted = await db.execute(sql`
         INSERT INTO metadata_refresh_jobs
           (status, total, processed, valid, invalid, skipped, max_word_id, skip_if_updated_after, started_at, updated_at)
-        VALUES ('running', ${wordTexts.length}, 0, 0, 0, 0, ${maxWordId}, ${cutoffDate ? cutoffDate.toISOString() : null}, NOW(), NOW())
+        VALUES ('running', ${eligibleWords.length}, 0, 0, 0, 0, ${maxWordId}, ${cutoffDate ? cutoffDate.toISOString() : null}, NOW(), NOW())
         RETURNING id
       `);
       const jobId = (inserted.rows[0] as { id: number }).id;
 
       // Respond immediately so the client can start polling
-      res.json({ message: "Refresh started", total: wordTexts.length, jobId, maxWordId, skipIfUpdatedAfter: cutoffDate?.toISOString() ?? null });
+      res.json({ message: "Refresh started", total: eligibleWords.length, jobId, maxWordId, skipIfUpdatedAfter: cutoffDate?.toISOString() ?? null });
 
       // Process in background — paced to stay safely under the 1 000 req/hour limit:
       // 5 concurrent words → 20-second pause → ~900 words/hour
@@ -3834,19 +3837,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const BATCH_DELAY_MS = 20000; // 20 s between batches → 5/20s = 15/min = 900/hr
           let processed = 0, valid = 0, invalid = 0, skipped = 0;
 
-          for (let i = 0; i < wordTexts.length; i += BATCH_SIZE) {
-            const batch = wordTexts.slice(i, i + BATCH_SIZE);
+          for (let i = 0; i < eligibleWords.length; i += BATCH_SIZE) {
+            const batchWords = eligibleWords.slice(i, i + BATCH_SIZE);
+            const batch = batchWords.map(w => w.word);
             const result = await validateWords(batch, storage, true);
             processed += batch.length;
             valid     += result.valid.length;
             invalid   += result.invalid.length;
             skipped   += result.skipped.length;
+            const lastWordId = batchWords[batchWords.length - 1].id;
 
-            // Write progress to DB so the admin UI stays up-to-date
-            await updateRefreshJob(jobId, { processed, valid, invalid, skipped });
+            // Write progress + last processed word ID to DB after every batch
+            await updateRefreshJob(jobId, { processed, valid, invalid, skipped, lastProcessedWordId: lastWordId });
 
             // Rate-limit pause (skip after final batch)
-            if (i + BATCH_SIZE < wordTexts.length) {
+            if (i + BATCH_SIZE < eligibleWords.length) {
               await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
             }
           }
@@ -3876,6 +3881,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const job = await getLatestRefreshJob();
     if (!job) return res.json({ status: 'idle', total: 0, processed: 0, valid: 0, invalid: 0, skipped: 0 });
     res.json(job);
+  });
+
+  // Admin: Continue an interrupted (or failed) refresh job from where it left off
+  app.post("/api/admin/words/refresh-metadata/continue", async (req, res) => {
+    if (!req.user || req.user.role !== "admin") {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+
+    const existing = await getLatestRefreshJob();
+    if (!existing) return res.status(404).json({ error: "No job to continue" });
+    if (existing.status === 'running') return res.status(409).json({ error: "A refresh is already in progress" });
+    if (existing.status !== 'interrupted' && existing.status !== 'failed') {
+      return res.status(400).json({ error: "Only interrupted or failed jobs can be continued" });
+    }
+
+    try {
+      const { maxWordId, skipIfUpdatedAfter: rawCutoff, lastProcessedWordId, processed: prevProcessed,
+              valid: prevValid, invalid: prevInvalid, skipped: prevSkipped } = existing;
+
+      const cutoffDate: Date | null = rawCutoff ? new Date(rawCutoff) : null;
+
+      const allWords = await storage.getAllWords();
+
+      // Rebuild the same eligible set as the original job
+      const eligibleWords = allWords.filter(w => {
+        if (maxWordId && w.id > maxWordId) return false;
+        if (!cutoffDate) return true;
+        if (!w.updatedAt) return true;
+        return w.updatedAt < cutoffDate;
+      });
+
+      // Skip words that were already processed — find the position of lastProcessedWordId
+      // The eligible list is sorted by word text (same as getAllWords order).
+      let startIndex = 0;
+      if (lastProcessedWordId) {
+        const lastIdx = eligibleWords.findIndex(w => w.id === lastProcessedWordId);
+        if (lastIdx !== -1) startIndex = lastIdx + 1;
+      }
+
+      const remainingWords = eligibleWords.slice(startIndex);
+
+      // Reactivate the existing job row — reset status to 'running', keep cumulative counts
+      await db.execute(sql`
+        UPDATE metadata_refresh_jobs
+        SET status = 'running', error = NULL, updated_at = NOW()
+        WHERE id = ${existing.id}
+      `);
+
+      res.json({
+        message: "Refresh continued",
+        remaining: remainingWords.length,
+        alreadyProcessed: prevProcessed,
+        jobId: existing.id,
+      });
+
+      // Process remaining words in background, accumulating onto the prior counts
+      (async () => {
+        try {
+          const BATCH_SIZE = 5;
+          const BATCH_DELAY_MS = 20000;
+          let processed = prevProcessed ?? 0;
+          let valid     = prevValid    ?? 0;
+          let invalid   = prevInvalid  ?? 0;
+          let skipped   = prevSkipped  ?? 0;
+
+          for (let i = 0; i < remainingWords.length; i += BATCH_SIZE) {
+            const batchWords = remainingWords.slice(i, i + BATCH_SIZE);
+            const batch = batchWords.map(w => w.word);
+            const result = await validateWords(batch, storage, true);
+            processed += batch.length;
+            valid     += result.valid.length;
+            invalid   += result.invalid.length;
+            skipped   += result.skipped.length;
+            const lastWordId = batchWords[batchWords.length - 1].id;
+
+            await updateRefreshJob(existing.id, { processed, valid, invalid, skipped, lastProcessedWordId: lastWordId });
+
+            if (i + BATCH_SIZE < remainingWords.length) {
+              await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
+            }
+          }
+
+          await updateRefreshJob(existing.id, {
+            status: 'completed',
+            processed, valid, invalid, skipped,
+            completedAt: new Date().toISOString(),
+          });
+          console.log(`[metadata-refresh] Continue done — valid: ${valid}, invalid: ${invalid}, skipped: ${skipped}`);
+        } catch (err) {
+          await updateRefreshJob(existing.id, { status: 'failed', error: String(err) });
+          console.error('[metadata-refresh] Continue failed:', err);
+        }
+      })();
+    } catch (err) {
+      console.error('Error continuing metadata refresh:', err);
+      res.status(500).json({ error: "Failed to continue refresh" });
+    }
   });
 
   // Admin: Return the currently configured dictionary source

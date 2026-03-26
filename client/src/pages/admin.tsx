@@ -155,13 +155,14 @@ export default function AdminPage() {
     invalid: number;
     skipped: number;
     skipIfUpdatedAfter?: string | null;
+    lastProcessedWordId?: number | null;
     error?: string | null;
     startedAt?: string | null;
     completedAt?: string | null;
     updatedAt?: string;
   }
   const [refreshJob, setRefreshJob] = useState<RefreshJobState>({
-    status: 'idle', total: 0, processed: 0, valid: 0, invalid: 0, skipped: 0,
+    status: 'idle', total: 0, processed: 0, valid: 0, invalid: 0, skipped: 0, lastProcessedWordId: null,
   });
   // Cutoff datetime input — words updated at or after this time will be skipped.
   // Empty string = no cutoff (refresh all words).
@@ -228,6 +229,25 @@ export default function AdminPage() {
       if (statusRes.ok) setRefreshJob(await statusRes.json());
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "Could not start metadata refresh.", variant: "destructive" });
+    }
+  };
+
+  const continueMetadataRefresh = async () => {
+    try {
+      const res = await fetch('/api/admin/words/refresh-metadata/continue', { method: 'POST' });
+      if (res.status === 409) {
+        toast({ title: "Already running", description: "A metadata refresh is already in progress." });
+        return;
+      }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).error || 'Failed to continue');
+      }
+      // Poll immediately to pick up the reactivated job row
+      const statusRes = await fetch('/api/admin/words/refresh-metadata/status');
+      if (statusRes.ok) setRefreshJob(await statusRes.json());
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "Could not continue metadata refresh.", variant: "destructive" });
     }
   };
 
@@ -977,7 +997,7 @@ export default function AdminPage() {
                 {/* Refresh All Word Metadata */}
                 <div className="pt-4 border-t space-y-4">
                   <div>
-                    <h3 className="font-medium text-sm">Refresh All Word Metadata</h3>
+                    <h3 className="text-base font-semibold">Refresh All Word Metadata</h3>
                     <p className="text-sm text-muted-foreground mt-1">
                       Re-fetches definitions, examples, and parts of speech for every word in the database from the <span className="font-medium text-foreground">{dictionarySourceLabel}</span>. Replaces existing metadata. Runs in the background at ~900 words/hour to stay within the API rate limit — you can navigate away or close this page and the job will continue.
                     </p>
@@ -1145,37 +1165,69 @@ export default function AdminPage() {
                       <div className="p-3 bg-amber-50 dark:bg-amber-950 rounded-md space-y-1">
                         <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Job interrupted by server restart</p>
                         <p className="text-xs text-amber-700 dark:text-amber-300">
-                          Progress: {refreshJob.processed.toLocaleString()} of {refreshJob.total.toLocaleString()} words were processed before the server restarted. Start a new refresh to process all words from the beginning.
+                          {refreshJob.lastProcessedWordId
+                            ? <>Progress was saved at word {refreshJob.processed.toLocaleString()} of {refreshJob.total.toLocaleString()}. Click <strong>Continue Refresh</strong> to pick up from exactly where it left off, or start a new refresh to begin from the beginning.</>
+                            : <>Progress: {refreshJob.processed.toLocaleString()} of {refreshJob.total.toLocaleString()} words were processed before the server restarted. If no progress was saved, start a new refresh to begin from the beginning.</>
+                          }
                         </p>
                       </div>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm" data-testid="button-refresh-metadata-restart">
-                            <RefreshCw className="w-4 h-4 mr-2" />
-                            {skipIfUpdatedAfter ? 'Refresh Eligible Words' : 'Start New Refresh'}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              {skipIfUpdatedAfter ? 'Refresh eligible words?' : 'Start a new metadata refresh?'}
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {skipIfUpdatedAfter
-                                ? <>Only words not updated since <strong>{formatJobDate(new Date(skipIfUpdatedAfter).toISOString())}</strong> will be re-fetched using the <strong>{dictionarySourceLabel}</strong>. This lets you pick up from where the interrupted job left off.</>
-                                : <>This will re-fetch metadata for <strong>all words</strong> from the beginning using the <strong>{dictionarySourceLabel}</strong>.</>
-                              }
-                              {' '}The job runs in the background at ~900 words/hour and will survive server restarts.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={startMetadataRefresh}>
-                              Start Refresh
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      <div className="flex flex-wrap gap-2">
+                        {/* Continue — only available when we have a saved word position */}
+                        {refreshJob.lastProcessedWordId && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" data-testid="button-continue-refresh">
+                                <RefreshCw className="w-4 h-4 mr-2" />
+                                Continue Refresh
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Continue where it left off?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will resume processing the remaining {(refreshJob.total - refreshJob.processed).toLocaleString()} words, starting right after the last completed batch. Already-processed words ({refreshJob.processed.toLocaleString()}) will not be re-fetched.
+                                  {refreshJob.skipIfUpdatedAfter && <> The same cutoff filter (<strong>{formatJobDate(refreshJob.skipIfUpdatedAfter)}</strong>) will apply.</>}
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={continueMetadataRefresh}>
+                                  Continue
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                        {/* Start fresh */}
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="sm" data-testid="button-refresh-metadata-restart">
+                              <RefreshCw className="w-4 h-4 mr-2" />
+                              {skipIfUpdatedAfter ? 'Refresh Eligible Words' : 'Start New Refresh'}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                {skipIfUpdatedAfter ? 'Refresh eligible words?' : 'Start a new metadata refresh?'}
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {skipIfUpdatedAfter
+                                  ? <>Only words not updated since <strong>{formatJobDate(new Date(skipIfUpdatedAfter).toISOString())}</strong> will be re-fetched using the <strong>{dictionarySourceLabel}</strong>.</>
+                                  : <>This will re-fetch metadata for <strong>all words</strong> from the beginning using the <strong>{dictionarySourceLabel}</strong>.</>
+                                }
+                                {' '}The job runs in the background at ~900 words/hour and will survive server restarts.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={startMetadataRefresh}>
+                                Start Refresh
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </div>
                   )}
 
