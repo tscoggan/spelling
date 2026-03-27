@@ -1178,8 +1178,17 @@ async function checkFreeDictionaryV1(word: string): Promise<{ valid: boolean; sk
 }
 
 async function checkFreeDictionary(word: string): Promise<{ valid: boolean; skipped: boolean; metadata?: WordMetadata }> {
+  // v1 (freedictionaryapi.com) is the primary source — it has broader word coverage
+  // and is what the Free Dictionary API website documents. v2 (dictionaryapi.dev)
+  // is used only as a reliability fallback when v1 itself is unavailable.
+  const v1Result = await checkFreeDictionaryV1(word);
+
+  // v1 gave a definitive answer (valid or invalid) — use it directly
+  if (!v1Result.skipped) return v1Result;
+
+  // v1 had a transient error (timeout, 5xx, etc.) — try v2 as a fallback
   const MAX_RETRIES = 3;
-  const RETRY_BASE_DELAY = 1000; // 1 s, 2 s, 4 s
+  const RETRY_BASE_DELAY = 1000;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
@@ -1194,10 +1203,8 @@ async function checkFreeDictionary(word: string): Promise<{ valid: boolean; skip
       clearTimeout(timeout);
 
       if (!response.ok) {
-        // v2 doesn't know this word — try the v1 endpoint as fallback
-        if (response.status === 404) return await checkFreeDictionaryV1(word);
+        if (response.status === 404) return { valid: false, skipped: false };
 
-        // Rate-limited or server error — retry with backoff
         if ((response.status === 429 || response.status >= 500) && attempt < MAX_RETRIES) {
           const delay = RETRY_BASE_DELAY * Math.pow(2, attempt);
           await new Promise(resolve => setTimeout(resolve, delay));
@@ -1210,18 +1217,12 @@ async function checkFreeDictionary(word: string): Promise<{ valid: boolean; skip
       const data: any = await response.json();
 
       if (!Array.isArray(data) || data.length === 0) {
-        // Empty v2 response — try v1
-        return await checkFreeDictionaryV1(word);
+        return { valid: false, skipped: false };
       }
 
-      // Word exists in v2 — parse what metadata we can.
-      // We mark it valid regardless of whether a kid-appropriate definition
-      // survived the content filter; if no definition survived, upsertWord
-      // will simply keep whatever was already stored.
       const metadata = parseFreeDictionaryResponse(data, word);
       return { valid: true, skipped: false, metadata };
     } catch {
-      // Timeout or network error — retry if attempts remain
       if (attempt < MAX_RETRIES) {
         const delay = RETRY_BASE_DELAY * Math.pow(2, attempt);
         await new Promise(resolve => setTimeout(resolve, delay));

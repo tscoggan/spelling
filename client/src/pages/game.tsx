@@ -151,6 +151,72 @@ const renderIncorrectLetters = (userAnswer: string, correctWord: string): JSX.El
   );
 };
 
+// ---------------------------------------------------------------------------
+// Free Dictionary two-tier lookup helper
+// Primary: freedictionaryapi.com/api/v1 (official documented endpoint, broader coverage)
+// Fallback: api.dictionaryapi.dev/api/v2 (used only when v1 has a transient error)
+// ---------------------------------------------------------------------------
+interface DictEntry {
+  exists: boolean;
+  partsOfSpeech: string[];
+  definitions: Array<{ pos: string; definition: string; example?: string }>;
+  origin?: string;
+}
+
+async function fetchDictEntry(word: string): Promise<DictEntry> {
+  const empty: DictEntry = { exists: false, partsOfSpeech: [], definitions: [] };
+
+  // Try v1 first
+  try {
+    const r = await fetch(`https://freedictionaryapi.com/api/v1/entries/en/${encodeURIComponent(word.toLowerCase())}`);
+    if (r.ok) {
+      const data = await r.json();
+      if (data?.entries?.length > 0) {
+        const posSet = new Set<string>();
+        const defs: Array<{ pos: string; definition: string; example?: string }> = [];
+        for (const entry of data.entries) {
+          const pos = (entry.partOfSpeech || '').toLowerCase();
+          if (pos) posSet.add(pos);
+          for (const sense of (entry.senses || [])) {
+            if (sense.definition) {
+              const ex = sense.examples?.[0];
+              defs.push({ pos, definition: sense.definition, example: typeof ex === 'string' ? ex : ex?.text });
+            }
+          }
+        }
+        return { exists: true, partsOfSpeech: Array.from(posSet), definitions: defs };
+      }
+      return empty; // HTTP 200 but empty entries
+    }
+    if (r.status === 404) return empty;
+    // Transient error — fall through to v2
+  } catch { /* fall through */ }
+
+  // Fallback: v2
+  try {
+    const r = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word.toLowerCase())}`);
+    if (!r.ok) return empty;
+    const data = await r.json();
+    if (!Array.isArray(data) || data.length === 0) return empty;
+    const posSet = new Set<string>();
+    const defs: Array<{ pos: string; definition: string; example?: string }> = [];
+    let origin: string | undefined;
+    for (const entry of data) {
+      if (entry.origin && !origin) origin = entry.origin;
+      for (const meaning of (entry.meanings || [])) {
+        const pos = (meaning.partOfSpeech || '').toLowerCase();
+        if (pos) posSet.add(pos);
+        for (const d of (meaning.definitions || [])) {
+          if (d.definition) defs.push({ pos, definition: d.definition, example: d.example });
+        }
+      }
+    }
+    return { exists: true, partsOfSpeech: Array.from(posSet), definitions: defs, origin };
+  } catch {
+    return empty;
+  }
+}
+
 // Wrapper component that validates listId or virtualWords before rendering game logic
 // This prevents React Query hooks from running when neither is present
 export default function Game() {
@@ -1336,96 +1402,64 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, onR
         }
       }
       
-      // If Simple English Wiktionary failed, fall back to regular dictionary API
-      console.log(`⚠️ Simple English Wiktionary not available for "${fetchWord}" - trying standard dictionary...`);
-      
-      const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${fetchWord}`);
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Check if we're still on the same word before updating state
-        if (currentWordRef.current?.toLowerCase() !== fetchWord) {
-          return;
-        }
-        
-        if (data && data.length > 0) {
-          const entry = data[0];
-          
+      // If Simple English Wiktionary failed, fall back to the Free Dictionary API
+      console.log(`⚠️ Simple English Wiktionary not available for "${fetchWord}" - trying Free Dictionary API...`);
+
+      const dictData = await fetchDictEntry(fetchWord);
+
+      // Check if we're still on the same word before updating state
+      if (currentWordRef.current?.toLowerCase() !== fetchWord) {
+        return;
+      }
+
+      if (dictData.exists) {
           // Extract all parts of speech
-          const partsOfSpeech = new Set<string>();
-          if (entry.meanings && Array.isArray(entry.meanings)) {
-            entry.meanings.forEach((meaning: any) => {
-              if (meaning.partOfSpeech) {
-                partsOfSpeech.add(meaning.partOfSpeech.toLowerCase());
-              }
-            });
-          }
-          if (partsOfSpeech.size > 0) {
-            const partsArray = Array.from(partsOfSpeech);
-            const partsString = partsArray.join(' or ');
+          if (dictData.partsOfSpeech.length > 0) {
+            const partsString = dictData.partsOfSpeech.join(' or ');
             setWordPartsOfSpeech(partsString);
-            console.log(`✅ Found parts of speech in standard dictionary for "${fetchWord}": ${partsArray.join(', ')}`);
+            console.log(`✅ Found parts of speech in dictionary for "${fetchWord}": ${dictData.partsOfSpeech.join(', ')}`);
             // Save to database
             savePartsOfSpeech(fetchWord, partsString);
           }
           
-          // Extract word origin if available
-          if (entry.origin) {
-            setWordOrigin(entry.origin);
-            console.log(`✅ Found word origin in standard dictionary for "${fetchWord}"`);
+          // Extract word origin if available (only populated by the v2 fallback)
+          if (dictData.origin) {
+            setWordOrigin(dictData.origin);
+            console.log(`✅ Found word origin in dictionary for "${fetchWord}"`);
           }
-          
-          // Collect ALL definitions grouped by part of speech
-          const allDefinitions: string[] = [];
-          const definitionSet = new Set<string>();
-          
-          if (entry.meanings && Array.isArray(entry.meanings)) {
-            entry.meanings.forEach((meaning: any) => {
-              const partOfSpeech = meaning.partOfSpeech || '';
-              if (meaning.definitions && Array.isArray(meaning.definitions)) {
-                meaning.definitions.forEach((def: any, index: number) => {
-                  if (def.definition && !definitionSet.has(def.definition)) {
-                    definitionSet.add(def.definition);
-                    // Format: "noun: definition" or just "definition" if no part of speech
-                    const prefix = partOfSpeech && index === 0 ? `${partOfSpeech}: ` : '';
-                    allDefinitions.push(prefix + def.definition);
-                  }
-                });
+
+          // Collect ALL definitions
+          if (dictData.definitions.length > 0) {
+            const allDefinitions: string[] = [];
+            const definitionSet = new Set<string>();
+
+            dictData.definitions.forEach((d, index) => {
+              if (!definitionSet.has(d.definition)) {
+                definitionSet.add(d.definition);
+                const prefix = d.pos && index === 0 ? `${d.pos}: ` : '';
+                allDefinitions.push(prefix + d.definition);
               }
             });
-          }
-          
-          if (allDefinitions.length > 0) {
-            // Join multiple definitions with bullet points
-            const formattedDefinitions = allDefinitions.length === 1 
-              ? allDefinitions[0]
-              : allDefinitions.map((def, i) => `${i + 1}. ${def}`).join('\n');
-            setWordDefinition(formattedDefinitions);
-            console.log(`✅ Found ${allDefinitions.length} definition(s) in standard dictionary for "${fetchWord}"`);
-          }
-          
-          // Get example sentence from any definition
-          let foundExample = false;
-          for (const meaning of entry.meanings || []) {
-            if (foundExample) break;
-            for (const def of meaning.definitions || []) {
-              if (def.example) {
-                setWordExample(def.example);
-                foundExample = true;
-                console.log(`✅ Found example in dictionary for "${fetchWord}":`, def.example);
-                break;
-              }
+
+            if (allDefinitions.length > 0) {
+              const formattedDefinitions = allDefinitions.length === 1
+                ? allDefinitions[0]
+                : allDefinitions.map((def, i) => `${i + 1}. ${def}`).join('\n');
+              setWordDefinition(formattedDefinitions);
+              console.log(`✅ Found ${allDefinitions.length} definition(s) in dictionary for "${fetchWord}"`);
+            }
+
+            // Get example sentence
+            const firstWithExample = dictData.definitions.find(d => d.example);
+            if (firstWithExample?.example) {
+              setWordExample(firstWithExample.example);
+              console.log(`✅ Found example in dictionary for "${fetchWord}":`, firstWithExample.example);
+            } else {
+              console.log(`ℹ️ No example found for "${fetchWord}" - no example available`);
             }
           }
-          
-          // Log if no example found - no fake sentences generated
-          if (!foundExample) {
-            console.log(`ℹ️ No example found for "${fetchWord}" (checked ${entry.meanings?.length || 0} meanings) - no example available`);
-          }
-        }
       } else {
-        // Both APIs returned non-OK response
-        console.log(`⚠️ Both dictionary APIs returned errors for "${fetchWord}" - no example available`);
+        console.log(`⚠️ Dictionary lookup found no entry for "${fetchWord}" - no example available`);
       }
     } catch (error) {
       console.error('Error fetching dictionary data:', error);
@@ -2228,10 +2262,9 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, onR
   // Helper to check if a word exists in the dictionary
   const checkWordExists = async (word: string): Promise<boolean> => {
     try {
-      const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word.toLowerCase())}`);
-      // If the word exists, API returns 200; if not, it returns 404
-      return response.ok;
-    } catch (error) {
+      const result = await fetchDictEntry(word);
+      return result.exists;
+    } catch {
       // If there's a network error, assume word doesn't exist (safer for misspellings)
       return false;
     }
@@ -2839,11 +2872,9 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, onR
             }
             
             // Fallback to Free Dictionary API
-            const freeDictResponse = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word.toLowerCase())}`);
-            const freeDictData = await freeDictResponse.json();
-            
-            if (Array.isArray(freeDictData) && freeDictData[0]?.meanings?.[0]?.definitions?.[0]?.definition) {
-              return { word, clue: freeDictData[0].meanings[0].definitions[0].definition };
+            const dictEntry = await fetchDictEntry(word.toLowerCase());
+            if (dictEntry.exists && dictEntry.definitions.length > 0) {
+              return { word, clue: dictEntry.definitions[0].definition };
             }
             
             return { word, clue: "Spell this word" };

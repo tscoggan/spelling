@@ -717,7 +717,7 @@ export function AttributionPage() {
             <p>
               Word definitions, example sentences, and parts of speech used in this app are sourced from the{" "}
               <a
-                href="https://dictionaryapi.dev"
+                href="https://freedictionaryapi.com"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline underline-offset-2 hover:text-foreground transition-colors text-foreground font-medium"
@@ -725,7 +725,7 @@ export function AttributionPage() {
               >
                 Free Dictionary API
               </a>
-              {" "}(dictionaryapi.dev), which in turn draws on content from{" "}
+              {" "}(freedictionaryapi.com), which in turn draws on content from{" "}
               <a
                 href="https://en.wiktionary.org"
                 target="_blank"
