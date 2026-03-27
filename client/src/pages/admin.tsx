@@ -1137,28 +1137,37 @@ export default function AdminPage() {
                         </div>
                       </div>
 
-                      {notFoundExpanded && refreshJob.notFoundWords && refreshJob.notFoundWords.length > 0 && (
+                      {notFoundExpanded && (
                         <div className="rounded-md border bg-muted/40 p-3 space-y-2">
-                          <p className="text-xs font-medium text-muted-foreground">
-                            {refreshJob.notFoundWords.length} word{refreshJob.notFoundWords.length !== 1 ? 's' : ''} not found in either dictionary API — these may be proper nouns, abbreviations, or very rare terms.
-                          </p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {refreshJob.notFoundWords.map(w => (
-                              <span
-                                key={w}
-                                className="inline-block px-2 py-0.5 rounded-sm bg-orange-100 dark:bg-orange-950 text-orange-800 dark:text-orange-200 text-xs font-mono"
-                                data-testid={`badge-not-found-word-${w}`}
-                              >
-                                {w}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {notFoundExpanded && (!refreshJob.notFoundWords || refreshJob.notFoundWords.length === 0) && (
-                        <div className="rounded-md border bg-muted/40 p-3">
-                          <p className="text-xs text-muted-foreground">All words were found in the dictionary.</p>
+                          {refreshJob.notFoundWords && refreshJob.notFoundWords.length > 0 ? (
+                            <>
+                              <p className="text-xs font-medium text-muted-foreground">
+                                {refreshJob.notFoundWords.length} word{refreshJob.notFoundWords.length !== 1 ? 's' : ''} not found in either dictionary API — these may be proper nouns, abbreviations, or very rare terms.
+                                {refreshJob.notFoundWords.length < refreshJob.invalid && (
+                                  <span className="block mt-1 text-amber-600 dark:text-amber-400">
+                                    Note: {refreshJob.invalid - refreshJob.notFoundWords.length} additional not-found word{refreshJob.invalid - refreshJob.notFoundWords.length !== 1 ? 's' : ''} from an earlier interrupted session could not be recovered. Run a new refresh to get the complete list.
+                                  </span>
+                                )}
+                              </p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {refreshJob.notFoundWords.map(w => (
+                                  <span
+                                    key={w}
+                                    className="inline-block px-2 py-0.5 rounded-sm bg-orange-100 dark:bg-orange-950 text-orange-800 dark:text-orange-200 text-xs font-mono"
+                                    data-testid={`badge-not-found-word-${w}`}
+                                  >
+                                    {w}
+                                  </span>
+                                ))}
+                              </div>
+                            </>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              {refreshJob.invalid > 0
+                                ? `${refreshJob.invalid} words were not found, but the list was not recorded (the job ran before word tracking was enabled). Run a new refresh to see the full list.`
+                                : 'All words were found in the dictionary.'}
+                            </p>
+                          )}
                         </div>
                       )}
 

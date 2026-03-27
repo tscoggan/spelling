@@ -3857,8 +3857,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             notFoundWords.push(...result.invalid);
             const lastWordId = batchWords[batchWords.length - 1].id;
 
-            // Write progress + last processed word ID to DB after every batch
-            await updateRefreshJob(jobId, { processed, valid, invalid, skipped, lastProcessedWordId: lastWordId });
+            // Write progress, last processed word ID, and current not-found list to DB after every batch.
+            // Saving the list per-batch means an interrupted job preserves everything collected so far.
+            await updateRefreshJob(jobId, {
+              processed, valid, invalid, skipped,
+              lastProcessedWordId: lastWordId,
+              notFoundWordsJson: JSON.stringify(notFoundWords.sort()),
+            });
 
             // Rate-limit pause (skip after final batch)
             if (i + BATCH_SIZE < eligibleWords.length) {
@@ -3979,7 +3984,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             notFoundWords.push(...result.invalid);
             const lastWordId = batchWords[batchWords.length - 1].id;
 
-            await updateRefreshJob(existing.id, { processed, valid, invalid, skipped, lastProcessedWordId: lastWordId });
+            await updateRefreshJob(existing.id, {
+              processed, valid, invalid, skipped,
+              lastProcessedWordId: lastWordId,
+              notFoundWordsJson: JSON.stringify(notFoundWords.sort()),
+            });
 
             if (i + BATCH_SIZE < remainingWords.length) {
               await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
