@@ -1112,9 +1112,12 @@ async function checkFreeDictionary(word: string): Promise<{ valid: boolean; skip
         return { valid: false, skipped: false };
       }
 
+      // Word exists in the dictionary — parse what metadata we can.
+      // We mark it valid regardless of whether a kid-appropriate definition
+      // survived the content filter; if no definition survived, upsertWord
+      // will simply keep whatever was already stored.
       const metadata = parseFreeDictionaryResponse(data, word);
-      const valid = !!metadata.definition;
-      return { valid, skipped: false, metadata };
+      return { valid: true, skipped: false, metadata };
     } catch {
       // Timeout or network error — retry if attempts remain
       if (attempt < MAX_RETRIES) {

@@ -3642,7 +3642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // These endpoints are not protected - admin authentication will be added later
   
   // Import dictionary validation for bulk word loading
-  const { validateWords, clearCacheForWords } = await import('./services/dictionaryValidation');
+  const { validateWords, clearCacheForWords, clearValidationCache } = await import('./services/dictionaryValidation');
   const { validateWords: validateProfanity } = await import('./contentModeration');
   
   // Admin: Bulk load words from TXT/CSV file
@@ -3833,6 +3833,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 5 concurrent words → 20-second pause → ~900 words/hour
       (async () => {
         try {
+          // Clear the in-memory validation cache so stale "invalid" results from
+          // earlier in the session never short-circuit a fresh API lookup.
+          clearValidationCache();
+
           const BATCH_SIZE = 5;      // matches MAX_CONCURRENT in validateWordsInBatches
           const BATCH_DELAY_MS = 20000; // 20 s between batches → 5/20s = 15/min = 900/hr
           let processed = 0, valid = 0, invalid = 0, skipped = 0;
@@ -3939,6 +3943,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Process remaining words in background, accumulating onto the prior counts
       (async () => {
         try {
+          // Clear stale cache entries so every word gets a fresh API lookup
+          clearValidationCache();
+
           const BATCH_SIZE = 5;
           const BATCH_DELAY_MS = 20000;
           let processed = prevProcessed ?? 0;
