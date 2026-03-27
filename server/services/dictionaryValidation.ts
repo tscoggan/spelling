@@ -1077,6 +1077,106 @@ function parseFreeDictionaryResponse(data: any, requestedWord: string): WordMeta
   return metadata;
 }
 
+// ---------------------------------------------------------------------------
+// Free Dictionary v1 fallback (freedictionaryapi.com/api/v1)
+// Different domain, different response shape — used when v2 returns 404.
+// Response: { word, entries: [{ partOfSpeech, senses: [{ definition, examples[] }] }] }
+// ---------------------------------------------------------------------------
+
+function parseFreeDictionaryV1Response(data: any): WordMetadata {
+  const metadata: WordMetadata = {};
+
+  if (!data || !Array.isArray(data.entries) || data.entries.length === 0) return metadata;
+
+  const allDefinitions: string[] = [];
+  const partsOfSpeechSet = new Set<string>();
+
+  for (const entry of data.entries) {
+    const pos = (entry.partOfSpeech || '').toLowerCase();
+    if (pos) partsOfSpeechSet.add(pos);
+
+    if (!Array.isArray(entry.senses)) continue;
+
+    for (const sense of entry.senses) {
+      const def = (sense.definition || '').trim();
+      if (def && !containsKidInappropriateContent(def) && !allDefinitions.includes(def)) {
+        allDefinitions.push(def);
+        break; // One definition per entry (like v2 behaviour)
+      }
+
+      // Pick first kid-appropriate example from this sense
+      if (!metadata.example && Array.isArray(sense.examples)) {
+        for (const ex of sense.examples) {
+          const exText = (typeof ex === 'string' ? ex : (ex?.text ?? '')).trim();
+          if (exText && !containsKidInappropriateContent(exText)) {
+            const sentence = exText.charAt(0).toUpperCase() + exText.slice(1);
+            metadata.example = sentence.endsWith('.') ? sentence : sentence + '.';
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  if (allDefinitions.length > 0) {
+    metadata.definition = allDefinitions.join('. ... ');
+  }
+  if (partsOfSpeechSet.size > 0) {
+    metadata.partOfSpeech = Array.from(partsOfSpeechSet).join(' or ');
+  }
+
+  return metadata;
+}
+
+async function checkFreeDictionaryV1(word: string): Promise<{ valid: boolean; skipped: boolean; metadata?: WordMetadata }> {
+  const MAX_RETRIES = 3;
+  const RETRY_BASE_DELAY = 1000;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
+
+      const response = await fetch(
+        `https://freedictionaryapi.com/api/v1/entries/en/${encodeURIComponent(word)}`,
+        { signal: controller.signal }
+      );
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        if (response.status === 404) return { valid: false, skipped: false };
+
+        if ((response.status === 429 || response.status >= 500) && attempt < MAX_RETRIES) {
+          const delay = RETRY_BASE_DELAY * Math.pow(2, attempt);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+
+        return { valid: false, skipped: true };
+      }
+
+      const data: any = await response.json();
+
+      if (!data || !Array.isArray(data.entries) || data.entries.length === 0) {
+        return { valid: false, skipped: false };
+      }
+
+      const metadata = parseFreeDictionaryV1Response(data);
+      return { valid: true, skipped: false, metadata };
+    } catch {
+      if (attempt < MAX_RETRIES) {
+        const delay = RETRY_BASE_DELAY * Math.pow(2, attempt);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      return { valid: false, skipped: true };
+    }
+  }
+
+  return { valid: false, skipped: true };
+}
+
 async function checkFreeDictionary(word: string): Promise<{ valid: boolean; skipped: boolean; metadata?: WordMetadata }> {
   const MAX_RETRIES = 3;
   const RETRY_BASE_DELAY = 1000; // 1 s, 2 s, 4 s
@@ -1094,7 +1194,8 @@ async function checkFreeDictionary(word: string): Promise<{ valid: boolean; skip
       clearTimeout(timeout);
 
       if (!response.ok) {
-        if (response.status === 404) return { valid: false, skipped: false };
+        // v2 doesn't know this word — try the v1 endpoint as fallback
+        if (response.status === 404) return await checkFreeDictionaryV1(word);
 
         // Rate-limited or server error — retry with backoff
         if ((response.status === 429 || response.status >= 500) && attempt < MAX_RETRIES) {
@@ -1109,10 +1210,11 @@ async function checkFreeDictionary(word: string): Promise<{ valid: boolean; skip
       const data: any = await response.json();
 
       if (!Array.isArray(data) || data.length === 0) {
-        return { valid: false, skipped: false };
+        // Empty v2 response — try v1
+        return await checkFreeDictionaryV1(word);
       }
 
-      // Word exists in the dictionary — parse what metadata we can.
+      // Word exists in v2 — parse what metadata we can.
       // We mark it valid regardless of whether a kid-appropriate definition
       // survived the content filter; if no definition survived, upsertWord
       // will simply keep whatever was already stored.

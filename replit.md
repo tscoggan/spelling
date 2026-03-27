@@ -27,7 +27,7 @@ The frontend is built with React, utilizing Wouter for routing, TanStack Query f
 - **Game Modes**: Includes Practice, Timed Challenge, Quiz Mode, Word Scramble, Find the Mistake, and Crossword Puzzle (interactive, audio-only). All modes use Durstenfeld shuffle for randomization.
 - **Responsive Font Scaling**: Dynamic font sizing to ensure long words fit within input fields.
 - **Text-to-Speech**: Pronounces words, definitions, and parts of speech.
-- **Dictionary Integration**: Uses the Free Dictionary API (dictionaryapi.dev, no key required) by default, with Merriam-Webster APIs (Learner's + Collegiate) preserved as an alternative. Switch by changing `DICTIONARY_SOURCE` in `server/services/dictionaryConfig.ts`.
+- **Dictionary Integration**: Uses a two-tier Free Dictionary lookup by default: primary v2 endpoint (`api.dictionaryapi.dev/api/v2`) with automatic fallback to v1 endpoint (`freedictionaryapi.com/api/v1`) when v2 returns 404. Both are key-free. Merriam-Webster APIs (Learner's + Collegiate) are preserved as a config-switchable alternative; activate by setting `DICTIONARY_SOURCE = 'merriam-webster'` in `server/services/dictionaryConfig.ts`. The v1 fallback uses a separate response parser (`parseFreeDictionaryV1Response`) since the two APIs have different JSON shapes.
 - **Cartoon Illustrations**: Automated image enrichment for word lists via Pixabay API, stored in Replit Object Storage.
 - **Scoring System & Leaderboard**: Implements points, streak bonuses, and leaderboards.
 - **Progress Tracking**: Session-based tracking of words, accuracy, and streaks, with a "My Stats Page" for aggregate performance metrics, date filtering, lifetime metrics, and re-practicing misspelled words.
