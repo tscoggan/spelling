@@ -126,6 +126,29 @@ function isCompleteSentence(text: string): boolean {
   return true;
 }
 
+// ---------------------------------------------------------------------------
+// Parenthetical / slang helpers (shared by both Free Dictionary parsers)
+// ---------------------------------------------------------------------------
+
+// Remove all (...) blocks (including surrounding spaces) and clean up leftovers.
+// e.g. "(countable) A group, ..."  → "A group, ..."
+// e.g. "(Ireland, slang) great"    → "great"
+function removeParentheticals(text: string): string {
+  return text
+    .replace(/\s*\([^)]*\)\s*/g, ' ')  // drop (…) and surrounding spaces
+    .replace(/\s{2,}/g, ' ')            // collapse double spaces
+    .replace(/^[\s,;.]+|[\s,;]+$/g, '') // strip stray leading/trailing punctuation
+    .trim();
+}
+
+// Returns true if any parenthetical in the raw text contains the word "slang".
+// e.g. "(Ireland, Geordie, slang) great" → true
+function isSlangText(rawText: string): boolean {
+  return /\([^)]*\bslang\b[^)]*\)/i.test(rawText);
+}
+
+// ---------------------------------------------------------------------------
+
 // Check if text contains the target word (case-insensitive, word boundary match)
 function containsTargetWord(text: string, word: string): boolean {
   if (!text || !word) return false;
@@ -1041,21 +1064,40 @@ function parseFreeDictionaryResponse(data: any, requestedWord: string): WordMeta
 
       if (!Array.isArray(meaning.definitions)) continue;
 
+      // Prefer non-slang definitions; fall back to slang if it's the only kind.
+      const nonSlangDefs: string[] = [];
+      const slangDefs: string[] = [];
+
       for (const defObj of meaning.definitions) {
-        const def = (defObj.definition || '').trim();
-        if (def && !containsKidInappropriateContent(def) && !allDefinitions.includes(def)) {
+        const rawDef = (defObj.definition || '').trim();
+        if (!rawDef) continue;
+
+        const slang = isSlangText(rawDef);
+        const cleaned = removeParentheticals(rawDef);
+        if (!cleaned || containsKidInappropriateContent(cleaned)) continue;
+
+        if (slang) {
+          slangDefs.push(cleaned);
+        } else {
+          nonSlangDefs.push(cleaned);
+        }
+      }
+
+      const defsToUse = nonSlangDefs.length > 0 ? nonSlangDefs : slangDefs;
+      for (const def of defsToUse) {
+        if (!allDefinitions.includes(def)) {
           allDefinitions.push(def);
           break; // One definition per part-of-speech meaning group
         }
       }
 
-      // Pick the first kid-appropriate example we find
+      // Pick the first kid-appropriate example sentence
       if (!metadata.example) {
         for (const defObj of meaning.definitions) {
-          const ex = (defObj.example || '').trim();
-          if (ex && !containsKidInappropriateContent(ex)) {
-            // Capitalise and punctuate for TTS consistency
-            const sentence = ex.charAt(0).toUpperCase() + ex.slice(1);
+          const rawEx = (defObj.example || '').trim();
+          const cleanedEx = removeParentheticals(rawEx);
+          if (cleanedEx && !containsKidInappropriateContent(cleanedEx)) {
+            const sentence = cleanedEx.charAt(0).toUpperCase() + cleanedEx.slice(1);
             metadata.example = sentence.endsWith('.') ? sentence : sentence + '.';
             break;
           }
@@ -1097,23 +1139,44 @@ function parseFreeDictionaryV1Response(data: any): WordMetadata {
 
     if (!Array.isArray(entry.senses)) continue;
 
+    // Collect non-slang and slang definitions separately so we can prefer non-slang.
+    const nonSlangDefs: string[] = [];
+    const slangDefs: string[] = [];
+
     for (const sense of entry.senses) {
-      const def = (sense.definition || '').trim();
-      if (def && !containsKidInappropriateContent(def) && !allDefinitions.includes(def)) {
-        allDefinitions.push(def);
-        break; // One definition per entry (like v2 behaviour)
+      const rawDef = (sense.definition || '').trim();
+      if (!rawDef) continue;
+
+      const slang = isSlangText(rawDef);
+      const cleaned = removeParentheticals(rawDef);
+      if (!cleaned || containsKidInappropriateContent(cleaned)) continue;
+
+      if (slang) {
+        slangDefs.push(cleaned);
+      } else {
+        nonSlangDefs.push(cleaned);
       }
 
-      // Pick first kid-appropriate example from this sense
+      // Pick first kid-appropriate example sentence (strip parentheticals too)
       if (!metadata.example && Array.isArray(sense.examples)) {
         for (const ex of sense.examples) {
-          const exText = (typeof ex === 'string' ? ex : (ex?.text ?? '')).trim();
-          if (exText && !containsKidInappropriateContent(exText)) {
-            const sentence = exText.charAt(0).toUpperCase() + exText.slice(1);
+          const rawEx = (typeof ex === 'string' ? ex : (ex?.text ?? '')).trim();
+          const cleanedEx = removeParentheticals(rawEx);
+          if (cleanedEx && !containsKidInappropriateContent(cleanedEx)) {
+            const sentence = cleanedEx.charAt(0).toUpperCase() + cleanedEx.slice(1);
             metadata.example = sentence.endsWith('.') ? sentence : sentence + '.';
             break;
           }
         }
+      }
+    }
+
+    // Prefer non-slang; fall back to slang only when it's the sole option.
+    const defsToUse = nonSlangDefs.length > 0 ? nonSlangDefs : slangDefs;
+    for (const def of defsToUse) {
+      if (!allDefinitions.includes(def)) {
+        allDefinitions.push(def);
+        break; // One definition per entry (like original behaviour)
       }
     }
   }
