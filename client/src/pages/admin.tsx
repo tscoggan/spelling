@@ -156,6 +156,7 @@ export default function AdminPage() {
     skipped: number;
     skipIfUpdatedAfter?: string | null;
     lastProcessedWordId?: number | null;
+    notFoundWords?: string[];
     error?: string | null;
     startedAt?: string | null;
     completedAt?: string | null;
@@ -164,6 +165,7 @@ export default function AdminPage() {
   const [refreshJob, setRefreshJob] = useState<RefreshJobState>({
     status: 'idle', total: 0, processed: 0, valid: 0, invalid: 0, skipped: 0, lastProcessedWordId: null,
   });
+  const [notFoundExpanded, setNotFoundExpanded] = useState(false);
   // Cutoff datetime input — words updated at or after this time will be skipped.
   // Empty string = no cutoff (refresh all words).
   const [skipIfUpdatedAfter, setSkipIfUpdatedAfter] = useState<string>('');
@@ -1120,15 +1122,46 @@ export default function AdminPage() {
                           <p className="text-2xl font-bold text-green-700 dark:text-green-300">{refreshJob.valid}</p>
                           <p className="text-xs text-green-600 dark:text-green-400">Updated</p>
                         </div>
-                        <div className="p-3 bg-orange-50 dark:bg-orange-950 rounded-md text-center">
+                        <button
+                          className="p-3 bg-orange-50 dark:bg-orange-950 rounded-md text-center hover-elevate"
+                          onClick={() => setNotFoundExpanded(v => !v)}
+                          data-testid="button-toggle-not-found-words"
+                          title="Click to view the list of not-found words"
+                        >
                           <p className="text-2xl font-bold text-orange-700 dark:text-orange-300">{refreshJob.invalid}</p>
-                          <p className="text-xs text-orange-600 dark:text-orange-400">Not Found</p>
-                        </div>
+                          <p className="text-xs text-orange-600 dark:text-orange-400">Not Found {refreshJob.invalid > 0 ? (notFoundExpanded ? '▲' : '▼') : ''}</p>
+                        </button>
                         <div className="p-3 bg-yellow-50 dark:bg-yellow-950 rounded-md text-center">
                           <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-300">{refreshJob.skipped}</p>
                           <p className="text-xs text-yellow-600 dark:text-yellow-400">API Errors</p>
                         </div>
                       </div>
+
+                      {notFoundExpanded && refreshJob.notFoundWords && refreshJob.notFoundWords.length > 0 && (
+                        <div className="rounded-md border bg-muted/40 p-3 space-y-2">
+                          <p className="text-xs font-medium text-muted-foreground">
+                            {refreshJob.notFoundWords.length} word{refreshJob.notFoundWords.length !== 1 ? 's' : ''} not found in either dictionary API — these may be proper nouns, abbreviations, or very rare terms.
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {refreshJob.notFoundWords.map(w => (
+                              <span
+                                key={w}
+                                className="inline-block px-2 py-0.5 rounded-sm bg-orange-100 dark:bg-orange-950 text-orange-800 dark:text-orange-200 text-xs font-mono"
+                                data-testid={`badge-not-found-word-${w}`}
+                              >
+                                {w}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {notFoundExpanded && (!refreshJob.notFoundWords || refreshJob.notFoundWords.length === 0) && (
+                        <div className="rounded-md border bg-muted/40 p-3">
+                          <p className="text-xs text-muted-foreground">All words were found in the dictionary.</p>
+                        </div>
+                      )}
+
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="outline" size="sm" data-testid="button-refresh-metadata-again">

@@ -34,6 +34,7 @@ interface MetadataRefreshJobRow {
   maxWordId: number | null;
   skipIfUpdatedAfter: string | null;
   lastProcessedWordId: number | null;
+  notFoundWordsJson: string | null;
   error: string | null;
   startedAt: string | null;
   completedAt: string | null;
@@ -46,6 +47,7 @@ async function getLatestRefreshJob(): Promise<MetadataRefreshJobRow | null> {
            max_word_id AS "maxWordId",
            skip_if_updated_after AS "skipIfUpdatedAfter",
            last_processed_word_id AS "lastProcessedWordId",
+           not_found_words_json AS "notFoundWordsJson",
            error,
            started_at AS "startedAt", completed_at AS "completedAt", updated_at AS "updatedAt"
     FROM metadata_refresh_jobs
@@ -63,6 +65,7 @@ async function updateRefreshJob(id: number, fields: {
   invalid?: number;
   skipped?: number;
   lastProcessedWordId?: number | null;
+  notFoundWordsJson?: string | null;
   error?: string | null;
   completedAt?: string | null;
 }) {
@@ -75,6 +78,7 @@ async function updateRefreshJob(id: number, fields: {
       invalid                = COALESCE(${fields.invalid ?? null}, invalid),
       skipped                = COALESCE(${fields.skipped ?? null}, skipped),
       last_processed_word_id = COALESCE(${fields.lastProcessedWordId ?? null}, last_processed_word_id),
+      not_found_words_json   = ${fields.notFoundWordsJson !== undefined ? fields.notFoundWordsJson : sql`not_found_words_json`},
       error                  = ${fields.error !== undefined ? fields.error : sql`error`},
       completed_at           = ${fields.completedAt !== undefined ? fields.completedAt : sql`completed_at`},
       updated_at             = NOW()
@@ -3840,6 +3844,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const BATCH_SIZE = 5;      // matches MAX_CONCURRENT in validateWordsInBatches
           const BATCH_DELAY_MS = 20000; // 20 s between batches → 5/20s = 15/min = 900/hr
           let processed = 0, valid = 0, invalid = 0, skipped = 0;
+          const notFoundWords: string[] = [];
 
           for (let i = 0; i < eligibleWords.length; i += BATCH_SIZE) {
             const batchWords = eligibleWords.slice(i, i + BATCH_SIZE);
@@ -3849,6 +3854,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             valid     += result.valid.length;
             invalid   += result.invalid.length;
             skipped   += result.skipped.length;
+            notFoundWords.push(...result.invalid);
             const lastWordId = batchWords[batchWords.length - 1].id;
 
             // Write progress + last processed word ID to DB after every batch
@@ -3863,6 +3869,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await updateRefreshJob(jobId, {
             status: 'completed',
             processed, valid, invalid, skipped,
+            notFoundWordsJson: JSON.stringify(notFoundWords.sort()),
             completedAt: new Date().toISOString(),
           });
           console.log(`[metadata-refresh] Done — valid: ${valid}, invalid: ${invalid}, skipped: ${skipped}`);
@@ -3884,7 +3891,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     const job = await getLatestRefreshJob();
     if (!job) return res.json({ status: 'idle', total: 0, processed: 0, valid: 0, invalid: 0, skipped: 0 });
-    res.json(job);
+    const { notFoundWordsJson, ...rest } = job;
+    res.json({
+      ...rest,
+      notFoundWords: notFoundWordsJson ? JSON.parse(notFoundWordsJson) : [],
+    });
   });
 
   // Admin: Continue an interrupted (or failed) refresh job from where it left off
@@ -3952,6 +3963,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let valid     = prevValid    ?? 0;
           let invalid   = prevInvalid  ?? 0;
           let skipped   = prevSkipped  ?? 0;
+          // Carry forward not-found words from the interrupted run (if any were saved)
+          const notFoundWords: string[] = existing.notFoundWordsJson
+            ? JSON.parse(existing.notFoundWordsJson)
+            : [];
 
           for (let i = 0; i < remainingWords.length; i += BATCH_SIZE) {
             const batchWords = remainingWords.slice(i, i + BATCH_SIZE);
@@ -3961,6 +3976,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             valid     += result.valid.length;
             invalid   += result.invalid.length;
             skipped   += result.skipped.length;
+            notFoundWords.push(...result.invalid);
             const lastWordId = batchWords[batchWords.length - 1].id;
 
             await updateRefreshJob(existing.id, { processed, valid, invalid, skipped, lastProcessedWordId: lastWordId });
@@ -3973,6 +3989,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await updateRefreshJob(existing.id, {
             status: 'completed',
             processed, valid, invalid, skipped,
+            notFoundWordsJson: JSON.stringify(notFoundWords.sort()),
             completedAt: new Date().toISOString(),
           });
           console.log(`[metadata-refresh] Continue done — valid: ${valid}, invalid: ${invalid}, skipped: ${skipped}`);
