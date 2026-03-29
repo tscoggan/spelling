@@ -1246,62 +1246,149 @@ async function checkFreeDictionaryV1(word: string): Promise<{ valid: boolean; sk
   return { valid: false, skipped: true };
 }
 
+// ---------------------------------------------------------------------------
+// Wiktionary etymology fetch
+// Wiktionary is the upstream data source for the Free Dictionary API and does
+// carry etymology sections — we fetch those directly.
+// ---------------------------------------------------------------------------
+
+async function fetchWiktionaryEtymology(word: string): Promise<string | null> {
+  const BASE = 'https://en.wiktionary.org/w/api.php';
+  const UA   = 'SpellingPlayground/1.0 (educational app; contact via Replit)';
+
+  try {
+    // Step 1: fetch the list of page sections so we can find the Etymology index
+    const ctrl1 = new AbortController();
+    const t1 = setTimeout(() => ctrl1.abort(), API_TIMEOUT);
+    const r1 = await fetch(
+      `${BASE}?action=parse&page=${encodeURIComponent(word)}&prop=sections&format=json`,
+      { signal: ctrl1.signal, headers: { 'User-Agent': UA } }
+    );
+    clearTimeout(t1);
+    if (!r1.ok) return null;
+
+    const d1: any = await r1.json();
+    const sections: any[] = d1?.parse?.sections ?? [];
+
+    // Walk sections to find the first "Etymology…" entry under the English heading
+    let inEnglish = false;
+    let etymIdx: string | null = null;
+    for (const s of sections) {
+      if (s.toclevel === 1) inEnglish = (s.line ?? '') === 'English';
+      if (inEnglish && /^Etymology/.test(s.line ?? '')) { etymIdx = s.index; break; }
+    }
+    if (!etymIdx) return null;
+
+    // Step 2: fetch the rendered HTML for just that section
+    const ctrl2 = new AbortController();
+    const t2 = setTimeout(() => ctrl2.abort(), API_TIMEOUT);
+    const r2 = await fetch(
+      `${BASE}?action=parse&page=${encodeURIComponent(word)}&prop=text&section=${etymIdx}&format=json`,
+      { signal: ctrl2.signal, headers: { 'User-Agent': UA } }
+    );
+    clearTimeout(t2);
+    if (!r2.ok) return null;
+
+    const d2: any = await r2.json();
+    const html: string = d2?.parse?.text?.['*'] ?? '';
+    if (!html) return null;
+
+    // Strip HTML, decode entities, remove Wiktionary UI artefacts
+    const text = html
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\[edit\]/gi, '')
+      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+      // Remove the section heading ("Etymology", "Etymology 1", etc.) that the
+      // MediaWiki renderer includes at the top of every section fragment
+      .replace(/^\s*Etymology\s*\d*\s*/i, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+
+    // The etymology is the first paragraph of the section; keep ≤ 2 sentences
+    const firstBlock = text.split(/\n\s*\n/)[0]?.trim() ?? '';
+    const sentenceMatches = firstBlock.match(/[^.!?]*[.!?]+(?:\s|$)/g) ?? [];
+    const origin = (sentenceMatches.length > 0
+      ? sentenceMatches.slice(0, 2).join('').trim()
+      : firstBlock.slice(0, 300)
+    ).trim();
+
+    return origin.length > 10 ? origin : null;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+
 async function checkFreeDictionary(word: string): Promise<{ valid: boolean; skipped: boolean; metadata?: WordMetadata }> {
   // v1 (freedictionaryapi.com) is the primary source — it has broader word coverage
   // and is what the Free Dictionary API website documents. v2 (dictionaryapi.dev)
   // is used only as a reliability fallback when v1 itself is unavailable.
   const v1Result = await checkFreeDictionaryV1(word);
 
-  // v1 gave a definitive answer (valid or invalid) — use it directly
-  if (!v1Result.skipped) return v1Result;
+  let result: { valid: boolean; skipped: boolean; metadata?: WordMetadata };
 
-  // v1 had a transient error (timeout, 5xx, etc.) — try v2 as a fallback
-  const MAX_RETRIES = 3;
-  const RETRY_BASE_DELAY = 1000;
+  if (!v1Result.skipped) {
+    // v1 gave a definitive answer (valid or invalid) — use it directly
+    result = v1Result;
+  } else {
+    // v1 had a transient error (timeout, 5xx, etc.) — try v2 as a fallback
+    const MAX_RETRIES = 3;
+    const RETRY_BASE_DELAY = 1000;
+    let v2Result: { valid: boolean; skipped: boolean; metadata?: WordMetadata } = { valid: false, skipped: true };
 
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), API_TIMEOUT);
 
-      const response = await fetch(
-        `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`,
-        { signal: controller.signal }
-      );
+        const response = await fetch(
+          `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`,
+          { signal: controller.signal }
+        );
+        clearTimeout(timeout);
 
-      clearTimeout(timeout);
+        if (!response.ok) {
+          if (response.status === 404) { v2Result = { valid: false, skipped: false }; break; }
 
-      if (!response.ok) {
-        if (response.status === 404) return { valid: false, skipped: false };
+          if ((response.status === 429 || response.status >= 500) && attempt < MAX_RETRIES) {
+            await new Promise(resolve => setTimeout(resolve, RETRY_BASE_DELAY * Math.pow(2, attempt)));
+            continue;
+          }
 
-        if ((response.status === 429 || response.status >= 500) && attempt < MAX_RETRIES) {
-          const delay = RETRY_BASE_DELAY * Math.pow(2, attempt);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          continue;
+          v2Result = { valid: false, skipped: true };
+          break;
         }
 
-        return { valid: false, skipped: true };
-      }
+        const data: any = await response.json();
+        if (!Array.isArray(data) || data.length === 0) {
+          v2Result = { valid: false, skipped: false };
+          break;
+        }
 
-      const data: any = await response.json();
-
-      if (!Array.isArray(data) || data.length === 0) {
-        return { valid: false, skipped: false };
+        v2Result = { valid: true, skipped: false, metadata: parseFreeDictionaryResponse(data, word) };
+        break;
+      } catch {
+        if (attempt < MAX_RETRIES) {
+          await new Promise(resolve => setTimeout(resolve, RETRY_BASE_DELAY * Math.pow(2, attempt)));
+          continue;
+        }
+        v2Result = { valid: false, skipped: true };
       }
-
-      const metadata = parseFreeDictionaryResponse(data, word);
-      return { valid: true, skipped: false, metadata };
-    } catch {
-      if (attempt < MAX_RETRIES) {
-        const delay = RETRY_BASE_DELAY * Math.pow(2, attempt);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        continue;
-      }
-      return { valid: false, skipped: true };
     }
+
+    result = v2Result;
   }
 
-  return { valid: false, skipped: true };
+  // Enrich valid results with Wiktionary etymology (the upstream source for both APIs)
+  if (result.valid && result.metadata) {
+    const etymology = await fetchWiktionaryEtymology(word);
+    result.metadata.origin = etymology; // string if found, null if not (clears stale data)
+  }
+
+  return result;
 }
 
 // ---------------------------------------------------------------------------
