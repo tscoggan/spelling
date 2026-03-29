@@ -12,7 +12,9 @@ interface ValidationResult {
 interface WordMetadata {
   definition?: string;
   example?: string;
-  origin?: string;
+  /** null = source doesn't provide this field; explicitly cleared on save.
+   *  undefined = field not yet evaluated; leave existing DB value alone. */
+  origin?: string | null;
   partOfSpeech?: string;
 }
 
@@ -1114,7 +1116,8 @@ function parseFreeDictionaryResponse(data: any, requestedWord: string): WordMeta
     metadata.partOfSpeech = Array.from(partsOfSpeechSet).join(' or ');
   }
 
-  // Free Dictionary API does not provide etymology — origin stays undefined
+  // Free Dictionary v2 has no etymology endpoint — explicitly clear any stale origin.
+  metadata.origin = null;
 
   return metadata;
 }
@@ -1187,6 +1190,9 @@ function parseFreeDictionaryV1Response(data: any): WordMetadata {
   if (partsOfSpeechSet.size > 0) {
     metadata.partOfSpeech = Array.from(partsOfSpeechSet).join(' or ');
   }
+
+  // Free Dictionary v1 has no etymology endpoint — explicitly clear any stale origin.
+  metadata.origin = null;
 
   return metadata;
 }

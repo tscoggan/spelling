@@ -105,7 +105,7 @@ export interface IStorage {
   getWordByText(word: string): Promise<Word | undefined>;
   getWordsByTexts(wordTexts: string[]): Promise<Word[]>;
   createWord(word: InsertWord): Promise<Word>;
-  upsertWord(word: string, definition?: string, sentenceExample?: string, wordOrigin?: string, partOfSpeech?: string, overwrite?: boolean): Promise<Word>;
+  upsertWord(word: string, definition?: string | null, sentenceExample?: string | null, wordOrigin?: string | null, partOfSpeech?: string | null, overwrite?: boolean): Promise<Word>;
   deleteWord(id: number): Promise<boolean>;
   
   getGameSession(id: number): Promise<GameSession | undefined>;
@@ -351,7 +351,7 @@ export class DatabaseStorage implements IStorage {
     return word;
   }
 
-  async upsertWord(wordText: string, definition?: string, sentenceExample?: string, wordOrigin?: string, partOfSpeech?: string, overwrite?: boolean): Promise<Word> {
+  async upsertWord(wordText: string, definition?: string | null, sentenceExample?: string | null, wordOrigin?: string | null, partOfSpeech?: string | null, overwrite?: boolean): Promise<Word> {
     const normalized = wordText.toLowerCase().trim();
     
     const existing = await this.getWordByText(normalized);
