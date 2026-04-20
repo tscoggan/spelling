@@ -15,7 +15,15 @@ Spelling Playground is an interactive educational application designed to enhanc
 The application features a bright, responsive rainbow-themed design optimized for mobile and desktop, with a semi-transparent overlay for readability in both light and dark modes. Content is presented on theme-aware cards with rounded corners and soft shadows. Text elements utilize backdrop blur for enhanced readability. The design adheres to WCAG AA accessibility standards, including keyboard navigation and high contrast support, and uses Framer Motion for smooth animations. Practice mode includes automatic viewport centering and smooth scrolling for game cards on mobile.
 
 ### Technical Implementations
-The frontend is built with React, utilizing Wouter for routing, TanStack Query for data fetching, Framer Motion for animations, Shadcn UI for components, and Tailwind CSS for styling. Text-to-speech is powered by the Web Speech API. The backend uses Express.js with TypeScript and PostgreSQL as the database, managed by Drizzle ORM. Passport.js handles authentication with Scrypt for password hashing. Content moderation uses the `bad-words` library.
+The frontend is built with React, utilizing Wouter for routing, TanStack Query for data fetching, Framer Motion for animations, Shadcn UI for components, and Tailwind CSS for styling. Text-to-speech uses the Web Speech API on the web and `@capacitor-community/text-to-speech` on native iOS/Android (routed via `client/src/lib/platform.ts` + `native-speech.ts`). The backend uses Express.js with TypeScript and PostgreSQL as the database, managed by Drizzle ORM. Passport.js handles authentication with Scrypt for password hashing. Content moderation uses the `bad-words` library.
+
+**Capacitor Mobile Port (Option B — native IAP + Stripe on web):**
+- `capacitor.config.ts` at project root configures appId `com.spellingplayground.app`, webDir `dist/public`.
+- CORS middleware in `server/index.ts` allows `capacitor://localhost` (iOS) and `http://localhost` (Android).
+- Session cookies use `SameSite=None; Secure` in production so the cross-origin native WebView can authenticate.
+- `VITE_API_BASE_URL` env var prefixes all API/query fetches; empty on web (same-origin), set to `https://spellingplayground.com` when building the mobile bundle on Mac Mini.
+- Native platform folders `ios/` and `android/` are generated on the Mac Mini via `npx cap add ios/android` and are gitignored.
+- Full Mac Mini build instructions are in `CAPACITOR_SETUP.md`.
 
 ### Feature Specifications
 - **User Management**: Secure authentication, enhanced user profiles, support for user groups with membership and to-do notifications, and a `stars` column for in-app purchases. Teachers can delegate co-owners for word lists and user groups.

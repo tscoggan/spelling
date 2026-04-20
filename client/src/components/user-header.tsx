@@ -1,4 +1,6 @@
 import { Button } from "@/components/ui/button";
+import { isNativePlatform } from "@/lib/platform";
+import { nativeSpeak, nativeStop } from "@/lib/native-speech";
 import { Card } from "@/components/ui/card";
 import { LogOut, Bell, Settings, Volume2, HelpCircle, Mail, BookOpen, Trophy, Gamepad2, List, Send, UserCircle, Palette, Lock, ShoppingCart, Info, CreditCard, Calendar, DollarSign, RefreshCw, FileText } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -709,6 +711,12 @@ export function UserHeader() {
 
   // Text-to-speech function
   const speakWord = (text: string) => {
+    // On native platforms use the device TTS engine instead of Web Speech API.
+    if (isNativePlatform()) {
+      nativeStop().catch(() => {}).finally(() => nativeSpeak(text));
+      return;
+    }
+
     if (!selectedVoice) return;
     
     window.speechSynthesis.cancel();

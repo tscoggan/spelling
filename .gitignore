@@ -4,3 +4,7 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Capacitor native project folders (generated on Mac, not tracked in Replit)
+ios/
+android/

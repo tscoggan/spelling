@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useLayoutEffect, useCallback } from "react";
+import { isNativePlatform } from "@/lib/platform";
+import { nativeSpeak, nativeStop } from "@/lib/native-speech";
 import { useLocation, useSearch } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1045,6 +1047,13 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, onR
 
   // Load available voices
   useEffect(() => {
+    // On native platforms we use the device TTS engine — skip Web Speech API setup.
+    if (isNativePlatform()) {
+      setAvailableVoices([]);
+      setVoicesReady(true);
+      return;
+    }
+
     // Feature detection - check if speechSynthesis is available
     if (!('speechSynthesis' in window)) {
       setAvailableVoices([]);
@@ -1141,6 +1150,14 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, onR
   const currentWord = activeWords?.[currentWordIndex];
 
   const speakWord = (word: string, onComplete?: () => void) => {
+    // On native platforms delegate to the device TTS engine.
+    if (isNativePlatform()) {
+      nativeSpeak(word, 0.8)
+        .then(() => onComplete?.())
+        .catch(() => onComplete?.());
+      return;
+    }
+
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(word);

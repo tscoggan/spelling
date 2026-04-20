@@ -33,6 +33,26 @@ app.post(
   }
 );
 
+// ── CORS for Capacitor native WebViews ────────────────────────────────────
+// iOS uses capacitor://localhost and Android uses http://localhost as origin.
+// Regular web browsers use same-origin requests so this header is a no-op for them.
+const CAPACITOR_ORIGINS = new Set([
+  'capacitor://localhost',
+  'http://localhost',
+  'ionic://localhost',
+]);
+app.use((req, res, next) => {
+  const origin = req.headers.origin as string | undefined;
+  if (origin && CAPACITOR_ORIGINS.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With');
+    if (req.method === 'OPTIONS') return res.sendStatus(204);
+  }
+  next();
+});
+
 // ── JSON middleware for all other routes ───────────────────────────────────
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));

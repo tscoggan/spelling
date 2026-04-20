@@ -37,7 +37,10 @@ export function setupAuth(app: Express) {
     store: storage.sessionStore,
     cookie: {
       secure: isProduction,
-      sameSite: "lax",
+      // "none" allows Capacitor's cross-origin native WebView to send the cookie.
+      // "none" requires secure:true, which is already enforced in production.
+      // In development "lax" is used so local HTTP testing still works.
+      sameSite: isProduction ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     },
   };
