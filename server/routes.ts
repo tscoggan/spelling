@@ -5891,6 +5891,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ── Apple In-App Purchase receipt validation ───────────────────────────────
+  // Shared secret is set in App Store Connect → App → In-App Purchases → Shared Secret.
+  // Store it as the APPLE_IAP_SHARED_SECRET environment variable.
+  async function validateAppleReceipt(receiptData: string) {
+    const body = JSON.stringify({
+      'receipt-data': receiptData,
+      ...(process.env.APPLE_IAP_SHARED_SECRET
+        ? { password: process.env.APPLE_IAP_SHARED_SECRET }
+        : {}),
+      'exclude-old-transactions': true,
+    });
+
+    const tryUrl = async (url: string) => {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      });
+      return r.json() as Promise<any>;
+    };
+
+    let result = await tryUrl('https://buy.itunes.apple.com/verifyReceipt');
+    // status 21007 = sandbox receipt sent to production → retry sandbox
+    if (result.status === 21007) {
+      result = await tryUrl('https://sandbox.itunes.apple.com/verifyReceipt');
+    }
+
+    if (result.status !== 0) {
+      return { valid: false as const, error: `Apple receipt invalid (status ${result.status})` };
+    }
+
+    const transactions: any[] = result.latest_receipt_info ?? [];
+    if (transactions.length === 0) {
+      return { valid: false as const, error: 'No active subscription found in receipt' };
+    }
+
+    const latest = [...transactions].sort(
+      (a, b) => parseInt(b.purchase_date_ms) - parseInt(a.purchase_date_ms),
+    )[0];
+    const pendingRenewal = (result.pending_renewal_info ?? [])[0];
+
+    return {
+      valid: true as const,
+      expiresAt: new Date(parseInt(latest.expires_date_ms)),
+      originalTransactionId: latest.original_transaction_id as string,
+      productId: latest.product_id as string,
+      autoRenewStatus: parseInt(pendingRenewal?.auto_renew_status ?? '1'),
+    };
+  }
+
+  // POST /api/iap/apple/validate — called after a purchase or on app launch to restore
+  app.post('/api/iap/apple/validate', requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const { receiptData } = req.body;
+      if (!receiptData || typeof receiptData !== 'string') {
+        return res.status(400).json({ error: 'receiptData (base64 string) is required' });
+      }
+
+      const result = await validateAppleReceipt(receiptData);
+      if (!result.valid) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      const user = req.user as any;
+
+      // Find or create the family account owned by this user
+      let family = await storage.getFamilyAccountByParentId(user.id);
+      if (!family) {
+        family = await storage.createFamilyAccount(user.id);
+      }
+
+      await storage.updateFamilyAccount(family.id, {
+        vpcStatus: 'verified',
+        subscriptionExpiresAt: result.expiresAt,
+        lastPaymentMethod: 'apple_iap',
+        appleOriginalTransactionId: result.originalTransactionId,
+        autoRenew: result.autoRenewStatus === 1,
+      });
+
+      // Promote account type to family_parent if needed
+      if (user.accountType !== 'family_parent') {
+        await storage.updateUser(user.id, { accountType: 'family_parent' });
+      }
+
+      res.json({ success: true, expiresAt: result.expiresAt });
+    } catch (error: any) {
+      console.error('[IAP] Apple validate error:', error);
+      res.status(500).json({ error: 'Receipt validation failed' });
+    }
+  });
+
+  // POST /api/iap/apple/restore — re-validate the latest receipt to restore access
+  // (same logic, separate endpoint for clarity)
+  app.post('/api/iap/apple/restore', requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const { receiptData } = req.body;
+      if (!receiptData || typeof receiptData !== 'string') {
+        return res.status(400).json({ error: 'receiptData is required' });
+      }
+
+      const result = await validateAppleReceipt(receiptData);
+      if (!result.valid) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      const user = req.user as any;
+      let family = await storage.getFamilyAccountByParentId(user.id);
+      if (!family) {
+        return res.status(404).json({ error: 'No family account found. Please subscribe first.' });
+      }
+
+      // Only restore if the receipt is for a non-expired subscription
+      if (result.expiresAt > new Date()) {
+        await storage.updateFamilyAccount(family.id, {
+          vpcStatus: 'verified',
+          subscriptionExpiresAt: result.expiresAt,
+          lastPaymentMethod: 'apple_iap',
+          appleOriginalTransactionId: result.originalTransactionId,
+        });
+      }
+
+      res.json({ success: true, active: result.expiresAt > new Date(), expiresAt: result.expiresAt });
+    } catch (error: any) {
+      console.error('[IAP] Apple restore error:', error);
+      res.status(500).json({ error: 'Restore failed' });
+    }
+  });
+
   // Validate a promo code (any authenticated user, used at checkout)
   app.post("/api/promo-codes/validate", requireAuthAndRejectLegacyGuest, async (req, res) => {
     try {

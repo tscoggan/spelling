@@ -250,6 +250,7 @@ export const familyAccounts = pgTable("family_accounts", {
   legalAcceptedAt: timestamp("legal_accepted_at"),
   appliedPromoCode: text("applied_promo_code"),
   promoDiscountPercent: integer("promo_discount_percent").notNull().default(0),
+  appleOriginalTransactionId: text("apple_original_transaction_id"),
 });
 
 export const familyLegalAcceptances = pgTable("family_legal_acceptances", {

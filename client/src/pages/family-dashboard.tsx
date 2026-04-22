@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { isNativePlatform } from "@/lib/platform";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -340,27 +341,40 @@ export default function FamilyDashboardPage() {
                   $19.99 / year
                 </Button>
               </div>
-              <Button
-                className="w-full"
-                onClick={() => startSubscriptionMutation.mutate(subscribePlanType)}
-                disabled={startSubscriptionMutation.isPending}
-                data-testid="button-dashboard-subscribe"
-              >
-                {startSubscriptionMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Redirecting…
-                  </>
-                ) : (
-                  <>
-                    <CreditCard className="w-4 h-4 mr-2" />
-                    Subscribe via Stripe
-                  </>
-                )}
-              </Button>
-              <p className="text-xs text-muted-foreground text-center">
-                You'll be taken to Stripe's secure checkout page.
-              </p>
+              {isNativePlatform() ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground text-center">
+                    To subscribe on this device, open the Family Signup page and choose a plan.
+                  </p>
+                  <Button className="w-full" onClick={() => setLocation('/family-signup')} data-testid="button-dashboard-iap-signup">
+                    <CreditCard className="w-4 h-4 mr-2" /> Subscribe via App Store
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <Button
+                    className="w-full"
+                    onClick={() => startSubscriptionMutation.mutate(subscribePlanType)}
+                    disabled={startSubscriptionMutation.isPending}
+                    data-testid="button-dashboard-subscribe"
+                  >
+                    {startSubscriptionMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Redirecting…
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="w-4 h-4 mr-2" />
+                        Subscribe via Stripe
+                      </>
+                    )}
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center">
+                    You'll be taken to Stripe's secure checkout page.
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
         )}

@@ -72,13 +72,52 @@ For rapid iteration, point the Capacitor server at your running Replit dev URL:
 
 ---
 
-## In-App Purchases (Phase 5)
+## In-App Purchases (Phase 5 — complete)
 
-Native IAP will be wired up once your Apple Developer Organization account
-is approved (DUNS number required). Placeholder:
-- Product IDs: `com.spellingplayground.family.monthly`,
-  `com.spellingplayground.family.annual`
-- Plugin: `@capacitor/purchases` (RevenueCat) or `@ionic-native/in-app-purchase-2`
+The IAP infrastructure is fully built and ready to activate.
+
+### App Store Connect setup checklist
+
+1. **Create the app** — bundle ID: `com.spellingplayground.app`
+2. **Create a Subscription Group** (e.g. "Family Plan")
+3. **Create two Auto-Renewable Subscription products**:
+   | Product ID | Price |
+   |---|---|
+   | `com.spellingplayground.family.monthly` | $1.99/month |
+   | `com.spellingplayground.family.annual` | $19.99/year |
+4. **Generate a Shared Secret**: App Store Connect → your app →
+   In-App Purchases → Manage → App-Specific Shared Secret.
+   Copy the 32-character hex string.
+5. **Add the shared secret as an environment variable** in Replit Secrets:
+   `APPLE_IAP_SHARED_SECRET` = the 32-character hex string.
+   This is used by the server's `/api/iap/apple/validate` endpoint to
+   validate receipts with Apple.
+
+### Xcode checklist
+
+1. Open your iOS project: `npx cap open ios`
+2. Set **Team** and **Bundle Identifier** (`com.spellingplayground.app`)
+3. Add the **In-App Purchase** capability (Signing & Capabilities tab)
+4. Run on a real device or Simulator with a sandbox account
+
+### Plugin
+
+`cordova-plugin-purchase` is already in `node_modules` and declared in
+`package.json`. After `npx cap add ios` + `npx cap sync`, Capacitor
+automatically links the plugin to the Xcode project.
+
+### How the purchase flow works
+
+1. User opens Family Signup on iOS → Step 4 shows "Subscribe via App Store"
+2. Tapping the button calls `cordova-plugin-purchase` → Apple payment sheet
+3. On approval, the app sends the receipt to `POST /api/iap/apple/validate`
+4. Our server validates with Apple, marks the family account `vpcStatus=verified`
+5. User is advanced to the confirmation screen
+
+### Restore purchases
+
+The "Restore previous purchase" button on Step 4 calls StoreKit's restore
+flow and re-validates any existing receipt against our server.
 
 ---
 

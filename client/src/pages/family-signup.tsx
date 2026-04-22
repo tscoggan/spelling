@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
+import { isNativePlatform } from "@/lib/platform";
+import { useNativeIAP, IAP_PRODUCTS } from "@/hooks/use-native-iap";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +63,9 @@ export default function FamilySignupPage() {
   const search = useSearch();
   const { themeAssets, hasDarkBackground } = useTheme();
   const textClasses = getThemedTextClasses(hasDarkBackground);
+
+  const onNative = isNativePlatform();
+  const iap = useNativeIAP();
 
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [familyData, setFamilyData] = useState<FamilySignupResponse | null>(null);
@@ -612,17 +617,81 @@ export default function FamilySignupPage() {
                 </div>
               </div>
 
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setStep(3)} className="flex-1" data-testid="button-back">
-                  <ArrowLeft className="w-4 h-4 mr-2" /> Back
-                </Button>
-                <Button onClick={() => checkoutMutation.mutate()} className="flex-1" disabled={checkoutMutation.isPending} data-testid="button-subscribe-stripe">
-                  {checkoutMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Redirecting...</> : <><ExternalLink className="w-4 h-4 mr-2" /> Subscribe with Stripe</>}
-                </Button>
-              </div>
-              <p className="text-xs text-center text-muted-foreground">
-                You'll be taken to Stripe's secure checkout and returned here when done.
-              </p>
+              {onNative ? (
+                /* ── Native iOS: Apple In-App Purchase ── */
+                <div className="space-y-3">
+                  {iap.error && (
+                    <p className="text-sm text-destructive text-center">{iap.error}</p>
+                  )}
+                  <div className="flex gap-3">
+                    <Button variant="outline" onClick={() => setStep(3)} className="flex-1" data-testid="button-back">
+                      <ArrowLeft className="w-4 h-4 mr-2" /> Back
+                    </Button>
+                    <Button
+                      onClick={async () => {
+                        try {
+                          const productId = priceInterval === "month"
+                            ? IAP_PRODUCTS.MONTHLY
+                            : IAP_PRODUCTS.ANNUAL;
+                          await iap.purchase(productId);
+                          queryClient.invalidateQueries({ queryKey: ['/api/family'] });
+                          setStep(5);
+                        } catch (err: any) {
+                          if (err?.message !== 'Purchase cancelled') {
+                            toast({ title: "Purchase failed", description: err?.message, variant: "destructive" });
+                          }
+                        }
+                      }}
+                      className="flex-1"
+                      disabled={iap.purchasing}
+                      data-testid="button-subscribe-iap"
+                    >
+                      {iap.purchasing ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing…</>
+                      ) : (
+                        <><CreditCard className="w-4 h-4 mr-2" /> Subscribe via App Store</>
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-center text-muted-foreground">
+                    Payment is handled securely by Apple. Cancel anytime in iOS Settings.
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-xs"
+                    onClick={async () => {
+                      const ok = await iap.restore();
+                      if (ok) {
+                        queryClient.invalidateQueries({ queryKey: ['/api/family'] });
+                        setStep(5);
+                      } else {
+                        toast({ title: "Nothing to restore", description: "No active subscription found for this Apple ID." });
+                      }
+                    }}
+                    disabled={iap.restoring}
+                    data-testid="button-restore-purchases"
+                  >
+                    {iap.restoring ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
+                    Restore previous purchase
+                  </Button>
+                </div>
+              ) : (
+                /* ── Web: Stripe checkout ── */
+                <div className="space-y-2">
+                  <div className="flex gap-3">
+                    <Button variant="outline" onClick={() => setStep(3)} className="flex-1" data-testid="button-back">
+                      <ArrowLeft className="w-4 h-4 mr-2" /> Back
+                    </Button>
+                    <Button onClick={() => checkoutMutation.mutate()} className="flex-1" disabled={checkoutMutation.isPending} data-testid="button-subscribe-stripe">
+                      {checkoutMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Redirecting...</> : <><ExternalLink className="w-4 h-4 mr-2" /> Subscribe with Stripe</>}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-center text-muted-foreground">
+                    You'll be taken to Stripe's secure checkout and returned here when done.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
