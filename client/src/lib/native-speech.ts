@@ -1,16 +1,17 @@
-import { TextToSpeech } from '@capacitor-community/text-to-speech';
-
 export async function nativeSpeak(text: string, rate = 0.9): Promise<void> {
-  await TextToSpeech.speak({
-    text,
-    lang: 'en-US',
-    rate,
-    pitch: 1.0,
-    volume: 1.0,
-    category: 'ambient',
+  return new Promise((resolve) => {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'en-US';
+    utterance.rate = rate;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+    utterance.onend = () => resolve();
+    utterance.onerror = () => resolve();
+    window.speechSynthesis.speak(utterance);
   });
 }
 
 export async function nativeStop(): Promise<void> {
-  await TextToSpeech.stop();
+  window.speechSynthesis.cancel();
 }
