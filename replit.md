@@ -22,6 +22,7 @@ The frontend is built with React, utilizing Wouter for routing, TanStack Query f
 - CORS middleware in `server/index.ts` allows `capacitor://localhost` (iOS) and `http://localhost` (Android).
 - Session cookies use `SameSite=None; Secure` in production so the cross-origin native WebView can authenticate.
 - `VITE_API_BASE_URL` env var prefixes all API/query fetches; empty on web (same-origin), set to `https://spellingplayground.com` when building the mobile bundle on Mac Mini.
+- A global fetch interceptor in `client/src/lib/native-fetch.ts` (imported first in `main.tsx`) rewrites any relative `/...` request to `VITE_API_BASE_URL` and forces `credentials: include`. This covers raw `fetch("/api/...")` calls that bypass the `queryClient`/`apiRequest` helpers; without it those resolve to `capacitor://localhost` on native and fail (e.g. guest-mode word list validation via `/api/validate-words`). No-op on web since `API_BASE` is empty.
 - Native platform folders `ios/` and `android/` are generated on the Mac Mini via `npx cap add ios/android` and are gitignored.
 - Full Mac Mini build instructions are in `CAPACITOR_SETUP.md`.
 

@@ -1,0 +1,1 @@
+- [Capacitor relative fetch](capacitor-relative-fetch.md) — raw `fetch("/api/...")` calls fail on native WebView; a global interceptor must prefix VITE_API_BASE_URL.
