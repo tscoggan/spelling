@@ -55,10 +55,16 @@ npx cap open ios
 > **Note:** `export` only lasts for the current terminal session. If you rebuild
 > in a fresh terminal and forget step 1, the bundle would normally lose the API
 > URL and every server call (e.g. word validation) would fail on device. To
-> prevent this, `client/src/lib/apiBase.ts` automatically falls back to
-> `https://spellingplayground.com` whenever the app runs natively, so a forgotten
-> `VITE_API_BASE_URL` no longer breaks the native app. Set it explicitly only if
-> you need to point the build at a different backend.
+> prevent this, `client/src/lib/apiBase.ts` automatically falls back to the
+> Replit-managed domain `https://spell-champ-tgs4.replit.app` whenever the app
+> runs natively, so a forgotten `VITE_API_BASE_URL` no longer breaks the app.
+>
+> **Important — do NOT point the build at `spellingplayground.com` right now.**
+> The custom domain currently has no valid TLS certificate ("no peer certificate
+> available"), so HTTPS calls to it fail and the app cannot reach the backend.
+> Just run `npm run build` (without setting `VITE_API_BASE_URL`) so it uses the
+> working `.replit.app` domain. Once the custom domain's certificate is fixed in
+> the deployment's custom-domain settings, you can switch back.
 
 In Xcode: select **Product → Archive**, then use the Organizer to upload
 to App Store Connect.
