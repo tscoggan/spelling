@@ -13,6 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { API_BASE } from "@/lib/apiBase";
 import { useAuth } from "@/hooks/use-auth";
 import { useGuestSession, GuestImageAssignment } from "@/hooks/use-guest-session";
 import { useUserPreferences } from "@/hooks/use-user-preferences";
@@ -925,9 +926,10 @@ export default function WordListsPage() {
         
       } catch (error) {
         console.error("Word validation error:", error);
+        const detail = error instanceof Error ? error.message : String(error);
         toast({
           title: "Validation Error",
-          description: "Failed to validate words. Please try again.",
+          description: `Failed to validate words: ${detail} [server: ${API_BASE || "same-origin"}]`,
           variant: "destructive",
         });
         return;
