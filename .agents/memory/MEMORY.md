@@ -1,2 +1,3 @@
 - [Capacitor relative fetch](capacitor-relative-fetch.md) — raw `fetch("/api/...")` calls fail on native WebView; a global interceptor must prefix VITE_API_BASE_URL.
 - [Custom domain TLS broken](custom-domain-tls.md) — spellingplayground.com has no TLS cert; native app must target the .replit.app domain or all server calls fail.
+- [Native "Load failed" = stale deploy](capacitor-stale-deploy.md) — Capacitor "Load failed" while dev works means production predates the CORS middleware; republish. Verify response headers, not status.
