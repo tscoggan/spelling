@@ -1,10 +1,9 @@
 // On native (Capacitor) builds the WebView runs from capacitor://localhost, so
 // relative URLs like "/api/..." resolve against that origin and never reach the
-// backend. VITE_API_BASE_URL is set (e.g. https://spellingplayground.com) for
-// mobile bundles. This interceptor rewrites any relative same-origin request to
-// the configured API base and forces credentials so the cross-origin WebView can
-// authenticate. On web builds API_BASE is empty, so nothing is patched.
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) ?? "";
+// backend. This interceptor rewrites any relative /api request to the configured
+// API base (see apiBase.ts) and forces credentials so the cross-origin WebView
+// can authenticate. On web builds API_BASE is empty, so nothing is patched.
+import { API_BASE } from "./apiBase";
 
 if (API_BASE && typeof window !== "undefined" && !(window as any).__apiFetchPatched) {
   (window as any).__apiFetchPatched = true;

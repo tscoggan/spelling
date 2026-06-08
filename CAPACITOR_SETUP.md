@@ -39,7 +39,7 @@ npx cap add android   # optional if iOS-only for now
 ## Building for production
 
 ```bash
-# 1. Set the API base URL for the deployed backend
+# 1. Set the API base URL for the deployed backend (optional — see note below)
 export VITE_API_BASE_URL=https://spellingplayground.com
 
 # 2. Build the web bundle
@@ -51,6 +51,14 @@ npx cap sync
 # 4. Open Xcode and archive for the App Store
 npx cap open ios
 ```
+
+> **Note:** `export` only lasts for the current terminal session. If you rebuild
+> in a fresh terminal and forget step 1, the bundle would normally lose the API
+> URL and every server call (e.g. word validation) would fail on device. To
+> prevent this, `client/src/lib/apiBase.ts` automatically falls back to
+> `https://spellingplayground.com` whenever the app runs natively, so a forgotten
+> `VITE_API_BASE_URL` no longer breaks the native app. Set it explicitly only if
+> you need to point the build at a different backend.
 
 In Xcode: select **Product → Archive**, then use the Organizer to upload
 to App Store Connect.

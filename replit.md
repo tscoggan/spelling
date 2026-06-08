@@ -21,8 +21,8 @@ The frontend is built with React, utilizing Wouter for routing, TanStack Query f
 - `capacitor.config.ts` at project root configures appId `com.spellingplayground.app`, webDir `dist/public`.
 - CORS middleware in `server/index.ts` allows `capacitor://localhost` (iOS) and `http://localhost` (Android).
 - Session cookies use `SameSite=None; Secure` in production so the cross-origin native WebView can authenticate.
-- `VITE_API_BASE_URL` env var prefixes all API/query fetches; empty on web (same-origin), set to `https://spellingplayground.com` when building the mobile bundle on Mac Mini.
-- A global fetch interceptor in `client/src/lib/native-fetch.ts` (imported first in `main.tsx`) rewrites any relative `/...` request to `VITE_API_BASE_URL` and forces `credentials: include`. This covers raw `fetch("/api/...")` calls that bypass the `queryClient`/`apiRequest` helpers; without it those resolve to `capacitor://localhost` on native and fail (e.g. guest-mode word list validation via `/api/validate-words`). No-op on web since `API_BASE` is empty.
+- API base URL is centralized in `client/src/lib/apiBase.ts`. On web it is empty (relative/same-origin). On native (Capacitor) it prefers the build-time `VITE_API_BASE_URL`, and falls back to the hardcoded production URL `https://spellingplayground.com` if that env var was omitted at build time — so the iPad/Android app still reaches the backend even when the Mac Mini build forgets to `export VITE_API_BASE_URL`.
+- A global fetch interceptor in `client/src/lib/native-fetch.ts` (imported first in `main.tsx`) rewrites relative `/api` requests to `API_BASE` and defaults `credentials: include`. This covers raw `fetch("/api/...")` calls that bypass the `queryClient`/`apiRequest` helpers; without it those resolve to `capacitor://localhost` on native and the request throws (e.g. guest-mode word list validation via `/api/validate-words` showed "Failed to validate words"). No-op on web since `API_BASE` is empty.
 - Native platform folders `ios/` and `android/` are generated on the Mac Mini via `npx cap add ios/android` and are gitignored.
 - Full Mac Mini build instructions are in `CAPACITOR_SETUP.md`.
 

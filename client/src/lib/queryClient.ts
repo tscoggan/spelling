@@ -1,9 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
-
-// On web builds this is empty so all requests use relative URLs (same origin).
-// On mobile builds set VITE_API_BASE_URL=https://spellingplayground.com so
-// Capacitor's WebView can reach the deployed backend.
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) ?? '';
+import { API_BASE } from "./apiBase";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
