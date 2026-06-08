@@ -1,13 +1,12 @@
 import { Capacitor } from "@capacitor/core";
 
 // Production backend used by native builds.
-// NOTE: we intentionally use the Replit-managed *.replit.app domain rather than
-// the custom domain (spellingplayground.com). The custom domain's TLS
-// certificate is currently not provisioned ("no peer certificate available"),
-// so HTTPS requests to it fail and break every server call inside the native
-// app. The .replit.app domain always has a valid Replit-managed certificate.
-// Once the custom domain's certificate is fixed, this can be switched back.
-const PRODUCTION_API_URL = "https://spell-champ-tgs4.replit.app";
+// Uses the custom domain. Its TLS certificate is provisioned and valid
+// (Let's Encrypt), so HTTPS requests from the native WebView succeed.
+// If the custom domain's certificate ever breaks again, fall back to the
+// Replit-managed domain "https://spell-champ-tgs4.replit.app", which always
+// has a valid Replit-managed certificate.
+const PRODUCTION_API_URL = "https://spellingplayground.com";
 
 // Build-time override (set on mobile builds, empty on web).
 const envBase = (import.meta.env.VITE_API_BASE_URL as string) ?? "";
