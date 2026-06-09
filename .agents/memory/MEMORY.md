@@ -2,4 +2,5 @@
 - [Custom domain TLS](custom-domain-tls.md) — resolved: missing replit-verify TXT record blocked cert despite "Verified" badge; add TXT + re-link domain to force issuance.
 - [Native "Load failed" = stale deploy](capacitor-stale-deploy.md) — Capacitor "Load failed" while dev works means production predates the CORS middleware; republish. Verify response headers, not status.
 - [Soft-delete via userStatus](soft-delete-userstatus.md) — deleteUserAndAllData soft-deletes (userStatus='deleted'); every auth/eligibility gate must exclude deleted users.
+- [Native auth needs CapacitorHttp](capacitor-native-cookies.md) — iOS WKWebView drops the third-party session cookie (login 200 then 401s); enable CapacitorHttp+CapacitorCookies.
 - [Playground dark mode](playground-dark-mode.md) — Playground theme swaps bg + title banner via matchMedia(prefers-color-scheme), NOT the dormant .dark class.
