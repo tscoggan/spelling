@@ -174,7 +174,7 @@ export default function AuthPage() {
 
   // Account Type Selection Screen
   const renderAccountTypeSelection = () => (
-    <Card className="w-full max-w-lg p-8 relative z-10">
+    <Card className={`w-full max-w-lg p-8 relative z-10${isDark ? " bg-transparent border-transparent shadow-none" : ""}`}>
       <div className="text-center mb-8">
         <div className="mb-4 flex justify-center">
           <img 
@@ -184,7 +184,7 @@ export default function AuthPage() {
             data-testid="img-title-banner"
           />
         </div>
-        <p className="text-muted-foreground text-lg">Choose how you'd like to play</p>
+        <p className={`text-lg ${isDark ? "text-white/90" : "text-muted-foreground"}`}>Choose how you'd like to play</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -206,7 +206,7 @@ export default function AuthPage() {
         <Button
           variant="outline"
           size="lg"
-          className="h-auto py-4 px-3 flex flex-col gap-1 text-center"
+          className={`h-auto py-4 px-3 flex flex-col gap-1 text-center${isDark ? " bg-white/10 backdrop-blur-md border-white/40 text-white" : ""}`}
           onClick={() => setAccountType("login")}
           data-testid="button-login"
         >
@@ -218,7 +218,7 @@ export default function AuthPage() {
         <Button
           variant="outline"
           size="lg"
-          className="h-auto py-4 px-3 flex flex-col gap-1 text-center"
+          className={`h-auto py-4 px-3 flex flex-col gap-1 text-center${isDark ? " bg-white/10 backdrop-blur-md border-white/40 text-white" : ""}`}
           onClick={() => setLocation("/family/signup")}
           data-testid="button-family-account"
         >
@@ -230,7 +230,7 @@ export default function AuthPage() {
         <Button
           variant="outline"
           size="lg"
-          className="h-auto py-4 px-3 flex flex-col gap-1 text-center"
+          className={`h-auto py-4 px-3 flex flex-col gap-1 text-center${isDark ? " bg-white/10 backdrop-blur-md border-white/40 text-white" : ""}`}
           disabled
           data-testid="button-school-account"
         >
@@ -242,20 +242,20 @@ export default function AuthPage() {
 
       <button
         type="button"
-        className="w-full text-center text-sm text-primary hover:underline flex items-center justify-center gap-1 pt-4"
+        className={`w-full text-center text-sm hover:underline flex items-center justify-center gap-1 pt-4 ${isDark ? "text-white" : "text-primary"}`}
         onClick={() => setFeatureComparisonOpen(true)}
         data-testid="link-compare-account-types"
       >
         <Info className="w-4 h-4" />
         Compare account types
       </button>
-      <p className="text-xs text-center text-muted-foreground mt-3">
+      <p className={`text-xs text-center mt-3 ${isDark ? "text-white/80" : "text-muted-foreground"}`}>
         By creating an account you agree to our{" "}
-        <a href="/legal/terms" className="underline hover:text-foreground transition-colors" data-testid="link-terms-of-service">
+        <a href="/legal/terms" className={`underline transition-colors ${isDark ? "hover:text-white" : "hover:text-foreground"}`} data-testid="link-terms-of-service">
           Terms of Service
         </a>{" "}
         and{" "}
-        <a href="/legal/privacy-policy" className="underline hover:text-foreground transition-colors" data-testid="link-privacy-policy">
+        <a href="/legal/privacy-policy" className={`underline transition-colors ${isDark ? "hover:text-white" : "hover:text-foreground"}`} data-testid="link-privacy-policy">
           Privacy Policy
         </a>.
       </p>
