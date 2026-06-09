@@ -6,3 +6,9 @@ id = "snUblL8YxVcW6ywYt7wkf"
 uri = "file://resources/icon.png"
 type = "image"
 title = "App Icon (1024×1024, App Store ready)"
+
+[[outputs]]
+id = "cCBG3NfM1AQWJROWVMKF_"
+uri = "file://resources/icon-alt.png"
+type = "image"
+title = "Alternate icon — borderless, full-bleed sky (1024×1024)"
