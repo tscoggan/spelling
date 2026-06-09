@@ -1,12 +1,12 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, serial, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, serial, unique, uniqueIndex } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
+  username: text("username").notNull(),
   password: text("password").notNull(),
   firstName: text("first_name"),
   lastName: text("last_name"),
@@ -19,7 +19,16 @@ export const users = pgTable("users", {
   accountType: text("account_type").notNull().default("school"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   userStatus: text("user_status").notNull().default("active"),
-});
+}, (table) => ({
+  // Username must be unique among ACTIVE accounts only. A deactivated
+  // (user_status = 'deleted') account's username is excluded from this index,
+  // so a brand-new signup may reuse a deleted user's username. Active usernames
+  // remain strictly unique. (Email has no DB constraint; its uniqueness is
+  // enforced in app code, which already ignores deleted users.)
+  usernameActiveUnique: uniqueIndex("users_username_active_unique")
+    .on(table.username)
+    .where(sql`${table.userStatus} <> 'deleted'`),
+}));
 
 export const words = pgTable("words", {
   id: serial("id").primaryKey(),
