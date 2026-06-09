@@ -4208,9 +4208,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Self-service account deletion (required by App Store Guideline 5.1.1(v)).
   // A logged-in, non-guest user can permanently delete their own account from
   // inside the app. A family parent deletes their entire family (every child
-  // account included). Note: this does NOT auto-cancel an App Store or Stripe
-  // subscription — the UI tells native users to cancel an active App Store
-  // subscription in iOS Settings.
+  // account included). Deleting the parent cancels any active Stripe
+  // subscription (see deleteUserAndAllData) so billing stops. Apple IAP
+  // subscriptions can't be cancelled server-side, so the UI still tells native
+  // users to cancel an active App Store subscription in iOS Settings.
   app.delete("/api/account", requireAuthAndRejectLegacyGuest, async (req, res) => {
     if (!req.user) {
       return res.status(401).json({ error: "Not authenticated" });

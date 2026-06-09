@@ -160,6 +160,10 @@ export default function FamilySignupPage() {
   });
 
   const validatePromo = async (codeOverride?: string) => {
+    // Promo codes are web/Stripe only. On native, Apple processes the purchase
+    // and ignores our discount, so never apply one here (this also stops a
+    // deep-linked ?promo= param from showing a price Apple won't honor).
+    if (onNative) return;
     const code = (codeOverride ?? promoCode).trim();
     if (!code) return;
     setPromoValidating(true);
@@ -572,7 +576,10 @@ export default function FamilySignupPage() {
                 )}
               </div>
 
-              {/* Promo Code */}
+              {/* Promo Code — web/Stripe only. On native, Apple processes the
+                  purchase and ignores this field; discounts there come from Apple
+                  App Store Offer Codes, so showing the box would be misleading. */}
+              {!onNative && (
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-1">
                   <Tag className="w-3.5 h-3.5" /> Promo Code <span className="text-muted-foreground font-normal">(optional)</span>
@@ -598,8 +605,12 @@ export default function FamilySignupPage() {
                 {promoValid && !promoAppliesToSelected && <p className="text-sm text-amber-600 dark:text-amber-400">Code valid for {promoValid.applicablePlans === "monthly" ? "monthly" : "annual"} plan only.</p>}
                 {promoError && <p className="text-sm text-destructive">{promoError}</p>}
               </div>
+              )}
 
-              {/* Auto-renewal */}
+              {/* Auto-renewal — web/Stripe only. Apple subscriptions always renew
+                  automatically and are managed (or cancelled) by the user in iOS
+                  Settings, so a toggle here would do nothing on native. */}
+              {!onNative && (
               <div
                 className="flex items-start gap-3 p-3 rounded-md border cursor-pointer"
                 onClick={e => { if ((e.target as HTMLElement).closest('[role="checkbox"]')) return; setAutoRenew(v => !v); }}
@@ -617,6 +628,7 @@ export default function FamilySignupPage() {
                   </p>
                 </div>
               </div>
+              )}
 
               {onNative ? (
                 /* ── Native iOS: Apple In-App Purchase ── */
@@ -655,7 +667,8 @@ export default function FamilySignupPage() {
                     </Button>
                   </div>
                   <p className="text-xs text-center text-muted-foreground">
-                    Payment is handled securely by Apple. Cancel anytime in iOS Settings.
+                    Payment is handled securely by Apple. Your subscription renews
+                    automatically — manage or cancel it anytime in iOS Settings.
                   </p>
                   <Button
                     variant="ghost"

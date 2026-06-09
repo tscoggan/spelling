@@ -2602,9 +2602,29 @@ export class DatabaseStorage implements IStorage {
     // stay linked to their parent account for record-keeping and any future
     // re-activation. family_legal_acceptances, agreement_acceptances, and
     // payment_history are likewise kept as permanent legal/billing records.
-    // The only change is to turn off auto-renewal on any family this (now
-    // deactivated) user owns, so the dormant subscription is not treated as
-    // still renewing by the renewal-reminder job.
+    // Any active Stripe subscription on a family this (now deactivated) user
+    // OWNS is cancelled so the deleted account is never billed again, and
+    // auto-renewal is turned off as a backup so the dormant subscription is not
+    // treated as still renewing by the renewal-reminder job. (Apple IAP
+    // subscriptions cannot be cancelled server-side — the UI tells native users
+    // to cancel those in iOS Settings.)
+    const ownedFamilies = await db
+      .select({ id: familyAccounts.id, stripeSubscriptionId: familyAccounts.stripeSubscriptionId })
+      .from(familyAccounts)
+      .where(eq(familyAccounts.primaryParentUserId, userId));
+    for (const fam of ownedFamilies) {
+      if (!fam.stripeSubscriptionId) continue;
+      try {
+        const { getUncachableStripeClient } = await import("./stripeClient");
+        const stripe = await getUncachableStripeClient();
+        await stripe.subscriptions.cancel(fam.stripeSubscriptionId);
+      } catch (err: any) {
+        // An already-cancelled/missing subscription or a Stripe outage must not
+        // block account deletion — the autoRenew:false update below is the
+        // safety net so the renewal job never re-bills the deactivated account.
+        console.error(`[deleteUser] Failed to cancel Stripe subscription ${fam.stripeSubscriptionId}:`, err?.message ?? err);
+      }
+    }
     await db
       .update(familyAccounts)
       .set({ autoRenew: false })

@@ -59,8 +59,37 @@ export async function initializeIAP(): Promise<void> {
     { id: IAP_PRODUCTS.ANNUAL,  type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE },
   ]);
 
+  // Surface store-level errors (e.g. products not approved in App Store Connect,
+  // Paid Apps agreement not active, or not signed in to a sandbox account) so a
+  // "not available" result can actually be diagnosed instead of failing silently.
+  try {
+    store.error((err: any) => {
+      console.warn('[IAP] store error', err?.code, err?.message);
+    });
+  } catch {
+    /* older plugin API without store.error — ignore */
+  }
+
   await store.initialize([Platform.APPLE_APPSTORE]);
   _initialized = true;
+}
+
+// Wait until the store has loaded an offer for the product. Product metadata
+// arrives asynchronously after store.initialize(), so a tap immediately after
+// the screen opens can otherwise see no offer and fail. Forces a refresh and
+// polls briefly. Returns the product (which may still lack an offer if it
+// genuinely isn't available from the App Store).
+async function waitForProductOffer(store: any, productId: string, timeoutMs = 6000): Promise<any> {
+  let product = store.get(productId);
+  if (product?.offers?.[0]) return product;
+  try { await store.update(); } catch { /* ignore refresh errors */ }
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    product = store.get(productId);
+    if (product?.offers?.[0]) return product;
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  return store.get(productId);
 }
 
 // ── Fetch product metadata from the store ────────────────────────────────────
@@ -89,8 +118,14 @@ export async function purchaseIAP(productId: IAPProductId): Promise<void> {
   const store = getStore();
   if (!store) throw new Error('cordova-plugin-purchase not available');
 
-  const product = store.get(productId);
-  if (!product?.offers?.[0]) throw new Error('Product not loaded — try again');
+  // Product metadata loads asynchronously, so wait for the offer (and force a
+  // refresh) before giving up rather than failing on the first read.
+  const product = await waitForProductOffer(store, productId);
+  if (!product?.offers?.[0]) {
+    throw new Error(
+      "This subscription isn't available from the App Store yet. Make sure you're signed in to your Apple ID, then try again in a moment.",
+    );
+  }
 
   return new Promise<void>((resolve, reject) => {
     // Listen for this specific product being approved

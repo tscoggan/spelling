@@ -34,7 +34,17 @@ export function useNativeIAP(): UseNativeIAPReturn {
     (async () => {
       try {
         await initializeIAP();
-        if (!cancelled) setProducts(getIAPProducts());
+        // Products load asynchronously from the App Store after initialize(), so
+        // poll briefly until they appear instead of reading once (which usually
+        // returns an empty list on the first render).
+        for (let i = 0; i < 10 && !cancelled; i++) {
+          const list = getIAPProducts();
+          if (list.length > 0) {
+            setProducts(list);
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 400));
+        }
       } catch (err: any) {
         if (!cancelled) setError(err?.message ?? 'Failed to load store products');
       }
