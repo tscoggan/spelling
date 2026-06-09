@@ -4204,6 +4204,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Self-service account deletion (required by App Store Guideline 5.1.1(v)).
+  // A logged-in, non-guest user can permanently delete their own account from
+  // inside the app. A family parent deletes their entire family (every child
+  // account included). Note: this does NOT auto-cancel an App Store or Stripe
+  // subscription — the UI tells native users to cancel an active App Store
+  // subscription in iOS Settings.
+  app.delete("/api/account", requireAuthAndRejectLegacyGuest, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "Account not found" });
+      }
+      if (user.role === "admin") {
+        return res.status(400).json({ error: "Admin accounts cannot be deleted from here." });
+      }
+
+      const deletedUsers: { username: string; firstName?: string | null; lastName?: string | null }[] = [];
+      let notificationEmail: string | null = user.email ?? null;
+      let notificationUsername = user.username;
+      let isEntireGroup = false;
+      let groupType: "family" | "school" | "individual" =
+        (user.accountType === "school" || user.accountType === "school_admin") ? "school" : "individual";
+
+      const familyMember = await storage.getFamilyMemberByUserId(userId);
+      if (familyMember && familyMember.familyId) {
+        groupType = "family";
+        const familyMembers = await storage.getFamilyMembers(familyMember.familyId);
+        const parentMember = familyMembers.find((m) => m.role === "parent");
+        const isParent = parentMember?.userId === userId;
+
+        if (isParent) {
+          // Deleting the parent tears down the whole family.
+          isEntireGroup = true;
+          notificationEmail = parentMember?.user?.email ?? notificationEmail;
+          notificationUsername = parentMember?.user?.username ?? notificationUsername;
+          for (const member of familyMembers) {
+            if (member.userId !== userId) {
+              deletedUsers.push({
+                username: member.user.username,
+                firstName: member.user.firstName,
+                lastName: member.user.lastName,
+              });
+              await storage.deleteUserAndAllData(member.userId);
+            }
+          }
+          await storage.deleteFamilyAccount(familyMember.familyId);
+        }
+      }
+
+      deletedUsers.push({ username: user.username, firstName: user.firstName, lastName: user.lastName });
+
+      const deleted = await storage.deleteUserAndAllData(userId);
+      if (!deleted) {
+        return res.status(500).json({ error: "Failed to delete account" });
+      }
+
+      if (notificationEmail) {
+        try {
+          await sendAccountDeletionEmail(notificationEmail, notificationUsername, deletedUsers, isEntireGroup, groupType);
+        } catch (emailError) {
+          console.error("Failed to send account deletion email:", emailError);
+        }
+      }
+
+      // Destroy the session so the now-deleted user is signed out everywhere.
+      req.logout((err: any) => {
+        if (err) {
+          console.error("Logout after self-deletion failed:", err);
+        }
+        res.json({ success: true });
+      });
+    } catch (error) {
+      console.error("Error deleting own account:", error);
+      res.status(500).json({ error: "Failed to delete account" });
+    }
+  });
+
   // Create admin account
   app.post("/api/admin/create-admin", async (req, res) => {
     if (!req.user || req.user.role !== "admin") {

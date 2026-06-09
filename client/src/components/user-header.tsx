@@ -47,12 +47,26 @@ import {
 } from "@/components/ui/accordion";
 import { APP_VERSION } from "@shared/version";
 import { FeatureComparisonDialog } from "@/components/feature-comparison-dialog";
+import { useNativeIAP, IAP_PRODUCTS } from "@/hooks/use-native-iap";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export function UserHeader() {
   const { user, logoutMutation, isGuestMode } = useAuth();
   useGuestSession(); // Ensure guest session context is available
   const { currentTheme, themeAssets, setTheme, unlockedThemes, allThemes, isLoading: isThemeLoading } = useTheme();
   const [, setLocation] = useLocation();
+  const iap = useNativeIAP();
+  const onNative = isNativePlatform();
   const [todoModalOpen, setTodoModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -101,6 +115,55 @@ export function UserHeader() {
   });
   
   const { toast } = useToast();
+
+  // Opens the iOS App Store subscription-management screen (Apple manages
+  // renewals/cancellation for IAP subscriptions).
+  const openAppStoreSubscriptions = () => {
+    const url = 'itms-apps://apps.apple.com/account/subscriptions';
+    try {
+      const w = window.open(url, '_system');
+      if (!w) window.location.href = url;
+    } catch {
+      window.location.href = url;
+    }
+  };
+
+  const handleIapPurchase = async () => {
+    const productId = renewPlanType === "monthly" ? IAP_PRODUCTS.MONTHLY : IAP_PRODUCTS.ANNUAL;
+    try {
+      await iap.purchase(productId);
+      queryClient.invalidateQueries({ queryKey: ["/api/family/account", user?.id] });
+      toast({ title: "Subscription active", description: "Thank you! Your subscription is now active." });
+    } catch (err: any) {
+      if (err?.message !== 'Purchase cancelled') {
+        toast({ title: "Purchase failed", description: err?.message, variant: "destructive" });
+      }
+    }
+  };
+
+  const handleIapRestore = async () => {
+    const ok = await iap.restore();
+    if (ok) {
+      queryClient.invalidateQueries({ queryKey: ["/api/family/account", user?.id] });
+      toast({ title: "Purchases restored", description: "Any active subscription has been restored." });
+    } else {
+      toast({ title: "Nothing to restore", description: "No active subscription found for this Apple ID." });
+    }
+  };
+
+  const deleteAccountMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", "/api/account");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.clear();
+      window.location.href = "/auth";
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to delete account", description: error.message, variant: "destructive" });
+    },
+  });
 
   const { data: todoCount = 0 } = useQuery<number>({
     queryKey: ["/api/user-to-dos/count", user?.id],
@@ -1829,7 +1892,7 @@ export function UserHeader() {
                 )}
               </div>
               
-              {accountInfo.isParent && accountInfo.accountType === 'family_parent' && accountInfo.vpcStatus === 'verified' && (
+              {!onNative && accountInfo.isParent && accountInfo.accountType === 'family_parent' && accountInfo.vpcStatus === 'verified' && (
                 <div className="pt-2 border-t">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 text-sm">
@@ -1896,6 +1959,49 @@ export function UserHeader() {
                     <p className="text-sm font-medium">
                       {isPending ? "Activate Your Subscription" : isActive ? "Renew Subscription Early" : "Subscription Expired — Renew"}
                     </p>
+                    {onNative ? (
+                      isActive ? (
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground">
+                            Your subscription renews automatically through the App Store. You can change or cancel it anytime in your device's Settings.
+                          </p>
+                          <Button className="w-full" variant="outline" onClick={openAppStoreSubscriptions} data-testid="button-manage-subscription-appstore">
+                            <RefreshCw className="w-4 h-4 mr-2" /> Manage Subscription
+                          </Button>
+                          <Button className="w-full" variant="ghost" onClick={handleIapRestore} disabled={iap.restoring} data-testid="button-restore-purchases">
+                            {iap.restoring ? "Restoring…" : "Restore previous purchase"}
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="flex gap-2">
+                            <Button variant={renewPlanType === "monthly" ? "default" : "outline"} size="sm" className="flex-1" onClick={() => setRenewPlanType("monthly")} data-testid="button-plan-monthly-native">
+                              $1.99 / month
+                            </Button>
+                            <Button variant={renewPlanType === "yearly" ? "default" : "outline"} size="sm" className="flex-1" onClick={() => setRenewPlanType("yearly")} data-testid="button-plan-yearly-native">
+                              $19.99 / year
+                            </Button>
+                          </div>
+                          <Button className="w-full" onClick={handleIapPurchase} disabled={iap.purchasing} data-testid="button-subscribe-appstore">
+                            {iap.purchasing ? (
+                              <>
+                                <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                                Processing…
+                              </>
+                            ) : (
+                              <>
+                                <CreditCard className="w-4 h-4 mr-2" />
+                                Subscribe via App Store
+                              </>
+                            )}
+                          </Button>
+                          <Button className="w-full" variant="ghost" onClick={handleIapRestore} disabled={iap.restoring} data-testid="button-restore-purchases">
+                            {iap.restoring ? "Restoring…" : "Restore previous purchase"}
+                          </Button>
+                        </div>
+                      )
+                    ) : (
+                    <>
                     {/* Plan selection buttons */}
                     {(() => {
                       const monthlyApplies = renewPromoValid && (renewPromoValid.applicablePlans === "both" || renewPromoValid.applicablePlans === "monthly");
@@ -2003,9 +2109,50 @@ export function UserHeader() {
                     <p className="text-xs text-muted-foreground text-center">
                       You'll be taken to Stripe's secure checkout page.
                     </p>
+                    </>
+                    )}
                   </div>
                 );
               })()}
+
+              {user && !isGuestMode && (
+                <div className="pt-4 border-t">
+                  <h4 className="font-semibold text-destructive mb-1">Delete Account</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {accountInfo.isParent && accountInfo.accountType === 'family_parent'
+                      ? "Permanently delete your account and your entire family, including all child accounts and their data. This cannot be undone."
+                      : "Permanently delete your account and all of your data, including your progress. This cannot be undone."}
+                  </p>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" className="w-full" data-testid="button-delete-account">
+                        Delete My Account
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {accountInfo.isParent && accountInfo.accountType === 'family_parent'
+                            ? "This permanently deletes your account and every child account in your family, along with all progress and data. This action cannot be undone."
+                            : "This permanently deletes your account and all of your data, including your progress. This action cannot be undone."}
+                          {onNative ? " If you have an App Store subscription, remember to also cancel it in your device's Settings." : ""}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel data-testid="button-cancel-delete-account">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => deleteAccountMutation.mutate()}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          data-testid="button-confirm-delete-account"
+                        >
+                          Delete Account
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">

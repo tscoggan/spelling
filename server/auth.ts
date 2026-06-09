@@ -55,6 +55,9 @@ export function setupAuth(app: Express) {
       const user = await storage.getUserByUsername(username);
       if (!user || !(await comparePasswords(password, user.password))) {
         return done(null, false);
+      } else if (user.userStatus === 'deleted') {
+        // Account was self-deleted (or admin-deleted) — block sign-in.
+        return done(null, false);
       } else {
         return done(null, user);
       }
@@ -64,7 +67,7 @@ export function setupAuth(app: Express) {
   passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id: number, done) => {
     const user = await storage.getUser(id);
-    if (!user) {
+    if (!user || user.userStatus === 'deleted') {
       return done(null, false);
     }
     done(null, user);
