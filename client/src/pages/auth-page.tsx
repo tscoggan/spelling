@@ -14,6 +14,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useTheme } from "@/hooks/use-theme";
 import titleBanner from "@assets/Spelling_Playground_title_1764882992138.png";
+import titleBannerDark from "@assets/Spelling_Playground_title_-_dark_1781028287623.png";
 import { FeatureComparisonDialog } from "@/components/feature-comparison-dialog";
 
 type AccountType = "none" | "free" | "family" | "school" | "login";
@@ -37,7 +38,7 @@ export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { user, loginMutation, registerMutation, guestLoginMutation } = useAuth();
   const { toast } = useToast();
-  const { themeAssets } = useTheme();
+  const { themeAssets, isDark } = useTheme();
 
   const [accountType, setAccountType] = useState<AccountType>("none");
   const [loginData, setLoginData] = useState({ username: "", password: "" });
@@ -177,7 +178,7 @@ export default function AuthPage() {
       <div className="text-center mb-8">
         <div className="mb-4 flex justify-center">
           <img 
-            src={titleBanner} 
+            src={isDark ? titleBannerDark : titleBanner} 
             alt="Spelling Playground" 
             className="w-full max-w-xs h-auto rounded-md"
             data-testid="img-title-banner"
@@ -341,7 +342,7 @@ export default function AuthPage() {
       <div className="text-center mb-8">
         <div className="mb-4 flex justify-center">
           <img 
-            src={titleBanner} 
+            src={isDark ? titleBannerDark : titleBanner} 
             alt="Spelling Playground" 
             className="w-full max-w-xs h-auto rounded-md"
             data-testid="img-title-banner-login"
@@ -441,7 +442,7 @@ export default function AuthPage() {
       <div className="text-center mb-8">
         <div className="mb-4 flex justify-center">
           <img 
-            src={titleBanner} 
+            src={isDark ? titleBannerDark : titleBanner} 
             alt="Spelling Playground" 
             className="w-full max-w-xs h-auto rounded-md"
             data-testid="img-title-banner-school"

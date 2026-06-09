@@ -5,8 +5,10 @@ import { useGuestSession } from "./use-guest-session";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ThemeId, ThemeAssets, AVAILABLE_THEMES, ShopItemId } from "@shared/schema";
 
-import defaultBackgroundLandscape from "@assets/Playground_background_-_landscape_1764862674337.png";
-import defaultBackgroundPortrait from "@assets/Playground_background_-_portrait_1764862674336.png";
+import defaultBackgroundLandscape from "@assets/Daytime_sky_background_-_landscape_1781028287623.png";
+import defaultBackgroundPortrait from "@assets/Daytime_sky_background_-_portrait_1781028287623.png";
+import defaultBackgroundLandscapeDark from "@assets/Night_sky_background_-_landscape_1781028287624.png";
+import defaultBackgroundPortraitDark from "@assets/Night_sky_background_-_portrait_1781028287624.png";
 import defaultMascotTrophy from "@assets/Bee with trophy_1763852047681.png";
 import defaultMascotGoodTry from "@assets/Bee with good try_1764525113983.png";
 
@@ -74,6 +76,8 @@ const THEME_ASSETS: Record<ThemeId, ThemeAssets> = {
   default: {
     backgroundLandscape: defaultBackgroundLandscape,
     backgroundPortrait: defaultBackgroundPortrait,
+    backgroundLandscapeDark: defaultBackgroundLandscapeDark,
+    backgroundPortraitDark: defaultBackgroundPortraitDark,
     mascotTrophy: defaultMascotTrophy,
     mascotGoodTry: defaultMascotGoodTry,
     name: "Playground",
@@ -181,6 +185,7 @@ interface ThemeContextValue {
   isLoading: boolean;
   allThemes: typeof AVAILABLE_THEMES;
   hasDarkBackground: boolean;
+  isDark: boolean;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -189,6 +194,26 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { user, isLoading: isAuthLoading, isGuestMode } = useAuth();
   const { guestGetItemQuantity } = useGuestSession();
   const [currentTheme, setCurrentTheme] = useState<ThemeId>("default");
+
+  // Track the device's system dark-mode preference (scoped: only swaps themed
+  // backgrounds + title banner; does not toggle the app's global .dark class).
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return false;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
+    // Older iOS Safari/WebView versions only support the legacy addListener API.
+    if (mql.addEventListener) {
+      mql.addEventListener("change", handler);
+      return () => mql.removeEventListener("change", handler);
+    }
+    mql.addListener(handler);
+    return () => mql.removeListener(handler);
+  }, []);
 
   const { data: apiUserItems, isLoading: isLoadingItems } = useQuery<UserItem[]>({
     // Use a tuple key for cache uniqueness but provide custom queryFn to avoid path joining
@@ -269,10 +294,24 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const themeAssets = THEME_ASSETS[currentTheme] || THEME_ASSETS.default;
-  
-  // Themes with dark backgrounds that need white text
-  const hasDarkBackground = currentTheme === "default" || currentTheme === "space" || currentTheme === "robot" || currentTheme === "skiing" || currentTheme === "basketball" || currentTheme === "volleyball" || currentTheme === "mermaid" || currentTheme === "dragon";
+  const baseAssets = THEME_ASSETS[currentTheme] || THEME_ASSETS.default;
+
+  // In system dark mode, swap to the theme's night backgrounds when it has them.
+  // Field names stay the same so every consuming page updates automatically.
+  const themeAssets: ThemeAssets = useMemo(() => {
+    if (isDark && baseAssets.backgroundLandscapeDark && baseAssets.backgroundPortraitDark) {
+      return {
+        ...baseAssets,
+        backgroundLandscape: baseAssets.backgroundLandscapeDark,
+        backgroundPortrait: baseAssets.backgroundPortraitDark,
+      };
+    }
+    return baseAssets;
+  }, [baseAssets, isDark]);
+
+  // Themes with dark backgrounds that need white text. The default (Playground)
+  // theme has a light daytime background, so it only needs white text at night.
+  const hasDarkBackground = (currentTheme === "default" && isDark) || currentTheme === "space" || currentTheme === "robot" || currentTheme === "skiing" || currentTheme === "basketball" || currentTheme === "volleyball" || currentTheme === "mermaid" || currentTheme === "dragon";
 
   const value: ThemeContextValue = {
     currentTheme,
@@ -284,6 +323,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     isLoading: isLoadingItems,
     allThemes: AVAILABLE_THEMES,
     hasDarkBackground,
+    isDark,
   };
 
   return (

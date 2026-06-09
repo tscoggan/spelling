@@ -53,6 +53,7 @@ import { getThemedTextClasses } from "@/lib/themeText";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import titleBanner from "@assets/Spelling_Playground_title_1764882992138.png";
+import titleBannerDark from "@assets/Spelling_Playground_title_-_dark_1781028287623.png";
 import oneStar from "@assets/1 star_1763916010555.png";
 import missingStar from "@assets/Missing star (grey)_1763916010554.png";
 import wordListsButton from "@assets/Word Lists button_1764442517980.png";
@@ -137,7 +138,7 @@ const useRefreshNotifications = (userId: number | undefined) => {
 function TeacherHome() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
-  const { themeAssets, currentTheme, hasDarkBackground } = useTheme();
+  const { themeAssets, currentTheme, hasDarkBackground, isDark } = useTheme();
   
   const textClasses = getThemedTextClasses(hasDarkBackground);
 
@@ -179,7 +180,7 @@ function TeacherHome() {
             transition={{ duration: 0.3 }}
           >
             <img 
-              src={titleBanner} 
+              src={isDark ? titleBannerDark : titleBanner} 
               alt="Spelling Playground" 
               className="w-full max-w-sm md:max-w-xl h-auto rounded-md"
               data-testid="img-title-banner"
@@ -1272,7 +1273,7 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const { user, isGuestMode } = useAuth();
   const { state: guestState, guestGetWordListMastery } = useGuestSession();
-  const { themeAssets, currentTheme, hasDarkBackground } = useTheme();
+  const { themeAssets, currentTheme, hasDarkBackground, isDark } = useTheme();
   const textClasses = getThemedTextClasses(hasDarkBackground);
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [wordListDialogOpen, setWordListDialogOpen] = useState(false);
@@ -1815,7 +1816,7 @@ export default function Home() {
             transition={{ duration: 0.3 }}
           >
             <img 
-              src={titleBanner} 
+              src={isDark ? titleBannerDark : titleBanner} 
               alt="Spelling Playground" 
               className="w-full max-w-sm md:max-w-xl h-auto rounded-md"
               data-testid="img-title-banner"

@@ -411,6 +411,8 @@ export type ThemeId = "default" | "pirate" | "space" | "soccer" | "skiing" | "ba
 export interface ThemeAssets {
   backgroundLandscape: string;
   backgroundPortrait: string;
+  backgroundLandscapeDark?: string;
+  backgroundPortraitDark?: string;
   mascotTrophy: string;
   mascotGoodTry: string;
   name: string;
