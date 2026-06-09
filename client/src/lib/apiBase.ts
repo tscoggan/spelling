@@ -29,3 +29,21 @@ export function assetUrl(path: string | null | undefined): string {
   }
   return path;
 }
+
+// Open an in-app route (e.g. "/legal/terms") in a new context.
+// On WEB this returns false so the caller's default <a target="_blank"> opens a
+// normal new browser tab.
+// On NATIVE a relative route resolves to capacitor://localhost and the WebView
+// blocks opening it as a new window, so a tapped <a target="_blank"> silently
+// does nothing. Instead we open the ABSOLUTE production URL; because the app
+// origin is capacitor://localhost and the production domain is a different host
+// (not in capacitor.config allowNavigation), Capacitor routes it to the device's
+// system browser rather than loading it inside the app. Returns true when it
+// handled the open (so the caller should preventDefault the anchor).
+export function openExternalRoute(path: string): boolean {
+  if (!API_BASE) return false;
+  const url = path.startsWith("http") ? path : API_BASE + path;
+  const opened = window.open(url, "_system");
+  if (!opened) window.location.href = url;
+  return true;
+}

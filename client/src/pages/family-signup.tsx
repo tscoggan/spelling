@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
 import { isNativePlatform } from "@/lib/platform";
+import { openExternalRoute } from "@/lib/apiBase";
 import { useNativeIAP, IAP_PRODUCTS } from "@/hooks/use-native-iap";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -449,7 +450,7 @@ export default function FamilySignupPage() {
                   <Checkbox checked={acceptedTos} onCheckedChange={v => setAcceptedTos(v === true)} className="mt-0.5" data-testid="checkbox-tos" />
                   <span className="text-sm cursor-pointer leading-snug">
                     I agree to the{" "}
-                    <a href="/legal/terms" target="_blank" rel="noopener noreferrer" className="underline text-primary" onClick={e => e.stopPropagation()}>
+                    <a href="/legal/terms" target="_blank" rel="noopener noreferrer" className="underline text-primary" onClick={e => { e.stopPropagation(); if (openExternalRoute("/legal/terms")) e.preventDefault(); }}>
                       Terms of Service
                     </a>
                   </span>
@@ -463,7 +464,7 @@ export default function FamilySignupPage() {
                   <Checkbox checked={acceptedPrivacy} onCheckedChange={v => setAcceptedPrivacy(v === true)} className="mt-0.5" data-testid="checkbox-privacy" />
                   <span className="text-sm cursor-pointer leading-snug">
                     I have read and agree to the{" "}
-                    <a href="/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="underline text-primary" onClick={e => e.stopPropagation()}>
+                    <a href="/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="underline text-primary" onClick={e => { e.stopPropagation(); if (openExternalRoute("/legal/privacy-policy")) e.preventDefault(); }}>
                       Privacy Policy
                     </a>
                   </span>
@@ -499,7 +500,7 @@ export default function FamilySignupPage() {
                   <Checkbox checked={acceptedParentNotice} onCheckedChange={v => setAcceptedParentNotice(v === true)} className="mt-0.5" data-testid="checkbox-parent-notice" />
                   <span className="text-sm cursor-pointer leading-snug">
                     By creating an account, you acknowledge our{" "}
-                    <a href="/legal/coppa-parent-notice" target="_blank" rel="noopener noreferrer" className="underline text-primary" onClick={e => e.stopPropagation()}>
+                    <a href="/legal/coppa-parent-notice" target="_blank" rel="noopener noreferrer" className="underline text-primary" onClick={e => { e.stopPropagation(); if (openExternalRoute("/legal/coppa-parent-notice")) e.preventDefault(); }}>
                       Parent Notice
                     </a>
                     {" "}regarding how we collect and protect your child's information.
