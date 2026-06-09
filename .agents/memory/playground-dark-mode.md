@@ -27,3 +27,10 @@ title banner to night versions, do NOT force the whole app dark.
   home.tsx and auth-page.tsx (the only files importing that banner).
 - Do NOT reach for the `.dark` class for theme dark mode — use `isDark` from
   `useTheme()`.
+
+## Dark title banner must be a transparent PNG
+The user-provided dark banner art shipped with an opaque BLACK rectangle around
+the sticker. It must be stripped to transparency (outer background removed, the
+dark charcoal "sticker" behind the letters kept) before use, mirroring the light
+banner which is transparent outside its white sticker. A version with the black
+rectangle looks like a black box floating on the night sky.

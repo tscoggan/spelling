@@ -14,7 +14,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useTheme } from "@/hooks/use-theme";
 import titleBanner from "@assets/Spelling_Playground_title_1764882992138.png";
-import titleBannerDark from "@assets/Spelling_Playground_title_-_dark_1781028287623.png";
+import titleBannerDark from "@assets/Spelling_Playground_title_-_dark_transparent_1781028287623.png";
 import { FeatureComparisonDialog } from "@/components/feature-comparison-dialog";
 
 type AccountType = "none" | "free" | "family" | "school" | "login";

@@ -53,7 +53,7 @@ import { getThemedTextClasses } from "@/lib/themeText";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import titleBanner from "@assets/Spelling_Playground_title_1764882992138.png";
-import titleBannerDark from "@assets/Spelling_Playground_title_-_dark_1781028287623.png";
+import titleBannerDark from "@assets/Spelling_Playground_title_-_dark_transparent_1781028287623.png";
 import oneStar from "@assets/1 star_1763916010555.png";
 import missingStar from "@assets/Missing star (grey)_1763916010554.png";
 import wordListsButton from "@assets/Word Lists button_1764442517980.png";
