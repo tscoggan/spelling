@@ -51,6 +51,7 @@ import { FeatureComparisonDialog } from "@/components/feature-comparison-dialog"
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { assetUrl } from "@/lib/apiBase";
 import { useToast } from "@/hooks/use-toast";
 import titleBanner from "@assets/Spelling_Playground_title_1764882992138.png";
 import titleBannerDark from "@assets/Spelling_Playground_title_-_dark_transparent_1781028287623.png";
@@ -1254,7 +1255,7 @@ function AvatarDisplay({ avatar, size = "md", className = "" }: { avatar?: strin
   if (avatar.startsWith('/objects/')) {
     return (
       <img 
-        src={avatar} 
+        src={assetUrl(avatar)} 
         alt="User avatar" 
         className={`rounded-full object-cover flex-shrink-0 ${sizeClasses[size].split(' ').slice(0, 2).join(' ')} ${className}`}
       />

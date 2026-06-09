@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Volume2, Home, ArrowRight, CheckCircle2, XCircle, Sparkles, Flame, Clock, SkipForward, Trophy, Settings, BookOpen, MessageSquare, Globe, RotateCcw, Swords } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { assetUrl } from "@/lib/apiBase";
 import type { Word, GameMode } from "@shared/schema";
 import { motion, AnimatePresence } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
@@ -4854,7 +4855,7 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, onR
                           className="flex justify-center"
                         >
                           <img 
-                            src={imagePath}
+                            src={assetUrl(imagePath)}
                             alt={`Cartoon ${currentWord.word}`}
                             className="w-32 h-32 md:w-48 md:h-48 object-contain"
                             data-testid="img-word-illustration"

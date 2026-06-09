@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { assetUrl } from "@/lib/apiBase";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Trophy, Medal, Home, Crown, Award } from "lucide-react";
@@ -118,7 +119,7 @@ export default function Leaderboard() {
                               {(entry as any).selectedAvatar && (
                                 (entry as any).selectedAvatar.startsWith('/objects/') ? (
                                   <img 
-                                    src={(entry as any).selectedAvatar} 
+                                    src={assetUrl((entry as any).selectedAvatar)} 
                                     alt="User avatar" 
                                     className="w-10 h-10 rounded-full object-cover"
                                   />

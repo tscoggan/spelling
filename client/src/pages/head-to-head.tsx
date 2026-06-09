@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { assetUrl } from "@/lib/apiBase";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 
@@ -86,7 +87,7 @@ function AvatarDisplay({ avatar, size = "md", className = "" }: { avatar?: strin
   if (avatar.startsWith('/objects/')) {
     return (
       <img 
-        src={avatar} 
+        src={assetUrl(avatar)} 
         alt="User avatar" 
         className={`rounded-full object-cover flex-shrink-0 ${sizeClasses[size].split(' ').slice(0, 2).join(' ')} ${className}`}
       />

@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { API_BASE } from "@/lib/apiBase";
+import { API_BASE, assetUrl } from "@/lib/apiBase";
 import { useAuth } from "@/hooks/use-auth";
 import { useGuestSession, GuestImageAssignment } from "@/hooks/use-guest-session";
 import { useUserPreferences } from "@/hooks/use-user-preferences";
@@ -2277,7 +2277,7 @@ function WordListPreview({ words, listId, guestImageAssignments, isGuestMode }: 
           >
             {illustration && illustration.imagePath && (
               <img
-                src={illustration.imagePath}
+                src={assetUrl(illustration.imagePath)}
                 alt={word}
                 className="w-5 h-5 object-cover rounded"
               />
@@ -2585,7 +2585,7 @@ function EditImagesDialog({ list, open, onOpenChange }: {
                     <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-md flex items-center justify-center overflow-hidden">
                       {illustration && illustration.imagePath ? (
                         <img
-                          src={illustration.imagePath}
+                          src={assetUrl(illustration.imagePath)}
                           alt={word}
                           className="w-full h-full object-cover"
                         />

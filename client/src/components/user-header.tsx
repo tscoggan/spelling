@@ -39,6 +39,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { appConfig } from "@/lib/config";
 import { useLocation } from "wouter";
+import { assetUrl } from "@/lib/apiBase";
 import {
   Accordion,
   AccordionContent,
@@ -158,7 +159,7 @@ export function UserHeader() {
     },
     onSuccess: () => {
       queryClient.clear();
-      window.location.href = "/auth";
+      setLocation("/auth");
     },
     onError: (error: any) => {
       toast({ title: "Failed to delete account", description: error.message, variant: "destructive" });
@@ -814,7 +815,7 @@ export function UserHeader() {
                 {user?.selectedAvatar && (
                   user.selectedAvatar.startsWith('/objects/') ? (
                     <img 
-                      src={user.selectedAvatar} 
+                      src={assetUrl(user.selectedAvatar)} 
                       alt="User avatar" 
                       className="w-8 h-8 rounded-full object-cover"
                       data-testid="img-user-avatar"
@@ -1766,7 +1767,7 @@ export function UserHeader() {
                     ) : user?.selectedAvatar?.startsWith('/objects/') ? (
                       <>
                         <img 
-                          src={user.selectedAvatar} 
+                          src={assetUrl(user.selectedAvatar)} 
                           alt="Current avatar" 
                           className="w-12 h-12 rounded-full object-cover"
                         />

@@ -17,3 +17,15 @@ const envBase = (import.meta.env.VITE_API_BASE_URL as string) ?? "";
 // back to the known production URL so the app still works if that env var was
 // omitted when building the bundle.
 export const API_BASE = envBase || (Capacitor.isNativePlatform() ? PRODUCTION_API_URL : "");
+
+// On native, <img>/<audio> tags bypass the fetch interceptor, so a relative
+// "/objects/..." (object-storage image) or "/api/..." path resolves to
+// capacitor://localhost and 404s. Prepend API_BASE so these load from the
+// deployed backend. No-op on web because API_BASE is empty.
+export function assetUrl(path: string | null | undefined): string {
+  if (!path) return path ?? "";
+  if (API_BASE && (path.startsWith("/objects/") || path.startsWith("/api/"))) {
+    return API_BASE + path;
+  }
+  return path;
+}

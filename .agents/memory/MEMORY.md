@@ -3,4 +3,5 @@
 - [Native "Load failed" = stale deploy](capacitor-stale-deploy.md) — Capacitor "Load failed" while dev works means production predates the CORS middleware; republish. Verify response headers, not status.
 - [Soft-delete via userStatus](soft-delete-userstatus.md) — deleteUserAndAllData soft-deletes (userStatus='deleted'); every auth/eligibility gate must exclude deleted users.
 - [Native auth needs CapacitorHttp](capacitor-native-cookies.md) — iOS WKWebView drops the third-party session cookie (login 200 then 401s); enable CapacitorHttp+CapacitorCookies.
+- [Capacitor image URLs](capacitor-image-urls.md) — <img>/<audio> bypass the fetch interceptor; wrap relative /objects/ & /api/ media src with assetUrl() or they 404 on native.
 - [Playground dark mode](playground-dark-mode.md) — Playground theme swaps bg + title banner via matchMedia(prefers-color-scheme), NOT the dormant .dark class.

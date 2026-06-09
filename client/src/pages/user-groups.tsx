@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { assetUrl } from "@/lib/apiBase";
 import { useAuth } from "@/hooks/use-auth";
 import { Plus, Trash2, Users, Globe, Lock, Home, UserPlus, Settings, Search, Mail, LogOut, Edit, Bell, Check, X, Eye, EyeOff, Copy } from "lucide-react";
 import { motion } from "framer-motion";
@@ -985,7 +986,7 @@ export default function UserGroupsPage() {
                           <div className="flex items-center gap-3">
                             {member.selectedAvatar?.startsWith('/objects/') ? (
                               <img 
-                                src={member.selectedAvatar} 
+                                src={assetUrl(member.selectedAvatar)} 
                                 alt="User avatar" 
                                 className="w-10 h-10 rounded-full object-cover"
                               />
@@ -1085,7 +1086,7 @@ export default function UserGroupsPage() {
                               <div className="flex items-center gap-3">
                                 {result.selectedAvatar?.startsWith('/objects/') ? (
                                   <img 
-                                    src={result.selectedAvatar} 
+                                    src={assetUrl(result.selectedAvatar)} 
                                     alt="User avatar" 
                                     className="w-10 h-10 rounded-full object-cover"
                                   />
