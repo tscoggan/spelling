@@ -420,7 +420,7 @@ export interface ThemeAssets {
 
 export const AVAILABLE_THEMES: Record<ThemeId, { name: string; requiresPurchase: boolean; shopItemId?: ShopItemId }> = {
   default: {
-    name: "Playground",
+    name: "Default",
     requiresPurchase: false,
   },
   pirate: {

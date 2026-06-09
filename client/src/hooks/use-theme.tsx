@@ -80,7 +80,7 @@ const THEME_ASSETS: Record<ThemeId, ThemeAssets> = {
     backgroundPortraitDark: defaultBackgroundPortraitDark,
     mascotTrophy: defaultMascotTrophy,
     mascotGoodTry: defaultMascotGoodTry,
-    name: "Playground",
+    name: "Default",
   },
   pirate: {
     backgroundLandscape: pirateBackgroundLandscape,
@@ -309,8 +309,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return baseAssets;
   }, [baseAssets, isDark]);
 
-  // Themes with dark backgrounds that need white text. The default (Playground)
-  // theme has a light daytime background, so it only needs white text at night.
+  // Themes with dark backgrounds that need white text. The default theme has a
+  // light daytime background, so it only needs white text at night.
   const hasDarkBackground = (currentTheme === "default" && isDark) || currentTheme === "space" || currentTheme === "robot" || currentTheme === "skiing" || currentTheme === "basketball" || currentTheme === "volleyball" || currentTheme === "mermaid" || currentTheme === "dragon";
 
   const value: ThemeContextValue = {
