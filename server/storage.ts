@@ -2597,19 +2597,25 @@ export class DatabaseStorage implements IStorage {
     await db.delete(userGroups).where(eq(userGroups.ownerUserId, userId));
 
     // ── Family account data ───────────────────────────────────────────────
-    // NOTE: family_legal_acceptances and agreement_acceptances are intentionally
-    // preserved as permanent legal records even after the user is deleted.
-    const ownedFamily = await db
-      .select({ id: familyAccounts.id })
-      .from(familyAccounts)
+    // NOTE: The family "container" (family_accounts) and the parent⇄child links
+    // (family_members) are intentionally PRESERVED so deactivated child accounts
+    // stay linked to their parent account for record-keeping and any future
+    // re-activation. family_legal_acceptances, agreement_acceptances, and
+    // payment_history are likewise kept as permanent legal/billing records.
+    // The only change is to turn off auto-renewal on any family this (now
+    // deactivated) user owns, so the dormant subscription is not treated as
+    // still renewing by the renewal-reminder job.
+    await db
+      .update(familyAccounts)
+      .set({ autoRenew: false })
       .where(eq(familyAccounts.primaryParentUserId, userId));
-    for (const family of ownedFamily) {
-      await db.delete(familyMembers).where(eq(familyMembers.familyId, family.id));
-      // family_legal_acceptances and payment_history kept intentionally
-    }
-    await db.delete(familyAccounts).where(eq(familyAccounts.primaryParentUserId, userId));
-    // Remove membership rows for this user in any family they belong to but don't own
-    await db.delete(familyMembers).where(eq(familyMembers.userId, userId));
+    // Mark this user's own family membership row(s) as deleted. The row is kept
+    // (so the parent⇄child link survives for record-keeping / re-activation)
+    // but flagged so active-member views and counts exclude the deactivated user.
+    await db
+      .update(familyMembers)
+      .set({ status: "deleted" })
+      .where(eq(familyMembers.userId, userId));
 
     // ── School account data ───────────────────────────────────────────────
     // NOTE: school_certifications (COPPA / DPA) are intentionally preserved.
@@ -2726,15 +2732,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFamilyMembers(familyId: number): Promise<(FamilyMember & { user: User })[]> {
-    const members = await db.select().from(familyMembers).where(eq(familyMembers.familyId, familyId));
-    
+    // Only active members are returned. Membership rows for deactivated
+    // (soft-deleted) users are retained for record-keeping but marked
+    // status='deleted', so they are excluded here. The skip-on-missing guard
+    // below additionally protects against any historical orphan rows whose user
+    // was hard-deleted in the past (getUser excludes user_status='deleted').
+    const members = await db.select().from(familyMembers).where(
+      and(eq(familyMembers.familyId, familyId), eq(familyMembers.status, "active"))
+    );
+
     const result = await Promise.all(members.map(async (member) => {
       const user = await this.getUser(member.userId);
-      if (!user) throw new Error(`User ${member.userId} not found for family member`);
-      return { ...member, user };
+      return user ? { ...member, user } : null;
     }));
-    
-    return result;
+
+    return result.filter((m): m is FamilyMember & { user: User } => m !== null);
   }
 
   async getFamilyMemberByUserId(userId: number): Promise<FamilyMember | undefined> {

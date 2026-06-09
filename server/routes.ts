@@ -4142,8 +4142,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               await storage.deleteUserAndAllData(member.userId);
             }
           }
-          await storage.deleteFamilyAccount(familyMember.familyId);
-          
+          // The family container and parent⇄child links are preserved (see
+          // deleteUserAndAllData) so members stay linked to their parent.
+
           if (parentEmail) {
             try {
               await sendAccountDeletionEmail(parentEmail, parentUsername, deletedUsers, true, 'family');
@@ -4152,7 +4153,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
           
-          return res.json({ success: true, message: `Family account and ${deletedUsers.length} member(s) deleted` });
+          return res.json({ success: true, message: `Family deactivated: ${deletedUsers.length} member(s) deactivated. Family links, payment and legal records preserved.` });
         }
       }
       
@@ -4239,7 +4240,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const isParent = parentMember?.userId === userId;
 
         if (isParent) {
-          // Deleting the parent tears down the whole family.
+          // Deleting the parent deactivates the whole family. The family
+          // container (family_accounts) and the parent⇄child links
+          // (family_members) are preserved — see deleteUserAndAllData — so the
+          // deactivated child accounts stay linked to their parent account.
           isEntireGroup = true;
           notificationEmail = parentMember?.user?.email ?? notificationEmail;
           notificationUsername = parentMember?.user?.username ?? notificationUsername;
@@ -4253,7 +4257,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               await storage.deleteUserAndAllData(member.userId);
             }
           }
-          await storage.deleteFamilyAccount(familyMember.familyId);
         }
       }
 
