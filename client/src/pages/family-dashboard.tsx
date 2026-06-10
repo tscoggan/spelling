@@ -191,6 +191,7 @@ export default function FamilyDashboardPage() {
       const response = await apiRequest("POST", "/api/stripe/create-checkout", {
         type: "family_subscription",
         priceInterval,
+        intent: "renew",
       });
       return response.json() as Promise<{ url: string }>;
     },

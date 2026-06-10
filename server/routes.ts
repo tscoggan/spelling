@@ -168,7 +168,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     next();
   };
-  
+
+  // Returns whether a user currently has an active (paid, unexpired) family
+  // subscription. Used to prevent accidental double-payment across Apple IAP and
+  // Stripe — e.g. creating a second account, or subscribing again while already
+  // covered. A "verified" family account counts as active unless its
+  // subscriptionExpiresAt is in the past.
+  const getUserActiveSubscription = async (
+    userId: number,
+  ): Promise<{ active: boolean; method: string | null; expiresAt: Date | null }> => {
+    try {
+      const family = await storage.getFamilyAccountByParentId(userId);
+      if (family && family.vpcStatus === "verified") {
+        const exp = family.subscriptionExpiresAt ? new Date(family.subscriptionExpiresAt) : null;
+        const active = !exp || exp.getTime() > Date.now();
+        return { active, method: family.lastPaymentMethod ?? null, expiresAt: exp };
+      }
+    } catch (err) {
+      console.error("getUserActiveSubscription: error checking subscription", err);
+    }
+    return { active: false, method: null, expiresAt: null };
+  };
+
   // Middleware to reject legacy guest users (username starting with "guest_")
   // These users should be logged out and redirected to use the new in-memory guest mode
   const rejectLegacyGuest = (req: any, res: any, next: any) => {
@@ -4373,6 +4394,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const existingEmail = await storage.getUserByEmail(email);
       if (existingEmail) {
+        const sub = await getUserActiveSubscription(existingEmail.id);
+        if (sub.active) {
+          return res.status(409).json({
+            error: "An account with this email already has an active subscription. Please log in instead — you don't need to create another account or pay again.",
+            code: "ACTIVE_ACCOUNT_EXISTS",
+            alreadyActive: true,
+          });
+        }
         return res.status(400).json({ error: "Email already registered" });
       }
       
@@ -5050,7 +5079,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existingUser) return res.status(400).json({ error: "Username already taken" });
 
       const existingEmail = await storage.getUserByEmail(email);
-      if (existingEmail) return res.status(400).json({ error: "Email already registered" });
+      if (existingEmail) {
+        const sub = await getUserActiveSubscription(existingEmail.id);
+        if (sub.active) {
+          return res.status(409).json({
+            error: "An account with this email already has an active subscription. Please log in instead — you don't need to create another account or pay again.",
+            code: "ACTIVE_ACCOUNT_EXISTS",
+            alreadyActive: true,
+          });
+        }
+        return res.status(400).json({ error: "Email already registered" });
+      }
 
       const hashedPassword = await hashPassword(password);
 
@@ -5498,6 +5537,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = req.user as any;
       if (!["family_subscription", "school_verification"].includes(type)) {
         return res.status(400).json({ error: "Invalid checkout type" });
+      }
+
+      // Safeguard against accidental double-payment across Apple IAP and Stripe.
+      if (type === "family_subscription") {
+        const sub = await getUserActiveSubscription(user.id);
+        if (sub.active) {
+          // Active via the App Store: subscribing on the web would double-charge,
+          // since an Apple subscription can only be cancelled in iOS Settings —
+          // we can't cancel it for them. Block regardless of intent.
+          if (sub.method === "apple_iap") {
+            return res.status(409).json({
+              error: "You already have an active subscription through the App Store. To avoid being charged twice, please manage it in your iPhone or iPad Settings instead of subscribing again on the web.",
+              code: "ALREADY_SUBSCRIBED_APPLE",
+            });
+          }
+          // Active via Stripe (or other web payment): allow only the deliberate
+          // "renew early" / plan-switch flow (which stacks the term and cancels
+          // the old subscription). Any other path is an accidental re-subscribe.
+          const isRenewal = (req.body?.intent ?? "") === "renew";
+          if (!isRenewal) {
+            return res.status(409).json({
+              error: "You already have an active subscription, so there's no need to pay again. You can manage or renew it from your account page.",
+              code: "ALREADY_SUBSCRIBED",
+            });
+          }
+        }
       }
 
       const { getUncachableStripeClient } = await import("./stripeClient");

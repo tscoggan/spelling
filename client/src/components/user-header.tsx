@@ -264,6 +264,7 @@ export function UserHeader() {
       const res = await apiRequest("POST", "/api/stripe/create-checkout", {
         type: "family_subscription",
         priceInterval: normalizedInterval,
+        intent: "renew",
         ...(promoApplies ? { promoCode: renewPromoValid!.code } : {}),
       });
       return res.json() as Promise<{ url: string }>;

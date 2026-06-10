@@ -41,6 +41,7 @@ function getStore(): any | null {
 }
 
 let _initialized = false;
+let _purchaseInProgress = false;
 
 // ── Initialize the IAP store ─────────────────────────────────────────────────
 export async function initializeIAP(): Promise<void> {
@@ -69,6 +70,9 @@ export async function initializeIAP(): Promise<void> {
   } catch {
     /* older plugin API without store.error — ignore */
   }
+
+  // Validate owned subscriptions server-side on launch and power restore/redeem.
+  ensureGlobalApprovedHandler(store);
 
   await store.initialize([Platform.APPLE_APPSTORE]);
   _initialized = true;
@@ -127,12 +131,24 @@ export async function purchaseIAP(productId: IAPProductId): Promise<void> {
     );
   }
 
+  _purchaseInProgress = true;
   return new Promise<void>((resolve, reject) => {
+    // The per-product listener below is never unregistered by the plugin, so a
+    // later restore could re-deliver this same transaction to it. Guard with a
+    // settled flag so a stale re-fire can't double-validate/double-finish.
+    let purchaseSettled = false;
+    const settle = (fn: () => void) => {
+      if (purchaseSettled) return;
+      purchaseSettled = true;
+      fn();
+    };
+
     // Listen for this specific product being approved
     store
       .when()
       .productId(productId)
       .approved(async (transaction: any) => {
+        if (purchaseSettled) return; // stale listener re-firing on a later restore
         try {
           // Extract the App Store receipt (base64 encoded)
           const receipt = transaction.parentReceipt;
@@ -143,7 +159,7 @@ export async function purchaseIAP(productId: IAPProductId): Promise<void> {
 
           if (!receiptData) {
             await transaction.finish();
-            reject(new Error('Could not extract App Store receipt'));
+            settle(() => reject(new Error('Could not extract App Store receipt')));
             return;
           }
 
@@ -155,95 +171,115 @@ export async function purchaseIAP(productId: IAPProductId): Promise<void> {
           }
 
           await transaction.finish();
-          resolve();
+          settle(resolve);
         } catch (err) {
-          reject(err);
+          settle(() => reject(err));
         }
       })
-      .cancelled(() => reject(new Error('Purchase cancelled')))
-      .error((err: any) => reject(new Error(err?.message ?? 'Purchase failed')));
+      .cancelled(() => settle(() => reject(new Error('Purchase cancelled'))))
+      .error((err: any) => settle(() => reject(new Error(err?.message ?? 'Purchase failed'))));
 
-    product.offers[0].order().catch(reject);
+    product.offers[0].order().catch((err: any) => settle(() => reject(err)));
+  }).finally(() => {
+    _purchaseInProgress = false;
   });
 }
 
 // ── Restore previous purchases ────────────────────────────────────────────────
-export async function restoreIAPPurchases(): Promise<boolean> {
+// Triggers StoreKit to re-deliver any owned (active) subscription as an
+// "approved" transaction, which the global handler validates server-side. We
+// resolve true once a receipt validates as an active subscription, or false if
+// nothing active is restored (shortly after restore finishes, or on timeout).
+export async function restoreIAPPurchases(timeoutMs = 30000): Promise<boolean> {
   if (!isNativePlatform()) return false;
 
   await initializeIAP();
   const store = getStore();
   if (!store) return false;
 
-  await store.restorePurchases();
+  ensureGlobalApprovedHandler(store);
 
-  // After restore, re-validate whatever verified receipts the store has
-  const receipts: any[] = store.verifiedReceipts ?? [];
-  for (const receipt of receipts) {
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+    const onActivated = (activated: boolean) => {
+      if (settled) return;
+      settled = true;
+      if (_pendingActivation === onActivated) _pendingActivation = null;
+      resolve(activated);
+    };
+    _pendingActivation = onActivated;
+
+    // Re-delivers owned transactions as "approved" events handled by the global
+    // listener. If something active restores, the handler resolves true first.
+    Promise.resolve(store.restorePurchases())
+      .then(() => {
+        // Restore finished delivering; allow a grace period for the async
+        // validation round-trip (server → Apple verifyReceipt can be slow)
+        // before concluding nothing active was restored.
+        setTimeout(() => onActivated(false), 10000);
+      })
+      .catch(() => onActivated(false));
+
+    // Hard backstop in case restorePurchases never settles.
+    setTimeout(() => onActivated(false), timeoutMs);
+  });
+}
+
+// ── Global approved-transaction handler ───────────────────────────────────────
+// A single listener, registered once, that validates and finishes ANY owned
+// transaction for our subscriptions. It powers three flows:
+//   • Launch: owned subs are re-validated server-side automatically.
+//   • Restore: store.restorePurchases() re-delivers owned transactions here.
+//   • Offer codes: a redeemed code arrives as an approved transaction here.
+// It deliberately stays out of purchaseIAP's way (which has its own scoped
+// per-call listener) via the _purchaseInProgress guard, so a fresh purchase is
+// never double-finished. When a caller is awaiting activation (restore/redeem),
+// _pendingActivation is resolved once a receipt validates as an active sub.
+let _globalHandlerRegistered = false;
+let _pendingActivation: ((activated: boolean) => void) | null = null;
+const OUR_PRODUCT_IDS: string[] = [IAP_PRODUCTS.MONTHLY, IAP_PRODUCTS.ANNUAL];
+
+function ensureGlobalApprovedHandler(store: any): void {
+  if (_globalHandlerRegistered) return;
+  _globalHandlerRegistered = true;
+
+  store.when().approved(async (transaction: any) => {
+    if (_purchaseInProgress) return; // purchaseIAP owns its own transaction
+    const pid: string | undefined = transaction.products?.[0]?.id ?? transaction.productId;
+    if (pid && !OUR_PRODUCT_IDS.includes(pid)) return; // not one of our subscriptions
+
+    const receipt = transaction.parentReceipt;
     const receiptData: string | undefined =
       receipt?.appStoreReceipt ??
-      receipt?.nativeData?.appStoreReceipt;
-    if (receiptData) {
-      try {
-        await apiRequest('POST', '/api/iap/apple/validate', { receiptData });
-      } catch {
-        // best-effort — don't block the whole restore
-      }
-    }
-  }
+      receipt?.nativeData?.appStoreReceipt ??
+      receipt?.nativeData?.receipt;
+    if (!receiptData) return; // nothing to validate; leave unfinished for retry
 
-  return true;
+    try {
+      // apiRequest throws on any non-2xx, so reaching past it means the server
+      // definitively processed the receipt — safe to acknowledge the delivery.
+      const resp = await apiRequest('POST', '/api/iap/apple/validate', { receiptData });
+      const body = await resp.json().catch(() => ({} as any));
+      await transaction.finish();
+      if (body?.active && _pendingActivation) {
+        const cb = _pendingActivation;
+        _pendingActivation = null;
+        cb(true);
+      }
+    } catch {
+      // Validation failed (network/server). Leave the transaction UNFINISHED so
+      // StoreKit re-delivers it on the next launch/restore and we retry.
+    }
+  });
 }
 
 // ── Redeem an App Store offer code ────────────────────────────────────────────
 // Offer codes are configured in App Store Connect; redemption opens Apple's
 // native Code Redemption Sheet. The sheet's presentation promise resolves as
 // soon as the sheet is shown (NOT when the user finishes), and the redeemed
-// subscription is delivered asynchronously as an "approved" transaction — the
-// same path a normal purchase uses. So we listen for that transaction, validate
-// its receipt server-side (which activates the subscription in our backend),
-// finish it, and resolve true. A generous timeout covers the case where the
-// user dismisses the sheet without redeeming (no approved event is emitted).
-
-// A single global approved-transaction listener, registered once. It stays
-// inert unless a redemption is actively awaiting a result, so it never
-// interferes with the normal purchase flow (which has its own scoped listener).
-let _redeemHandlerRegistered = false;
-let _pendingRedeem: ((activated: boolean) => void) | null = null;
-
-function ensureRedeemHandler(store: any): void {
-  if (_redeemHandlerRegistered) return;
-  _redeemHandlerRegistered = true;
-  const ourIds: string[] = [IAP_PRODUCTS.MONTHLY, IAP_PRODUCTS.ANNUAL];
-
-  store.when().approved(async (transaction: any) => {
-    if (!_pendingRedeem) return; // inert outside an active redemption
-    const pid: string | undefined = transaction.products?.[0]?.id ?? transaction.productId;
-    if (pid && !ourIds.includes(pid)) return; // not one of our subscriptions
-    try {
-      const receipt = transaction.parentReceipt;
-      const receiptData: string | undefined =
-        receipt?.appStoreReceipt ??
-        receipt?.nativeData?.appStoreReceipt ??
-        receipt?.nativeData?.receipt;
-      if (!receiptData) {
-        await transaction.finish();
-        return;
-      }
-      const resp = await apiRequest('POST', '/api/iap/apple/validate', { receiptData });
-      const body = await resp.json().catch(() => ({} as any));
-      await transaction.finish();
-      if (resp.ok && body?.active) {
-        const cb = _pendingRedeem;
-        _pendingRedeem = null;
-        cb?.(true);
-      }
-    } catch {
-      try { await transaction.finish(); } catch { /* ignore */ }
-    }
-  });
-}
-
+// subscription is delivered asynchronously as an "approved" transaction handled
+// by the global listener above. We wait for that activation (or time out if the
+// user dismisses the sheet without redeeming).
 export async function redeemOfferCode(timeoutMs = 120000): Promise<boolean> {
   if (!isNativePlatform()) return false;
 
@@ -257,20 +293,20 @@ export async function redeemOfferCode(timeoutMs = 120000): Promise<boolean> {
     );
   }
 
-  ensureRedeemHandler(store);
+  ensureGlobalApprovedHandler(store);
 
   return new Promise<boolean>((resolve) => {
     let settled = false;
     const onActivated = (activated: boolean) => {
       if (settled) return;
       settled = true;
-      if (_pendingRedeem === onActivated) _pendingRedeem = null;
+      if (_pendingActivation === onActivated) _pendingActivation = null;
       resolve(activated);
     };
-    _pendingRedeem = onActivated;
+    _pendingActivation = onActivated;
 
     // Opens the native Code Redemption Sheet; the redeemed transaction arrives
-    // via the approved listener above (or we time out if nothing is redeemed).
+    // via the global approved listener above (or we time out).
     Promise.resolve(adapter.presentCodeRedemptionSheet()).catch(() => onActivated(false));
 
     setTimeout(() => onActivated(false), timeoutMs);
