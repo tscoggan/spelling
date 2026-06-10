@@ -8,10 +8,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Mail, Send, ArrowLeft, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "@/hooks/use-theme";
+import titleBanner from "@assets/Spelling_Playground_title_1764882992138.png";
+import titleBannerDark from "@assets/Spelling_Playground_title_-_dark_transparent_1781028287623.png";
 
 export default function ContactPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { themeAssets, isDark } = useTheme();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -72,9 +76,30 @@ export default function ContactPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background py-12 px-4">
-      <div className="max-w-xl mx-auto space-y-6">
-        <div className="flex items-center gap-3">
+    <div className="min-h-screen p-4 md:p-8 relative overflow-hidden">
+      <div
+        className="fixed inset-0 portrait:block landscape:hidden"
+        style={{
+          backgroundImage: `url(${themeAssets.backgroundPortrait})`,
+          backgroundSize: "cover",
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: "center top",
+        }}
+      ></div>
+      <div
+        className="fixed inset-0 portrait:hidden landscape:block"
+        style={{
+          backgroundImage: `url(${themeAssets.backgroundLandscape})`,
+          backgroundSize: "cover",
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: "center top",
+        }}
+      ></div>
+      <div className="fixed inset-0 bg-white/5 dark:bg-black/50"></div>
+
+      <div className="max-w-xl mx-auto relative z-10 space-y-6">
+        <h1 className="sr-only">Contact Us</h1>
+        <div className="flex items-center">
           <Button
             variant="ghost"
             size="icon"
@@ -83,17 +108,22 @@ export default function ContactPage() {
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold">Contact Us</h1>
-            <p className="text-sm text-muted-foreground">Spelling Playground LLC</p>
-          </div>
         </div>
 
-        <Card>
+        <div className="flex justify-center overflow-hidden">
+          <img
+            src={isDark ? titleBannerDark : titleBanner}
+            alt="Spelling Playground"
+            className="w-full max-w-sm md:max-w-xl h-auto rounded-md"
+            data-testid="img-title-banner"
+          />
+        </div>
+
+        <Card className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Mail className="w-5 h-5" />
-              Get in Touch
+              Contact Us
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -183,7 +213,7 @@ export default function ContactPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm">
           <CardContent className="pt-5">
             <p className="text-sm text-muted-foreground leading-relaxed">
               You can also reach us directly by email at{" "}
