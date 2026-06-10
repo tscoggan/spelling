@@ -1,29 +1,31 @@
 ---
 name: Username case-insensitivity
-description: How username uniqueness/login matching works and the deferred proper fix for case-insensitivity.
+description: Username uniqueness/login is case-insensitive, enforced in app code AND by a partial functional unique index.
 ---
 
 # Username uniqueness & case-insensitive login
 
 Login and registration match usernames case-insensitively via `getUserByUsername`
-(`server/storage.ts`), which uses `LOWER(username) = LOWER($input)` and excludes
-soft-deleted users (`user_status <> 'deleted'`). Every user-creation path
-(register, family child, school teacher/student, bulk import) does a
-`getUserByUsername` pre-check before `createUser`, so this one function is the
-single uniqueness gate.
+(`server/storage.ts`): `LOWER(username) = LOWER($input)` excluding soft-deleted
+users (`user_status <> 'deleted'`). Every creation path (register, family child,
+school teacher/student, bulk import) pre-checks via `getUserByUsername` before
+`createUser`, so that one function is the app-layer uniqueness gate.
 
 **Why:** Case-sensitive login was a user-reported iOS bug. Deleted usernames are
-intentionally reusable (documented in `shared/schema.ts` via partial unique index
-`users_username_active_unique`), so the lookup must keep excluding deleted users.
+intentionally reusable, so both the lookup and the DB index exclude deleted users.
+
+**DB enforcement:** partial functional unique index on
+`LOWER(username) WHERE user_status <> 'deleted'` (declared in `shared/schema.ts`).
+It closes the concurrent-register "John"/"john" race AND makes the `LOWER()`
+lookup index-backed. createUser has no unique-violation handler, so the index is a
+backstop — a race surfaces as a 500, not a friendly error; acceptable since every
+path pre-checks.
 
 **Constraints / how to apply:**
-- Uniqueness is enforced ONLY at the app layer. The DB index
-  `users_username_active_unique` is on the RAW (case-sensitive) `username`, so it
-  does NOT catch case-variant duplicates, and `LOWER()` lookups cannot use it
-  (login does a sequential scan — fine at current scale).
-- A genuine but rare race exists: two concurrent registrations of "John"/"john"
-  could both insert.
-- **Proper fix (deferred):** a partial *functional* unique index on
-  `LOWER(username) WHERE user_status <> 'deleted'`. Prod had ZERO active-user case
-  collisions when checked 2026-06-10, so creating it is safe. Deferred because the
-  owner prefers to be asked before schema changes; offer it before adding.
+- Creating a UNIQUE index FAILS if active-user case collisions exist. Re-verify
+  zero collisions (`GROUP BY lower(username) ... HAVING count(*)>1`, excluding
+  deleted) on the target DB BEFORE creating it — check prod immediately before
+  Publish, since the index builds on prod during publish.
+- Applied to dev via surgical `psql` DDL (not `db:push`, which stalls on unrelated
+  constraint-name drift — see `drizzle-push-unrelated-drift.md`). Prod gets it via
+  the Publish dev-vs-prod diff; the user confirms the index change in the UI.

@@ -10,4 +10,4 @@
 - [ASC offer codes](app-store-connect-offer-codes.md) — one promo string for Stripe+Apple; codes must be hyphen-free; one_time codes redeem once PER platform (not global); admin pre-creates the offer in ASC.
 - [drizzle push drift](drizzle-push-unrelated-drift.md) — db:push can prompt to truncate an unrelated table; for nullable adds use ALTER TABLE ADD COLUMN IF NOT EXISTS; prod DB needs the same change before shipping.
 - [Capacitor IAP redemption](capacitor-iap-redemption.md) — v13 has no store.redeem(); use adapter.presentCodeRedemptionSheet()+approved listener; verifiedReceipts always empty; gate entitlement on expiresAt>now.
-- [Username case-insensitivity](username-case-insensitive.md) — uniqueness is app-layer only via getUserByUsername; LOWER() login skips the raw index; functional unique index is the deferred proper fix.
+- [Username case-insensitivity](username-case-insensitive.md) — enforced in app code AND by partial functional unique index users_username_lower_active_unique on LOWER(username) WHERE active.

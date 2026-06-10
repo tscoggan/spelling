@@ -1,27 +1,43 @@
 ---
 name: drizzle-kit push surfaces unrelated schema drift
-description: Why a small nullable-column add can trigger a destructive truncate prompt, and the safe surgical alternative.
+description: Why a tiny schema change triggers truncate prompts on unrelated tables, the safe surgical alternative, and how prod actually gets schema changes.
 ---
 
-# `npm run db:push` can prompt to TRUNCATE an unrelated table
+# `npm run db:push` can prompt to TRUNCATE / alter unrelated tables
 
 `drizzle-kit push` diffs the WHOLE schema against the live DB, so pre-existing
-drift surfaces even when your change is a tiny nullable column add. Observed: a
-nullable-column add prompted to add a `app_settings_key_unique` constraint and
-offered to **truncate `app_settings`** — completely unrelated to the intended
-change. Never accept the truncate. `--force` does NOT auto-dismiss this prompt
-(it's a data-safety prompt); the process just hangs on stdin.
+drift surfaces even when your change is tiny. The process is interactive and
+stops on the FIRST drift it finds; fix that one and it stalls on the next.
+`--force` does NOT auto-dismiss the truncate prompt (it's a data-safety prompt);
+the process just hangs on stdin.
 
-## Safe alternative for additive nullable columns
-Apply exactly your change with idempotent SQL instead of running push:
-`ALTER TABLE <t> ADD COLUMN IF NOT EXISTS <col> <type>;` (via `psql "$DATABASE_URL"`).
-This avoids touching unrelated tables and avoids interactive prompts.
+## Pre-existing constraint-NAME drift (this repo)
+Several tables were created with Postgres' DEFAULT constraint names
+(`<table>_<col>_key`) but `shared/schema.ts` `.unique()` expects drizzle's name
+(`<table>_<col>_unique`). drizzle-kit diffs by NAME, sees the `_unique` one as
+"missing," and offers to ADD it (which would create a duplicate unique
+constraint) behind a truncate prompt. Confirmed on `app_settings` and
+`password_reset_tokens`; likely more. This is long-standing drift, NOT caused by
+any single change. Do NOT reconcile it piecemeal (see "footprint" below).
 
-**Why:** push is all-or-nothing on the full diff and its prompts can be
-destructive; a targeted ALTER is surgical and reversible-by-omission.
+## Safe alternative: apply only YOUR change with surgical SQL
+Skip push and run exactly your change via `psql "$DATABASE_URL"`:
+- additive column: `ALTER TABLE <t> ADD COLUMN IF NOT EXISTS <col> <type>;`
+- index swap: `CREATE [UNIQUE] INDEX <new> ...;` then `DROP INDEX <old>;`
+This avoids touching unrelated tables and avoids the interactive prompts.
 
-## Dev vs prod divergence
-Dev uses the dev DB; the native iOS app + web prod use the PROD DB. Any schema
-change for an IAP/subscription feature must ALSO be applied to prod before it
-ships, or prod requests fail with "column does not exist". Use the database skill
-(`environment: "production"`) and get user consent before migrating prod.
+## How prod actually gets schema changes — do NOT hand-migrate prod
+Replit's **Publish flow** introspects the DEV db and the PROD db, computes a SQL
+diff between the two ACTUAL databases (not vs schema.ts), surfaces renames for the
+user to confirm in the Publish UI, then applies it. So:
+- The DEV DB state is what propagates to prod — get the dev DB right, then tell
+  the user to Publish (they'll confirm any rename/index change in the UI).
+- Agent must NOT run DDL against prod, write migrate-prod scripts, add deploy/
+  startup DDL, or use `executeSql({environment:"production"})` for DDL (read-only).
+  See `.local/skills/database/references/database-migrations-on-publish.md`.
+
+## Footprint discipline
+Because Publish diffs dev-DB vs prod-DB, "fixing" an unrelated drift on DEV only
+(e.g. renaming a constraint to match schema.ts) makes dev diverge from prod where
+they previously MATCHED, creating a NEW unrelated rename prompt at Publish. Keep
+your dev changes limited to the task; leave pre-existing drift alone and flag it.

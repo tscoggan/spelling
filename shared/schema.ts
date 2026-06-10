@@ -20,13 +20,15 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   userStatus: text("user_status").notNull().default("active"),
 }, (table) => ({
-  // Username must be unique among ACTIVE accounts only. A deactivated
+  // Username must be unique among ACTIVE accounts only, CASE-INSENSITIVELY.
+  // The index is on lower(username) so two active accounts can never differ only
+  // by capitalization (e.g. "John" vs "john"), and it makes the case-insensitive
+  // login lookup (LOWER(username) = LOWER($input)) index-backed. A deactivated
   // (user_status = 'deleted') account's username is excluded from this index,
-  // so a brand-new signup may reuse a deleted user's username. Active usernames
-  // remain strictly unique. (Email has no DB constraint; its uniqueness is
-  // enforced in app code, which already ignores deleted users.)
-  usernameActiveUnique: uniqueIndex("users_username_active_unique")
-    .on(table.username)
+  // so a brand-new signup may reuse a deleted user's username. (Email has no DB
+  // constraint; its uniqueness is enforced in app code, which ignores deleted users.)
+  usernameLowerActiveUnique: uniqueIndex("users_username_lower_active_unique")
+    .on(sql`lower(${table.username})`)
     .where(sql`${table.userStatus} <> 'deleted'`),
 }));
 
