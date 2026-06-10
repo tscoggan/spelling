@@ -11,3 +11,4 @@
 - [drizzle push drift](drizzle-push-unrelated-drift.md) — db:push can prompt to truncate an unrelated table; for nullable adds use ALTER TABLE ADD COLUMN IF NOT EXISTS; prod DB needs the same change before shipping.
 - [Capacitor IAP redemption](capacitor-iap-redemption.md) — v13 has no store.redeem(); use adapter.presentCodeRedemptionSheet()+approved listener; verifiedReceipts always empty; gate entitlement on expiresAt>now.
 - [Username case-insensitivity](username-case-insensitive.md) — enforced in app code AND by partial functional unique index users_username_lower_active_unique on LOWER(username) WHERE active.
+- [Lockfile firewall URLs](lockfile-firewall-urls.md) — Mac Mini npm install fails ENOTFOUND; package-lock has package-firewall.replit.local URLs for new deps; rewrite to registry.npmjs.org.

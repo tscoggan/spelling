@@ -1,0 +1,37 @@
+macdesktop@toms-mac-mini spelling % npm install @capacitor/browser@^8.0.3
+npm error code ENOTFOUND
+npm error syscall getaddrinfo
+npm error errno ENOTFOUND
+npm error network request to http://package-firewall.replit.local/npm/jose/-/jose-6.2.3.tgz failed, reason: getaddrinfo ENOTFOUND package-firewall.replit.local
+npm error network This is a problem related to network connectivity.
+npm error network In most cases you are behind a proxy or have bad network settings.
+npm error network
+npm error network If you are behind a proxy, please make sure that the 'proxy' config is set properly.  See: 'npm help config'
+npm error A complete log of this run can be found in: /Users/macdesktop/.npm/_logs/2026-06-10T23_46_23_751Z-debug-0.log
+macdesktop@toms-mac-mini spelling % npm run build                        
+
+> rest-express@1.0.0 build
+> vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+
+vite v5.4.20 building for production...
+transforming (2) ../vite/modulepreload-polyfill.jsBrowserslist: browsers data (caniuse-lite) is 8 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+transforming (4) src/lib/native-fetch.ts
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+✓ 52 modules transformed.
+x Build failed in 995ms
+error during build:
+[vite]: Rollup failed to resolve import "@capacitor/browser" from "/Users/macdesktop/spelling/client/src/lib/apiBase.ts".
+This is most likely unintended because it can break your application at runtime.
+If you do want to externalize this module explicitly add it to
+`build.rollupOptions.external`
+    at viteWarn (file:///Users/macdesktop/spelling/node_modules/vite/dist/node/chunks/dep-D_zLpgQd.js:65854:17)
+    at onwarn (file:///Users/macdesktop/spelling/node_modules/@vitejs/plugin-react/dist/index.js:90:7)
+    at onRollupWarning (file:///Users/macdesktop/spelling/node_modules/vite/dist/node/chunks/dep-D_zLpgQd.js:65884:5)
+    at onwarn (file:///Users/macdesktop/spelling/node_modules/vite/dist/node/chunks/dep-D_zLpgQd.js:65549:7)
+    at file:///Users/macdesktop/spelling/node_modules/rollup/dist/es/shared/node-entry.js:19452:13
+    at Object.logger [as onLog] (file:///Users/macdesktop/spelling/node_modules/rollup/dist/es/shared/node-entry.js:21178:9)
+    at ModuleLoader.handleInvalidResolvedId (file:///Users/macdesktop/spelling/node_modules/rollup/dist/es/shared/node-entry.js:20067:26)
+    at file:///Users/macdesktop/spelling/node_modules/rollup/dist/es/shared/node-entry.js:20025:26
+macdesktop@toms-mac-mini spelling % 
