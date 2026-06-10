@@ -6047,20 +6047,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         family = await storage.createFamilyAccount(user.id);
       }
 
-      await storage.updateFamilyAccount(family.id, {
-        vpcStatus: 'verified',
-        subscriptionExpiresAt: result.expiresAt,
-        lastPaymentMethod: 'apple_iap',
-        appleOriginalTransactionId: result.originalTransactionId,
-        autoRenew: result.autoRenewStatus === 1,
-      });
+      // Only grant access for a non-expired subscription. A valid receipt can
+      // still be expired (e.g. an old receipt replayed on app launch, or an
+      // offer code that wasn't actually redeemed) — gating on expiry prevents
+      // marking the account "verified" without an active subscription.
+      const active = result.expiresAt > new Date();
+      if (active) {
+        await storage.updateFamilyAccount(family.id, {
+          vpcStatus: 'verified',
+          subscriptionExpiresAt: result.expiresAt,
+          lastPaymentMethod: 'apple_iap',
+          appleOriginalTransactionId: result.originalTransactionId,
+          autoRenew: result.autoRenewStatus === 1,
+        });
 
-      // Promote account type to family_parent if needed
-      if (user.accountType !== 'family_parent') {
-        await storage.updateUser(user.id, { accountType: 'family_parent' });
+        // Promote account type to family_parent if needed
+        if (user.accountType !== 'family_parent') {
+          await storage.updateUserAccountType(user.id, 'family_parent');
+        }
       }
 
-      res.json({ success: true, expiresAt: result.expiresAt });
+      res.json({ success: true, active, expiresAt: result.expiresAt });
     } catch (error: any) {
       console.error('[IAP] Apple validate error:', error);
       res.status(500).json({ error: 'Receipt validation failed' });

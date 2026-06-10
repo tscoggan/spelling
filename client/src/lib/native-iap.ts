@@ -194,3 +194,85 @@ export async function restoreIAPPurchases(): Promise<boolean> {
 
   return true;
 }
+
+// ── Redeem an App Store offer code ────────────────────────────────────────────
+// Offer codes are configured in App Store Connect; redemption opens Apple's
+// native Code Redemption Sheet. The sheet's presentation promise resolves as
+// soon as the sheet is shown (NOT when the user finishes), and the redeemed
+// subscription is delivered asynchronously as an "approved" transaction — the
+// same path a normal purchase uses. So we listen for that transaction, validate
+// its receipt server-side (which activates the subscription in our backend),
+// finish it, and resolve true. A generous timeout covers the case where the
+// user dismisses the sheet without redeeming (no approved event is emitted).
+
+// A single global approved-transaction listener, registered once. It stays
+// inert unless a redemption is actively awaiting a result, so it never
+// interferes with the normal purchase flow (which has its own scoped listener).
+let _redeemHandlerRegistered = false;
+let _pendingRedeem: ((activated: boolean) => void) | null = null;
+
+function ensureRedeemHandler(store: any): void {
+  if (_redeemHandlerRegistered) return;
+  _redeemHandlerRegistered = true;
+  const ourIds: string[] = [IAP_PRODUCTS.MONTHLY, IAP_PRODUCTS.ANNUAL];
+
+  store.when().approved(async (transaction: any) => {
+    if (!_pendingRedeem) return; // inert outside an active redemption
+    const pid: string | undefined = transaction.products?.[0]?.id ?? transaction.productId;
+    if (pid && !ourIds.includes(pid)) return; // not one of our subscriptions
+    try {
+      const receipt = transaction.parentReceipt;
+      const receiptData: string | undefined =
+        receipt?.appStoreReceipt ??
+        receipt?.nativeData?.appStoreReceipt ??
+        receipt?.nativeData?.receipt;
+      if (!receiptData) {
+        await transaction.finish();
+        return;
+      }
+      const resp = await apiRequest('POST', '/api/iap/apple/validate', { receiptData });
+      const body = await resp.json().catch(() => ({} as any));
+      await transaction.finish();
+      if (resp.ok && body?.active) {
+        const cb = _pendingRedeem;
+        _pendingRedeem = null;
+        cb?.(true);
+      }
+    } catch {
+      try { await transaction.finish(); } catch { /* ignore */ }
+    }
+  });
+}
+
+export async function redeemOfferCode(timeoutMs = 120000): Promise<boolean> {
+  if (!isNativePlatform()) return false;
+
+  await initializeIAP();
+  const store = getStore();
+  const Platform = window.CdvPurchase?.Platform;
+  const adapter = store?.getAdapter?.(Platform?.APPLE_APPSTORE);
+  if (!store || !adapter || typeof adapter.presentCodeRedemptionSheet !== 'function') {
+    throw new Error(
+      "Offer code redemption isn't available. Make sure you're signed in to your Apple ID and the app is up to date.",
+    );
+  }
+
+  ensureRedeemHandler(store);
+
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+    const onActivated = (activated: boolean) => {
+      if (settled) return;
+      settled = true;
+      if (_pendingRedeem === onActivated) _pendingRedeem = null;
+      resolve(activated);
+    };
+    _pendingRedeem = onActivated;
+
+    // Opens the native Code Redemption Sheet; the redeemed transaction arrives
+    // via the approved listener above (or we time out if nothing is redeemed).
+    Promise.resolve(adapter.presentCodeRedemptionSheet()).catch(() => onActivated(false));
+
+    setTimeout(() => onActivated(false), timeoutMs);
+  });
+}

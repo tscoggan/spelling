@@ -121,6 +121,7 @@ export interface IStorage {
   updateUserEmail(userId: number, email: string): Promise<User>;
   updateUserPassword(userId: number, password: string): Promise<User>;
   updateUserProfile(userId: number, updates: { firstName?: string; lastName?: string; email?: string; selectedAvatar?: string }): Promise<User>;
+  updateUserAccountType(userId: number, accountType: string): Promise<User>;
   
   createLeaderboardScore(score: InsertLeaderboardScore): Promise<LeaderboardScore>;
   getTopScores(gameMode?: string, limit?: number): Promise<LeaderboardScore[]>;
@@ -522,6 +523,15 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db
       .update(users)
       .set(encryptedUpdates)
+      .where(eq(users.id, userId))
+      .returning();
+    return hasEncryptionKey() ? decryptUserPII(user) : user;
+  }
+
+  async updateUserAccountType(userId: number, accountType: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ accountType })
       .where(eq(users.id, userId))
       .returning();
     return hasEncryptionKey() ? decryptUserPII(user) : user;

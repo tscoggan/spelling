@@ -4,6 +4,7 @@ import {
   getIAPProducts,
   purchaseIAP,
   restoreIAPPurchases,
+  redeemOfferCode,
   IAP_PRODUCTS,
   type IAPProduct,
   type IAPProductId,
@@ -15,9 +16,11 @@ export interface UseNativeIAPReturn {
   products: IAPProduct[];
   purchasing: boolean;
   restoring: boolean;
+  redeeming: boolean;
   error: string | null;
   purchase: (productId: IAPProductId) => Promise<void>;
   restore: () => Promise<boolean>;
+  redeem: () => Promise<boolean>;
 }
 
 export function useNativeIAP(): UseNativeIAPReturn {
@@ -25,6 +28,7 @@ export function useNativeIAP(): UseNativeIAPReturn {
   const [products, setProducts] = useState<IAPProduct[]>([]);
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [redeeming, setRedeeming] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -79,7 +83,20 @@ export function useNativeIAP(): UseNativeIAPReturn {
     }
   }, []);
 
-  return { isNative, products, purchasing, restoring, error, purchase, restore };
+  const redeem = useCallback(async (): Promise<boolean> => {
+    setError(null);
+    setRedeeming(true);
+    try {
+      return await redeemOfferCode();
+    } catch (err: any) {
+      setError(err?.message ?? 'Redemption failed');
+      throw err;
+    } finally {
+      setRedeeming(false);
+    }
+  }, []);
+
+  return { isNative, products, purchasing, restoring, redeeming, error, purchase, restore, redeem };
 }
 
 export { IAP_PRODUCTS };

@@ -6,3 +6,4 @@
 - [Native auth needs CapacitorHttp](capacitor-native-cookies.md) — iOS WKWebView drops the third-party session cookie (login 200 then 401s); enable CapacitorHttp+CapacitorCookies.
 - [Capacitor image URLs](capacitor-image-urls.md) — <img>/<audio> bypass the fetch interceptor; wrap relative /objects/ & /api/ media src with assetUrl() or they 404 on native.
 - [Playground dark mode](playground-dark-mode.md) — Playground theme swaps bg + title banner via matchMedia(prefers-color-scheme), NOT the dormant .dark class.
+- [Capacitor IAP redemption](capacitor-iap-redemption.md) — v13 has no store.redeem(); use adapter.presentCodeRedemptionSheet()+approved listener; verifiedReceipts always empty; gate entitlement on expiresAt>now.

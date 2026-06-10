@@ -689,6 +689,29 @@ export default function FamilySignupPage() {
                     {iap.restoring ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
                     Restore previous purchase
                   </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-xs"
+                    onClick={async () => {
+                      try {
+                        const ok = await iap.redeem();
+                        if (ok) {
+                          queryClient.invalidateQueries({ queryKey: ['/api/family'] });
+                          setStep(5);
+                        } else {
+                          toast({ title: "No subscription found", description: "If you redeemed a code, give it a moment and try again." });
+                        }
+                      } catch (err: any) {
+                        toast({ title: "Couldn't redeem code", description: err?.message, variant: "destructive" });
+                      }
+                    }}
+                    disabled={iap.redeeming}
+                    data-testid="button-redeem-offer-code"
+                  >
+                    {iap.redeeming ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
+                    Redeem an offer code
+                  </Button>
                 </div>
               ) : (
                 /* ── Web: Stripe checkout ── */
