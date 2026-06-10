@@ -5915,10 +5915,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ── Promo Codes ─────────────────────────────────────────────────────────────
 
   function generatePromoCode(): string {
+    // 8 uppercase alphanumeric chars, no hyphen — so the SAME string is also a
+    // valid Apple "custom offer code" (Apple requires 6–16 alphanumeric, no
+    // separators). Ambiguous characters (0/O, 1/I) are excluded for readability.
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     let code = "";
     for (let i = 0; i < 8; i++) {
-      if (i === 4) code += "-";
       code += chars[Math.floor(Math.random() * chars.length)];
     }
     return code;
@@ -5935,6 +5937,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!["one_time", "ongoing"].includes(codeType)) {
         return res.status(400).json({ error: "codeType must be one_time or ongoing" });
       }
+      const appleOfferId: string | undefined =
+        typeof req.body.appleOfferId === "string" && req.body.appleOfferId.trim()
+          ? req.body.appleOfferId.trim()
+          : undefined;
+
       let code: string;
       let attempts = 0;
       do {
@@ -5942,6 +5949,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         attempts++;
         if (attempts > 20) return res.status(500).json({ error: "Could not generate unique code" });
       } while (await storage.getPromoCodeByCode(code));
+
+      // If the admin linked an Apple offer, mint a matching custom offer code on
+      // Apple FIRST. If Apple rejects it we abort before saving, so the admin
+      // never gets a DB row that silently fails on iOS.
+      let appleCustomCodeId: string | null = null;
+      let appleSubscriptionProductId: string | null = null;
+      if (appleOfferId) {
+        try {
+          const asc = await import("./services/appStoreConnect.js");
+          if (!asc.isAscConfigured()) {
+            return res.status(400).json({ error: "App Store Connect is not configured, so Apple offer codes can't be created." });
+          }
+          const offers = await asc.getAllOfferCodes();
+          const offer = offers.find((o) => o.id === appleOfferId);
+          if (!offer) {
+            return res.status(400).json({ error: "That Apple offer no longer exists in App Store Connect." });
+          }
+          const created = await asc.createCustomOfferCode({
+            offerCodeId: appleOfferId,
+            customCode: code,
+            numberOfCodes: codeType === "one_time" ? 1 : 10000,
+            expirationDate: expiresAt ? new Date(expiresAt).toISOString().slice(0, 10) : undefined,
+          });
+          appleCustomCodeId = created.id ?? null;
+          appleSubscriptionProductId = offer.subscriptionProductId ?? null;
+        } catch (appleErr: any) {
+          console.error("Error creating Apple offer code:", appleErr?.message);
+          return res.status(502).json({ error: `Apple offer code could not be created: ${appleErr?.message ?? "unknown error"}` });
+        }
+      }
+
       const promoCode = await storage.createPromoCode({
         code,
         discountPercent,
@@ -5950,12 +5988,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expiresAt: expiresAt ? new Date(expiresAt) : undefined,
         applicablePlans: ["monthly", "annual", "both"].includes(applicablePlans) ? applicablePlans : "both",
         duration: ["once", "forever"].includes(duration) ? duration : "once",
+        appleOfferId: appleOfferId ?? null,
+        appleCustomCodeId,
+        appleSubscriptionProductId,
         createdByUserId: (req.user as any)?.id ?? null,
       });
       res.status(201).json(promoCode);
     } catch (error) {
       console.error("Error creating promo code:", error);
       res.status(500).json({ error: "Failed to create promo code" });
+    }
+  });
+
+  // List available Apple offers from App Store Connect (admin only).
+  // These are the predefined promotional offers the admin set up in ASC.
+  app.get("/api/admin/apple-offers", async (req, res) => {
+    try {
+      if (!req.user || (req.user as any).role !== "admin") return res.status(403).json({ error: "Admin access required" });
+      const asc = await import("./services/appStoreConnect.js");
+      if (!asc.isAscConfigured()) {
+        return res.json({ configured: false, offers: [] });
+      }
+      const offers = await asc.getAllOfferCodes();
+      res.json({ configured: true, offers });
+    } catch (error: any) {
+      console.error("Error fetching Apple offers:", error?.message);
+      // Return 200 (not 502) so the client can distinguish "configured but App
+      // Store Connect is temporarily unreachable" (show the error) from "not
+      // configured at all". A non-200 here would be swallowed by the default
+      // query fetcher and look identical to the not-configured case.
+      res.json({ configured: true, offers: [], error: error?.message ?? "Failed to reach App Store Connect" });
     }
   });
 

@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/use-theme";
 import { getThemedTextClasses } from "@/lib/themeText";
 import { Upload, Search, Users, FileText, ArrowUpDown, Loader2, Check, X, AlertCircle, Ban, Copy, BookX, BookOpen, Home, UserX, Trash2, Shield, ChevronDown, ChevronRight, Plus, Flag, Eye, Edit, Tag, ToggleLeft, ToggleRight, Calendar, Mail, RefreshCw } from "lucide-react";
+import { SiApple } from "react-icons/si";
 import { Progress } from "@/components/ui/progress";
 import { UserHeader } from "@/components/user-header";
 import {
@@ -406,17 +407,26 @@ export default function AdminPage() {
   });
 
   // Promo codes state
-  const defaultPromoForm = { discountPercent: 10, codeType: "one_time", duration: "once", applicablePlans: "both", expiresAt: "" };
+  const defaultPromoForm = { discountPercent: 10, codeType: "one_time", duration: "once", applicablePlans: "both", expiresAt: "", appleOfferId: "" };
   const [promoForm, setPromoForm] = useState(defaultPromoForm);
   const [createPromoOpen, setCreatePromoOpen] = useState(false);
   const [promoUsagesFor, setPromoUsagesFor] = useState<PromoCode | null>(null);
 
-  interface PromoCode { id: number; code: string; discountPercent: number; codeType: string; duration: string; applicablePlans: string; usesCount: number; isActive: boolean; expiresAt: string | null; createdAt: string; }
+  interface PromoCode { id: number; code: string; discountPercent: number; codeType: string; duration: string; applicablePlans: string; usesCount: number; isActive: boolean; expiresAt: string | null; createdAt: string; appleOfferId?: string | null; appleCustomCodeId?: string | null; appleSubscriptionProductId?: string | null; }
   interface PromoUsage { id: number; userId: number | null; username: string | null; usedAt: string; }
+  interface AppleOffer { id: string; name: string; offerMode: string; duration: string; numberOfPeriods: number; subscriptionName?: string; subscriptionProductId?: string; }
 
   const { data: promoCodes = [], isLoading: isLoadingPromos } = useQuery<PromoCode[]>({
     queryKey: ['/api/admin/promo-codes'],
   });
+
+  // Predefined Apple offers (set up by the admin in App Store Connect). Used to
+  // link a promo code to an iOS offer so one code works on both web and iOS.
+  const { data: appleOffersData } = useQuery<{ configured: boolean; offers: AppleOffer[]; error?: string }>({
+    queryKey: ['/api/admin/apple-offers'],
+  });
+  const appleConfigured = appleOffersData?.configured ?? false;
+  const appleOffers = appleOffersData?.offers ?? [];
 
   const { data: promoUsages = [], isLoading: isLoadingUsages } = useQuery<PromoUsage[]>({
     queryKey: ['/api/admin/promo-codes', promoUsagesFor?.id, 'usages'],
@@ -429,7 +439,7 @@ export default function AdminPage() {
   });
 
   const createPromoMutation = useMutation({
-    mutationFn: async (data: { discountPercent: number; codeType: string; duration: string; applicablePlans: string; expiresAt?: string }) =>
+    mutationFn: async (data: { discountPercent: number; codeType: string; duration: string; applicablePlans: string; expiresAt?: string; appleOfferId?: string }) =>
       (await apiRequest('POST', '/api/admin/promo-codes', data)).json(),
     onSuccess: () => {
       toast({ title: "Promo code created" });
@@ -1695,6 +1705,11 @@ export default function AdminPage() {
                                   <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { navigator.clipboard.writeText(promo.code); toast({ title: "Copied to clipboard" }); }} data-testid={`button-copy-promo-${promo.id}`}>
                                     <Copy className="w-3 h-3" />
                                   </Button>
+                                  {promo.appleCustomCodeId && (
+                                    <span title="Also works as an Apple offer code on iOS" data-testid={`indicator-apple-${promo.id}`}>
+                                      <SiApple className="w-3.5 h-3.5 text-muted-foreground" />
+                                    </span>
+                                  )}
                                 </div>
                               </TableCell>
                               <TableCell><span className="font-semibold text-green-600 dark:text-green-400">{promo.discountPercent}% off</span></TableCell>
@@ -2274,11 +2289,52 @@ export default function AdminPage() {
                 </div>
               </div>
             )}
+            {appleConfigured && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5"><SiApple className="w-3.5 h-3.5" /> iOS offer code <span className="text-muted-foreground">(optional)</span></Label>
+                {appleOffersData?.error ? (
+                  <p className="text-xs text-destructive" data-testid="text-apple-offers-error">
+                    Couldn't reach App Store Connect ({appleOffersData.error}). iOS linking is unavailable right now — the code can still be created for web.
+                  </p>
+                ) : appleOffers.length === 0 ? (
+                  <p className="text-xs text-muted-foreground" data-testid="text-no-apple-offers">
+                    No promotional offers found in App Store Connect. Create one there first to let this code be redeemed in the iOS app too.
+                  </p>
+                ) : (
+                  <>
+                    <Select
+                      value={promoForm.appleOfferId || "none"}
+                      onValueChange={(v) => setPromoForm(p => ({ ...p, appleOfferId: v === "none" ? "" : v }))}
+                    >
+                      <SelectTrigger data-testid="select-promo-apple-offer">
+                        <SelectValue placeholder="None — web only" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None — web (Stripe) only</SelectItem>
+                        {appleOffers.map(o => (
+                          <SelectItem key={o.id} value={o.id} data-testid={`option-apple-offer-${o.id}`}>
+                            {o.subscriptionName ? `${o.subscriptionName} — ` : ""}{o.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Links this code to a promotional offer you set up in App Store Connect, so iOS users redeem the same code. Each Apple offer applies to a single plan, and its discount is whatever you configured in App Store Connect (independent of the percentage above).
+                    </p>
+                    {promoForm.codeType === "one_time" && promoForm.appleOfferId && (
+                      <p className="text-xs text-muted-foreground" data-testid="text-promo-onetime-note">
+                        Heads up: a one-time code linked to an Apple offer can be redeemed once on the web and once on iOS — the two platforms count uses separately.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreatePromoOpen(false)}>Cancel</Button>
             <Button
-              onClick={() => createPromoMutation.mutate({ discountPercent: promoForm.discountPercent, codeType: promoForm.codeType, duration: promoForm.duration, applicablePlans: promoForm.applicablePlans, expiresAt: promoForm.expiresAt || undefined })}
+              onClick={() => createPromoMutation.mutate({ discountPercent: promoForm.discountPercent, codeType: promoForm.codeType, duration: promoForm.duration, applicablePlans: promoForm.applicablePlans, expiresAt: promoForm.expiresAt || undefined, appleOfferId: promoForm.appleOfferId || undefined })}
               disabled={createPromoMutation.isPending}
               data-testid="button-confirm-create-promo"
             >

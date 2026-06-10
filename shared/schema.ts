@@ -976,6 +976,10 @@ export const promoCodes = pgTable("promo_codes", {
   isActive: boolean("is_active").notNull().default(true),
   expiresAt: timestamp("expires_at"),
   createdByUserId: integer("created_by_user_id"),
+  // Apple App Store Connect offer-code linkage (null = web/Stripe only).
+  appleOfferId: text("apple_offer_id"), // the predefined subscriptionOfferCode id in App Store Connect
+  appleCustomCodeId: text("apple_custom_code_id"), // the custom code resource id Apple created
+  appleSubscriptionProductId: text("apple_subscription_product_id"), // which subscription the Apple offer belongs to
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
