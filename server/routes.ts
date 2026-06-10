@@ -5552,6 +5552,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               code: "ALREADY_SUBSCRIBED_APPLE",
             });
           }
+          // Active via Google Play: same reasoning — a Play subscription can only
+          // be cancelled in the Play Store, so block to avoid a double charge.
+          if (sub.method === "google_play") {
+            return res.status(409).json({
+              error: "You already have an active subscription through Google Play. To avoid being charged twice, please manage it in the Google Play Store (Payments & subscriptions) instead of subscribing again on the web.",
+              code: "ALREADY_SUBSCRIBED_GOOGLE",
+            });
+          }
           // Active via Stripe (or other web payment): allow only the deliberate
           // "renew early" / plan-switch flow (which stacks the term and cancels
           // the old subscription). Any other path is an accidental re-subscribe.
@@ -6234,6 +6242,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, active: result.expiresAt > new Date(), expiresAt: result.expiresAt });
     } catch (error: any) {
       console.error('[IAP] Apple restore error:', error);
+      res.status(500).json({ error: 'Restore failed' });
+    }
+  });
+
+  // ── Google Play In-App Purchase validation ─────────────────────────────────
+  // Validates a Google Play subscription purchase token via the Play Developer
+  // API. Requires the GOOGLE_PLAY_SERVICE_ACCOUNT_JSON secret (returns 503 until
+  // it is configured). Mirrors the Apple endpoints above.
+  app.post('/api/iap/google/validate', requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const { purchaseToken } = req.body;
+      if (!purchaseToken || typeof purchaseToken !== 'string') {
+        return res.status(400).json({ error: 'purchaseToken is required' });
+      }
+
+      const gp = await import('./services/googlePlay.js');
+      if (!gp.isGooglePlayConfigured()) {
+        return res.status(503).json({ error: 'Google Play purchase validation is not configured yet.' });
+      }
+
+      const result = await gp.validateGoogleSubscription(purchaseToken);
+      if (!result.valid) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      const user = req.user as any;
+
+      // Find or create the family account owned by this user
+      let family = await storage.getFamilyAccountByParentId(user.id);
+      if (!family) {
+        family = await storage.createFamilyAccount(user.id);
+      }
+
+      // Only grant access for an active (non-expired) subscription.
+      const active = Boolean(result.active);
+      if (active) {
+        await storage.updateFamilyAccount(family.id, {
+          vpcStatus: 'verified',
+          subscriptionExpiresAt: result.expiresAt,
+          lastPaymentMethod: 'google_play',
+          googlePurchaseToken: purchaseToken,
+          autoRenew: result.autoRenew ?? true,
+        });
+
+        if (user.accountType !== 'family_parent') {
+          await storage.updateUserAccountType(user.id, 'family_parent');
+        }
+      }
+
+      res.json({ success: true, active, expiresAt: result.expiresAt });
+    } catch (error: any) {
+      console.error('[IAP] Google validate error:', error);
+      res.status(500).json({ error: 'Purchase validation failed' });
+    }
+  });
+
+  // POST /api/iap/google/restore — re-validate the latest purchase token
+  app.post('/api/iap/google/restore', requireAuthAndRejectLegacyGuest, async (req, res) => {
+    try {
+      const { purchaseToken } = req.body;
+      if (!purchaseToken || typeof purchaseToken !== 'string') {
+        return res.status(400).json({ error: 'purchaseToken is required' });
+      }
+
+      const gp = await import('./services/googlePlay.js');
+      if (!gp.isGooglePlayConfigured()) {
+        return res.status(503).json({ error: 'Google Play purchase validation is not configured yet.' });
+      }
+
+      const result = await gp.validateGoogleSubscription(purchaseToken);
+      if (!result.valid) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      const user = req.user as any;
+      const family = await storage.getFamilyAccountByParentId(user.id);
+      if (!family) {
+        return res.status(404).json({ error: 'No family account found. Please subscribe first.' });
+      }
+
+      if (result.active) {
+        await storage.updateFamilyAccount(family.id, {
+          vpcStatus: 'verified',
+          subscriptionExpiresAt: result.expiresAt,
+          lastPaymentMethod: 'google_play',
+          googlePurchaseToken: purchaseToken,
+          autoRenew: result.autoRenew ?? true,
+        });
+      }
+
+      res.json({ success: true, active: Boolean(result.active), expiresAt: result.expiresAt });
+    } catch (error: any) {
+      console.error('[IAP] Google restore error:', error);
       res.status(500).json({ error: 'Restore failed' });
     }
   });

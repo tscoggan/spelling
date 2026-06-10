@@ -9,7 +9,8 @@ description: Why a small nullable-column add can trigger a destructive truncate 
 drift surfaces even when your change is a tiny nullable column add. Observed: a
 nullable-column add prompted to add a `app_settings_key_unique` constraint and
 offered to **truncate `app_settings`** — completely unrelated to the intended
-change. Never accept the truncate.
+change. Never accept the truncate. `--force` does NOT auto-dismiss this prompt
+(it's a data-safety prompt); the process just hangs on stdin.
 
 ## Safe alternative for additive nullable columns
 Apply exactly your change with idempotent SQL instead of running push:

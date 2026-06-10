@@ -1,17 +1,22 @@
 /**
- * Native In-App Purchase abstraction for iOS via cordova-plugin-purchase.
+ * Native In-App Purchase abstraction for iOS (Apple App Store) and Android
+ * (Google Play) via cordova-plugin-purchase.
  *
  * On web builds, every exported function is a safe no-op / returns empty data.
  * On native builds the plugin injects `window.CdvPurchase` at startup via the
- * Capacitor/Cordova bridge — no npm import is needed at runtime.
+ * Capacitor/Cordova bridge — no npm import is needed at runtime. The store
+ * platform is chosen at runtime from the device (Apple on iOS, Google Play on
+ * Android); the purchase proof is validated server-side per platform (Apple
+ * receipt → /api/iap/apple/validate, Google token → /api/iap/google/validate).
  *
  * Mac Mini setup:
- *   1. `npx cap add ios`
- *   2. Open Xcode → add the In-App Purchase capability
- *   3. Create products in App Store Connect (see CAPACITOR_SETUP.md)
+ *   iOS:     `npx cap add ios`     → Xcode: add the In-App Purchase capability;
+ *            create products in App Store Connect (see CAPACITOR_SETUP.md).
+ *   Android: `npx cap add android` → create the subscriptions in Google Play
+ *            Console and configure the Play Developer API service account.
  */
 
-import { isNativePlatform } from '@/lib/platform';
+import { isNativePlatform, isAndroid } from '@/lib/platform';
 import { apiRequest } from '@/lib/queryClient';
 
 // ── Product IDs (must match App Store Connect exactly) ───────────────────────
@@ -43,6 +48,32 @@ function getStore(): any | null {
 let _initialized = false;
 let _purchaseInProgress = false;
 
+// Build the server validation request for a transaction based on the platform.
+// Apple sends the base64 App Store receipt; Google Play sends the purchase
+// token. Returns null if the expected data isn't present yet (the caller leaves
+// the transaction unfinished so the store re-delivers it for a retry).
+function buildValidatePayload(
+  transaction: any,
+): { endpoint: string; body: Record<string, unknown> } | null {
+  const receipt = transaction.parentReceipt;
+  if (isAndroid()) {
+    const purchaseToken: string | undefined =
+      receipt?.purchaseToken ?? transaction.nativePurchase?.purchaseToken;
+    if (!purchaseToken) return null;
+    const productId: string | undefined =
+      transaction.products?.[0]?.id ??
+      transaction.nativePurchase?.productIds?.[0] ??
+      transaction.productId;
+    return { endpoint: '/api/iap/google/validate', body: { purchaseToken, productId } };
+  }
+  const receiptData: string | undefined =
+    receipt?.appStoreReceipt ??
+    receipt?.nativeData?.appStoreReceipt ??
+    receipt?.nativeData?.receipt;
+  if (!receiptData) return null;
+  return { endpoint: '/api/iap/apple/validate', body: { receiptData } };
+}
+
 // ── Initialize the IAP store ─────────────────────────────────────────────────
 export async function initializeIAP(): Promise<void> {
   if (!isNativePlatform() || _initialized) return;
@@ -55,9 +86,14 @@ export async function initializeIAP(): Promise<void> {
 
   const { ProductType, Platform } = window.CdvPurchase!;
 
+  // Pick the store for the current device: Google Play on Android, Apple App
+  // Store on iOS. On iOS this resolves to APPLE_APPSTORE, so the existing iOS
+  // flow is byte-for-byte unchanged.
+  const storePlatform = isAndroid() ? Platform.GOOGLE_PLAY : Platform.APPLE_APPSTORE;
+
   store.register([
-    { id: IAP_PRODUCTS.MONTHLY, type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE },
-    { id: IAP_PRODUCTS.ANNUAL,  type: ProductType.PAID_SUBSCRIPTION, platform: Platform.APPLE_APPSTORE },
+    { id: IAP_PRODUCTS.MONTHLY, type: ProductType.PAID_SUBSCRIPTION, platform: storePlatform },
+    { id: IAP_PRODUCTS.ANNUAL,  type: ProductType.PAID_SUBSCRIPTION, platform: storePlatform },
   ]);
 
   // Surface store-level errors (e.g. products not approved in App Store Connect,
@@ -74,7 +110,7 @@ export async function initializeIAP(): Promise<void> {
   // Validate owned subscriptions server-side on launch and power restore/redeem.
   ensureGlobalApprovedHandler(store);
 
-  await store.initialize([Platform.APPLE_APPSTORE]);
+  await store.initialize([storePlatform]);
   _initialized = true;
 }
 
@@ -150,21 +186,16 @@ export async function purchaseIAP(productId: IAPProductId): Promise<void> {
       .approved(async (transaction: any) => {
         if (purchaseSettled) return; // stale listener re-firing on a later restore
         try {
-          // Extract the App Store receipt (base64 encoded)
-          const receipt = transaction.parentReceipt;
-          const receiptData: string | undefined =
-            receipt?.appStoreReceipt ??
-            receipt?.nativeData?.appStoreReceipt ??
-            receipt?.nativeData?.receipt;
-
-          if (!receiptData) {
+          // Extract the platform's purchase proof (Apple receipt / Google token)
+          const payload = buildValidatePayload(transaction);
+          if (!payload) {
             await transaction.finish();
-            settle(() => reject(new Error('Could not extract App Store receipt')));
+            settle(() => reject(new Error('Could not extract purchase receipt')));
             return;
           }
 
-          // Validate receipt server-side — activates the subscription in our DB
-          const resp = await apiRequest('POST', '/api/iap/apple/validate', { receiptData });
+          // Validate server-side — activates the subscription in our DB
+          const resp = await apiRequest('POST', payload.endpoint, payload.body);
           if (!resp.ok) {
             const body = await resp.json();
             throw new Error(body.error ?? 'Server receipt validation failed');
@@ -248,17 +279,13 @@ function ensureGlobalApprovedHandler(store: any): void {
     const pid: string | undefined = transaction.products?.[0]?.id ?? transaction.productId;
     if (pid && !OUR_PRODUCT_IDS.includes(pid)) return; // not one of our subscriptions
 
-    const receipt = transaction.parentReceipt;
-    const receiptData: string | undefined =
-      receipt?.appStoreReceipt ??
-      receipt?.nativeData?.appStoreReceipt ??
-      receipt?.nativeData?.receipt;
-    if (!receiptData) return; // nothing to validate; leave unfinished for retry
+    const payload = buildValidatePayload(transaction);
+    if (!payload) return; // nothing to validate yet; leave unfinished for retry
 
     try {
       // apiRequest throws on any non-2xx, so reaching past it means the server
-      // definitively processed the receipt — safe to acknowledge the delivery.
-      const resp = await apiRequest('POST', '/api/iap/apple/validate', { receiptData });
+      // definitively processed the purchase — safe to acknowledge the delivery.
+      const resp = await apiRequest('POST', payload.endpoint, payload.body);
       const body = await resp.json().catch(() => ({} as any));
       await transaction.finish();
       if (body?.active && _pendingActivation) {
@@ -282,6 +309,14 @@ function ensureGlobalApprovedHandler(store: any): void {
 // user dismisses the sheet without redeeming).
 export async function redeemOfferCode(timeoutMs = 120000): Promise<boolean> {
   if (!isNativePlatform()) return false;
+
+  // Google Play has no in-app code-redemption sheet; offer codes are redeemed in
+  // the Play Store app (Payments & subscriptions → Redeem). Apple-only here.
+  if (isAndroid()) {
+    throw new Error(
+      'To redeem a code on Android, open the Google Play Store app → Payments & subscriptions → Redeem.',
+    );
+  }
 
   await initializeIAP();
   const store = getStore();

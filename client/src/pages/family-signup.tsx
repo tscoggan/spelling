@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
-import { isNativePlatform } from "@/lib/platform";
+import { isNativePlatform, isAndroid } from "@/lib/platform";
 import { openExternalRoute } from "@/lib/apiBase";
 import { useNativeIAP, IAP_PRODUCTS } from "@/hooks/use-native-iap";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,6 +66,8 @@ export default function FamilySignupPage() {
   const textClasses = getThemedTextClasses(hasDarkBackground);
 
   const onNative = isNativePlatform();
+  const onAndroid = isAndroid();
+  const storeName = onAndroid ? "Google Play" : "App Store";
   const iap = useNativeIAP();
 
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
@@ -631,7 +633,7 @@ export default function FamilySignupPage() {
               )}
 
               {onNative ? (
-                /* ── Native iOS: Apple In-App Purchase ── */
+                /* ── Native: Apple / Google in-app purchase ── */
                 <div className="space-y-3">
                   {iap.error && (
                     <p className="text-sm text-destructive text-center">{iap.error}</p>
@@ -662,13 +664,14 @@ export default function FamilySignupPage() {
                       {iap.purchasing ? (
                         <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing…</>
                       ) : (
-                        <><CreditCard className="w-4 h-4 mr-2" /> Subscribe via App Store</>
+                        <><CreditCard className="w-4 h-4 mr-2" /> Subscribe via {storeName}</>
                       )}
                     </Button>
                   </div>
                   <p className="text-xs text-center text-muted-foreground">
-                    Payment is handled securely by Apple. Your subscription renews
-                    automatically — manage or cancel it anytime in iOS Settings.
+                    {onAndroid
+                      ? "Payment is handled securely by Google Play. Your subscription renews automatically — manage or cancel it anytime in the Google Play Store."
+                      : "Payment is handled securely by Apple. Your subscription renews automatically — manage or cancel it anytime in iOS Settings."}
                   </p>
                   <Button
                     variant="ghost"
@@ -680,7 +683,7 @@ export default function FamilySignupPage() {
                         queryClient.invalidateQueries({ queryKey: ['/api/family'] });
                         setStep(5);
                       } else {
-                        toast({ title: "Nothing to restore", description: "No active subscription found for this Apple ID." });
+                        toast({ title: "Nothing to restore", description: onAndroid ? "No active subscription found for this Google account." : "No active subscription found for this Apple ID." });
                       }
                     }}
                     disabled={iap.restoring}
@@ -689,6 +692,9 @@ export default function FamilySignupPage() {
                     {iap.restoring ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
                     Restore previous purchase
                   </Button>
+                  {/* Apple offer codes redeem via the in-app sheet; Google Play
+                      codes redeem in the Play Store app, so hide this on Android. */}
+                  {!onAndroid && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -712,6 +718,7 @@ export default function FamilySignupPage() {
                     {iap.redeeming ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
                     Redeem an offer code
                   </Button>
+                  )}
                 </div>
               ) : (
                 /* ── Web: Stripe checkout ── */
