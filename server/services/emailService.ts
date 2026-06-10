@@ -67,7 +67,7 @@ function getAppDomain() {
   return `${protocol}://${domain}`;
 }
 
-function emailHeader(bgColor = 'linear-gradient(to right, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff)') {
+function emailHeader(bgColor = '#ffffff') {
   const logoUrl = `${getAppDomain()}/images/spelling-playground-title.png`;
   return `
     <div style="background: ${bgColor}; padding: 20px 30px; text-align: center; border-radius: 8px 8px 0 0;">
