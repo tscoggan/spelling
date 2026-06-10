@@ -190,6 +190,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return { active: false, method: null, expiresAt: null };
   };
 
+  // Returns true when a purchase proof (Apple original-transaction-id or Google
+  // purchase token) is already bound to a DIFFERENT, still-active account. A
+  // soft-deleted owner (userStatus === 'deleted') can never be logged into or
+  // replayed from, so re-binding their orphaned proof to a new account is safe
+  // and avoids locking a still-paying user out after they delete their account.
+  const isProofBoundToAnotherActiveUser = async (
+    bound: { primaryParentUserId: number } | undefined,
+    currentUserId: number,
+  ): Promise<boolean> => {
+    if (!bound || bound.primaryParentUserId === currentUserId) return false;
+    const owner = await storage.getUser(bound.primaryParentUserId);
+    return Boolean(owner && owner.userStatus !== 'deleted');
+  };
+
+  // When the replay guard lets a different-owner proof through, that owner is
+  // soft-deleted (see above) yet their family row still holds the proof. Before
+  // re-binding it to the current user we must NULL it on that orphan row, or the
+  // partial-unique index on the proof column would reject the new binding with a
+  // 500. No-op when the proof is unbound or already owned by the current user.
+  const releaseProofFromOrphan = async (
+    bound: { id: number; primaryParentUserId: number } | undefined,
+    currentUserId: number,
+    field: "appleOriginalTransactionId" | "googlePurchaseToken",
+  ): Promise<void> => {
+    if (!bound || bound.primaryParentUserId === currentUserId) return;
+    await storage.updateFamilyAccount(
+      bound.id,
+      field === "appleOriginalTransactionId"
+        ? { appleOriginalTransactionId: null }
+        : { googlePurchaseToken: null },
+    );
+  };
+
   // Middleware to reject legacy guest users (username starting with "guest_")
   // These users should be logged out and redirected to use the new in-memory guest mode
   const rejectLegacyGuest = (req: any, res: any, next: any) => {
@@ -6176,6 +6209,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = req.user as any;
 
+      // Replay guard: a single store purchase may only ever activate ONE
+      // account. If this receipt's original transaction is already linked to a
+      // different user's family, refuse instead of unlocking a second account.
+      if (result.originalTransactionId) {
+        const bound = await storage.getFamilyAccountByAppleOriginalTransactionId(result.originalTransactionId);
+        if (await isProofBoundToAnotherActiveUser(bound, user.id)) {
+          return res.status(409).json({
+            error: 'This App Store purchase is already linked to another account. Please sign in to that account to restore it, or contact support.',
+            code: 'PURCHASE_ALREADY_LINKED',
+          });
+        }
+        // Different owner here only when that owner is soft-deleted: release the
+        // orphaned proof so the bind below won't violate the unique index.
+        await releaseProofFromOrphan(bound, user.id, "appleOriginalTransactionId");
+      }
+
       // Find or create the family account owned by this user
       let family = await storage.getFamilyAccountByParentId(user.id);
       if (!family) {
@@ -6204,6 +6253,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true, active, expiresAt: result.expiresAt });
     } catch (error: any) {
+      // Net for a TOCTOU race where two accounts bind the same proof at once: the
+      // partial-unique index throws Postgres 23505, which we surface as the same
+      // friendly 409 instead of a 500. NOTE: drizzle-orm < 0.41 propagates the raw
+      // driver error (so error.code works); after a 0.41+ upgrade also check
+      // error.cause?.code, since DrizzleQueryError wraps the original.
+      if (error?.code === '23505') {
+        return res.status(409).json({ error: 'This App Store purchase is already linked to another account.', code: 'PURCHASE_ALREADY_LINKED' });
+      }
       console.error('[IAP] Apple validate error:', error);
       res.status(500).json({ error: 'Receipt validation failed' });
     }
@@ -6229,6 +6286,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'No family account found. Please subscribe first.' });
       }
 
+      // Replay guard: refuse if this receipt belongs to a different account.
+      if (result.originalTransactionId) {
+        const bound = await storage.getFamilyAccountByAppleOriginalTransactionId(result.originalTransactionId);
+        if (await isProofBoundToAnotherActiveUser(bound, user.id)) {
+          return res.status(409).json({
+            error: 'This App Store purchase is already linked to another account.',
+            code: 'PURCHASE_ALREADY_LINKED',
+          });
+        }
+        // Different owner here only when that owner is soft-deleted: release the
+        // orphaned proof so the bind below won't violate the unique index.
+        await releaseProofFromOrphan(bound, user.id, "appleOriginalTransactionId");
+      }
+
       // Only restore if the receipt is for a non-expired subscription
       if (result.expiresAt > new Date()) {
         await storage.updateFamilyAccount(family.id, {
@@ -6241,6 +6312,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true, active: result.expiresAt > new Date(), expiresAt: result.expiresAt });
     } catch (error: any) {
+      if (error?.code === '23505') {
+        return res.status(409).json({ error: 'This App Store purchase is already linked to another account.', code: 'PURCHASE_ALREADY_LINKED' });
+      }
       console.error('[IAP] Apple restore error:', error);
       res.status(500).json({ error: 'Restore failed' });
     }
@@ -6269,6 +6343,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = req.user as any;
 
+      // Replay guard: a single store purchase may only ever activate ONE
+      // account. If this purchase token is already linked to a different user's
+      // family, refuse instead of unlocking a second account.
+      const bound = await storage.getFamilyAccountByGooglePurchaseToken(purchaseToken);
+      if (await isProofBoundToAnotherActiveUser(bound, user.id)) {
+        return res.status(409).json({
+          error: 'This Google Play purchase is already linked to another account. Please sign in to that account to restore it, or contact support.',
+          code: 'PURCHASE_ALREADY_LINKED',
+        });
+      }
+      // Different owner here only when that owner is soft-deleted: release the
+      // orphaned proof so the bind below won't violate the unique index.
+      await releaseProofFromOrphan(bound, user.id, "googlePurchaseToken");
+
       // Find or create the family account owned by this user
       let family = await storage.getFamilyAccountByParentId(user.id);
       if (!family) {
@@ -6293,6 +6381,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true, active, expiresAt: result.expiresAt });
     } catch (error: any) {
+      if (error?.code === '23505') {
+        return res.status(409).json({ error: 'This Google Play purchase is already linked to another account.', code: 'PURCHASE_ALREADY_LINKED' });
+      }
       console.error('[IAP] Google validate error:', error);
       res.status(500).json({ error: 'Purchase validation failed' });
     }
@@ -6322,6 +6413,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'No family account found. Please subscribe first.' });
       }
 
+      // Replay guard: refuse if this purchase token belongs to a different account.
+      const bound = await storage.getFamilyAccountByGooglePurchaseToken(purchaseToken);
+      if (await isProofBoundToAnotherActiveUser(bound, user.id)) {
+        return res.status(409).json({
+          error: 'This Google Play purchase is already linked to another account.',
+          code: 'PURCHASE_ALREADY_LINKED',
+        });
+      }
+      // Different owner here only when that owner is soft-deleted: release the
+      // orphaned proof so the bind below won't violate the unique index.
+      await releaseProofFromOrphan(bound, user.id, "googlePurchaseToken");
+
       if (result.active) {
         await storage.updateFamilyAccount(family.id, {
           vpcStatus: 'verified',
@@ -6334,6 +6437,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true, active: Boolean(result.active), expiresAt: result.expiresAt });
     } catch (error: any) {
+      if (error?.code === '23505') {
+        return res.status(409).json({ error: 'This Google Play purchase is already linked to another account.', code: 'PURCHASE_ALREADY_LINKED' });
+      }
       console.error('[IAP] Google restore error:', error);
       res.status(500).json({ error: 'Restore failed' });
     }

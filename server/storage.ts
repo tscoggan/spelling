@@ -266,6 +266,8 @@ export interface IStorage {
   getFamilyAccountByParentId(parentUserId: number): Promise<FamilyAccount | undefined>;
   getFamilyAccountByStripeSubscriptionId(subscriptionId: string): Promise<FamilyAccount | undefined>;
   getFamilyAccountByStripeCustomerId(customerId: string): Promise<FamilyAccount | undefined>;
+  getFamilyAccountByAppleOriginalTransactionId(txId: string): Promise<FamilyAccount | undefined>;
+  getFamilyAccountByGooglePurchaseToken(token: string): Promise<FamilyAccount | undefined>;
   updateFamilyAccount(id: number, updates: Partial<FamilyAccount>): Promise<FamilyAccount | undefined>;
   getFamilyAccountsNeedingRenewalReminder(): Promise<FamilyAccount[]>;
   createFamilyLegalAcceptance(data: { familyId: number; userId: number; ipAddress?: string; userAgent?: string }): Promise<void>;
@@ -2701,6 +2703,16 @@ export class DatabaseStorage implements IStorage {
 
   async getFamilyAccountByStripeCustomerId(customerId: string): Promise<FamilyAccount | undefined> {
     const [family] = await db.select().from(familyAccounts).where(eq(familyAccounts.stripeCustomerId, customerId));
+    return family || undefined;
+  }
+
+  async getFamilyAccountByAppleOriginalTransactionId(txId: string): Promise<FamilyAccount | undefined> {
+    const [family] = await db.select().from(familyAccounts).where(eq(familyAccounts.appleOriginalTransactionId, txId));
+    return family || undefined;
+  }
+
+  async getFamilyAccountByGooglePurchaseToken(token: string): Promise<FamilyAccount | undefined> {
+    const [family] = await db.select().from(familyAccounts).where(eq(familyAccounts.googlePurchaseToken, token));
     return family || undefined;
   }
 

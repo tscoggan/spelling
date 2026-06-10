@@ -5,8 +5,8 @@
 - [Soft-delete via userStatus](soft-delete-userstatus.md) — deleteUserAndAllData soft-deletes (userStatus='deleted'); every auth/eligibility gate must exclude deleted users.
 - [Native auth needs CapacitorHttp](capacitor-native-cookies.md) — iOS WKWebView drops the third-party session cookie (login 200 then 401s); enable CapacitorHttp+CapacitorCookies.
 - [Capacitor image URLs](capacitor-image-urls.md) — <img>/<audio> bypass the fetch interceptor; wrap relative /objects/ & /api/ media src with assetUrl() or they 404 on native.
+- [Google Play IAP](google-play-iap.md) — token-only validation, CANCELED=still-entitled, branch by platform; purchase proof = ONE account (partial-unique index + route guard, deleted-owner re-bind exception).
 - [Playground dark mode](playground-dark-mode.md) — Playground theme swaps bg + title banner via matchMedia(prefers-color-scheme), NOT the dormant .dark class.
-- [Google Play IAP](google-play-iap.md) — Android sub validation: CANCELED still entitled (gate on expiry); finish() auto-acks; branch by isAndroid; open token-replay gap on both platforms.
 - [ASC offer codes](app-store-connect-offer-codes.md) — one promo string for Stripe+Apple; codes must be hyphen-free; one_time codes redeem once PER platform (not global); admin pre-creates the offer in ASC.
 - [drizzle push drift](drizzle-push-unrelated-drift.md) — db:push can prompt to truncate an unrelated table; for nullable adds use ALTER TABLE ADD COLUMN IF NOT EXISTS; prod DB needs the same change before shipping.
 - [Capacitor IAP redemption](capacitor-iap-redemption.md) — v13 has no store.redeem(); use adapter.presentCodeRedemptionSheet()+approved listener; verifiedReceipts always empty; gate entitlement on expiresAt>now.

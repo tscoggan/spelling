@@ -261,7 +261,18 @@ export const familyAccounts = pgTable("family_accounts", {
   promoDiscountPercent: integer("promo_discount_percent").notNull().default(0),
   appleOriginalTransactionId: text("apple_original_transaction_id"),
   googlePurchaseToken: text("google_purchase_token"),
-});
+}, (table) => ({
+  // A single store purchase proof may only ever be bound to ONE family account.
+  // Partial unique (WHERE NOT NULL) so the many rows without IAP stay unaffected.
+  // This is the real enforcement of the no-replay rule; the route-level guard is
+  // the friendly UX on top of it.
+  appleOriginalTxUnique: uniqueIndex("family_apple_original_tx_unique")
+    .on(table.appleOriginalTransactionId)
+    .where(sql`${table.appleOriginalTransactionId} IS NOT NULL`),
+  googlePurchaseTokenUnique: uniqueIndex("family_google_purchase_token_unique")
+    .on(table.googlePurchaseToken)
+    .where(sql`${table.googlePurchaseToken} IS NOT NULL`),
+}));
 
 export const familyLegalAcceptances = pgTable("family_legal_acceptances", {
   id: serial("id").primaryKey(),
