@@ -2009,9 +2009,10 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, onR
       // 500ms delay ensures Framer Motion animations (400ms) complete before scrolling
       // This prevents race conditions on slower Android devices
       setTimeout(() => {
-        // Scroll to word image with block: 'start' to hide header, progress bar, and title
-        // This shows only the word image and buttons, matching user's expectation
-        wordImageRef.current?.scrollIntoView({
+        // Pin the game card's top edge to the top of the viewport. Using the card
+        // (not the word image) and block: 'start' keeps a single, stable scroll
+        // target so the card never drifts up/down between words.
+        gameCardRef.current?.scrollIntoView({
           behavior: 'smooth',
           block: 'start',
           inline: 'nearest'
@@ -2157,9 +2158,13 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, onR
       // 500ms delay ensures Framer Motion animations (400ms) complete before scrolling
       // This prevents race conditions on slower Android devices
       const timeoutId = setTimeout(() => {
+        // Align the card's top edge to the top of the viewport (was 'center').
+        // 'center' recomputed the position from the card height, which varies per
+        // word, causing the card to jitter up/down after each word. 'start' keeps
+        // it fixed in place at the top.
         gameCardRef.current?.scrollIntoView({
           behavior: 'smooth',
-          block: 'center',
+          block: 'start',
           inline: 'nearest'
         });
       }, 500);
@@ -3316,14 +3321,11 @@ function GameContent({ listId, virtualWords, gameMode, gameCount, onRestart, onR
     setUserInput("");
     setShowFeedback(false);
     
-    // Scroll word image into view on mobile to ensure it appears at top
+    // Pin the game card's top edge to the top of the viewport on mobile. Using
+    // the same target (the card) and alignment ('start') as the word-change and
+    // focus scrolls keeps the card from drifting between words.
     setTimeout(() => {
-      if (wordImageRef.current) {
-        wordImageRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else if (gameCardRef.current) {
-        // Fallback if no image exists
-        gameCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+      gameCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
     
     if (activeWords && currentWordIndex < activeWords.length - 1) {

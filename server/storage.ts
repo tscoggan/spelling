@@ -466,7 +466,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(and(eq(users.username, username), ne(users.userStatus, 'deleted')));
+    // Case-insensitive lookup so "John" and "john" are treated as the same
+    // username for both login and the registration uniqueness check.
+    const [user] = await db.select().from(users).where(and(sql`LOWER(${users.username}) = LOWER(${username})`, ne(users.userStatus, 'deleted')));
     if (!user) return undefined;
     return hasEncryptionKey() ? decryptUserPII(user) : user;
   }

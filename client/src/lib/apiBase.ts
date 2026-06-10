@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 
 // Production backend used by native builds.
 // Uses the custom domain. Its TLS certificate is provisioned and valid
@@ -34,16 +35,24 @@ export function assetUrl(path: string | null | undefined): string {
 // On WEB this returns false so the caller's default <a target="_blank"> opens a
 // normal new browser tab.
 // On NATIVE a relative route resolves to capacitor://localhost and the WebView
-// blocks opening it as a new window, so a tapped <a target="_blank"> silently
-// does nothing. Instead we open the ABSOLUTE production URL; because the app
-// origin is capacitor://localhost and the production domain is a different host
-// (not in capacitor.config allowNavigation), Capacitor routes it to the device's
-// system browser rather than loading it inside the app. Returns true when it
-// handled the open (so the caller should preventDefault the anchor).
+// cannot open it as a new window, so a tapped <a target="_blank"> silently does
+// nothing (and a plain anchor hard-navigates the app to a route that doesn't
+// exist in the bundle -> white screen). Instead we open the ABSOLUTE production
+// URL in the in-app system browser via the Capacitor Browser plugin
+// (SafariViewController on iOS, Custom Tabs on Android). This keeps the user
+// inside the app — so signup form state is preserved — and they can dismiss it
+// to return. Returns true when it handled the open (so the caller should
+// preventDefault the anchor). window.open is kept as a fallback.
 export function openExternalRoute(path: string): boolean {
   if (!API_BASE) return false;
   const url = path.startsWith("http") ? path : API_BASE + path;
-  const opened = window.open(url, "_system");
-  if (!opened) window.location.href = url;
+  // Fire-and-forget: Browser.open is async but callers need a sync boolean.
+  Browser.open({ url }).catch(() => {
+    try {
+      window.open(url, "_blank");
+    } catch {
+      window.location.href = url;
+    }
+  });
   return true;
 }
