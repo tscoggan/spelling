@@ -122,10 +122,10 @@ function App() {
                   aria-hidden="true"
                 />
                 <div className="flex flex-col min-h-screen">
-                  <div className="flex-1">
+                  <div className="flex-1 pb-8">
                     <Router />
                   </div>
-                  <footer className="relative z-[9999] bg-background/80 backdrop-blur-sm border-t">
+                  <footer className="fixed bottom-0 left-0 right-0 z-[9999] bg-background/80 backdrop-blur-sm border-t">
                     <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4 py-2 text-xs text-muted-foreground">
                       <a href="/legal/privacy-policy" target="_blank" rel="noopener noreferrer"
                         className="underline underline-offset-2 hover:text-foreground transition-colors"
